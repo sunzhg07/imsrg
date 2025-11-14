@@ -518,13 +518,10 @@ double EOM::Core_Diagram(size_t a, size_t b,size_t c,size_t d,size_t e,size_t f,
     if(itz_bra!=itz_ket)return(val);
     double norm_fact=1.;
     if(a==b) norm_fact *= sqrt(2.);
-    if(c==d) norm_fact *= sqrt(2.);
+    if(c==d) norm_fact *= sqrt(2.); 
+    // this factor is 2/sqrt{2}, 2 is for permutation, and sqrt2 is from unnormalized to normalized
+    // very important
     for(auto jtot = jmin; jtot <= jmax; jtot+=1){
-    // double perm_fact=1.;
-    // perm_fact = perm_fact*(1.+pow(-1,oa.j2*0.5+ob.j2*0.5+jtot+1));
-    // perm_fact = perm_fact*(1.+pow(-1,oc.j2*0.5+od.j2*0.5+jtot+1));
-
-    //norm_fact=perm_fact/norm_fact;
     double val1=(2.*j1+1.)*(2.*j2+1.)*AngMom::NineJ(j1,of.j2*0.5, oa.j2*0.5,oe.j2*0.5, j2,ob.j2*0.5, oc.j2*0.5, od.j2*0.5, jtot);
     double val2= rdm.TwoBody.GetTBME_J_norm(jtot, jtot,a,b,c,d)*sqrt(2*jtot+1.);
     val +=norm_fact*val1*val2*(pow(-1,oa.j2*0.5+ob.j2*0.5+oc.j2*0.5+od.j2*0.5));
