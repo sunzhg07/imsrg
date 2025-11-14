@@ -223,7 +223,7 @@ void EOM::ConstructNormMatrix()
             if(oc2.cvq != 1)continue;
             double j1=tbc_bra.J;
             
-            Nkernel(i,j) =rdm.OneBody(c1,c2)*(2*tbc_bra.J+1.)/sqrt(oc1.j2+1.);
+            //Nkernel(i,j) =rdm.OneBody(c1,c2)*(2*tbc_bra.J+1.)/sqrt(oc1.j2+1.);
             //if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<" " << Nkernel(i,j) << std::endl;
     
             //if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<" "<<dbra.p<<dbra.q<<e1<<c1<<e2<<c2<<" " << Nkernel(i,j) << std::endl;
@@ -232,120 +232,63 @@ void EOM::ConstructNormMatrix()
 // C4
   if(pphv_dim!=0){
 
-       for (index_t i =pphv_start; i <= pphv_end; i++){
+       for (index_t i =pphv_start; i <= 5000; i++){
            std::array<index_t, 4> &cf_bra = eom_confs.at(i);
       TwoBodyChannel& tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
             Ket &dbra1 = tbc_bra.GetKet(cf_bra[0]);
             Ket &dket1 = tbc_bra.GetKet(cf_bra[1]);
-            size_t e1=dbra1.q; size_t c=dbra1.p; // permute ec to make c the valence
-            size_t f1=dket1.p; size_t a=dket1.q;
-
-            Orbit &oa=modelspace->GetOrbit(a);
-            Orbit &oc=modelspace->GetOrbit(c);
-            Orbit &oe1=modelspace->GetOrbit(e1);
-            Orbit &of1=modelspace->GetOrbit(f1);
-            if(oe1.cvq !=1 && oc.cvq !=1)continue;
+            size_t a1=dbra1.p; size_t b1=dbra1.q; // permute ec to make c the valence
+            size_t c1=dket1.p; size_t d1=dket1.q;
+            Orbit &oa1=modelspace->GetOrbit(a1);
+            Orbit &oc1=modelspace->GetOrbit(c1);
+            Orbit &ob1=modelspace->GetOrbit(b1);
+            Orbit &od1=modelspace->GetOrbit(d1);
+            if(oa1.cvq !=1 && ob1.cvq !=1)continue;
+            if(od1.cvq!=1)continue;
             double j1=tbc_bra.J;
-            double norm_fact1 =1.;
-            if(e1==c) norm_fact1 =sqrt(2.);
-       for (index_t j =pphv_start; j <= pphv_end; j++){
+
+            double norm_fact1=1.;
+            if(a1==b1)norm_fact1=sqrt(2);
+
+       for (index_t j =pphv_start; j <= 5000; j++){
            std::array<index_t, 4> &cf_ket = eom_confs.at(j);
       TwoBodyChannel& tbc_ket = modelspace->GetTwoBodyChannel(cf_ket[2]);
             Ket &dbra2 = tbc_ket.GetKet(cf_ket[0]);
             Ket &dket2 = tbc_ket.GetKet(cf_ket[1]);
-            size_t e2=dbra2.q; size_t b=dbra2.p; // permute to make b the valence
-            size_t f2=dket2.p; size_t d=dket2.q;
-            Orbit &od=modelspace->GetOrbit(d);
-            Orbit &ob=modelspace->GetOrbit(b);
-            Orbit &oe2=modelspace->GetOrbit(e2);
-            Orbit &of2=modelspace->GetOrbit(f2);
-            if(oe2.cvq !=1 && ob.cvq !=1)continue;
+            size_t a2=dbra2.p; size_t b2=dbra2.q; // permute to make b the valence
+            size_t c2=dket2.p; size_t d2=dket2.q;
+            Orbit &oa2=modelspace->GetOrbit(a2);
+            Orbit &oc2=modelspace->GetOrbit(c2);
+            Orbit &ob2=modelspace->GetOrbit(b2);
+            Orbit &od2=modelspace->GetOrbit(d2);
+
+            if(oa2.cvq !=1 && ob2.cvq !=1)continue;
+            if(od2.cvq!=1)continue;
             double j2=tbc_ket.J;
-            double norm_fact2 =1.;
-            if(e2==b) norm_fact2 =sqrt(2.);
-            double norm_fact = norm_fact1*norm_fact2;
-            if(f1 !=f2)continue;
-
-            if(e1==e2){
-            size_t jmin = std::max(abs(oa.j2-ob.j2)/2, abs(oc.j2-od.j2)/2);
-            size_t jmax = std::min(abs(oa.j2+ob.j2)/2, abs(oc.j2+od.j2)/2);
-            size_t p_bra = (oa.l+ob.l,2)%2;
-            size_t p_ket =  (oc.l+od.l,2)%2;
-            if(p_bra !=p_ket)continue;
-            int itz_bra= (oa.tz2 + ob.tz2)/2;
-            int itz_ket= (oc.tz2 + od.tz2)/2;
-            if(itz_bra!=itz_ket)continue;
-            
-            for(auto jtot = jmin; jtot <= jmax; jtot+=1){
-           // double val=(2.*j1+1.)*(2.*j2+1.)*AngMom::NineJ(j1*2,oe1.j2, oc.j2,of1.j2, j2*2,od.j2, oa.j2, ob.j2, 2*jtot);
-            double val=(2.*j1+1.)*(2.*j2+1.)*AngMom::NineJ(j1,of1.j2*0.5, oa.j2*0.5,oe1.j2*0.5, j2,ob.j2*0.5, oc.j2*0.5, od.j2*0.5, jtot);
-            double val2= norm_fact*rdm.TwoBody.GetTBME_J_norm(jtot, jtot,a,b,c,d)*sqrt(2*jtot+1.);
-          Nkernel(i,j) +=val*val2*dbra2.Phase(j2)*dket1.Phase(j1)*(pow(-1,oa.j2*0.5+ob.j2*0.5+oc.j2*0.5+od.j2*0.5));
-            
+            double norm_fact2=1.;
+            if(a2==b2)norm_fact2=sqrt(2);
+            double norm_fact=norm_fact1*norm_fact2;
+            if(c1 !=c2)continue;
+            double val=0;
+            if(b1==a2 && oa1.cvq ==1 && ob2.cvq==1 ){
+          val +=norm_fact*Core_Diagram(d1,b2,a2,d2,a2,c1,j1,j2)*dket1.Phase(j1);
+           // std::cout<< "a run " << norm_fact*Core_Diagram(d1,b2,a2,d2,a2,c1,j1,j2)*dket1.Phase(j1) << std::endl;
             }
-        }
-        if(e1!=c && c==e2){
-            size_t jmin = std::max(abs(oa.j2-ob.j2)/2, abs(oe1.j2-od.j2)/2);
-            size_t jmax = std::min(abs(oa.j2+ob.j2)/2, abs(oe1.j2+od.j2)/2);
-            size_t p_bra = (oa.l+ob.l,2)%2;
-            size_t p_ket =  (oe1.l+od.l,2)%2;
-            if(p_bra !=p_ket)continue;
-            int itz_bra= (oa.tz2 + ob.tz2)/2;
-            int itz_ket= (oe1.tz2 + od.tz2)/2;
-            if(itz_bra!=itz_ket)continue;
-            
-            for(auto jtot = jmin; jtot <= jmax; jtot+=1){
-           // double val=(2.*j1+1.)*(2.*j2+1.)*AngMom::NineJ(j1*2,oe1.j2, oc.j2,of1.j2, j2*2,od.j2, oa.j2, ob.j2, 2*jtot);
-            double val=(2.*j1+1.)*(2.*j2+1.)*AngMom::NineJ(j1,of1.j2*0.5, oa.j2*0.5,oc.j2*0.5, j2,ob.j2*0.5, oe1.j2*0.5, od.j2*0.5, jtot);
-            double val2= norm_fact*rdm.TwoBody.GetTBME_J_norm(jtot, jtot,a,b,e1,d)*sqrt(2*jtot+1.);
-          Nkernel(i,j) +=val*val2*dbra2.Phase(j2)*dket1.Phase(j1)*dbra1.Phase(j1)*(pow(-1,oa.j2*0.5+ob.j2*0.5+oe1.j2*0.5+od.j2*0.5));
-            
+            if(a1==a2 && ob1.cvq ==1 && ob2.cvq==1 && a1!=b1){
+          val +=norm_fact*Core_Diagram(d1,b2,b1,d2,a2,c1,j1,j2)*dket1.Phase(j1)*dbra1.Phase(j1);
+         // std::cout<< "b run " << norm_fact*Core_Diagram(d1,b2,b1,d2,a2,c1,j1,j2)*dket1.Phase(j1)*dbra1.Phase(j1) << std::endl;
             }
-        }
-
-        if(e1==b && e2!=b){
-            size_t jmin = std::max(abs(oa.j2-oe2.j2)/2, abs(oc.j2-od.j2)/2);
-            size_t jmax = std::min(abs(oa.j2+oe2.j2)/2, abs(oc.j2+od.j2)/2);
-            size_t p_bra = (oa.l+oe2.l,2)%2;
-            size_t p_ket =  (oc.l+od.l,2)%2;
-            if(p_bra !=p_ket)continue;
-            int itz_bra= (oa.tz2 + oe2.tz2)/2;
-            int itz_ket= (oc.tz2 + od.tz2)/2;
-            if(itz_bra!=itz_ket)continue;
-            
-            for(auto jtot = jmin; jtot <= jmax; jtot+=1){
-           // double val=(2.*j1+1.)*(2.*j2+1.)*AngMom::NineJ(j1*2,oe1.j2, oc.j2,of1.j2, j2*2,od.j2, oa.j2, ob.j2, 2*jtot);
-            double val=(2.*j1+1.)*(2.*j2+1.)*AngMom::NineJ(j1,of1.j2*0.5, oa.j2*0.5,oe1.j2*0.5, j2,oe2.j2*0.5, oc.j2*0.5, od.j2*0.5, jtot);
-            double val2= norm_fact*rdm.TwoBody.GetTBME_J_norm(jtot, jtot,a,e2,c,d)*sqrt(2*jtot+1.);
-          Nkernel(i,j) +=val*val2*dket1.Phase(j1)*(pow(-1,oa.j2*0.5+oe2.j2*0.5+oc.j2*0.5+od.j2*0.5));
-            
+            if(b1==b2 && oa1.cvq ==1 && oa2.cvq==1 && a2!=b2){
+          val +=norm_fact*Core_Diagram(d1,a2,a1,d2,b2,c1,j1,j2)*dket1.Phase(j1)*dbra2.Phase(j2);
+          //std::cout<< "c run " << norm_fact*Core_Diagram(d1,a2,a1,d2,b2,c1,j1,j2)*dket1.Phase(j1)*dbra2.Phase(j2) << std::endl;
             }
-        }
-
-        if(c==b && c!=e1 && b!=e2){
-            size_t jmin = std::max(abs(oa.j2-oe2.j2)/2, abs(oe1.j2-od.j2)/2);
-            size_t jmax = std::min(abs(oa.j2+oe2.j2)/2, abs(oe1.j2+od.j2)/2);
-            size_t p_bra = (oa.l+oe2.l,2)%2;
-            size_t p_ket =  (oe1.l+od.l,2)%2;
-            if(p_bra !=p_ket)continue;
-            int itz_bra= (oa.tz2 + oe2.tz2)/2;
-            int itz_ket= (oe1.tz2 + od.tz2)/2;
-            if(itz_bra!=itz_ket)continue;
-            
-            for(auto jtot = jmin; jtot <= jmax; jtot+=1){
-           // double val=(2.*j1+1.)*(2.*j2+1.)*AngMom::NineJ(j1*2,oe1.j2, oc.j2,of1.j2, j2*2,od.j2, oa.j2, ob.j2, 2*jtot);
-            double val=(2.*j1+1.)*(2.*j2+1.)*AngMom::NineJ(j1,of1.j2*0.5, oa.j2*0.5,oc.j2*0.5, j2,oe2.j2*0.5, oe1.j2*0.5, od.j2*0.5, jtot);
-            double val2= norm_fact*rdm.TwoBody.GetTBME_J_norm(jtot, jtot,a,e2,e1,d)*sqrt(2*jtot+1.);
-          Nkernel(i,j) +=val*val2*dbra1.Phase(j1)*dket1.Phase(j1)*(pow(-1,oa.j2*0.5+oe2.j2*0.5+oe1.j2*0.5+od.j2*0.5));
-            
+            if(a1==b2 && ob1.cvq ==1 && oa2.cvq==1 && a1!=b1 && a2!=b2){
+          val +=norm_fact*Core_Diagram(d1,a2,b1,d2,b2,c1,j1,j2)*dket1.Phase(j1)*dbra1.Phase(j1)*dbra2.Phase(j2);
+          //std::cout<< "d run " << norm_fact*Core_Diagram(d1,a2,b1,d2,b2,c1,j1,j2)*dket1.Phase(j1)*dbra1.Phase(j1)*dbra2.Phase(j2) << std::endl;
             }
-        }
-
-//if(abs(Nkernel(i,j))>0.0000001)std::cout<<i<<" "<<j<<" "<<c<<" "<<e1<<" "<<a<<" "<<f1<<" "<<e2<<" "<<b<<" "<<f2<<" "<<d<<" "<<\
-//    " "<<Nkernel(i,j)<<std::endl;
-
-
-
+            Nkernel(i,j)+=val;
+//if(abs(Nkernel(i,j))>0.0000001)std::cout<<i<<" "<<j<<" "<<a1<<" "<<b1<<" "<<c1<<" "<<d1<<" "<<a2<<" "<<b2<<" "<<c2<<" "<<d2<<" "<<Nkernel(i,j)<<std::endl;
+if(abs(Nkernel(i,j))>0.0000001)std::cout<<i<<" "<<j<<" "<<Nkernel(i,j)<<std::endl;
             }
 
        }
@@ -546,7 +489,7 @@ if(ppvv_dim!=0 && qv_dim!=0){
                    double val2= rdm.TwoBody.GetTBME_J_norm(tbc_bra.J, tbc_bra.J,a,b1,c,d)*sqrt(2*j1+1.);
                    Nkernel(i,j)+=val2*norm_fact;
                }
-               if(abs(Nkernel(i,j))>0.000001) std::cout <<i<<" "<<j<<" " << Nkernel(i,j)<<std::endl;
+               //if(abs(Nkernel(i,j))>0.000001) std::cout <<i<<" "<<j<<" " << Nkernel(i,j)<<std::endl;
 
            }
        }
@@ -556,6 +499,38 @@ if(ppvv_dim!=0 && qv_dim!=0){
 
 
 
+double EOM::Core_Diagram(size_t a, size_t b,size_t c,size_t d,size_t e,size_t f,double j1, double j2 )
+{
+    double val=0.;
+    Orbit &oa=modelspace->GetOrbit(a);
+    Orbit &ob=modelspace->GetOrbit(b);
+    Orbit &oc=modelspace->GetOrbit(c);
+    Orbit &od=modelspace->GetOrbit(d);
+    Orbit &oe=modelspace->GetOrbit(e);
+    Orbit &of=modelspace->GetOrbit(f);
+     size_t jmin = std::max(abs(oa.j2-ob.j2)/2, abs(oc.j2-od.j2)/2);
+    size_t jmax = std::min(abs(oa.j2+ob.j2)/2, abs(oc.j2+od.j2)/2);
+    size_t p_bra = (oa.l+ob.l,2)%2;
+    size_t p_ket =  (oc.l+od.l,2)%2;
+    if(p_bra !=p_ket)return(val);
+    int itz_bra= (oa.tz2 + ob.tz2)/2;
+    int itz_ket= (oc.tz2 + od.tz2)/2;
+    if(itz_bra!=itz_ket)return(val);
+    double norm_fact=1.;
+    if(a==b) norm_fact *= sqrt(2.);
+    if(c==d) norm_fact *= sqrt(2.);
+    for(auto jtot = jmin; jtot <= jmax; jtot+=1){
+    // double perm_fact=1.;
+    // perm_fact = perm_fact*(1.+pow(-1,oa.j2*0.5+ob.j2*0.5+jtot+1));
+    // perm_fact = perm_fact*(1.+pow(-1,oc.j2*0.5+od.j2*0.5+jtot+1));
+
+    //norm_fact=perm_fact/norm_fact;
+    double val1=(2.*j1+1.)*(2.*j2+1.)*AngMom::NineJ(j1,of.j2*0.5, oa.j2*0.5,oe.j2*0.5, j2,ob.j2*0.5, oc.j2*0.5, od.j2*0.5, jtot);
+    double val2= rdm.TwoBody.GetTBME_J_norm(jtot, jtot,a,b,c,d)*sqrt(2*jtot+1.);
+    val +=norm_fact*val1*val2*(pow(-1,oa.j2*0.5+ob.j2*0.5+oc.j2*0.5+od.j2*0.5));
+    }    
+   return(val);
+}
 void EOM::PrintConfigs()
 {
     for (std::array<index_t, 4> &cfs : eom_confs){

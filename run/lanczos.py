@@ -181,7 +181,7 @@ def Norm_vs_new(T1,T2,rdms):
     rst=0.
     nop.SetHermitian()
     #nop= cm.Commutator(T1,T2d)
-    cm.comm122ss(T1,T2d,nop)
+    cm.comm222_phss(T1,T2d,nop)
     rst = gm.GetVSEOM_Overlap_rd(nop,rdms)
     return(rst/2.)
 
