@@ -417,7 +417,7 @@ PYBIND11_MODULE(pyIMSRG, m)
               "GetME_iso", [](ThreeBodyME &self, int Jab, int Jde, int twoJ, int tab, int tde, int twoTabc, int twoTdef, int a, int b, int c, int d, int e, int f)
               { return self.GetME_iso(Jab, Jde, twoJ, tab, tde, twoTabc, twoTdef, a, b, c, d, e, f); },
               py::arg("Jab"), py::arg("Jde"), py::arg("twoJ"), py::arg("tab"), py::arg("tde"), py::arg("twoTabc"), py::arg("twoTdef"), py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"), py::arg("f"))
-          //      .def("SetME_pn", &ThreeBodyME::SetME_pn)
+          .def("SetME_pn", &ThreeBodyME::SetME_pn)
           // .def("GetME_pn", &ThreeBodyME::GetME_pn)
             .def(
                 "GetME_pn", 
@@ -885,8 +885,12 @@ PYBIND11_MODULE(pyIMSRG, m)
 
       py::class_<EOM>(m, "EOM")
           .def(py::init<Operator &>())
-          .def(py::init<ModelSpace &>())
-          .def("ConstructConfigs", &EOM::ConstructConfigs);
+          .def(py::init<ModelSpace &, Operator &>())
+          .def("ConstructConfigs", &EOM::ConstructConfigs)
+          .def("PrintConfigs", &EOM::PrintConfigs)
+          .def("ConstructNormMatrix", &EOM::ConstructNormMatrix)
+          .def("Setup_rdm", &EOM::Setup_rdm);
+
 
       py::class_<RPA>(m, "RPA")
           .def(py::init<Operator &>())

@@ -1,10 +1,13 @@
 from pyIMSRG import *
 import numpy as np
-
+from rdm_fun import *
 cm=Commutator
+#cm.SetIMSRG3Noqqq(True)
+#cm.SetIMSRG3Onlyvvv(True)
 gm=Generator()
 
-## initialize the T and D^dagger
+
+    ## initialize the T and D^dagger
 
 
 def htc(Haml, chi):
@@ -64,43 +67,73 @@ def htc_vs(Haml, chi):
 def Norm(T1, T2):
     return(gm.GetEOM_Overlap(T1,T2))
 
-def Norm_vs_new2(T1,T2,rdm):
+def Norm_vs_new2(T1,T2,rdm,ms):
+
+    rank_j, parity, rank_Tz, particle_rank,herm = 0,0,0,3,1
+    op3 = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
+    op3.ThreeBody.SetMode("pn")
+
+    rank_j, parity, rank_Tz, particle_rank,herm = 0,0,0,2,1
+    op2 = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
+
+    nop=op3*0.
+    nop.SetNonHermitian()
+
+
+
     T1d=T1*0.
     T1d.SetAntiHermitian()
     T2d=T1*0.
     T2d.SetAntiHermitian()
-    nop2=T1*0.
-    nop2.SetNonHermitian()
 
     T1d=gm.GetVSEOM_ladder(T1,1)
     T2d=gm.GetVSEOM_ladder(T2,1)
 
     rst=0.
 
-    nop=T1*0
-    nop.SetNonHermitian()
-    nop= cm.Commutator(T1,T2)
-    nop2+=nop
+    op3=op3*0
+    op2=op2*0
+    op3.SetAntiHermitian()
+    op2.SetAntiHermitian()
+    op2= cm.Commutator(T1,T2)
+    cm.comm223ss(T1,T2,op3)
+    nop+=op2
+    nop+=op3
 
 
-    nop=T1*0
-    nop.SetHermitian()
-    nop= cm.Commutator(T1,T2d)
-    nop2+=nop
+
+    op3=op3*0
+    op2=op2*0
+    op3.SetHermitian()
+    op2.SetHermitian()
+    op2= cm.Commutator(T1,T2d)
+    cm.comm223ss(T1,T2d,op3)
+    nop+=op2
+    nop+=op3
 
 
-    nop=T1*0
-    nop.SetNonHermitian()
-    nop= cm.Commutator(T1d,T2)
-    nop2-=nop
+    op3=op3*0
+    op2=op2*0
+    op3.SetHermitian()
+    op2.SetHermitian()
+    op2= cm.Commutator(T1d,T2)
+    cm.comm223ss(T1d,T2,op3)
+    nop-=op2
+    nop-=op3
 
-    nop=T1*0
-    nop.SetNonHermitian()
-    nop= cm.Commutator(T1d,T2d)
-    nop2-=nop
 
-    rst = gm.GetVSEOM_Overlap_rd(nop2,rdm)
+
+    op3=op3*0
+    op2=op2*0
+    op3.SetAntiHermitian()
+    op2.SetAntiHermitian()
+    op2= cm.Commutator(T1d,T2d)
+    cm.comm223ss(T1d,T2d,op3)
+    nop-=op2
+    nop-=op3
+    rst = rdm.GetVSEOM_Overlap_rd(nop)
     return(rst/4.)
+
 
 
 def Norm_vs_new3(T1,T2):
@@ -139,11 +172,26 @@ def Norm_vs_new3(T1,T2):
     return(rst/4.)
 
 
-def Norm_vs_new4(T1,T2, rdm):
+
+def Norm_vs_new(T1,T2,rdms):
+    T2d=T1*0.
+    T2d.SetAntiHermitian()
+    T2d=gm.GetVSEOM_ladder(T2,1)
+    nop=T1*0.
+    rst=0.
+    nop.SetHermitian()
+    #nop= cm.Commutator(T1,T2d)
+    cm.comm122ss(T1,T2d,nop)
+    rst = gm.GetVSEOM_Overlap_rd(nop,rdms)
+    return(rst/2.)
+
+def Norm_vs_new5(T1,T2,tbm_op):
     T1d=T1*0.
     T1d.SetAntiHermitian()
     T2d=T1*0.
     T2d.SetAntiHermitian()
+    nop2=T1*0.
+    nop2.SetNonHermitian()
 
     T1d=gm.GetVSEOM_ladder(T1,1)
     T2d=gm.GetVSEOM_ladder(T2,1)
@@ -153,59 +201,29 @@ def Norm_vs_new4(T1,T2, rdm):
     nop=T1*0
     nop.SetNonHermitian()
     nop= cm.Commutator(T1,T2)
-    rst += gm.GetVSEOM_Overlap_rd(nop,rdm)
+    nop2+=nop
 
 
     nop=T1*0
     nop.SetHermitian()
     nop= cm.Commutator(T1,T2d)
-    rst += gm.GetVSEOM_Overlap_rd(nop,rdm)
+    nop2+=nop
 
 
     nop=T1*0
     nop.SetNonHermitian()
     nop= cm.Commutator(T1d,T2)
-    rst -= gm.GetVSEOM_Overlap_rd(nop,rdm)
+    nop2-=nop
 
     nop=T1*0
     nop.SetNonHermitian()
     nop= cm.Commutator(T1d,T2d)
-    rst -= gm.GetVSEOM_Overlap_rd(nop,rdm)
+    nop2-=nop
+
+    rst = gm.GetVSEOM_Overlap_rd(nop2,tdm_op)
+    rst+=nop2.ZeroBody
     return(rst/4.)
 
-def Norm_vs_new(T1,T2,rdm):
-    T1d=T1*0.
-    T1d.SetAntiHermitian()
-    T2d=T1*0.
-    T2d.SetAntiHermitian()
-
-    T1d=gm.GetVSEOM_ladder(T1,1)
-    T2d=gm.GetVSEOM_ladder(T2,1)
-
-    rst=0.
-
-    nop=T1*0
-    nop.SetNonHermitian()
-    nop= cm.Commutator(T1,T2)
-    rst += gm.GetVSEOM_Overlap(nop)
-
-
-    nop=T1*0
-    nop.SetHermitian()
-    nop= cm.Commutator(T1,T2d)
-    rst += gm.GetVSEOM_Overlap(nop)
-
-
-    nop=T1*0
-    nop.SetNonHermitian()
-    nop= cm.Commutator(T1d,T2)
-    rst -= gm.GetVSEOM_Overlap(nop)
-
-    nop=T1*0
-    nop.SetNonHermitian()
-    nop= cm.Commutator(T1d,T2d)
-    rst -= gm.GetVSEOM_Overlap(nop)
-    return(rst/4.)
 
 
 def Norm_vs_new5(T1,T2,rdm):
@@ -251,7 +269,7 @@ def Norm_vs_new5(T1,T2,rdm):
 
 
 
-def Norm4(t1,t2,haml,ms,rdm):
+def Norm4_test(t1,t2,haml,ms,rdm):
 
     rank_j, parity, rank_Tz, particle_rank = 0,0,0,3
     t3 = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
@@ -260,7 +278,7 @@ def Norm4(t1,t2,haml,ms,rdm):
     t2d=t1*0.
     t1d.SetAntiHermitian()
     t2d.SetAntiHermitian()
-    
+
     t1d=gm.GetVSEOM_ladder(t1,1)
     t2d=gm.GetVSEOM_ladder(t2,1)
     rst=0.
@@ -286,7 +304,7 @@ def Norm4(t1,t2,haml,ms,rdm):
     cm.comm231ss(t1,t3,nop)
     cm.comm132ss(t1,t3,nop)
     nop2 = nop2 + nop
-    
+
 
     nop=t1*0.0
     t3*=0.
@@ -309,6 +327,61 @@ def Norm4(t1,t2,haml,ms,rdm):
     nop2 = nop2 - nop
     rst=gm.GetVSEOM_Overlap_rd(nop2,rdm)
     return(rst/4.)
+def Norm4(t1,t2,haml,ms,rdm):
+
+    rank_j, parity, rank_Tz, particle_rank = 0,0,0,3
+    t3 = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
+    t3.ThreeBody.SetMode("pn")
+    t1d=t1*0.
+    t2d=t1*0.
+    t1d.SetAntiHermitian()
+    t2d.SetAntiHermitian()
+
+    t1d=gm.GetVSEOM_ladder(t1,1)
+    t2d=gm.GetVSEOM_ladder(t2,1)
+    rst=0.
+
+    nop=t1*0.0
+    t3*=0.
+    nop.SetHermitian()
+    t3.SetAntiHermitian()
+    cm.comm223ss(haml,t2,t3)
+    cm.comm232ss(t1,t3,nop)
+    cm.comm231ss(t1,t3,nop)
+    cm.comm132ss(t1,t3,nop)
+    rst=gm.GetVSEOM_Overlap_rd(nop,rdm)
+
+    nop=t1*0.0
+    t3*=0.
+    nop.SetAntiHermitian()
+    t3.SetHermitian()
+    cm.comm223ss(haml,t2d,t3)
+    cm.comm232ss(t1,t3,nop)
+    cm.comm231ss(t1,t3,nop)
+    cm.comm132ss(t1,t3,nop)
+    rst+=gm.GetVSEOM_Overlap_rd(nop,rdm)
+
+
+    nop=t1*0.0
+    t3*=0.
+    nop.SetAntiHermitian()
+    t3.SetAntiHermitian()
+    cm.comm223ss(haml,t2,t3)
+    cm.comm232ss(t1d,t3,nop)
+    cm.comm231ss(t1d,t3,nop)
+    cm.comm132ss(t1d,t3,nop)
+    rst-=gm.GetVSEOM_Overlap_rd(nop,rdm)
+
+    nop=t1*0.0
+    t3*=0.
+    nop.SetHermitian()
+    t3.SetHermitian()
+    cm.comm223ss(haml,t2d,t3)
+    cm.comm232ss(t1d,t3,nop)
+    cm.comm231ss(t1d,t3,nop)
+    cm.comm132ss(t1d,t3,nop)
+    rst-=gm.GetVSEOM_Overlap_rd(nop,rdm)
+    return(rst/4.)
 
 def Norm3(t1,t2,haml,ms,rdm):
 
@@ -319,7 +392,7 @@ def Norm3(t1,t2,haml,ms,rdm):
     t2d=t1*0.
     t1d.SetAntiHermitian()
     t2d.SetAntiHermitian()
-    
+
     t1d=gm.GetVSEOM_ladder(t1,1)
     t2d=gm.GetVSEOM_ladder(t2,1)
     rst=0.
@@ -343,7 +416,7 @@ def Norm3(t1,t2,haml,ms,rdm):
     cm.comm231ss(t1,t3,nop)
     cm.comm132ss(t1,t3,nop)
     rst+=gm.GetVSEOM_Overlap(nop)
-    
+
 
     nop=t1*0.0
     t3*=0.
@@ -368,13 +441,13 @@ def Norm3(t1,t2,haml,ms,rdm):
 
 import numpy as np
 
-def lanczos_proc( hv_func, norm_func, haml, vi, max_iter,state_want, ms):
+def lanczos_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,ms,rdmat):
     lanczos_vector = []
     hall = np.zeros([max_iter,max_iter])
     hall[0,0]=0.
 
     ## normalize it to 1
-    nn=norm_func(vi,vi)
+    nn=norm_func(vi,vi,rdmat)
     print('initial norm vector', nn)
     vi=vi/np.sqrt(nn)
     lanczos_vector.append(vi)
@@ -386,15 +459,14 @@ def lanczos_proc( hv_func, norm_func, haml, vi, max_iter,state_want, ms):
 #    ai=norm_func(w,lanczos_vector[0])
 #    print('first step ai :', ai)
 
-    
+
 
     for j in range(max_iter):
 
         w = hv_func(haml,lanczos_vector[j])
+        ai=norm_func(w,lanczos_vector[j],rdmat)
+        ai+=norm_three(lanczos_vector[j],lanczos_vector[j],haml,ms,rdmat)
 
-        ai=norm_func(w,lanczos_vector[j])
-        #ai-=Norm3(lanczos_vector[j],lanczos_vector[j],haml,ms)
-        print('ai at', j, ': ', ai )
 
 
         if(j>0):
@@ -403,17 +475,23 @@ def lanczos_proc( hv_func, norm_func, haml, vi, max_iter,state_want, ms):
             w=w-ai*lanczos_vector[j]
 
         hall[j,j]=ai
+        nm=norm_func(w,w,rdmat)
+        print("naive: ", np.sqrt(nm))
+        vec = hv_func(haml, w)
+        nm=norm_func(lanczos_vector[j],vec,rdmat)
+        nm+=norm_three(lanczos_vector[j],w,haml,ms,rdmat)
+        bj = np.sqrt(nm)
 
-        bj = np.sqrt(norm_func(w,w))
+        print("new bj: ", bj)
+        #w1=w/bj
 
+        vec=hv_func(haml,lanczos_vector[j])
+        nm2=norm_func(w,vec,rdmat)
+        nm3=norm_three(w,lanczos_vector[j],haml, ms,rdmat)
+        bjj=nm2+nm3
+        print('Beta, bj: ', bjj,nm2,nm3)
 
         w1=w/bj
-        w2=hv_func(haml,w1)
-        nm2=norm_func(lanczos_vector[j],w2)
-        nm3=Norm3(lanczos_vector[j],w1,haml, ms)
-        bjj=nm2+nm3
-        print('Beta, bj: ', bjj,bj)
-        
 
         #bj = np.sqrt(norm_func(w,w))
 
@@ -468,7 +546,9 @@ def arnoldi_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,m
         w = hv_func(haml,lanczos_vector[j])
         dai=norm_three(lanczos_vector[j],lanczos_vector[j],haml, ms,rdmat)
         ai=norm_func(w,lanczos_vector[j],rdmat)
+        print(j,'th ai: ',ai)
         hall[j,j]=ai+dai
+        print(ai,dai,'here')
 
         w=w-ai*lanczos_vector[j]
 
@@ -499,6 +579,7 @@ def arnoldi_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,m
             nm3=norm_three(vl,vm,haml, ms,rdmat)
             hall[m,j] =nmm+nm3
             hall[j,m] =nmm+nm3
+            print('haha', nmm,nm3)
         if(j+1 >= state_want ):
             hsub=hall[0:j+1,0:j+1]
             e,v = np.linalg.eig(hsub[0:j+1,0:j+1])
@@ -531,6 +612,7 @@ def arnoldi_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,m
 
     print('Arnoldi converged with ', j+1, ' step')
     lanczos_vector.pop()
+    print(hall)
 
     return(e, vs,lanczos_vector)
 
@@ -610,58 +692,75 @@ def read_tdm(tdm_file,ms):
         tij=ob_idx[int(values[1])-1,2]+ob_idx[int(values[2])-1,2]
         pij=int(pij%2)
         tij=int(tij/2)
-        jkl=int(values[6])
+        jkl=int(values[5])
         pkl=ob_idx[int(values[3])-1,1]+ob_idx[int(values[4])-1,1]
         tkl=ob_idx[int(values[3])-1,2]+ob_idx[int(values[4])-1,2]
         pkl=int(pkl%2)
         tkl=int(tkl/2)
-
         rd=float(values[-1])/factor
         ops.SetTwoBody(jij,pij,tij, jkl,pkl,tkl, aa,bb,cc,dd, rd)
+
+    lidx+=1
+    line=lines[lidx]
+    values = line.strip().split()
+    n_tbrd=int(values[0])
+
+    for  obs in range(n_tbrd):
+        lidx+=1 
+        line = lines[lidx]
+        values = line.strip().split()
+        aa=ob_idx[int(values[1])-1,0]
+        bb=ob_idx[int(values[2])-1,0]
+        cc=ob_idx[int(values[3])-1,0]
+        ee=ob_idx[int(values[4])-1,0]
+        ff=ob_idx[int(values[5])-1,0]
+        kk=ob_idx[int(values[6])-1,0]
+        jab=int(int(values[7])/2)
+        jef=int(int(values[8])/2)
+        jtot=int(values[9])
+        rd=float(values[-1])/factor
+        ops.ThreeBody.SetME_pn(jab,jef,jtot,aa,bb,cc,ee,ff,kk,rd)
     return(ops)
 
 
-        
+
 
 
 
 def print_op(chi, ms):
-
     chiv=[]
-    jj=0
     pp=0
-    tt=1
-    for jj in [0]:
-        ch=ms.GetTwoBodyChannelIndex(jj,0,1)
-        kcf=ms.GetTwoBodyChannel(ch)
-        bras=kcf.GetKetIndex_qq()+kcf.GetKetIndex_qv()
-        kets=kcf.GetKetIndex_vv()
-        for ibra in bras:
-            dbra=kcf.GetKet(ibra)
-            for iket in kets:
-                dket=kcf.GetKet(iket)
-                chiv.append(chi.GetTwoBody(ch,ch,ibra,iket))
-#    ## ppvh
-#    nch=ms.GetNumberTwoBodyChannels()
-#    
-#    for ich in range(nch):
-#        dch = ms.GetTwoBodyChannel(ich)
-#        jj=dch.J
-#        pp=dch.parity
-#        tt=dch.Tz
-#        ch=ms.GetTwoBodyChannelIndex(jj,pp,tt)
-#    #    print(jj,pp,tt,ich,ch)
-#        kcf=ms.GetTwoBodyChannel(ch)
-#        if(kcf.GetNumberKets() == 0):
-#            continue
-#                #print(ch, kcf.GetNumberKets())
-#        bras=kcf.GetKetIndex_qq()+kcf.GetKetIndex_qv()+kcf.GetKetIndex_vv()
-#        kets=kcf.GetKetIndex_vc()
-#        for ibra in bras:
-#            dbra=kcf.GetKet(ibra)
-#            for iket in kets:
-#                dket=kcf.GetKet(iket)
-#                if(dket.q %2 == 0):
-#                    continue
-#                chiv.append(chi.GetTwoBody(ch,ch,ibra,iket))
+    tt=0
+    for itz in [1]:
+        for pp in [0]:
+            for jj in [0,2]:
+                ch=ms.GetTwoBodyChannelIndex(jj,pp,itz)
+                kcf=ms.GetTwoBodyChannel(ch)
+                bras=kcf.GetKetIndex_qq()+kcf.GetKetIndex_qv()
+                kets=kcf.GetKetIndex_vv()
+                for ibra in bras:
+                    dbra=kcf.GetKet(ibra)
+                    for iket in kets:
+                        dket=kcf.GetKet(iket)
+                        chiv.append(chi.GetTwoBody(ch,ch,ibra,iket))
     return(np.array(chiv))
+    ## ppvh
+ #   nch=ms.GetNumberTwoBodyChannels()
+
+ #   for ich in range(nch):
+ #       dch = ms.GetTwoBodyChannel(ich)
+ #       jj=dch.J
+ #       pp=dch.parity
+ #       tt=dch.Tz
+ #       ch=ich
+
+ #       kcf=dch
+ #       if(kcf.GetNumberKets() == 0):
+ #           continue
+ #       bras=kcf.GetKetIndex_qq()+kcf.GetKetIndex_qv()+kcf.GetKetIndex_vv()
+ #       kets=kcf.GetKetIndex_vc()
+ #       for ibra in bras:
+ #           dbra=kcf.GetKet(ibra)
+ #           for iket in kets:
+ #               dket=kcf.GetKet(iket)
+ #               chiv.append(chi.GetTwoBody(ch,ch,ibra,iket))

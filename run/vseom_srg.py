@@ -5,9 +5,9 @@ from lanczos import *
 
 
 
-emax =2         # maximum number of oscillator quanta in the model space
-ref = 'He4'     # reference used for normal ordering
-val = 'p-shell' # valence space
+emax =5         # maximum number of oscillator quanta in the model space
+ref = 'O16'     # reference used for normal ordering
+val = 'sd-shell' # valence space
 
 core_generator = 'atan'   # definition of generator eta for decoupling the core (could also use 'white')
 valence_generator = 'shell-model-atan'  # definition of generator for decoupling the valence space (could also use 'shell-model-white'
@@ -96,19 +96,23 @@ imsrgsolver.SetMethod('magnus')  # Solve using the Magnus formulation. Could als
 
 imsrgsolver.SetGenerator(core_generator)
 imsrgsolver.SetSmax(smax_core)
-
-### Do the first stage of integration to decouple the core
-imsrgsolver.Solve()
-
-### Now set the generator for the second stage to decouple the valence space
+#
+#### Do the first stage of integration to decouple the core
+#imsrgsolver.Solve()
+#
+#### Now set the generator for the second stage to decouple the valence space
 imsrgsolver.SetGenerator(valence_generator)
 imsrgsolver.SetSmax(smax_valence)
 
-imsrgsolver.Solve()
+#imsrgsolver.Solve()
 
 ### Hs is the IMSRG-evolved Hamiltonian
 #rw.WriteTokyo( HNO, valence_fname,'')
 Hs = imsrgsolver.GetH_s()
+Hs=Hs*0.
+
+#rw.WriteOperator(Hs, 'o16hs')
+rw.ReadOperator(Hs, 'o16hs')
 
 #rw.WriteTokyo( Hs, 'sd.snt','')
 #Hs = Hs.DoNormalOrderingCore()
@@ -116,221 +120,141 @@ Hs = imsrgsolver.GetH_s()
 ### Write out the effective valence space interaction
 
 Hs.ZeroBody=0.
+#
+#
+#
+#cm=Commutator
+##cm.SetIMSRG3Noqqq(True)
+##cm.SetIMSRG3Onlyvvv(True)
+#gm=Generator()
+#
+### read in the reduce transition matrix for reference 
+#tdm_op=read_tdm("he6.ref",ms)
+#rdms = rdm_el()
+#rdms.read_tdm('he6.ref',ms)
 
-
-
-cm=Commutator
-cm.SetIMSRG3Noqqq(True)
-gm=Generator()
-
-## read in the reduce transition matrix for reference 
-tdm_op=read_tdm("he6.ref",ms)
-
-
-unt = UnitTest(ms)
-rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,2,1
- 
-h3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
-
-chi= gm.GetVSEOM_ladder(h3,0)
-
-nm=Norm_vs_new2(chi,chi,tdm_op)
-
-print('Norm of random Op: ', nm)
-chi=chi/np.sqrt(nm)
-
-nm=Norm_vs_new2(chi,chi,tdm_op)
-
-gm.force_decouple(Hs)
-
-print('compute reference energy to check hermitian')
-nm=gm.GetVSEOM_Overlap_rd(Hs,tdm_op)
-#nm=gm.GetVSEOM_Overlap(Hs)
-print('reference energy: ', nm, 'vs [ -4.19234292  9.75174484 ] in nmax2 for he8_2',)
-
-
-Hs=Hs*0.01
-
-
-##e,v1,v2=lanczos_proc(htc_vs, Norm_vs_new, Hs, chi, 160, 2,ms)
-#e,vs,v2=arnoldi_proc(htc_vs, Norm_vs_new2,Norm4, Hs, chi, 88,2,ms,tdm_op)
-#unt.SetRandomSeed(1)
+tdm_op=read_tdm("ne20.ref",ms)
+#
+#
+#unt = UnitTest(ms)
+#rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,3,1
 #h3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
+#
+##val=h3.ThreeBody.GetME_pn (Jab_in, j0, Jde_in, a, b, c, d, e, f)
+#rw.WriteValence3body(h3.ThreeBody, 'test.ini')
+#
+#
 #chi= gm.GetVSEOM_ladder(h3,0)
-#nm=Norm_vs_new2(chi,chi,tdm_op)
+#chid=chi*0.
+#chid= gm.GetVSEOM_ladder(h3,1)
+#
+#nm=Norm_vs_new5(chi,chi,rdms)
+#print(nm)
+#
+#print('Norm of random Op: ', nm)
 #chi=chi/np.sqrt(nm)
 #
-#runs=1
-#for ard_step in range(runs):
-#    e,vs,lvs=arnoldi_proc(htc_vs, Norm_vs_new2,Norm4, Hs, chi, 40,2,ms,tdm_op)
-#    vec_a = lvs[0]*0.
-#    for ii in range(2):
-#        for jj in range(len(e)):
-#            vec_a += lvs[jj]*vs[jj,ii]
-#    chi=vec_a/np.sqrt(Norm_vs_new2(vec_a,vec_a,tdm_op))
-
 #
+#gm.force_decouple(Hs)
 #
-#        
-#dims= len(ard_vectors)
-#
-#unmat=np.zeros([dims,dims])
-#uhmat=np.zeros([dims,dims])
-#
-#for ii in range(len(ard_vectors)):
-#
-#    for jj in range(len(ard_vectors)):
-#        if(jj > ii):
-#            continue
-#        unmat[ii,jj]=Norm_vs_new(ard_vectors[ii],ard_vectors[jj],tdm_op)
-#        unmat[jj,ii]=unmat[ii,jj]
+#print('compute reference energy to check hermitian')
+nm=gm.GetVSEOM_Overlap_rd(Hs,tdm_op)
+##nm=gm.GetVSEOM_Overlap(Hs)
+print('reference energy: ', nm, 'vs [ -4.19234292  9.75174484 ] in nmax2 for he6_2',)
 #
 #
 #
-##unmat[np.abs(unmat) < 0.0000000001] = 0
+#vec=chi*0.
 #
-#enn, vnn = np.linalg.eig(unmat)
-#print(enn)
+#vec=htc_vs(Hs, chi)
 #
-#vn_trunc=[]
+#nm=Norm_vs_new5(vec,vec,rdms)
+#vec=vec/np.sqrt(nm)
 #
-#for i, ei in enumerate(enn):
-##   if(ei.real > 0.0001):
-#    vn_trunc.append(vnn[:,i]/np.sqrt(ei.real))
-#
-#
-#
-#norm_vectors=[]
-#
-#for ii in range(len(vn_trunc)):
-#    vec_a = ard_vectors[0]*0.
-#    vni=vn_trunc[ii]
-#    for jj in range(len(ard_vectors)):
-#        vec_a += ard_vectors[jj] * vni[jj]
-#    norm_vectors.append(vec_a)
-#
-#c= len(norm_vectors)
-#norm_new=np.zeros([c,c])
-#hmat_new=np.zeros([c,c])
-#
-#for i in range(c):
-#    vk=norm_vectors[i]
-#    for j in range(c):
-#        if(j > i ):
-#            continue
-#        vl=norm_vectors[j]
-#
-#        vec_c=htc_vs(Hs, vl)
-#
-#        hmat_new[i,j]=Norm_vs_new(vk, vec_c,tdm_op)+Norm3(vk,vl,Hs,ms,tdm_op)
-#        hmat_new[i,j]=hmat_new[j,i]
-#
-#        norm_new[i,j]=Norm_vs_new(vk, vl,tdm_op)
-#        norm_new[i,j]=norm_new[j,i]
-#
-#ef, vf = np.linalg.eig(hmat_new)
-#print(ef)
-#
-#print('new norm')
-#print(norm_new)
-#print('new haml')
-#print(hmat_new)
-
-#vs=print_op(chi,ms)
-
-#vout=chi*0
-
-#vout = htc_vs(Hs, chi)
-#print(Norm_vs_new(chi,vout,tdm_op))
-
-#vs=print_op(vout,ms)
-#print(vs)
-
-#print(Norm3(chi,chi,Hs,ms,tdm_op))
-
-## Generate all configurations
-## ppvv only J=0
-
-cfs=[]
-chiv=[]
-jj=0
-pp=0
-tt=1
-for jj in [0]:
-    ch=ms.GetTwoBodyChannelIndex(jj,0,1)
-    kcf=ms.GetTwoBodyChannel(ch)
-    bras=kcf.GetKetIndex_qq()+kcf.GetKetIndex_qv()
-    kets=kcf.GetKetIndex_vv()
-    for ibra in bras:
-        dbra=kcf.GetKet(ibra)
-        for iket in kets:
-            dket=kcf.GetKet(iket)
-            cfs.append([dbra.p,dbra.q,dket.p,dket.q,jj,pp,tt])
-            chiv.append(chi.GetTwoBody(ch,ch,ibra,iket))
-### ppvh
-nch=ms.GetNumberTwoBodyChannels()
-
-for ich in range(nch):
-    dch = ms.GetTwoBodyChannel(ich)
-    jj=dch.J
-    pp=dch.parity
-    tt=dch.Tz
-    ch=ich
-    
-#    ch=ms.GetTwoBodyChannelIndex(jj,pp,tt)
-#    print(jj,pp,tt,ich,ch)
-    kcf=ms.GetTwoBodyChannel(ich)
-#    if(kcf.GetNumberKets() == 0):
-#        continue
-            #print(ch, kcf.GetNumberKets())
-    bras=kcf.GetKetIndex_qq()+kcf.GetKetIndex_qv()+kcf.GetKetIndex_vv()
-    kets=kcf.GetKetIndex_vc()
-    for ibra in bras:
-        dbra=kcf.GetKet(ibra)
-        for iket in kets:
-            dket=kcf.GetKet(iket)
-        #    if(dket.q %2 == 0):
-#                continue
-            cfs.append([dbra.p,dbra.q,dket.p,dket.q,jj,pp,tt])
-            chiv.append(chi.GetTwoBody(ch,ch,ibra,iket))
-    print(jj,pp,tt,len(cfs))
-dims=len(cfs)
-
-print(dims)
-
-##hmat=np.zeros([dims,dims])
-#h3mat=np.zeros([dims,dims])
-#nmat=np.zeros([dims,dims])
-#print(cfs)
-##print(chiv)
-#for i,cfl in enumerate(cfs):
-#    ql=Hs*0.
-#    ql.SetTwoBody(cfl[4],cfl[5],cfl[6],cfl[4],cfl[5],cfl[6], cfl[0],cfl[1],cfl[2],cfl[3],1.)
-#    print(i, "th row")
-#    for j,cfr in enumerate(cfs):
-#        qr=Hs*0.
-#        qr.SetTwoBody(cfr[4],cfr[5],cfr[6],cfr[4],cfr[5],cfr[6], cfr[0],cfr[1],cfr[2],cfr[3],1.)
-#        nmat[i,j] = Norm_vs_new2(ql,qr,tdm_op)
-#        qv=Hs*0.
-#        qv=htc_vs(Hs, qr)
-#        h3mat[i,j]=Norm4(ql,qr,Hs,ms,tdm_op)
+##print('norm check: ', Norm_vs_new5(vec,chi,rdms),Norm_vs_new5(chi,vec,rdms))
+##
+##v1=htc_vs(Hs, chi)
+##nm1=Norm_vs_new5(vec,v1,rdms)
+##nm2=Norm3(vec,chi,Hs,ms,tdm_op)
+##print("bra: ",nm1,nm2,nm1+nm2)
 ##
 ##
-#np.save("nmat_he8_2_ppvv_reftest.npy", nmat)
-#np.save("h3mat_he8_2_ppvv_reftest.npy",h3mat)
+##v1=htc_vs(Hs, vec)
+##nm1=Norm_vs_new5(chi,v1,rdms)
+##nm2=Norm3(chi,vec,Hs,ms,tdm_op)
+##print("ket: ",nm1,nm2,nm1+nm2)
 #
-#hmatbare=[]
-#for i,cfl in enumerate(cfs):
-#    ql=Hs*0.
-#    ql.SetTwoBody(cfl[4],cfl[5],cfl[6],cfl[4],cfl[5],cfl[6], cfl[0],cfl[1],cfl[2],cfl[3],1.)
-#    qv=htc_vs(Hs, ql)
-#    qout=print_op(qv,ms)
-#    hmatbare.append(qout)
-#hmatbare=np.array(hmatbare)
+##e,v1,v2=lanczos_proc(htc_vs, Norm_vs_new5, Norm3,Hs, chi, 24, 1,ms,tdm_op)
+#e,vs,v2=arnoldi_proc(htc_vs, Norm_vs_new5,Norm3, Hs, chi, 14,2,ms,tdm_op)
+### Generate all configurations
+#
+##cfs=[]
 ##
-##print(hmatbare)
+#### 
+##for itz in [1]:
+##    for pp in [0]:
+##        for jj in [0,2]:
+##            ch=ms.GetTwoBodyChannelIndex(jj,pp,itz)
+##            print(jj,pp,itz,ch,'channel')
+##            kcf=ms.GetTwoBodyChannel(ch)
+##            bras=kcf.GetKetIndex_qq()+kcf.GetKetIndex_qv()
+##            kets=kcf.GetKetIndex_vv()
+##            for ibra in bras:
+##                dbra=kcf.GetKet(ibra)
+##                for iket in kets:
+##                    dket=kcf.GetKet(iket)
+##                    cfs.append([dbra.p,dbra.q,dket.p,dket.q,jj,pp,itz])
+##print(len(cfs))
+######## ppvh
+#####nch=ms.GetNumberTwoBodyChannels()
+#####
+#####for ich in range(nch):
+#####    dch = ms.GetTwoBodyChannel(ich)
+#####    jj=dch.J
+#####    pp=dch.parity
+#####    tt=dch.Tz
+#####    ch=ich
+#####
+#####    kcf=dch
+#####    if(kcf.GetNumberKets() == 0):
+#####        continue
+#####    bras=kcf.GetKetIndex_qq()+kcf.GetKetIndex_qv()+kcf.GetKetIndex_vv()
+#####    kets=kcf.GetKetIndex_vc()
+#####    for ibra in bras:
+#####        dbra=kcf.GetKet(ibra)
+#####        for iket in kets:
+#####            dket=kcf.GetKet(iket)
+#####            cfs.append([dbra.p,dbra.q,dket.p,dket.q,jj,pp,tt])
+##dims=len(cfs)
+##
+##print(dims)
+##
+##h3mat=np.zeros([dims,dims])
+##nmat=np.zeros([dims,dims])
+##print(cfs)
 ##
 ##
-#np.save("hmat_new_he8_2_ppvv_reftest.npy", hmatbare)
-
-
+##for i,cfl in enumerate(cfs):
+##    ql=Hs*0.
+##    ql.SetTwoBody(cfl[4],cfl[5],cfl[6],cfl[4],cfl[5],cfl[6], cfl[0],cfl[1],cfl[2],cfl[3],1.)
+##    for j,cfr in enumerate(cfs):
+##        qr=Hs*0.
+##        qr.SetTwoBody(cfr[4],cfr[5],cfr[6],cfr[4],cfr[5],cfr[6], cfr[0],cfr[1],cfr[2],cfr[3],1.)
+##        nmat[i,j] = Norm_vs_new4(ql,qr,rdms)
+##        qv=Hs*0.
+##        qv=htc_vs(Hs, qr)
+##        h3mat[i,j]=Norm4(ql,qr,Hs,ms,tdm_op)
+##np.save("nmat_he6_3b.npy", nmat)
+##np.save("h3mat_he6_3b.npy",h3mat)
+###
+##hmatbare=[]
+##for i,cfl in enumerate(cfs):
+##    ql=Hs*0.
+##    ql.SetTwoBody(cfl[4],cfl[5],cfl[6],cfl[4],cfl[5],cfl[6], cfl[0],cfl[1],cfl[2],cfl[3],1.)
+##    qv=htc_vs(Hs, ql)
+##    qout=print_op(qv,ms)
+##    hmatbare.append(qout)
+##hmatbare=np.array(hmatbare)
+##np.save("hmat_he6_3b.npy", hmatbare)
+#
+#

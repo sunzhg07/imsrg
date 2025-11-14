@@ -1244,8 +1244,8 @@ Operator  Generator::GetVSEOM_ladder(Operator& H , int herm)
       for ( auto& a : VectorUnion(H.modelspace->valence,H.modelspace->qspace) )
       {
       Orbit& oa = H.modelspace->GetOrbit(a);
- //        Hod.OneBody(a,i) = H.OneBody(a,i);
- //       Hod.OneBody(i,a) = H.OneBody(a,i)*herm_phase;
+         Hod.OneBody(a,i) = H.OneBody(a,i);
+        Hod.OneBody(i,a) = H.OneBody(a,i)*herm_phase;
       }
    }
 //
@@ -1256,8 +1256,8 @@ Operator  Generator::GetVSEOM_ladder(Operator& H , int herm)
       {
       Orbit& oa = H.modelspace->GetOrbit(a);
 
- //        Hod.OneBody(a,i) = H.OneBody(a,i);
- //        Hod.OneBody(i,a) = H.OneBody(a,i)*herm_phase;
+         Hod.OneBody(a,i) = H.OneBody(a,i);
+         Hod.OneBody(i,a) = H.OneBody(a,i)*herm_phase;
       }
    }
 
@@ -1279,7 +1279,7 @@ Operator  Generator::GetVSEOM_ladder(Operator& H , int herm)
       {
          for ( auto& ibra : VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(), tbc_bra.GetKetIndex_qv() ) )
 	{
-//Hod.TwoBody.AddToTBME(ch_bra,ch_ket, ibra, iket, H2(ibra,iket));
+Hod.TwoBody.AddToTBME(ch_bra,ch_ket, ibra, iket, H2(ibra,iket));
 }
 }
 
@@ -1374,7 +1374,6 @@ double  Generator::GetVSEOM_Overlap_rd(Operator& H, Operator& Rd )
    }
 
 
-    //    std::cout << "here one body" << ovlp1 << std::endl;
 
    for ( auto& iter : H.TwoBody.MatEl )
    {
@@ -1401,8 +1400,8 @@ double  Generator::GetVSEOM_Overlap_rd(Operator& H, Operator& Rd )
         if(dbra.p == dbra.q)norm_fact*=sqrt(2.);
         if(dket.p == dket.q)norm_fact*=sqrt(2.);
 
-        //ovlp2+=H2(ibra,iket)*rdm*sqrt(2*tbc_bra.J+1.)/norm_fact;
         ovlp2+=H2(ibra,iket)*r2(ibra,iket)*sqrt(2*tbc_bra.J+1.);
+//        std::cout << dbra.p <<dbra.q<<dket.p<<dket.q<<" "<<tbc_bra.J<<" "<<H2(ibra,iket) <<" " <<r2(ibra,iket)<<std::endl;
 
 }
 }}
