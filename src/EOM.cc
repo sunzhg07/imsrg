@@ -88,7 +88,10 @@ ph_start = eom_confs.size();
         eom_confs.push_back({ibra,iket,ich,eom_dims});
        eom_dims+=1;
        ppvv_dim+=1;
-    }}}
+
+    }}
+    std::cout << "Dimension of ppvv at channel "<< tbc.J<<" "<<tbc.parity << " "<<tbc.Tz<<" is: "<< ppvv_dim<<std::endl;
+}
    ppvv_end=ppvv_start+ppvv_dim-1;
 
     std::cout << "dimension EOM ppvv: "<< ppvv_start <<" "<<ppvv_end << std::endl;
@@ -108,7 +111,7 @@ ph_start = eom_confs.size();
        pphv_dim+=1;
     }}}
    pphv_end=pphv_start+pphv_dim-1;
-    std::cout << "dimension EOM pphv: "<< pphv_start <<" "<<pphv_end << std::endl;
+    //std::cout << "dimension EOM pphv: "<< pphv_start <<" "<<pphv_end << std::endl;
 
 
    pphh_start=eom_confs.size();
@@ -124,7 +127,9 @@ ph_start = eom_confs.size();
         eom_confs.push_back({ibra,iket,ich,eom_dims});
        eom_dims+=1;
        pphh_dim+=1;
-    }}}
+    }}
+    //std::cout<< "dim pphh "<< eom_dims<<std::endl;
+    }
    pphh_end=pphh_start+pphh_dim-1;
 
     std::cout << "dimension EOM pphh: "<< pphh_start <<" "<<pphh_end << std::endl;
@@ -145,8 +150,9 @@ void EOM::ConstructNormMatrix()
 {
 
     
+   // Nkernel.set_size(eom_dims,eom_dims);
+   // Nkernel.zeros();
     Nkernel.set_size(eom_dims,eom_dims);
-    Nkernel.zeros();
    // B4, becnhmarked with srg
    if(qv_dim !=0){
        for (index_t i =qv_start; i <= qv_end; i++){
@@ -223,7 +229,7 @@ void EOM::ConstructNormMatrix()
             if(oc2.cvq != 1)continue;
             double j1=tbc_bra.J;
             
-            //Nkernel(i,j) =rdm.OneBody(c1,c2)*(2*tbc_bra.J+1.)/sqrt(oc1.j2+1.);
+            Nkernel(i,j) =rdm.OneBody(c1,c2)*(2*tbc_bra.J+1.)/sqrt(oc1.j2+1.);
             //if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<" " << Nkernel(i,j) << std::endl;
     
             //if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<" "<<dbra.p<<dbra.q<<e1<<c1<<e2<<c2<<" " << Nkernel(i,j) << std::endl;
@@ -288,7 +294,7 @@ void EOM::ConstructNormMatrix()
             }
             Nkernel(i,j)+=val;
 //if(abs(Nkernel(i,j))>0.0000001)std::cout<<i<<" "<<j<<" "<<a1<<" "<<b1<<" "<<c1<<" "<<d1<<" "<<a2<<" "<<b2<<" "<<c2<<" "<<d2<<" "<<Nkernel(i,j)<<std::endl;
-if(abs(Nkernel(i,j))>0.0000001)std::cout<<i<<" "<<j<<" "<<Nkernel(i,j)<<std::endl;
+//if(abs(Nkernel(i,j))>0.0000001)std::cout<<i<<" "<<j<<" "<<Nkernel(i,j)<<std::endl;
             }
 
        }
@@ -495,6 +501,8 @@ if(ppvv_dim!=0 && qv_dim!=0){
        }
  }
   //all done
+
+ std::cout<< "Number of nonzero matrix elements in norm kernel: " << Nkernel.n_nonzero << std::endl;
   }
 
 
@@ -535,9 +543,310 @@ void EOM::PrintConfigs()
     }
 }
 
-void EOM::ConstructHamiltonianMatrix()
+void EOM::ConstructProjectMatrix()
 {
+    // first we do pphh
+    
+  Prj_kernel.set_size(eom_dims,eom_dims);
+
+   size_t dim_current_start=pphh_start;
+   size_t dim_current_end=pphh_start;
+   size_t dim_block=0;
+   size_t ich=eom_confs.at(dim_current_start)[2];
+
+   while (dim_current_end < pphh_end){
+        dim_current_end+=1;
+        if(eom_confs.at(dim_current_end)[2] != ich || dim_current_end == pphh_end){ // find new channel
+            size_t n=dim_current_end-dim_current_start;
+            if(n!=0){
+            arma::mat  Amat;
+    
+            Amat.set_size(n,n); Amat.fill(0.);
+            for (index_t i = dim_current_start; i<dim_current_end; i++)
+                for (index_t j = dim_current_start; j<dim_current_end; j++)
+                Amat(i-dim_current_start,j-dim_current_start)=Nkernel(i,j);
+                    
+            SqrtMat(Amat, n);
+
+            for (index_t i = dim_current_start; i<dim_current_end; i++)
+                for (index_t j = dim_current_start; j<dim_current_end; j++)
+                  Prj_kernel(i,j)=Amat(i-dim_current_start,j-dim_current_start);
+          }
+            // go to next channel
+            dim_current_start=dim_current_end;
+            ich = eom_confs.at(dim_current_end)[2];
+
+        }
+   }
+
+
+// ppvv
+//pv is coupled to all vqvv
+// qqvv is not coupled 
+   dim_current_end = ppvv_start;
+   dim_current_start = ppvv_start;
+   std::vector<int> coupled_idx;
+   for (index_t i = ppvv_start; i<= ppvv_end; i++)
+   {
+     ich=eom_confs.at(i)[2];
+     size_t ibra = eom_confs.at(i)[0];
+     TwoBodyChannel &tbc = modelspace ->GetTwoBodyChannel(ich);
+     Ket& dbra=tbc.GetKet(ibra);
+     index_t p=dbra.p; index_t q=dbra.q; 
+     Orbit &op = modelspace->GetOrbit(p);
+     Orbit &oq = modelspace->GetOrbit(q);
+     if(op.cvq != 1)continue;
+     if(oq.cvq != 1)continue;
+     coupled_idx.push_back(i);
+   }
+   for (index_t i = qv_start; i<= qv_end; i++)
+        coupled_idx.push_back(i);
+
+   size_t n=coupled_idx.size();
+   arma::mat  Amat;
+    Amat.set_size(n,n); Amat.fill(0.);
+
+    for (size_t i=0; i<coupled_idx.size(); i++)
+        for (size_t j=0; j<coupled_idx.size(); j++)
+        Amat(i,j)=Nkernel(coupled_idx[i],coupled_idx[j]);
+            
+    SqrtMat(Amat, n);
+
+    for (size_t i=0; i<coupled_idx.size(); i++)
+        for (size_t j=0; j<coupled_idx.size(); j++)
+        Prj_kernel(coupled_idx[i],coupled_idx[j])=Amat(i,j);
+
+
+// now all qqvv channels
+
+    dim_current_end = ppvv_start;
+   dim_current_start = ppvv_start;
+   ich= eom_confs.at(dim_current_end)[2];
+
+
+  coupled_idx.clear();
+
+    while (dim_current_end < ppvv_end)
+{
+   // find all qqvv configs
+    
+
+        if(eom_confs.at(dim_current_end)[2] != ich || dim_current_end == ppvv_end){ // find new channel
+            size_t n=coupled_idx.size();
+
+            if(n!=1){
+            arma::mat  Amat;
+            Amat.set_size(n,n); Amat.fill(0.);
+            for (index_t i = 0; i<coupled_idx.size(); i++)
+                for (index_t j = 0; j<coupled_idx.size(); j++)
+                Amat(i,j)=Nkernel(coupled_idx[i],coupled_idx[j]);
+                    
+            SqrtMat(Amat, n);
+            for (index_t i = 0; i<coupled_idx.size(); i++)
+                for (index_t j = 0; j<coupled_idx.size(); j++)
+                Prj_kernel(coupled_idx[i],coupled_idx[j])=Amat(i,j);
+             std::cout << " qqvv dim in New Channel: " << n<< std::endl;}
+              coupled_idx.clear();
+
+            }
+            ich = eom_confs.at(dim_current_end)[2];
+
+     size_t ibra = eom_confs.at(dim_current_end)[0];
+     TwoBodyChannel &tbc = modelspace ->GetTwoBodyChannel(ich);
+     Ket& dbra=tbc.GetKet(ibra);
+     index_t p=dbra.p; index_t q=dbra.q; 
+     Orbit &op = modelspace->GetOrbit(p);
+     Orbit &oq = modelspace->GetOrbit(q);
+     if(op.cvq != 1 && oq.cvq != 1)coupled_idx.push_back(dim_current_end);     
+    dim_current_end+=1;
+
 }
+
+     
+    // now ph and pphv, sort by hole line
+   //vvhv and vh
+   for (index_t i =0; i< modelspace->norbits; i++)
+   {
+    Orbit &oi =modelspace->GetOrbit(i);
+    if(oi.occ !=1)continue;
+     // find all pphv configs contains oi
+    coupled_idx.clear();
+
+    for (index_t j=pphv_start; j<=pphv_end; j++)
+    {
+        size_t ibra = eom_confs.at(j)[0];
+        size_t iket = eom_confs.at(j)[1];
+        size_t ich= eom_confs.at(j)[2];
+     TwoBodyChannel &tbc = modelspace ->GetTwoBodyChannel(ich);
+     Ket& dket=tbc.GetKet(iket);
+     Ket& dbra=tbc.GetKet(ibra);
+     index_t p=dbra.p; Orbit &op=modelspace->GetOrbit(p);
+     index_t q=dbra.q; Orbit &oq=modelspace->GetOrbit(q);
+     index_t r=dket.p; 
+     index_t s=dket.q; Orbit &os=modelspace->GetOrbit(s);
+         if(r != i)continue;
+         if(op.cvq !=1)continue;
+         if(oq.cvq !=1)continue;
+         if(os.cvq !=1)continue;
+         coupled_idx.push_back(j);
+   }
+   for (index_t j=ph_start; j<=ph_end; j++)
+   {
+    if(eom_confs.at(j)[1] != i)continue;
+    Orbit &op=modelspace->GetOrbit(eom_confs.at(j)[0]);
+    if(op.cvq !=1)continue;
+    coupled_idx.push_back(j);
+   }
+
+   size_t n=coupled_idx.size();
+   if(n==0)continue;
+   arma::mat  Amat;
+   Amat.set_size(n,n); Amat.fill(0.);
+
+    for (size_t i=0; i<coupled_idx.size(); i++)
+        for (size_t j=0; j<coupled_idx.size(); j++)
+        Amat(i,j)=Nkernel(coupled_idx[i],coupled_idx[j]);
+            
+    SqrtMat(Amat, n);
+
+    for (size_t i=0; i<coupled_idx.size(); i++)
+        for (size_t j=0; j<coupled_idx.size(); j++)
+        Prj_kernel(coupled_idx[i],coupled_idx[j])=Amat(i,j);
+    std::cout << " vvhv part 1 dim in New Channel: " << n<< std::endl;
+}
+
+
+
+  //vphv and vh
+   for (index_t i =0; i< modelspace->norbits; i++)
+   {
+    Orbit &oi =modelspace->GetOrbit(i);
+    if(oi.occ !=1)continue;
+     // find all pphv configs contains oi
+    coupled_idx.clear();
+
+    for (index_t j=pphv_start; j<=pphv_end; j++)
+    {
+        size_t ibra = eom_confs.at(j)[0];
+        size_t iket = eom_confs.at(j)[1];
+        size_t ich= eom_confs.at(j)[2];
+     TwoBodyChannel &tbc = modelspace ->GetTwoBodyChannel(ich);
+     Ket& dket=tbc.GetKet(iket);
+     Ket& dbra=tbc.GetKet(ibra);
+     index_t p=dbra.p; Orbit &op=modelspace->GetOrbit(p);
+     index_t q=dbra.q; Orbit &oq=modelspace->GetOrbit(q);
+     index_t r=dket.p; 
+     index_t s=dket.q; Orbit &os=modelspace->GetOrbit(s);
+         if(r != i)continue;
+         if(op.cvq !=1)continue;
+         if(oq.cvq ==1)continue;
+         if(os.cvq !=1)continue;
+         coupled_idx.push_back(j);
+   }
+   for (index_t j=ph_start; j<=ph_end; j++)
+   {
+    if(eom_confs.at(j)[1] != i)continue;
+    Orbit &op=modelspace->GetOrbit(eom_confs.at(j)[0]);
+    if(op.cvq ==1)continue;
+    coupled_idx.push_back(j);
+   }
+
+   size_t n=coupled_idx.size();
+   if(n==0)continue;
+   arma::mat  Amat;
+   Amat.set_size(n,n); Amat.fill(0.);
+
+    for (size_t i=0; i<coupled_idx.size(); i++)
+        for (size_t j=0; j<coupled_idx.size(); j++)
+        Amat(i,j)=Nkernel(coupled_idx[i],coupled_idx[j]);
+            
+    SqrtMat(Amat, n);
+
+    for (size_t i=0; i<coupled_idx.size(); i++)
+        for (size_t j=0; j<coupled_idx.size(); j++)
+        Prj_kernel(coupled_idx[i],coupled_idx[j])=Amat(i,j);
+    std::cout << " vphv dim in New Channel: " << n<< std::endl;
+}
+
+
+
+
+ //pphv itself, no coupling between channels 
+dim_current_end = pphv_start;
+  ich = eom_confs.at(dim_current_end)[2];
+  coupled_idx.clear();
+  while(dim_current_end < pphv_end){
+
+        if(eom_confs.at(dim_current_end)[2] !=ich) //new channel
+        {
+            size_t n=coupled_idx.size();
+            arma::mat  Amat;
+            if(n!=0){
+             Amat.set_size(n,n); Amat.fill(0.);
+            for (size_t i=0; i<coupled_idx.size(); i++)
+                for (size_t j=0; j<coupled_idx.size(); j++)
+                    Amat(i,j)=Nkernel(coupled_idx[i],coupled_idx[j]);
+            
+                SqrtMat(Amat, n);
+
+            for (size_t i=0; i<coupled_idx.size(); i++)
+                for (size_t j=0; j<coupled_idx.size(); j++)
+                Prj_kernel(coupled_idx[i],coupled_idx[j])=Amat(i,j);
+            std::cout << " pphp dim in New Channel: " << n<< std::endl;
+            }
+            coupled_idx.clear();
+            ich = eom_confs.at(dim_current_end)[2];
+
+            }
+
+        index_t j = dim_current_end;
+        size_t ibra = eom_confs.at(j)[0];
+        size_t iket = eom_confs.at(j)[1];
+        size_t ich= eom_confs.at(j)[2];
+       TwoBodyChannel &tbc = modelspace ->GetTwoBodyChannel(ich);
+       Ket& dket=tbc.GetKet(iket);
+       Ket& dbra=tbc.GetKet(ibra);
+       index_t p=dbra.p; Orbit &op=modelspace->GetOrbit(p);
+       index_t q=dbra.q; Orbit &oq=modelspace->GetOrbit(q);
+       index_t r=dket.p; 
+       index_t s=dket.q; Orbit &os=modelspace->GetOrbit(s);
+       if(op.cvq !=1 && oq.cvq !=1 && os.cvq !=1)coupled_idx.push_back(j);
+       dim_current_end+=1;
+         
+  }
+
+
+
+}
+void EOM::SqrtMat(arma::mat& Amat, size_t n)
+{
+    arma::mat U, V;
+    arma::vec s;
+    s.set_size(n); s.fill(0.);
+    U.set_size(n,n); U.fill(0.);
+    V.set_size(n,n); V.fill(0.);
+    arma::svd(U, s, V, Amat);
+    size_t nnz=0;
+    std::vector<int> s_idx;
+    std::vector<double> s_sqrt;
+    for ( index_t i=0; i<s.size(); i++){
+        if(abs(s[i]<0.00000001))continue;
+        nnz++;
+        s_idx.push_back(i);
+        s_sqrt.push_back(sqrt(s[i]));
+    }
+            
+    arma::uvec s_idx_new(s_idx.size());
+    for(index_t i ; i<s_idx.size(); i++) s_idx_new[i]=s_idx[i];
+    arma::vec s_sqrt_new(s_idx.size());
+    for(index_t i ; i<s_idx.size(); i++) s_sqrt_new[i]=s_sqrt[i];
+    Amat.fill(0.);
+    arma::mat Us=U.cols(s_idx_new);
+    Amat=Us * arma::diagmat(s_sqrt_new) * Us.t();
+    return;
+
+}
+
 
 void EOM::SolveEOM()
 {

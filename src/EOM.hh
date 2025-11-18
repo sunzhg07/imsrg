@@ -33,8 +33,9 @@ class EOM
   ModelSpace * modelspace; ///< Pointer to the associated modelspace
   Operator H;
   Operator rdm;
-  arma::mat Hkernel;  
-  arma::mat Nkernel;  
+  arma::sp_mat Nkernel; 
+  arma::sp_mat Prj_kernel; 
+  //arma::mat Nkernel;  
   arma::imat eom_configs;  
   arma::vec Energies;
 
@@ -58,15 +59,14 @@ class EOM
   void PrintConfigs();
   void Setup_rdm();
   void ConstructNormMatrix();
-  void ConstructHamiltonianMatrix();
+  void ConstructProjectMatrix();
   void SolveEOM();
   double Core_Diagram(size_t a, size_t b,size_t c,size_t d,size_t e,size_t f,double j1, double j2 );
   arma::vec GetEnergies();
+  void SqrtMat(arma::mat& Amat, size_t n);
 
 
 };
-
-
 
 
 

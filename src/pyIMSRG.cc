@@ -888,6 +888,7 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def(py::init<ModelSpace &, Operator &>())
           .def("ConstructConfigs", &EOM::ConstructConfigs)
           .def("PrintConfigs", &EOM::PrintConfigs)
+          .def("ConstructProjectMatrix", &EOM::ConstructProjectMatrix)
           .def("ConstructNormMatrix", &EOM::ConstructNormMatrix)
           .def("Setup_rdm", &EOM::Setup_rdm);
 
