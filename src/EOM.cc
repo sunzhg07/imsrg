@@ -833,7 +833,7 @@ void EOM::SqrtMat(arma::mat& Amat, size_t n)
         if(abs(s[i]<0.00000001))continue;
         nnz++;
         s_idx.push_back(i);
-        s_sqrt.push_back(sqrt(s[i]));
+        s_sqrt.push_back(1./sqrt(s[i]));
     }
             
     arma::uvec s_idx_new(s_idx.size());
@@ -843,13 +843,97 @@ void EOM::SqrtMat(arma::mat& Amat, size_t n)
     Amat.fill(0.);
     arma::mat Us=U.cols(s_idx_new);
     Amat=Us * arma::diagmat(s_sqrt_new) * Us.t();
-    return;
+    return ;
 
 }
 
 
+void EOM::ProjectOprator(Operator & Qin)
+{
+    arma::vec Qflat(eom_confs.size());
+    Qflat.fill(0.);
+
+ 
+   for (index_t i=qv_start; i<=qv_end; i++)
+   {
+    size_t p =eom_confs.at(i)[0];
+    size_t q =eom_confs.at(i)[1];
+    Qflat(i) = Qin.GetOneBody(p,q);
+   }
+   for (index_t i=ph_start; i<=ph_end; i++)
+   {
+    size_t p =eom_confs.at(i)[0];
+    size_t q =eom_confs.at(i)[1];
+    Qflat(i) = Qin.GetOneBody(p,q);
+   }
+
+   for (index_t i=pphh_start; i<=pphh_end; i++)
+   {
+    size_t ibra =eom_confs.at(i)[0];
+    size_t iket =eom_confs.at(i)[1];
+    size_t ich = eom_confs.at(i)[2];
+    Qflat(i) = Qin.GetTwoBody(ich,ich,ibra,iket);
+   }
+   
+   for (index_t i=ppvv_start; i<=ppvv_end; i++)
+   {
+    size_t ibra =eom_confs.at(i)[0];
+    size_t iket =eom_confs.at(i)[1];
+    size_t ich = eom_confs.at(i)[2];
+    Qflat(i) = Qin.GetTwoBody(ich,ich,ibra,iket);
+   }
+   for (index_t i=pphv_start; i<=pphv_end; i++)
+   {
+    size_t ibra =eom_confs.at(i)[0];
+    size_t iket =eom_confs.at(i)[1];
+    size_t ich = eom_confs.at(i)[2];
+    Qflat(i) = Qin.GetTwoBody(ich,ich,ibra,iket);
+   }
+
+   Qin*=0.;
+
+  arma::vec Qout = Prj_kernel * Qflat;
+
+  for (index_t i=qv_start; i<=qv_end; i++)
+   {
+    size_t p =eom_confs.at(i)[0];
+    size_t q =eom_confs.at(i)[1];
+    Qin.SetOneBody(p,q,Qout(i));
+   }
+   for (index_t i=ph_start; i<=ph_end; i++)
+   {
+    size_t p =eom_confs.at(i)[0];
+    size_t q =eom_confs.at(i)[1];
+    Qin.SetOneBody(p,q,Qout(i));
+   }
+
+   for (index_t i=pphh_start; i<=pphh_end; i++)
+   {
+    size_t ibra =eom_confs.at(i)[0];
+    size_t iket =eom_confs.at(i)[1];
+    size_t ich = eom_confs.at(i)[2];
+    Qin.TwoBody.SetTBME(ich,ich,ibra,iket,Qout(i));
+   }
+   
+   for (index_t i=ppvv_start; i<=ppvv_end; i++)
+   {
+    size_t ibra =eom_confs.at(i)[0];
+    size_t iket =eom_confs.at(i)[1];
+    size_t ich = eom_confs.at(i)[2];
+    Qin.TwoBody.SetTBME(ich,ich,ibra,iket,Qout(i));
+   }
+   for (index_t i=pphv_start; i<=pphv_end; i++)
+   {
+    size_t ibra =eom_confs.at(i)[0];
+    size_t iket =eom_confs.at(i)[1];
+    size_t ich = eom_confs.at(i)[2];
+    Qin.TwoBody.SetTBME(ich,ich,ibra,iket,Qout(i));
+   }
+
+}
 void EOM::SolveEOM()
 {
+
 }
 
 void EOM::Setup_rdm()

@@ -890,8 +890,8 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("PrintConfigs", &EOM::PrintConfigs)
           .def("ConstructProjectMatrix", &EOM::ConstructProjectMatrix)
           .def("ConstructNormMatrix", &EOM::ConstructNormMatrix)
-          .def("Setup_rdm", &EOM::Setup_rdm);
-
+          .def("Setup_rdm", &EOM::Setup_rdm)
+          .def("ProjectOprator", &EOM::ProjectOprator, py::arg("Qin"));
 
       py::class_<RPA>(m, "RPA")
           .def(py::init<Operator &>())
