@@ -198,7 +198,7 @@ void EOM::ConstructNormMatrix()
         TwoBodyChannel& tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
         double val = rdm.GetTwoBody(cf_bra[2],cf_ket[2],cf_bra[1],cf_ket[1])*sqrt(2*tbc_bra.J+1.);
 
-        Nkernel(i,j) =val;
+        Nkernel(i,j) +=val;
    //     if(abs(Nkernel(i,j))>0.0000001)std::cout<<i<<" "<<j<<" "<<Nkernel(i,j)<<" cpp"<<std::endl;
 
        }}
@@ -229,7 +229,7 @@ void EOM::ConstructNormMatrix()
             if(oc2.cvq != 1)continue;
             double j1=tbc_bra.J;
             
-            Nkernel(i,j) =rdm.OneBody(c1,c2)*(2*tbc_bra.J+1.)/sqrt(oc1.j2+1.);
+            Nkernel(i,j) +=rdm.OneBody(c1,c2)*(2*tbc_bra.J+1.)/sqrt(oc1.j2+1.);
             //if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<" " << Nkernel(i,j) << std::endl;
     
             //if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<" "<<dbra.p<<dbra.q<<e1<<c1<<e2<<c2<<" " << Nkernel(i,j) << std::endl;
@@ -238,7 +238,7 @@ void EOM::ConstructNormMatrix()
 // C4
   if(pphv_dim!=0){
 
-       for (index_t i =pphv_start; i <= 5000; i++){
+       for (index_t i =pphv_start; i <= pphv_end; i++){
            std::array<index_t, 4> &cf_bra = eom_confs.at(i);
       TwoBodyChannel& tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
             Ket &dbra1 = tbc_bra.GetKet(cf_bra[0]);
@@ -256,7 +256,7 @@ void EOM::ConstructNormMatrix()
             double norm_fact1=1.;
             if(a1==b1)norm_fact1=sqrt(2);
 
-       for (index_t j =pphv_start; j <= 5000; j++){
+       for (index_t j =pphv_start; j <= pphv_end; j++){
            std::array<index_t, 4> &cf_ket = eom_confs.at(j);
       TwoBodyChannel& tbc_ket = modelspace->GetTwoBodyChannel(cf_ket[2]);
             Ket &dbra2 = tbc_ket.GetKet(cf_ket[0]);
@@ -435,7 +435,7 @@ void EOM::ConstructNormMatrix()
  }
 //
 //
-//
+//C5
  if(pphv_dim!=0 && ph_dim!=0){
 
       for (index_t i =pphv_start; i <= pphv_end; i++){
@@ -503,6 +503,16 @@ if(ppvv_dim!=0 && qv_dim!=0){
   //all done
 
  std::cout<< "Number of nonzero matrix elements in norm kernel: " << Nkernel.n_nonzero << std::endl;
+ std::cout << "\nNon-zero elements of A:" << std::endl;
+
+    for (arma::uword r = 0; r < Nkernel.n_rows; ++r) {
+        for (arma::uword c = 0; c < Nkernel.n_cols; ++c) {
+            if (Nkernel(r, c) != 0) {
+                std::cout <<  r << " " << c << " " << Nkernel(r, c) << std::endl;
+            }
+        }
+    }
+
   }
 
 
