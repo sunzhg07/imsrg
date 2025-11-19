@@ -5,9 +5,9 @@ from lanczos import *
 
 
 
-emax =5         # maximum number of oscillator quanta in the model space
-ref = 'O16'     # reference used for normal ordering
-val = 'sd-shell' # valence space
+emax =2         # maximum number of oscillator quanta in the model space
+ref = 'He4'     # reference used for normal ordering
+val = 'p-shell' # valence space
 
 core_generator = 'atan'   # definition of generator eta for decoupling the core (could also use 'white')
 valence_generator = 'shell-model-atan'  # definition of generator for decoupling the valence space (could also use 'shell-model-white'
@@ -98,93 +98,45 @@ imsrgsolver.SetGenerator(core_generator)
 imsrgsolver.SetSmax(smax_core)
 #
 #### Do the first stage of integration to decouple the core
-#imsrgsolver.Solve()
+imsrgsolver.Solve()
 #
 #### Now set the generator for the second stage to decouple the valence space
 imsrgsolver.SetGenerator(valence_generator)
 imsrgsolver.SetSmax(smax_valence)
 
-#imsrgsolver.Solve()
+imsrgsolver.Solve()
 
 ### Hs is the IMSRG-evolved Hamiltonian
 #rw.WriteTokyo( HNO, valence_fname,'')
 Hs = imsrgsolver.GetH_s()
-Hs=Hs*0.
-
-#rw.WriteOperator(Hs, 'o16hs')
-rw.ReadOperator(Hs, 'o16hs')
-
-#rw.WriteTokyo( Hs, 'sd.snt','')
-#Hs = Hs.DoNormalOrderingCore()
-
-### Write out the effective valence space interaction
-
 Hs.ZeroBody=0.
-#
-#
-#
-#cm=Commutator
-##cm.SetIMSRG3Noqqq(True)
-##cm.SetIMSRG3Onlyvvv(True)
-#gm=Generator()
-#
-### read in the reduce transition matrix for reference 
-#tdm_op=read_tdm("he6.ref",ms)
-#rdms = rdm_el()
-#rdms.read_tdm('he6.ref',ms)
 
-tdm_op=read_tdm("ne20.ref",ms)
-#
-#
-#unt = UnitTest(ms)
-#rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,3,1
-#h3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
-#
-##val=h3.ThreeBody.GetME_pn (Jab_in, j0, Jde_in, a, b, c, d, e, f)
-#rw.WriteValence3body(h3.ThreeBody, 'test.ini')
-#
-#
-#chi= gm.GetVSEOM_ladder(h3,0)
-#chid=chi*0.
-#chid= gm.GetVSEOM_ladder(h3,1)
-#
-#nm=Norm_vs_new5(chi,chi,rdms)
-#print(nm)
-#
-#print('Norm of random Op: ', nm)
-#chi=chi/np.sqrt(nm)
-#
-#
-#gm.force_decouple(Hs)
-#
-#print('compute reference energy to check hermitian')
+
+tdm_op=read_tdm("he6.ref",ms)
+
 nm=gm.GetVSEOM_Overlap_rd(Hs,tdm_op)
-##nm=gm.GetVSEOM_Overlap(Hs)
+
 print('reference energy: ', nm, 'vs [ -4.19234292  9.75174484 ] in nmax2 for he6_2',)
-#
-#
-#
-#vec=chi*0.
-#
-#vec=htc_vs(Hs, chi)
-#
-#nm=Norm_vs_new5(vec,vec,rdms)
-#vec=vec/np.sqrt(nm)
-#
-##print('norm check: ', Norm_vs_new5(vec,chi,rdms),Norm_vs_new5(chi,vec,rdms))
-##
-##v1=htc_vs(Hs, chi)
-##nm1=Norm_vs_new5(vec,v1,rdms)
-##nm2=Norm3(vec,chi,Hs,ms,tdm_op)
-##print("bra: ",nm1,nm2,nm1+nm2)
-##
-##
-##v1=htc_vs(Hs, vec)
-##nm1=Norm_vs_new5(chi,v1,rdms)
-##nm2=Norm3(chi,vec,Hs,ms,tdm_op)
-##print("ket: ",nm1,nm2,nm1+nm2)
-#
-##e,v1,v2=lanczos_proc(htc_vs, Norm_vs_new5, Norm3,Hs, chi, 24, 1,ms,tdm_op)
+eom = EOM(ms,tdm_op)
+eom.ConstructConfigs()
+eom.ConstructNormMatrix()
+eom.ConstructProjectMatrix()
+
+max_iter=3
+unt = UnitTest(ms)
+rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,2,1
+h3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
+chi= gm.GetEOM_ladder(h3,0)
+
+
+cnorm=Norm_vs_new(chi,chi,tdm_op)
+print('Original norm: ', cnorm)
+eom.ProjectOprator(chi)
+cnorm=Norm_vs_new(chi,chi,tdm_op)
+print('Norm without null vectors: ', cnorm)
+chi=chi/np.sqrt(cnorm)
+
+e,v1,v2=lanczos_proc(htc_vs, Norm_vs_new, Norm3,Hs, chi, 24, 1,ms,tdm_op)
 #e,vs,v2=arnoldi_proc(htc_vs, Norm_vs_new5,Norm3, Hs, chi, 14,2,ms,tdm_op)
 ### Generate all configurations
 #

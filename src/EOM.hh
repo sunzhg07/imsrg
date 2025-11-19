@@ -36,9 +36,8 @@ class EOM
   arma::sp_mat Nkernel; 
   arma::sp_mat Prj_kernel; 
   //arma::mat Nkernel;  
-  arma::imat eom_configs;  
+  
   arma::vec Energies;
-
   // configurations
   std::vector<std::array<index_t, 4>> eom_confs;
   index_t qv_start,qv_end,qv_dim;
@@ -65,7 +64,7 @@ class EOM
   arma::vec GetEnergies();
   void SqrtMat(arma::mat& Amat, size_t n);
   void ProjectOprator(Operator & Qin);
-
+  void block_svd(std::vector<int> &coupled_vector);
 };
 
 
