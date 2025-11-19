@@ -163,45 +163,45 @@ id_bench = bench[:,0:2]
 id_bench=id_bench.astype(int)
 id_val = bench[:,2]
 
-#for i in range(1,80733,3):
-#    ibra = id_bench[i,0]
-#    iket = id_bench[i,1]
-#    if(ibra < 18):
-#        continue
-#    if(iket < 18):
-#        continue
-#    cfs_bra=cfs[ibra]
-#    cfs_ket=cfs[iket]
+for i in range(1,84220,2):
+    ibra = id_bench[i,0]
+    iket = id_bench[i,1]
+    if(ibra < 18):
+        continue
+    if(iket < 18):
+        continue
+    cfs_bra=cfs[ibra]
+    cfs_ket=cfs[iket]
+
+    ql=Hs*0.
+    qr=Hs*0.
+
+    ql.TwoBody.SetTBME_chij(cfs_bra[2],cfs_bra[2],cfs_bra[0],cfs_bra[1],1.)
+    qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],1.)
+    nm=Norm_vs_new(ql,qr,tdm_op)
+    ql.TwoBody.SetTBME_chij(cfs_bra[2],cfs_bra[2],cfs_bra[0],cfs_bra[1],0.)
+    qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],0.)
+    if(abs(nm-id_val[i])> 0.00001):
+        print(ibra,iket,nm, id_val[i])
+
+
+
+
+#ibra = 4290
+#iket = 4049
+#ibench = 24623
+#cfs_bra=cfs[ibra]
+#cfs_ket=cfs[iket]
 #
-#    ql=Hs*0.
-#    qr=Hs*0.
+#ql=Hs*0.
+#qr=Hs*0.
 #
-#    ql.TwoBody.SetTBME_chij(cfs_bra[2],cfs_bra[2],cfs_bra[0],cfs_bra[1],1.)
-#    qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],1.)
-#    nm=Norm_vs_new(ql,qr,tdm_op)
-#    ql.TwoBody.SetTBME_chij(cfs_bra[2],cfs_bra[2],cfs_bra[0],cfs_bra[1],0.)
-#    qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],0.)
-#    if(abs(nm-id_val[i])> 0.00001):
-#        print(ibra,iket,nm, id_val[i])
+#ql.TwoBody.SetTBME_chij(cfs_bra[2],cfs_bra[2],cfs_bra[0],cfs_bra[1],1.)
+#qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],1.)
+#nm=Norm_vs_new(ql,qr,tdm_op)
+#ql.TwoBody.SetTBME_chij(cfs_bra[2],cfs_bra[2],cfs_bra[0],cfs_bra[1],0.)
+#qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],0.)
+#print(ibra,iket,nm, id_val[ibench])
+#if(abs(nm-id_val[ibench])> 0.00001):
+#    print(ibra,iket,nm, id_val[ibench])
 #
-
-
-
-ibra = 4290
-iket = 4049
-ibench = 24583
-cfs_bra=cfs[ibra]
-cfs_ket=cfs[iket]
-
-ql=Hs*0.
-qr=Hs*0.
-
-ql.TwoBody.SetTBME_chij(cfs_bra[2],cfs_bra[2],cfs_bra[0],cfs_bra[1],1.)
-qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],1.)
-nm=Norm_vs_new(ql,qr,tdm_op)
-ql.TwoBody.SetTBME_chij(cfs_bra[2],cfs_bra[2],cfs_bra[0],cfs_bra[1],0.)
-qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],0.)
-print(ibra,iket,nm, id_val[ibench])
-if(abs(nm-id_val[ibench])> 0.00001):
-    print(ibra,iket,nm, id_val[ibench])
-

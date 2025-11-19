@@ -237,8 +237,9 @@ void EOM::ConstructNormMatrix()
   }
 // C4
   if(pphv_dim!=0){
-
+        
        for (index_t i =pphv_start; i <= pphv_end; i++){
+    //for (index_t i =4290; i <= 4290; i++){
            std::array<index_t, 4> &cf_bra = eom_confs.at(i);
       TwoBodyChannel& tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
             Ket &dbra1 = tbc_bra.GetKet(cf_bra[0]);
@@ -257,6 +258,7 @@ void EOM::ConstructNormMatrix()
             if(a1==b1)norm_fact1=sqrt(2);
 
        for (index_t j =pphv_start; j <= pphv_end; j++){
+    //for (index_t j =4049; j <= 4049; j++){
            std::array<index_t, 4> &cf_ket = eom_confs.at(j);
       TwoBodyChannel& tbc_ket = modelspace->GetTwoBodyChannel(cf_ket[2]);
             Ket &dbra2 = tbc_ket.GetKet(cf_ket[0]);
@@ -277,7 +279,7 @@ void EOM::ConstructNormMatrix()
             if(c1 !=c2)continue;
             double val=0;
             if(b1==a2 && oa1.cvq ==1 && ob2.cvq==1 ){
-          val +=norm_fact*Core_Diagram(d1,b2,a2,d2,a2,c1,j1,j2)*dket1.Phase(j1);
+          val +=norm_fact*Core_Diagram(d1,b2,a1,d2,a2,c1,j1,j2)*dket1.Phase(j1);
            // std::cout<< "a run " << norm_fact*Core_Diagram(d1,b2,a2,d2,a2,c1,j1,j2)*dket1.Phase(j1) << std::endl;
             }
             if(a1==a2 && ob1.cvq ==1 && ob2.cvq==1 && a1!=b1){
@@ -293,7 +295,7 @@ void EOM::ConstructNormMatrix()
           //std::cout<< "d run " << norm_fact*Core_Diagram(d1,a2,b1,d2,b2,c1,j1,j2)*dket1.Phase(j1)*dbra1.Phase(j1)*dbra2.Phase(j2) << std::endl;
             }
             Nkernel(i,j)+=val;
-//if(abs(Nkernel(i,j))>0.0000001)std::cout<<i<<" "<<j<<" "<<a1<<" "<<b1<<" "<<c1<<" "<<d1<<" "<<a2<<" "<<b2<<" "<<c2<<" "<<d2<<" "<<Nkernel(i,j)<<std::endl;
+//std::cout<<a1<<" "<<b1<<" "<<c1<<" "<<d1<<" "<<a2<<" "<<b2<<" "<<c2<<" "<<d2<<" "<<Nkernel(i,j)<<std::endl;
 //if(abs(Nkernel(i,j))>0.0000001)std::cout<<i<<" "<<j<<" "<<Nkernel(i,j)<<std::endl;
             }
 
@@ -500,7 +502,7 @@ if(ppvv_dim!=0 && qv_dim!=0){
            }
        }
  }
-  //all done
+//  all done
 
  std::cout<< "Number of nonzero matrix elements in norm kernel: " << Nkernel.n_nonzero << std::endl;
  std::cout << "\nNon-zero elements of A:" << std::endl;
