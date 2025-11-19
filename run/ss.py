@@ -166,7 +166,7 @@ id_val = bench[:,2]
 for i in range(1,84220,2):
     ibra = id_bench[i,0]
     iket = id_bench[i,1]
-    if(ibra < 18):
+    if(ibra >= 17):
         continue
     if(iket < 18):
         continue
@@ -176,10 +176,10 @@ for i in range(1,84220,2):
     ql=Hs*0.
     qr=Hs*0.
 
-    ql.TwoBody.SetTBME_chij(cfs_bra[2],cfs_bra[2],cfs_bra[0],cfs_bra[1],1.)
+    ql.SetOneBody(cfs_bra[0],cfs_bra[1],1.)
     qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],1.)
     nm=Norm_vs_new(ql,qr,tdm_op)
-    ql.TwoBody.SetTBME_chij(cfs_bra[2],cfs_bra[2],cfs_bra[0],cfs_bra[1],0.)
+    ql.SetOneBody(cfs_bra[0],cfs_bra[1],0.)
     qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],0.)
     if(abs(nm-id_val[i])> 0.00001):
         print(ibra,iket,nm, id_val[i])
