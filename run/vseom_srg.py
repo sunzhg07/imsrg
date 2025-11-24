@@ -112,7 +112,7 @@ Hs = imsrgsolver.GetH_s()
 Hs.ZeroBody=0.
 
 
-tdm_op=read_tdm("he6.ref",ms)
+tdm_op=read_tdm("he8.ref",ms)
 
 nm=gm.GetVSEOM_Overlap_rd(Hs,tdm_op)
 
@@ -126,18 +126,35 @@ max_iter=3
 unt = UnitTest(ms)
 rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,2,1
 h3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
+h4= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
 chi= gm.GetEOM_ladder(h3,0)
+chi2= gm.GetEOM_ladder(h4,0)
 
 
 cnorm=Norm_vs_new(chi,chi,tdm_op)
 print('Original norm: ', cnorm)
+print('Original euclidean norm: ',chi.Norm())
 eom.ProjectOprator(chi)
 cnorm=Norm_vs_new(chi,chi,tdm_op)
 print('Norm without null vectors: ', cnorm)
+print('projected euclidean norm: ',chi.Norm())
 chi=chi/np.sqrt(cnorm)
+print('new  norm: ',chi.Norm())
 
-e,v1,v2=lanczos_proc(htc_vs, Norm_vs_new, Norm3,Hs, chi, 24, 1,ms,tdm_op)
-#e,vs,v2=arnoldi_proc(htc_vs, Norm_vs_new5,Norm3, Hs, chi, 14,2,ms,tdm_op)
+cnorm = Norm3(chi,chi2,Hs, ms,tdm_op)
+print('Norm3: ', cnorm)
+cnorm = Norm3_new(chi,chi2,Hs, ms,tdm_op)
+print('Norm3: ', cnorm)
+
+vec = htc_vs(Hs, chi,eom.ProjectOprator)
+cnorm=Norm_vs_new(chi,vec,tdm_op)
+print('Norm without null vectors: ', cnorm)
+
+cnorm = Norm3(chi,chi,Hs, ms,tdm_op)
+print('Norm3: ', cnorm)
+
+#e,v1,v2=lanczos_proc(htc_vs, Norm_vs_new, Norm3_new,Hs, chi, 24, 1,ms,tdm_op,eom.ProjectOprator)
+e,vs,v2=arnoldi_proc_new(htc_vs, Norm_vs_new, Norm3_new, Hs, chi, 144,2,ms,tdm_op,eom.ProjectOprator)
 ### Generate all configurations
 #
 ##cfs=[]

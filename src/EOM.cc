@@ -781,7 +781,7 @@ void EOM::ConstructNormMatrix()
             std::vector<int> s_idx;
             std::vector<double> s_sqrt;
             for ( index_t i=0; i<s.size(); i++){
-                if(abs(s[i]<0.00000001))continue;
+                if(abs(s[i]<0.01))continue;
                 nnz++;
                 s_idx.push_back(i);
                 s_sqrt.push_back(1./sqrt(s[i]));
