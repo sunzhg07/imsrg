@@ -37,34 +37,15 @@ def htc(Haml, chi):
 
 def htc_vs(Haml, chi,prjop):
 
-
     chi_d=chi*0
     chi_d.SetAntiHermitian()
     chi_d = gm.GetVSEOM_ladder(chi, 1)
-
-    ht_plus= chi*0
     ht_minus= chi*0
-    ## chi is hermitian, hplus is antihermitian
-
-    ht_plus.SetAntiHermitian() ##[h,chi]
-
     ht_minus.SetHermitian()  ## [h,chi_d]
-
-    ht_plus = cm.Commutator(Haml, chi )
-
     ht_minus = cm.Commutator(Haml, chi_d )
-
-    heom1= gm.GetVSEOM_ladder(ht_plus, 0)
-    heom2= gm.GetVSEOM_ladder(ht_minus, 0)
-
-    hod=Haml*0
-    hod.SetHermitian()
-    hod = (heom1+heom2)/2
-    prjop(hod)
-    
-   # this works
-    #hod=heom1
-    return(hod)
+    heom= gm.GetVSEOM_ladder(ht_minus, 0)
+    #prjop(heom)
+    return(heom)
 
 
 def Norm(T1, T2):
@@ -243,9 +224,10 @@ def lanczos_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,m
     return(e[0:state_want], v[0:state_want,:],lanczos_vector)
 
 
+
 def arnoldi_proc_new( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,ms,rdmat,prjop):
     lanczos_vector = []
-    hall = np.zeros([max_iter,max_iter])
+    hall = np.zeros([max_iter+1,max_iter+1])
     hall[0,0]=0.
 
     converged = 0
@@ -258,45 +240,20 @@ def arnoldi_proc_new( hv_func, norm_func,norm_three, haml, vi, max_iter,state_wa
     norm_e_new=-1000
     e=np.zeros(state_want)
 
-    for j in range(max_iter-1):
+    for j in range(max_iter):
+
         w = hv_func(haml,lanczos_vector[j],prjop)
         ai=norm_func(w,lanczos_vector[j],rdmat)
-        hall[j,j]=ai
-
-        w=w-ai*lanczos_vector[j]
-
-        if(j>0):
-            for i in range(j):
-                bj=norm_func(w,lanczos_vector[i],rdmat)
-                w=w-bj*lanczos_vector[i]
-
-        bj = norm_func(w,w,rdmat)
-
-        if abs(bj) < 0.00001:
-            print('coupling bj is small: ', bj, j)
-            break
-        w=w/np.sqrt(bj)
-        lanczos_vector.append(w)
-        print('lanczos vector euclidean norm: ',w.Norm())
-        nmm=0.
-        nm3=0.
-        vs=np.zeros([1,1])
-        for m in range(j):
-            vl=lanczos_vector[m]
-            vm=lanczos_vector[j]
-            vec=vl*0.0
-            vec.SetHermitian()
-            vec=hv_func(haml, vm,prjop)
-            nmm=norm_func(vl,vec,rdmat)
-            nm3=norm_three(vl,vm,haml, ms,rdmat)
-            hall[m,j] =nmm+nm3
-            hall[j,m] =nmm+nm3
-        if(j+1 >= state_want ):
-            hsub=hall[0:j+1,0:j+1]
-            e,v = np.linalg.eig(hsub[0:j+1,0:j+1])
-            idx = np.argsort(e)   
+        dia=norm_three(w,lanczos_vector[j],haml,ms,rdmat)
+        hall[j,j]=ai+dia
+        
+        # submatrix generated, diagonalize it
+        if(j> state_want):
+            e,v = np.linalg.eig(hall[0:j+1,0:j+1])
+            idx = np.argsort(e)
             e = e[idx]
             vs = v[:,idx]
+            ## check the eigvectors
             vec_a=lanczos_vector[j]*0.
             for kk in range(len(e)):
                 vec_a = vec_a + lanczos_vector[kk]*vs[kk,0]
@@ -305,20 +262,37 @@ def arnoldi_proc_new( hv_func, norm_func,norm_three, haml, vi, max_iter,state_wa
             nmm=norm_func(vec_a,vec_b,rdmat)
             nm3=norm_three(vec_a,vec_a,haml, ms,rdmat)
             nm=norm_func(vec_a,vec_a,rdmat)
+            print(j, ' th Lanczos: E ', e[0:state_want], 'first state check: ', nm)
 
-            print('energy check: ', nmm+nm3,nm)
-            if(abs(nm-1.)>0.0001):
-                print('Lost Orthogonality, converged')
-                break
-            print("Energy on ", j+1 , ' th iteration: ', e[:] )
+        w=w-hall[j,j]*lanczos_vector[j]
 
-            norm_e_new=0.0
-            for k in range(state_want):
-                norm_e_new += e[k]*e[k]
-            if(abs(norm_e_new-norm_e_old) < 0.0000001):
-                print('energy converge')
-                break
-            norm_e_old=norm_e_new
+        if(j>0):
+            for i in range(j):
+                bj=norm_func(w,lanczos_vector[i],rdmat)
+                dbj=-norm_three(lanczos_vector[i],w,haml,ms,rdmat)
+                w=w-(bj)*lanczos_vector[i]
+
+        bj = norm_func(lanczos_vector[j],w,rdmat)
+        dbj = norm_three(lanczos_vector[j],w,haml,ms,rdmat)
+        print(j,'th iter: ', ai,bj)
+        hall[j,j+1]=np.sqrt(bj)
+        hall[j+1,j]=np.sqrt(bj)
+
+
+        if abs(bj) < 0.00001:
+            print('coupling bj is small: ', bj, j)
+            break
+        w=w/np.sqrt(bj)
+        ## test non-hermitian:
+        vec_b=hv_func(haml, w,prjop)
+        nm=norm_func(vec_b,lanczos_vector[j],rdmat)
+
+        vec_b=hv_func(haml, lanczos_vector[j],prjop)
+        nm2=norm_func(w,vec_b,rdmat)
+        print('bj new : ', nm, nm2,np.sqrt(bj))
+
+        lanczos_vector.append(w)
+
 
 
     print('Arnoldi converged with ', j+1, ' step')
@@ -362,6 +336,7 @@ def arnoldi_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,m
 
         ## generate the new vector
         bj = norm_func(w,w,rdmat)
+    
 
         if abs(bj) < 0.00001:
             print('coupling bj is small: ', bj, j)
@@ -566,3 +541,105 @@ def print_op(chi, ms):
  #           for iket in kets:
  #               dket=kcf.GetKet(iket)
  #               chiv.append(chi.GetTwoBody(ch,ch,ibra,iket))
+
+
+
+def dcom22232(chi2_in,chi_in,Hs,tdm_op):
+    chi=chi_in*1.
+    chi2=chi2_in*1.
+    rst=0.
+
+  #  chi2.EraseTwoBody()
+  #  chi.EraseOneBody()
+
+    opa=chi*0
+    opa.SetHermitian()
+    
+    op1 = chi*0.
+    op1.SetAntiHermitian()
+#    cm.comm121ss(chi2,Hs, op1)
+#    cm.comm122ss(op1,chi,opa)
+#    rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+#    #print("Term a: ", rst)
+#    
+#    op1 = op1*0.
+#    cm.comm122ss(chi2,Hs, op1)
+#    opa=opa*0
+#    cm.comm222_pp_hhss(op1,chi,opa)
+#    cm.comm222_phss(op1,chi,opa)
+#    
+#    op1 = op1*0.
+#    cm.comm222_pp_hhss(Hs,chi,op1)
+#    cm.comm222_phss(Hs,chi,op1)
+#    opb=opa*0
+#    cm.comm122ss(chi2,op1,opb)
+#    rst+=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+#    #print('Term 2a: ',rst)
+#    rst-=gm.GetVSEOM_Overlap_rd(opb,tdm_op)
+#    #print('Term 2b: ',rst)
+#    
+#    
+#    op1 = chi*0.
+#    op1.SetAntiHermitian()
+#    cm.comm121ss(chi2,chi, op1)
+#    opa=chi*0
+#    opa.SetHermitian()
+#    cm.comm122ss(Hs,op1,opa)
+#    rst+=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+#    #print('Term c: ',rst)
+    
+    
+    chi=chi_in*1.
+    chi.EraseOneBody()
+    chi2=chi2_in*1.
+    chi2.EraseOneBody()
+    op1=op1*0.
+    opa=opa*0
+    cm.comm221ss(chi2,chi,op1)
+    cm.comm122ss(Hs,op1,opa)
+    rst+=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+    print('Term d: ',rst)
+    
+    
+    chi=chi_in*1.
+    chi.EraseOneBody()
+    chi2=chi2_in*1.
+    chi2.EraseOneBody()
+    op1=op1*0.
+    opa=opa*0
+    op1.SetAntiHermitian()
+    cm.comm222_pp_hhss(chi2,Hs,op1)
+    cm.comm222_phss(chi2,Hs,op1)
+    cm.comm222_pp_hhss(op1,chi,opa)
+    cm.comm222_phss(op1,chi,opa)
+    nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+    rst+=nm
+    print('Term f-a: ',nm)
+    
+
+    op1=op1*0.
+    opa=opa*0
+    cm.comm222_pp_hhss(chi2,Hs,op1)
+    cm.comm222_phss(op1,chi,opa)
+    cm.comm222_pp_hhss(op1,chi,opa)
+
+    nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+    print('Term f-b: ',nm)
+    rst-=nm
+
+    
+    
+    chi=chi_in*1.
+    chi.EraseOneBody()
+    chi2=chi2_in*1.
+    chi2.EraseOneBody()
+    op1=op1*0.
+    opa=opa*0
+    cm.comm221ss(chi2,Hs,op1)
+#    op1.PrintOneBody()
+    cm.comm122ss(op1,chi,opa)
+    nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+    rst+=nm
+    print('Term g: ',nm)
+
+    return(rst)

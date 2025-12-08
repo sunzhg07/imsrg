@@ -110,9 +110,10 @@ imsrgsolver.Solve()
 #rw.WriteTokyo( HNO, valence_fname,'')
 Hs = imsrgsolver.GetH_s()
 Hs.ZeroBody=0.
+#gm.force_decouple(Hs)
 
 
-tdm_op=read_tdm("he8.ref",ms)
+tdm_op=read_tdm("he6.ref",ms)
 
 nm=gm.GetVSEOM_Overlap_rd(Hs,tdm_op)
 
@@ -124,106 +125,106 @@ eom.ConstructProjectMatrix()
 
 max_iter=3
 unt = UnitTest(ms)
-rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,2,1
+rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,3,1
 h3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
 h4= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
+h3.ThreeBody.SetMode("pn")
+h4.ThreeBody.SetMode("pn")
+h3.EraseThreeBody()
+h4.EraseThreeBody()
 chi= gm.GetEOM_ladder(h3,0)
 chi2= gm.GetEOM_ladder(h4,0)
 
 
-cnorm=Norm_vs_new(chi,chi,tdm_op)
-print('Original norm: ', cnorm)
-print('Original euclidean norm: ',chi.Norm())
 eom.ProjectOprator(chi)
+eom.ProjectOprator(chi2)
+
 cnorm=Norm_vs_new(chi,chi,tdm_op)
-print('Norm without null vectors: ', cnorm)
-print('projected euclidean norm: ',chi.Norm())
 chi=chi/np.sqrt(cnorm)
-print('new  norm: ',chi.Norm())
 
-cnorm = Norm3(chi,chi2,Hs, ms,tdm_op)
-print('Norm3: ', cnorm)
-cnorm = Norm3_new(chi,chi2,Hs, ms,tdm_op)
-print('Norm3: ', cnorm)
+cnorm=Norm_vs_new(chi2,chi2,tdm_op)
+chi2=chi2/np.sqrt(cnorm)
 
-vec = htc_vs(Hs, chi,eom.ProjectOprator)
-cnorm=Norm_vs_new(chi,vec,tdm_op)
-print('Norm without null vectors: ', cnorm)
+cnorm=Norm_vs_new(chi,chi2,tdm_op)
+chi2=chi2 - cnorm*chi
 
-cnorm = Norm3(chi,chi,Hs, ms,tdm_op)
-print('Norm3: ', cnorm)
+cnorm=Norm_vs_new(chi2,chi2,tdm_op)
+chi2=chi2/np.sqrt(cnorm)
 
-#e,v1,v2=lanczos_proc(htc_vs, Norm_vs_new, Norm3_new,Hs, chi, 24, 1,ms,tdm_op,eom.ProjectOprator)
-e,vs,v2=arnoldi_proc_new(htc_vs, Norm_vs_new, Norm3_new, Hs, chi, 144,2,ms,tdm_op,eom.ProjectOprator)
-### Generate all configurations
-#
-##cfs=[]
-##
-#### 
-##for itz in [1]:
-##    for pp in [0]:
-##        for jj in [0,2]:
-##            ch=ms.GetTwoBodyChannelIndex(jj,pp,itz)
-##            print(jj,pp,itz,ch,'channel')
-##            kcf=ms.GetTwoBodyChannel(ch)
-##            bras=kcf.GetKetIndex_qq()+kcf.GetKetIndex_qv()
-##            kets=kcf.GetKetIndex_vv()
-##            for ibra in bras:
-##                dbra=kcf.GetKet(ibra)
-##                for iket in kets:
-##                    dket=kcf.GetKet(iket)
-##                    cfs.append([dbra.p,dbra.q,dket.p,dket.q,jj,pp,itz])
-##print(len(cfs))
-######## ppvh
-#####nch=ms.GetNumberTwoBodyChannels()
-#####
-#####for ich in range(nch):
-#####    dch = ms.GetTwoBodyChannel(ich)
-#####    jj=dch.J
-#####    pp=dch.parity
-#####    tt=dch.Tz
-#####    ch=ich
-#####
-#####    kcf=dch
-#####    if(kcf.GetNumberKets() == 0):
-#####        continue
-#####    bras=kcf.GetKetIndex_qq()+kcf.GetKetIndex_qv()+kcf.GetKetIndex_vv()
-#####    kets=kcf.GetKetIndex_vc()
-#####    for ibra in bras:
-#####        dbra=kcf.GetKet(ibra)
-#####        for iket in kets:
-#####            dket=kcf.GetKet(iket)
-#####            cfs.append([dbra.p,dbra.q,dket.p,dket.q,jj,pp,tt])
-##dims=len(cfs)
-##
-##print(dims)
-##
-##h3mat=np.zeros([dims,dims])
-##nmat=np.zeros([dims,dims])
-##print(cfs)
-##
-##
-##for i,cfl in enumerate(cfs):
-##    ql=Hs*0.
-##    ql.SetTwoBody(cfl[4],cfl[5],cfl[6],cfl[4],cfl[5],cfl[6], cfl[0],cfl[1],cfl[2],cfl[3],1.)
-##    for j,cfr in enumerate(cfs):
-##        qr=Hs*0.
-##        qr.SetTwoBody(cfr[4],cfr[5],cfr[6],cfr[4],cfr[5],cfr[6], cfr[0],cfr[1],cfr[2],cfr[3],1.)
-##        nmat[i,j] = Norm_vs_new4(ql,qr,rdms)
-##        qv=Hs*0.
-##        qv=htc_vs(Hs, qr)
-##        h3mat[i,j]=Norm4(ql,qr,Hs,ms,tdm_op)
-##np.save("nmat_he6_3b.npy", nmat)
-##np.save("h3mat_he6_3b.npy",h3mat)
-###
-##hmatbare=[]
-##for i,cfl in enumerate(cfs):
-##    ql=Hs*0.
-##    ql.SetTwoBody(cfl[4],cfl[5],cfl[6],cfl[4],cfl[5],cfl[6], cfl[0],cfl[1],cfl[2],cfl[3],1.)
-##    qv=htc_vs(Hs, ql)
-##    qout=print_op(qv,ms)
-##    hmatbare.append(qout)
-##hmatbare=np.array(hmatbare)
-##np.save("hmat_he6_3b.npy", hmatbare)
-#
-#
+
+vec_a = htc_vs(Hs, chi2,eom.ProjectOprator)
+cnorm1=Norm_vs_new(chi,vec_a,tdm_op)
+print("<1h2> 2b : ",cnorm1)
+
+vec_a = htc_vs(Hs, chi,eom.ProjectOprator)
+cnorm2=Norm_vs_new(chi2,vec_a,tdm_op)
+print("<2h1> 2b : ",cnorm2)
+
+cnorm1+=Norm3_new(chi,chi2,Hs,ms,tdm_op)
+cnorm2+=Norm3_new(chi2,chi,Hs,ms,tdm_op)
+
+print("<1h2/2h1> diff 2b+3b : ",cnorm1-cnorm2,cnorm1, cnorm2)
+
+print(chi.Norm())
+print(chi2.Norm())
+
+chi_back =chi*1.
+chi2_back =chi2*1.
+
+
+h3=h3*0.
+opa=chi*0.
+
+h3.SetAntiHermitian()
+cm.comm223ss(Hs,chi,h3)
+#cm.comm231ss(chi2,h3,opa)
+#cm.comm232ss(chi2,h3,opa)
+cm.comm132ss(chi2,h3,opa)
+rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+print('comm131: ',rst)
+opa=opa*0.
+cm.comm232ss(chi2,h3,opa)
+rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+print('comm232: ',rst)
+a2321=rst
+opa=opa*0.
+cm.comm231ss(chi2,h3,opa)
+rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+print('comm231: ',rst)
+
+
+
+h3=h3*0.
+opa=chi*0.
+
+h3.SetAntiHermitian()
+cm.comm223ss(Hs,chi2,h3)
+#cm.comm231ss(chi2,h3,opa)
+#cm.comm232ss(chi2,h3,opa)
+cm.comm132ss(chi,h3,opa)
+rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+print('comm131: ',rst)
+opa=opa*0.
+cm.comm232ss(chi,h3,opa)
+rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+print('comm232: ',rst)
+a2322=rst
+opa=opa*0.
+cm.comm231ss(chi,h3,opa)
+rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+print('comm231: ',rst)
+print('Diff 232: ', a2321-a2322)
+
+Hs.EraseOneBody()
+
+nm1=dcom22232(chi2,chi,Hs,tdm_op)
+print(nm1)
+nm2=dcom22232(chi,chi2,Hs,tdm_op)
+print(nm2)
+
+print('Diff 232: ', nm1-nm2)
+
+
+#e,v1,v2=lanczos_proc(htc_vs, Norm_vs_new, Norm3_new,Hs, chi, 4, 1,ms,tdm_op,eom.ProjectOprator)
+#e,vs,v2=arnoldi_proc_new(htc_vs, Norm_vs_new, Norm3_new, Hs, chi, 17,4,ms,tdm_op,eom.ProjectOprator)
+#e,vs,v2=arnoldi_proc(htc_vs, Norm_vs_new, Norm3_new, Hs, chi, 24,2,ms,tdm_op,eom.ProjectOprator)
