@@ -11,52 +11,38 @@ gm=Generator()
     ## initialize the T and D^dagger
 
 
-def htc(Haml, chi):
-    ## generate a antihermit chi
-    chi_d=chi*0
-    chi_d = gm.GetVSEOM_ladder(chi, 1)
-    chi_d.SetAntiHermitian()
+def norm_single(eom, T1, T2, rdm=None):
+    return(eom.GetVSEOM_Overlap_single(T1,T2))
 
+
+def htc_single(eom,Haml, chi,proj=None):
     ht_plus= chi*0
-    ht_minus= chi*0
-    ## chi is hermitian, hplus is antihermitian
-
     ht_plus.SetAntiHermitian()
-    ht_minus.SetHermitian()
-
     ht_plus = cm.Commutator(Haml, chi )
-    ht_minus = cm.Commutator(Haml, chi_d )
-
-
-    heom1= gm.GetVSEOM_ladder(ht_plus, 0)
-    heom2= gm.GetVSEOM_ladder(ht_minus, 0)
-   # hod=heom1
-    hod = (heom1+heom2)/2
-
+    heom1= eom.GetVSEOM_ladder_single(ht_plus, 0)
+    hod = heom1
     return(hod)
 
-def htc_vs(Haml, chi,prjop):
+def htc_vs(eom, Haml, chi,prjop):
 
     chi_d=chi*0
     chi_d.SetAntiHermitian()
-    chi_d = gm.GetVSEOM_ladder(chi, 1)
+    chi_d = eom.GetVSEOM_ladder_single(chi, 1)
     ht_minus= chi*0
     ht_minus.SetHermitian()  ## [h,chi_d]
     ht_minus = cm.Commutator(Haml, chi_d )
-    heom= gm.GetVSEOM_ladder(ht_minus, 0)
+    heom= eom.GetVSEOM_ladder_single(ht_minus, 0)
     #prjop(heom)
     return(heom)
 
 
-def Norm(T1, T2):
-    return(gm.GetEOM_Overlap(T1,T2))
 
 
 
 def Norm_vs_new(T1,T2,rdms):
     T2d=T1*0.
     T2d.SetAntiHermitian()
-    T2d=gm.GetVSEOM_ladder(T2,1)
+    T2d=eom.GetVSEOM_ladder_single(T2,1)
     nop=T1*0.
     rst=0.
     nop.SetHermitian()
@@ -76,8 +62,8 @@ def Norm3(t1,t2,haml,ms,rdms):
     t1d.SetAntiHermitian()
     t2d.SetAntiHermitian()
 
-    t1d=gm.GetVSEOM_ladder(t1,1)
-    t2d=gm.GetVSEOM_ladder(t2,1)
+    t1d=eom.GetVSEOM_ladder_single(t1,1)
+    t2d=eom.GetVSEOM_ladder_single(t2,1)
     rst=0.
 
     nop=t1*0.0
@@ -135,7 +121,7 @@ def Norm3_new(t1,t2,haml,ms,rdms):
     t2d=t1*0.
     t2d.SetAntiHermitian()
 
-    t2d=gm.GetVSEOM_ladder(t2,1)
+    t2d=eom.GetVSEOM_ladder_single(t2,1)
     rst=0.
     nop=t1*0.0
     t3*=0.
@@ -150,13 +136,13 @@ def Norm3_new(t1,t2,haml,ms,rdms):
 
 import numpy as np
 
-def lanczos_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,ms,rdmat,prjop):
+def lanczos_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_three=None,rdmat=None,prjop=None):
     lanczos_vector = []
     hall = np.zeros([max_iter,max_iter])
     hall[0,0]=0.
 
     ## normalize it to 1
-    nn=norm_func(vi,vi,rdmat)
+    nn=norm_func(eom,vi,vi,rdmat)
     print('initial norm vector', nn)
     vi=vi/np.sqrt(nn)
     lanczos_vector.append(vi)
@@ -166,44 +152,26 @@ def lanczos_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,m
 
     for j in range(max_iter):
 
-        w = hv_func(haml,lanczos_vector[j],prjop)
-        ai=norm_func(w,lanczos_vector[j],rdmat)
-        ai+=norm_three(lanczos_vector[j],lanczos_vector[j],haml,ms,rdmat)
+        w = hv_func(eom,haml,lanczos_vector[j],prjop)
+        ai=norm_func(eom, w,lanczos_vector[j],rdmat)
+        hall[j,j]=ai
 
         if(j>0):
             w=w-ai*lanczos_vector[j]-bj*lanczos_vector[j-1]
         else:
             w=w-ai*lanczos_vector[j]
 
-        hall[j,j]=ai
-        nm=norm_func(w,w,rdmat)
-        print("naive: ", np.sqrt(nm))
-        vec = hv_func(haml, w,prjop)
-        nm=norm_func(lanczos_vector[j],vec,rdmat)
-        nm+=norm_three(lanczos_vector[j],w,haml,ms,rdmat)
+        nm=norm_func(eom, w,w,rdmat)
         bj = np.sqrt(nm)
-        print("new bj: ", bj)
-        #w1=w/bj
-
-        vec=hv_func(haml,lanczos_vector[j],prjop)
-        nm2=norm_func(w,vec,rdmat)
-        nm3=norm_three(w,lanczos_vector[j],haml, ms,rdmat)
-        bjj=nm2+nm3
-        print('Beta, bj: ', bjj,nm2,nm3)
-
         w1=w/bj
-
-        #bj = np.sqrt(norm_func(w,w))
+        if(j<max_iter-1):
+            hall[j,j+1]=bj
+            hall[j+1,j]=bj
 
         if bj < 0.01 :
             print('bj is small')
             break
         lanczos_vector.append(w/bj)
-
-        if(j<max_iter-1):
-            hall[j,j+1]=bj
-            hall[j+1,j]=bj
-        print(j,ai,bj)
         if(j > 2 and j%1 == 0):
             e,v = np.linalg.eig(hall[0:j,0:j])
             e=np.sort(e)
@@ -549,14 +517,14 @@ def dcom22232(chi2_in,chi_in,Hs,tdm_op):
     chi2=chi2_in*1.
     rst=0.
 
-  #  chi2.EraseTwoBody()
-  #  chi.EraseOneBody()
+    chi2.EraseTwoBody()
+    chi.EraseOneBody()
 
     opa=chi*0
     opa.SetHermitian()
     
-    op1 = chi*0.
-    op1.SetAntiHermitian()
+#    op1 = chi*0.
+#    op1.SetAntiHermitian()
 #    cm.comm121ss(chi2,Hs, op1)
 #    cm.comm122ss(op1,chi,opa)
 #    rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
@@ -587,59 +555,77 @@ def dcom22232(chi2_in,chi_in,Hs,tdm_op):
 #    cm.comm122ss(Hs,op1,opa)
 #    rst+=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
 #    #print('Term c: ',rst)
-    
-    
+#    
+#    
+#    chi=chi_in*1.
+#    chi.EraseOneBody()
+#    chi2=chi2_in*1.
+#    chi2.EraseOneBody()
+#    op1=op1*0.
+#    opa=opa*0
+#    cm.comm221ss(chi2,chi,op1)
+#    cm.comm122ss(Hs,op1,opa)
+#    rst+=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+#    print('Term d: ',rst)
+#    
+#    
+#    chi=chi_in*1.
+#    chi.EraseOneBody()
+#    chi2=chi2_in*1.
+#    chi2.EraseOneBody()
+#    op1=op1*0.
+#    opa=opa*0
+#    op1.SetAntiHermitian()
+#    cm.comm222_pp_hhss(chi2,Hs,op1)
+#    cm.comm222_phss(chi2,Hs,op1)
+#    cm.comm222_pp_hhss(op1,chi,opa)
+#    cm.comm222_phss(op1,chi,opa)
+#    nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+#    rst+=nm
+#    print('Term f-a: ',nm)
+#    
+#
+#    op1=op1*0.
+#    opa=opa*0
+#    cm.comm222_pp_hhss(chi2,Hs,op1)
+#    cm.comm222_phss(op1,chi,opa)
+#    cm.comm222_pp_hhss(op1,chi,opa)
+#
+#    nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+#    print('Term f-b: ',nm)
+#    rst-=nm
+#
+#    
+#    
+#    chi=chi_in*1.
+#    chi.EraseOneBody()
+#    chi2=chi2_in*1.
+#    chi2.EraseOneBody()
+#    op1=op1*0.
+#    opa=opa*0
+#    cm.comm221ss(chi2,Hs,op1)
+#    cm.comm122ss(op1,chi,opa)
+#    nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+#    rst+=nm
+#    print('Term g: ',nm)
+
+
+
     chi=chi_in*1.
-    chi.EraseOneBody()
     chi2=chi2_in*1.
     chi2.EraseOneBody()
-    op1=op1*0.
-    opa=opa*0
-    cm.comm221ss(chi2,chi,op1)
-    cm.comm122ss(Hs,op1,opa)
-    rst+=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-    print('Term d: ',rst)
-    
-    
-    chi=chi_in*1.
     chi.EraseOneBody()
-    chi2=chi2_in*1.
-    chi2.EraseOneBody()
-    op1=op1*0.
-    opa=opa*0
+
+    opa=chi*0
+    opa.SetHermitian()
+    op1 = chi*0.
     op1.SetAntiHermitian()
+
     cm.comm222_pp_hhss(chi2,Hs,op1)
     cm.comm222_phss(chi2,Hs,op1)
-    cm.comm222_pp_hhss(op1,chi,opa)
-    cm.comm222_phss(op1,chi,opa)
+    cm.comm221ss(op1,chi,opa)
     nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
     rst+=nm
-    print('Term f-a: ',nm)
-    
 
-    op1=op1*0.
-    opa=opa*0
-    cm.comm222_pp_hhss(chi2,Hs,op1)
-    cm.comm222_phss(op1,chi,opa)
-    cm.comm222_pp_hhss(op1,chi,opa)
-
-    nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-    print('Term f-b: ',nm)
-    rst-=nm
-
-    
-    
-    chi=chi_in*1.
-    chi.EraseOneBody()
-    chi2=chi2_in*1.
-    chi2.EraseOneBody()
-    op1=op1*0.
-    opa=opa*0
-    cm.comm221ss(chi2,Hs,op1)
-#    op1.PrintOneBody()
-    cm.comm122ss(op1,chi,opa)
-    nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-    rst+=nm
-    print('Term g: ',nm)
 
     return(rst)

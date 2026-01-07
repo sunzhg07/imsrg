@@ -662,17 +662,6 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("Update", &Generator::Update, py::arg("H"), py::arg("Eta"))
           .def("GetHod_SingleRef", &Generator::GetHod_SingleRef, py::arg("H"))
           .def("GetHod", &Generator::GetHod, py::arg("H"))
-          .def("Get_adjoint", &Generator::Get_adjoint, py::arg("H"))
-          .def("GetOverlap", &Generator::GetOverlap, py::arg("H1"), py::arg("H2"))
-          .def("GetEOM_ladder", &Generator::GetEOM_ladder, py::arg("H"), py::arg("herm"))
-          .def("GetEOM_Overlap", &Generator::GetEOM_Overlap, py::arg("H1"), py::arg("H2"))
-          .def("GetVSEOM_ladder", &Generator::GetVSEOM_ladder, py::arg("H"), py::arg("herm"))
-          .def("GetVSEOM_Overlap", &Generator::GetVSEOM_Overlap, py::arg("H"))
-          .def("GetVSEOM_Overlap_rd", &Generator::GetVSEOM_Overlap_rd, py::arg("H"), py::arg("Rd"))
-          .def("force_decouple", &Generator::force_decouple, py::arg("H"))
-          .def("GetHod_CC", &Generator::GetHod_CC, py::arg("H"), py::arg("lr"))
-          .def("GetHod_SingleRef_left", &Generator::GetHod_SingleRef_left, py::arg("H"))
-          .def("GetHod_SingleRef_right", &Generator::GetHod_SingleRef_right, py::arg("H"))
           ;
 
       py::class_<GeneratorPV, Generator>(m, "GeneratorPV")
@@ -884,14 +873,21 @@ PYBIND11_MODULE(pyIMSRG, m)
 
 
       py::class_<EOM>(m, "EOM")
-          .def(py::init<Operator &>())
-          .def(py::init<ModelSpace &, Operator &>())
+          .def(py::init<Operator &, Operator &, int,int,int>())
+          .def(py::init<Operator &, int,int,int>())
           .def("ConstructConfigs", &EOM::ConstructConfigs)
           .def("PrintConfigs", &EOM::PrintConfigs)
           .def("ConstructProjectMatrix", &EOM::ConstructProjectMatrix)
           .def("ConstructNormMatrix", &EOM::ConstructNormMatrix)
           .def("Setup_rdm", &EOM::Setup_rdm)
-          .def("ProjectOprator", &EOM::ProjectOprator, py::arg("Qin"));
+          .def("ProjectOprator", &EOM::ProjectOprator, py::arg("Qin"))
+          .def("force_decouple", &EOM::force_decouple, py::arg("H"))
+
+          .def("GetVSEOM_Overlap_single", &EOM::GetVSEOM_Overlap_single, py::arg("H1"),  py::arg("H2"))
+          .def("GetVSEOM_Overlap_multiref", &EOM::GetVSEOM_Overlap_multiref, py::arg("H"), py::arg("Rd"))
+          .def("GetVSEOM_ladder_single", &EOM::GetVSEOM_ladder_single, py::arg("H"), py::arg("herm"))
+          .def("GetVSEOM_ladder_multiref", &EOM::GetVSEOM_ladder_multiref, py::arg("H"), py::arg("herm"))
+          ;
 
       py::class_<RPA>(m, "RPA")
           .def(py::init<Operator &>())

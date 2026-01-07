@@ -87,19 +87,9 @@ class Generator
   double Get2bDenominator(int ch_bra, int ch_ket, int ibra, int iket);
   double Get2bDenominator_Jdep(int ch, int ibra, int iket);
   double Get3bDenominator(int i, int j, int k, int l, int m, int n);
-
   Operator GetHod_SingleRef( Operator& H );
-  Operator GetHod_SingleRef_left( Operator& H );
-  Operator GetHod_SingleRef_right( Operator& H );
-  Operator Get_adjoint(Operator &H);
   Operator GetHod_ShellModel( Operator& H );
-  double GetOverlap(Operator &H1, Operator &H2);
-  Operator  GetEOM_ladder(Operator& H , int herm);
-  double  GetEOM_Overlap(Operator& H1, Operator& H2 );
-  Operator  GetVSEOM_ladder(Operator& H , int herm);
-  double  GetVSEOM_Overlap(Operator& H);
-  double  GetVSEOM_Overlap_rd(Operator& H, Operator& Rd);
-  void force_decouple(Operator& H);
+
   
 
 };

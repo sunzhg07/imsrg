@@ -112,10 +112,11 @@ Hs = imsrgsolver.GetH_s()
 Hs.ZeroBody=0.
 #gm.force_decouple(Hs)
 
+tdm_op=rdm_el();
 
-tdm_op=read_tdm("he6.ref",ms)
+tdm_op.read_tdm("he6.ref",ms)
 
-nm=gm.GetVSEOM_Overlap_rd(Hs,tdm_op)
+nm=tdm_op.GetVSEOM_Overlap_rd(Hs)
 
 print('reference energy: ', nm, 'vs [ -4.19234292  9.75174484 ] in nmax2 for he6_2',)
 eom = EOM(ms,tdm_op)
@@ -128,10 +129,7 @@ unt = UnitTest(ms)
 rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,3,1
 h3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
 h4= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
-h3.ThreeBody.SetMode("pn")
-h4.ThreeBody.SetMode("pn")
-h3.EraseThreeBody()
-h4.EraseThreeBody()
+
 chi= gm.GetEOM_ladder(h3,0)
 chi2= gm.GetEOM_ladder(h4,0)
 
@@ -165,55 +163,32 @@ cnorm2+=Norm3_new(chi2,chi,Hs,ms,tdm_op)
 
 print("<1h2/2h1> diff 2b+3b : ",cnorm1-cnorm2,cnorm1, cnorm2)
 
-print(chi.Norm())
-print(chi2.Norm())
-
+#print(chi.Norm())
+#print(chi2.Norm())
+#
 chi_back =chi*1.
 chi2_back =chi2*1.
 
+Hs.EraseThreeBody()
 
 h3=h3*0.
 opa=chi*0.
-
 h3.SetAntiHermitian()
 cm.comm223ss(Hs,chi,h3)
-#cm.comm231ss(chi2,h3,opa)
-#cm.comm232ss(chi2,h3,opa)
-cm.comm132ss(chi2,h3,opa)
-rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-print('comm131: ',rst)
-opa=opa*0.
-cm.comm232ss(chi2,h3,opa)
-rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-print('comm232: ',rst)
-a2321=rst
-opa=opa*0.
 cm.comm231ss(chi2,h3,opa)
 rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+a231a=rst
 print('comm231: ',rst)
-
-
 
 h3=h3*0.
 opa=chi*0.
-
 h3.SetAntiHermitian()
 cm.comm223ss(Hs,chi2,h3)
-#cm.comm231ss(chi2,h3,opa)
-#cm.comm232ss(chi2,h3,opa)
-cm.comm132ss(chi,h3,opa)
-rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-print('comm131: ',rst)
-opa=opa*0.
-cm.comm232ss(chi,h3,opa)
-rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-print('comm232: ',rst)
-a2322=rst
-opa=opa*0.
 cm.comm231ss(chi,h3,opa)
 rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
+a231b=rst
 print('comm231: ',rst)
-print('Diff 232: ', a2321-a2322)
+print('Diff 231: ', a231a-a231b)
 
 Hs.EraseOneBody()
 
@@ -222,7 +197,7 @@ print(nm1)
 nm2=dcom22232(chi,chi2,Hs,tdm_op)
 print(nm2)
 
-print('Diff 232: ', nm1-nm2)
+print('Diff 231: ', nm1-nm2)
 
 
 #e,v1,v2=lanczos_proc(htc_vs, Norm_vs_new, Norm3_new,Hs, chi, 4, 1,ms,tdm_op,eom.ProjectOprator)

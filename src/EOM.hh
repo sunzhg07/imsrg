@@ -20,39 +20,47 @@
 #ifndef EOM_hh
 #define EOM_hh 1
 
-
+#include "Generator.hh"
 #include "ModelSpace.hh"
 #include "Operator.hh"
-#include "Generator.hh"
 
-
-class EOM
-{
- public:
-  // Fields
-  ModelSpace * modelspace; ///< Pointer to the associated modelspace
+class EOM {
+public:
+  // essential fields
+  ModelSpace *modelspace; ///< Pointer to the associated modelspace
   Operator H;
+  // JPT for the EOM, angular momentum, parity and isospin change
+  int J2 = 0;
+  int parity = 0;
+  int itz = 0;
+
+  // The following are used for the multi-reference EOM only
   Operator rdm;
-  arma::sp_mat Nkernel; 
-  arma::sp_mat Prj_kernel; 
-  //arma::mat Nkernel;  
-  
+  arma::sp_mat Nkernel;
+  arma::sp_mat Prj_kernel;
+  // arma::mat Nkernel;
+
   arma::vec Energies;
   // configurations
   std::vector<std::array<index_t, 4>> eom_confs;
-  index_t qv_start,qv_end,qv_dim;
-  index_t ph_start,ph_end,ph_dim;
-  index_t ppvv_start,ppvv_end,ppvv_dim;
-  index_t pphv_start,pphv_end,pphv_dim;
-  index_t pphh_start,pphh_end,pphh_dim;
+  index_t qv_start, qv_end, qv_dim;
+  index_t ph_start, ph_end, ph_dim;
+  index_t ppvv_start, ppvv_end, ppvv_dim;
+  index_t pphv_start, pphv_end, pphv_dim;
+  index_t pphh_start, pphh_end, pphh_dim;
   size_t channel;
-  index_t eom_dims=0;
-
+  index_t eom_dims = 0;
 
   // Methods
-  EOM(); ///< Default constructor
-  EOM(ModelSpace& ms, Operator& rdm);
-  EOM(Operator& H);
+  EOM(Operator &H, Operator &rdm, int J2, int parity, int itz);
+  EOM(Operator &H, int J2, int parity, int itz);
+
+  void force_decouple(Operator &H);
+
+  double GetVSEOM_Overlap_single(Operator &H1, Operator &H2) ;
+  double GetVSEOM_Overlap_multiref(Operator &H, Operator &Rd) ;
+  Operator GetVSEOM_ladder_single(Operator &H, int herm) ;
+  Operator GetVSEOM_ladder_multiref(Operator &H, int herm) ;
 
   void ConstructConfigs();
   void PrintConfigs();
@@ -60,13 +68,12 @@ class EOM
   void ConstructNormMatrix();
   void ConstructProjectMatrix();
   void SolveEOM();
-  double Core_Diagram(size_t a, size_t b,size_t c,size_t d,size_t e,size_t f,double j1, double j2 );
+  double Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
+                      size_t f, double j1, double j2);
   arma::vec GetEnergies();
-  void SqrtMat(arma::mat& Amat, size_t n);
-  void ProjectOprator(Operator & Qin);
+  void SqrtMat(arma::mat &Amat, size_t n);
+  void ProjectOprator(Operator &Qin);
   void block_svd(std::vector<int> &coupled_vector);
 };
-
-
 
 #endif
