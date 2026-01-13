@@ -28,7 +28,7 @@ class EOM {
 public:
   // essential fields
   ModelSpace *modelspace; ///< Pointer to the associated modelspace
-  Operator H;
+  Operator Hs;
   // JPT for the EOM, angular momentum, parity and isospin change
   int J2 = 0;
   int parity = 0;
@@ -52,15 +52,15 @@ public:
   index_t eom_dims = 0;
 
   // Methods
-  EOM(Operator &H, Operator &rdm, int J2, int parity, int itz);
-  EOM(Operator &H, int J2, int parity, int itz);
+  EOM(Operator &Hs, Operator &rdm, int J2, int parity, int itz);
+  EOM(Operator &Hs, int J2, int parity, int itz);
 
   void force_decouple(Operator &H);
 
-  double GetVSEOM_Overlap_single(Operator &H1, Operator &H2) ;
-  double GetVSEOM_Overlap_multiref(Operator &H, Operator &Rd) ;
-  Operator GetVSEOM_ladder_single(Operator &H, int herm) ;
-  Operator GetVSEOM_ladder_multiref(Operator &H, int herm) ;
+  double GetVSEOM_Overlap_single(Operator &H1, Operator &H2);
+  double GetVSEOM_Overlap_multiref(Operator &H);
+  Operator GetVSEOM_ladder_single(Operator &H, int herm);
+  Operator GetVSEOM_ladder_multiref(Operator &H, int herm);
 
   void ConstructConfigs();
   void PrintConfigs();

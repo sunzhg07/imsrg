@@ -11,9 +11,78 @@ gm=Generator()
     ## initialize the T and D^dagger
 
 
-def norm_single(eom, T1, T2, rdm=None):
+def norm_single(eom, T1, T2):
     return(eom.GetVSEOM_Overlap_single(T1,T2))
 
+def norm_multiref(eom, T1, T2):
+    T2d=T1*0.
+    T2d.SetAntiHermitian()
+    T2d=eom.GetVSEOM_ladder_multiref(T2,1)
+    nop=T1*0.
+    nop.SetHermitian()
+    nop= cm.Commutator(T1,T2d)
+    rst = eom.GetVSEOM_Overlap_multiref(nop)
+    return(rst/2.)
+
+def norm3_multiref(eom, t1,t2,haml,ms):
+
+    rank_j, parity, rank_Tz, particle_rank = 0,0,0,3
+    t3 = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
+    t3.ThreeBody.SetMode("pn")
+    t3.SetHermitian()
+    t3*=0.
+
+    rst=0.
+
+    nop=t1*0.0
+    nop.SetHermitian()
+
+    cm.comm223ss(haml,t2,t3)
+    cm.comm232ss(t1,t3,nop)
+    cm.comm231ss(t1,t3,nop)
+    #cm.comm132ss(t1,t3,nop)
+    rst = eom.GetVSEOM_Overlap_multiref(nop)
+    return(rst/2.)
+
+
+def Norm3_new(eom,t1,t2,haml,ms):
+
+    rank_j, parity, rank_Tz, particle_rank = 0,0,0,3
+    t3 = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
+    t3.ThreeBody.SetMode("pn")
+    t2d=t1*0.
+    t2d.SetAntiHermitian()
+
+    t2d=eom.GetVSEOM_ladder_multiref(t2,1)
+    rst=0.
+    nop=t1*0.0
+    t3*=0.
+    nop.SetHermitian()
+    t3.SetAntiHermitian()
+    cm.comm223ss(haml,t2,t3)
+    cm.comm232ss(t1,t3,nop)
+    cm.comm231ss(t1,t3,nop)
+    cm.comm132ss(t1,t3,nop)
+    rst = eom.GetVSEOM_Overlap_multiref(nop)
+    return(rst/2.)
+
+def norm3_multiref_fact(eom, t1,t2,haml,ms):
+
+    t2d=t1*0.
+    t2d.SetAntiHermitian()
+
+    t2d=eom.GetVSEOM_ladder_multiref(t2,1)
+    rst=0.
+    nop=t1*0.0
+    t3*=0.
+    nop.SetHermitian()
+    t3.SetAntiHermitian()
+    cm.comm223ss(haml,t2,t3)
+    cm.comm232ss(t1,t3,nop)
+    cm.comm231ss(t1,t3,nop)
+    cm.comm132ss(t1,t3,nop)
+    rst = eom.GetVSEOM_Overlap_multiref(nop)
+    return(rst/2.)
 
 def htc_single(eom,Haml, chi,proj=None):
     ht_plus= chi*0
@@ -23,126 +92,37 @@ def htc_single(eom,Haml, chi,proj=None):
     hod = heom1
     return(hod)
 
-def htc_vs(eom, Haml, chi,prjop):
+def htc_multiref(eom, Haml, chi,prjop=None):
 
     chi_d=chi*0
     chi_d.SetAntiHermitian()
-    chi_d = eom.GetVSEOM_ladder_single(chi, 1)
+    chi_d = eom.GetVSEOM_ladder_multiref(chi, 1)
     ht_minus= chi*0
-    ht_minus.SetHermitian()  ## [h,chi_d]
+    ht_minus.SetHermitian()  
     ht_minus = cm.Commutator(Haml, chi_d )
-    heom= eom.GetVSEOM_ladder_single(ht_minus, 0)
-    #prjop(heom)
+    heom= eom.GetVSEOM_ladder_multiref(ht_minus, 0)
+    if(prjop != None):
+        prjop(heom)
     return(heom)
 
 
 
 
 
-def Norm_vs_new(T1,T2,rdms):
-    T2d=T1*0.
-    T2d.SetAntiHermitian()
-    T2d=eom.GetVSEOM_ladder_single(T2,1)
-    nop=T1*0.
-    rst=0.
-    nop.SetHermitian()
-    nop= cm.Commutator(T1,T2d)
-    rst = gm.GetVSEOM_Overlap_rd(nop,rdms)
-    return(rst/2.)
 
 
 
-def Norm3(t1,t2,haml,ms,rdms):
 
-    rank_j, parity, rank_Tz, particle_rank = 0,0,0,3
-    t3 = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
-    t3.ThreeBody.SetMode("pn")
-    t1d=t1*0.
-    t2d=t1*0.
-    t1d.SetAntiHermitian()
-    t2d.SetAntiHermitian()
-
-    t1d=eom.GetVSEOM_ladder_single(t1,1)
-    t2d=eom.GetVSEOM_ladder_single(t2,1)
-    rst=0.
-
-    nop=t1*0.0
-    t3*=0.
-    nop.SetHermitian()
-    t3.SetAntiHermitian()
-    cm.comm223ss(haml,t2,t3)
-    cm.comm232ss(t1,t3,nop)
-    cm.comm231ss(t1,t3,nop)
-    cm.comm132ss(t1,t3,nop)
-    rst = gm.GetVSEOM_Overlap_rd(nop,rdms)
-    print('step 1 ', rst)
-
-    nop=t1*0.0
-    t3*=0.
-    nop.SetAntiHermitian()
-    t3.SetHermitian()
-    cm.comm223ss(haml,t2d,t3)
-    cm.comm232ss(t1,t3,nop)
-    cm.comm231ss(t1,t3,nop)
-    cm.comm132ss(t1,t3,nop)
-    rst += gm.GetVSEOM_Overlap_rd(nop,rdms)
-    print('step 2 ', rst)
-
-
-    nop=t1*0.0
-    t3*=0.
-    nop.SetAntiHermitian()
-    t3.SetAntiHermitian()
-    cm.comm223ss(haml,t2,t3)
-    cm.comm232ss(t1d,t3,nop)
-    cm.comm231ss(t1d,t3,nop)
-    cm.comm132ss(t1d,t3,nop)
-    rst -= gm.GetVSEOM_Overlap_rd(nop,rdms)
-    print('step 3 ', rst)
-
-    nop=t1*0.0
-    t3*=0.
-    nop.SetHermitian()
-    t3.SetHermitian()
-    cm.comm223ss(haml,t2d,t3)
-    cm.comm232ss(t1d,t3,nop)
-    cm.comm231ss(t1d,t3,nop)
-    cm.comm132ss(t1d,t3,nop)
-    rst -= gm.GetVSEOM_Overlap_rd(nop,rdms)
-    print('step 4 ', rst)
-    return(rst/4.)
-
-
-def Norm3_new(t1,t2,haml,ms,rdms):
-
-    rank_j, parity, rank_Tz, particle_rank = 0,0,0,3
-    t3 = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
-    t3.ThreeBody.SetMode("pn")
-    t2d=t1*0.
-    t2d.SetAntiHermitian()
-
-    t2d=eom.GetVSEOM_ladder_single(t2,1)
-    rst=0.
-    nop=t1*0.0
-    t3*=0.
-    nop.SetHermitian()
-    t3.SetAntiHermitian()
-    cm.comm223ss(haml,t2,t3)
-    cm.comm232ss(t1,t3,nop)
-    cm.comm231ss(t1,t3,nop)
-    cm.comm132ss(t1,t3,nop)
-    rst = gm.GetVSEOM_Overlap_rd(nop,rdms)
-    return(rst/2.)
 
 import numpy as np
 
-def lanczos_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_three=None,rdmat=None,prjop=None):
+def lanczos_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_three=None,prjop=None):
     lanczos_vector = []
     hall = np.zeros([max_iter,max_iter])
     hall[0,0]=0.
 
     ## normalize it to 1
-    nn=norm_func(eom,vi,vi,rdmat)
+    nn=norm_func(eom,vi,vi)
     print('initial norm vector', nn)
     vi=vi/np.sqrt(nn)
     lanczos_vector.append(vi)
@@ -153,7 +133,7 @@ def lanczos_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_th
     for j in range(max_iter):
 
         w = hv_func(eom,haml,lanczos_vector[j],prjop)
-        ai=norm_func(eom, w,lanczos_vector[j],rdmat)
+        ai=norm_func(eom, w,lanczos_vector[j])
         hall[j,j]=ai
 
         if(j>0):
@@ -161,7 +141,7 @@ def lanczos_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_th
         else:
             w=w-ai*lanczos_vector[j]
 
-        nm=norm_func(eom, w,w,rdmat)
+        nm=norm_func(eom, w,w)
         bj = np.sqrt(nm)
         w1=w/bj
         if(j<max_iter-1):
@@ -172,7 +152,7 @@ def lanczos_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_th
             print('bj is small')
             break
         lanczos_vector.append(w/bj)
-        if(j > 2 and j%1 == 0):
+        if(j > state_want and j%4 == 0):
             e,v = np.linalg.eig(hall[0:j,0:j])
             e=np.sort(e)
             print("Energy on ", j , ' th iteration: ', e[0:state_want] )
@@ -193,92 +173,14 @@ def lanczos_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_th
 
 
 
-def arnoldi_proc_new( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,ms,rdmat,prjop):
-    lanczos_vector = []
-    hall = np.zeros([max_iter+1,max_iter+1])
-    hall[0,0]=0.
-
-    converged = 0
-    ## normalize it to 1
-    nn=norm_func(vi,vi,rdmat)
-    print('initial norm vector', nn)
-    vi=vi/np.sqrt(nn)
-    lanczos_vector.append(vi)
-    norm_e_old=-10000
-    norm_e_new=-1000
-    e=np.zeros(state_want)
-
-    for j in range(max_iter):
-
-        w = hv_func(haml,lanczos_vector[j],prjop)
-        ai=norm_func(w,lanczos_vector[j],rdmat)
-        dia=norm_three(w,lanczos_vector[j],haml,ms,rdmat)
-        hall[j,j]=ai+dia
-        
-        # submatrix generated, diagonalize it
-        if(j> state_want):
-            e,v = np.linalg.eig(hall[0:j+1,0:j+1])
-            idx = np.argsort(e)
-            e = e[idx]
-            vs = v[:,idx]
-            ## check the eigvectors
-            vec_a=lanczos_vector[j]*0.
-            for kk in range(len(e)):
-                vec_a = vec_a + lanczos_vector[kk]*vs[kk,0]
-
-            vec_b=hv_func(haml, vec_a,prjop)
-            nmm=norm_func(vec_a,vec_b,rdmat)
-            nm3=norm_three(vec_a,vec_a,haml, ms,rdmat)
-            nm=norm_func(vec_a,vec_a,rdmat)
-            print(j, ' th Lanczos: E ', e[0:state_want], 'first state check: ', nm)
-
-        w=w-hall[j,j]*lanczos_vector[j]
-
-        if(j>0):
-            for i in range(j):
-                bj=norm_func(w,lanczos_vector[i],rdmat)
-                dbj=-norm_three(lanczos_vector[i],w,haml,ms,rdmat)
-                w=w-(bj)*lanczos_vector[i]
-
-        bj = norm_func(lanczos_vector[j],w,rdmat)
-        dbj = norm_three(lanczos_vector[j],w,haml,ms,rdmat)
-        print(j,'th iter: ', ai,bj)
-        hall[j,j+1]=np.sqrt(bj)
-        hall[j+1,j]=np.sqrt(bj)
-
-
-        if abs(bj) < 0.00001:
-            print('coupling bj is small: ', bj, j)
-            break
-        w=w/np.sqrt(bj)
-        ## test non-hermitian:
-        vec_b=hv_func(haml, w,prjop)
-        nm=norm_func(vec_b,lanczos_vector[j],rdmat)
-
-        vec_b=hv_func(haml, lanczos_vector[j],prjop)
-        nm2=norm_func(w,vec_b,rdmat)
-        print('bj new : ', nm, nm2,np.sqrt(bj))
-
-        lanczos_vector.append(w)
-
-
-
-    print('Arnoldi converged with ', j+1, ' step')
-    lanczos_vector.pop()
-    print(hall)
-
-    return(e, vs,lanczos_vector)
-
-
-
-def arnoldi_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,ms,rdmat,prjop):
+def arnoldi_proc_new( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,ms,eom, prjop):
     lanczos_vector = []
     hall = np.zeros([max_iter,max_iter])
     hall[0,0]=0.
 
     converged = 0
     ## normalize it to 1
-    nn=norm_func(vi,vi,rdmat)
+    nn=norm_func(eom,vi,vi)
     print('initial norm vector', nn)
     vi=vi/np.sqrt(nn)
     lanczos_vector.append(vi)
@@ -287,24 +189,18 @@ def arnoldi_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,m
     e=np.zeros(state_want)
 
     for j in range(max_iter-1):
-        w = hv_func(haml,lanczos_vector[j],prjop)
-        dai=norm_three(lanczos_vector[j],lanczos_vector[j],haml, ms,rdmat)
-        ai=norm_func(w,lanczos_vector[j],rdmat)
-        print(j,'th ai: ',ai)
-        hall[j,j]=ai+dai
-        print(ai,dai,'here')
+        w = hv_func(eom,haml,lanczos_vector[j],prjop)
+        ai=norm_func(eom,w,lanczos_vector[j])
+        hall[j,j]=ai
 
         w=w-ai*lanczos_vector[j]
 
         if(j>0):
             for i in range(j):
-                bj=norm_func(w,lanczos_vector[i],rdmat)
+                bj=norm_func(eom,w,lanczos_vector[i])
                 w=w-bj*lanczos_vector[i]
 
-
-        ## generate the new vector
-        bj = norm_func(w,w,rdmat)
-    
+        bj = norm_func(eom,w,w)
 
         if abs(bj) < 0.00001:
             print('coupling bj is small: ', bj, j)
@@ -320,9 +216,9 @@ def arnoldi_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,m
             vm=lanczos_vector[j]
             vec=vl*0.0
             vec.SetHermitian()
-            vec=hv_func(haml, vm,prjop)
-            nmm=norm_func(vl,vec,rdmat)
-            nm3=norm_three(vl,vm,haml, ms,rdmat)
+            vec=hv_func(eom,haml, vm,prjop)
+            nmm=norm_func(eom,vl,vec)
+            nm3=norm_three(eom,vl,vm,haml, ms)
             hall[m,j] =nmm+nm3
             hall[j,m] =nmm+nm3
         if(j+1 >= state_want ):
@@ -335,13 +231,282 @@ def arnoldi_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,m
             for kk in range(len(e)):
                 vec_a = vec_a + lanczos_vector[kk]*vs[kk,0]
 
-            vec_b=hv_func(haml, vec_a,prjop)
-            nmm=norm_func(vec_a,vec_b,rdmat)
-            nm3=norm_three(vec_a,vec_a,haml, ms,rdmat)
-            nm=norm_func(vec_a,vec_a,rdmat)
+            vec_b=hv_func(eom,haml, vec_a,prjop)
+            nmm=norm_func(eom,vec_a,vec_b)
+            nm3=norm_three(eom,vec_a,vec_a,haml, ms)
+            nm=norm_func(eom,vec_a,vec_a)
 
             print('energy check: ', nmm+nm3,nm)
             if(abs(nm-1.)>0.0001):
+                print('Lost Orthogonality, converged')
+                break
+            print("Energy on ", j+1 , ' th iteration: ', e[:] )
+
+            norm_e_new=0.0
+            for k in range(state_want):
+                norm_e_new += e[k]*e[k]
+            if(abs(norm_e_new-norm_e_old) < 0.0000001):
+                print('energy converge')
+                break
+            norm_e_old=norm_e_new
+
+
+    print('Arnoldi converged with ', j+1, ' step')
+    lanczos_vector.pop()
+    print(hall)
+
+    return(e, vs,lanczos_vector)
+
+
+
+import numpy as np
+
+def arnoldi_solver(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,norm_three=None, rdmat=None, prjop=None):
+    """
+    Final Professional Version:
+    - Renamed basis to lanczos_vector.
+    - Double Orthogonalization (Twice is Enough) to kill spurious zero-states.
+    - Periodic energy reporting.
+    """
+    tol=1e-3
+    res_tol=1e-5
+    lanczos_vector = []
+    hall = np.zeros([max_iter, max_iter], dtype=complex)
+    
+    # Normalize initial guess
+
+    nn = norm_func(eom, vi, vi)
+    if nn <= 0: 
+        raise ValueError("Initial vector has zero or negative norm.")
+    
+    vi = vi / np.sqrt(nn)
+    lanczos_vector.append(vi)
+    
+    e_vals = np.zeros(state_want, dtype=complex)
+    subspace_vs = None
+    norm_e_old = -1000.0
+
+    # --- 2. Main Iteration Loop ---
+    for j in range(max_iter - 1):
+        # A. Apply Operator (Once per step)
+        w = hv_func(eom, haml, lanczos_vector[j], prjop)
+        
+        # B. Modified Gram-Schmidt Orthogonalization
+        # Fills the j-th column of the Hessenberg matrix
+        for i in range(j + 1):
+            h_ij = norm_func(eom, w, lanczos_vector[i])
+            hall[i, j] = h_ij
+            w = w - h_ij * lanczos_vector[i]
+            
+        # C. Sub-diagonal element and normalization
+        bj_sq = norm_func(eom, w, w)
+        bj = np.sqrt(max(0, bj_sq.real))
+
+        if bj < 1e-1:
+            print(f"Breakdown at step {j}: Subspace converged.")
+            break
+            
+        if (j + 1) < max_iter:
+            hall[j + 1, j] = bj
+            
+        w_next = w / bj
+        lanczos_vector.append(w_next)
+        
+        # --- 3. Convergence & Reporting ---
+        if (j + 1) >= state_want:
+            h_sub = hall[0:j+1, 0:j+1]
+            h_sub=(h_sub+h_sub.T)/2
+
+            vals, vecs = np.linalg.eig(h_sub)
+            
+            # Sort energies (real part)
+            idx = np.argsort(np.real(vals))
+            current_evals = vals[idx]
+            current_vs = vecs[:, idx]
+            
+            # D. Periodic Energy Report (Every 5 steps)
+            if (j + 1) % state_want == 0:
+                print(f"Iteration {j+1}: Target Energies = {current_evals[:state_want].real}")
+
+            # E. Convergence Check
+            norm_e_new = np.sum(np.abs(current_evals[:state_want])**2)
+            if abs(norm_e_new - norm_e_old) < tol:
+                print(f"Energy converged at iteration {j+1}")
+                e_vals, subspace_vs = current_evals, current_vs
+                break
+            
+            norm_e_old = norm_e_new
+            e_vals, subspace_vs = current_evals, current_vs
+
+    # --- 4. Final Ritz Vector Construction ---
+    physical_states = []
+    if subspace_vs is not None:
+        for k in range(state_want):
+            # Transform coefficients back to full basis
+            ritz_vec = lanczos_vector[0] * 0.0
+            for i in range(len(lanczos_vector)-1):
+                ritz_vec += subspace_vs[i, k].real * lanczos_vector[i]
+            physical_states.append(ritz_vec)
+
+    print(f"Arnoldi converged with {len(lanczos_vector)} steps")
+    return e_vals[:state_want], physical_states, lanczos_vector
+
+
+
+import numpy as np
+
+def subspace_solver(h1_func, norm_func, h2_expect_func, haml, vi, max_basis_size, state_want, ms, eom, rdmat=None ,  prjop=None):
+    tol=1e-8
+    """
+    Subspace expansion for H = H1 + H2.
+    Only <v1|H2|v2> is used for H2.
+    Elements are cached to prevent redundant computation.
+    """
+    basis = []
+    # Cache for H1 and H2 matrix elements
+    h1_cache = np.zeros((max_basis_size, max_basis_size), dtype=complex)
+    h2_cache = np.zeros((max_basis_size, max_basis_size), dtype=complex)
+
+    # Normalize initial guess
+    nn = norm_func(eom, vi, vi)
+    if nn <= 0:
+        raise ValueError("Initial vector norm is 0 or negative.")
+
+    v = vi / np.sqrt(nn)
+
+    basis.append(v)
+
+    prev_energy = 0.0
+
+    for j in range(max_basis_size):
+        m = len(basis)
+        new_idx = m - 1 # The index of the newest vector added
+
+        # 1. Update the Cache for the new row/column
+        # We only need to compute the interaction of the NEW vector with all vectors
+        h1_v_new = h1_func(eom, haml, basis[new_idx], prjop)
+
+        for i in range(m):
+            # Compute H1 part: <basis_i | H1 | basis_new>
+            val_h1 =  norm_func(eom, basis[i], h1_v_new)
+            h1_cache[i, new_idx] = val_h1
+            h1_cache[new_idx, i] = np.conj(val_h1)
+
+            # Compute H2 part: <basis_i | H2 | basis_new>
+            val_h2 = h2_expect_func(eom,basis[i], basis[new_idx],haml,ms)
+            h2_cache[i, new_idx] = val_h2
+            h2_cache[new_idx, i] = np.conj(val_h2)
+
+        # 2. Extract the current active subspace matrix
+        H_sub = h1_cache[:m, :m] + h2_cache[:m, :m]
+
+        # 3. Solve the Hermitian eigenvalue problem
+        evals, evecs = np.linalg.eigh(H_sub)
+
+        current_energy = evals[0].real
+        print(f"Iteration {j+1}: Basis Size = {m}, Energy = {current_energy:.10f}")
+
+        # Convergence check
+        if j > 0 and abs(current_energy - prev_energy) < tol:
+            print("Converged!")
+            break
+        prev_energy = current_energy
+
+        # 4. Generate next basis vector using H1 (Krylov expansion)
+        # We apply H1 to the most recent vector to explore new directions
+        w_next =  h1_func(eom, haml, basis[new_idx], prjop)
+
+        # Modified Gram-Schmidt Orthonormalization
+        for b in basis:
+            nm=norm_func(eom, b, w_next)
+            w_next -= nm * b
+
+        norm=norm_func(eom, w_next, w_next)
+
+        # Handling linear dependency or H1-invariant subspaces
+        if norm < 1e-10:
+            if m >= max_basis_size: break
+            # Inject random noise to find new directions H2 might care about
+            w_next = np.random.normal(0, 1, vi.shape).astype(vi.dtype)
+            for b in basis:
+                nm=norm_func(eom, b, w_next)
+                w_next -= nm * b
+            norm = norm_func(eom, w_next, w_next)
+
+        basis.append(w_next* ( 1./ norm))
+
+    # Construct the final Ritz vectors (physical states)
+    physical_states = []
+    for k in range(min(state_want, m)):
+        state = basis[0] * 0.0
+        for i in range(m):
+            state += evecs[i, k] * basis[i]
+        physical_states.append(state)
+
+    return evals[:state_want], physical_states
+
+
+def arnoldi_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_three=None,rdmat=None,prjop=None):
+    lanczos_vector = []
+    hall = np.zeros([max_iter,max_iter])
+    hall[0,0]=0.
+
+    converged = 0
+    ## normalize it to 1
+    nn=norm_func(eom,vi,vi,rdmat)
+    print('initial norm vector', nn)
+    vi=vi/np.sqrt(nn)
+    lanczos_vector.append(vi)
+    norm_e_old=-10000
+    norm_e_new=-1000
+    e=np.zeros(state_want)
+
+    for j in range(max_iter-1):
+        w = hv_func(eom,haml,lanczos_vector[j],prjop)
+        ai=norm_func(eom,w,lanczos_vector[j])
+        hall[j,j]=ai
+        w=w-ai*lanczos_vector[j]
+
+        if(j>0):
+            for i in range(j):
+                bj=norm_func(eom,w,lanczos_vector[i])
+                w=w-bj*lanczos_vector[i]
+
+
+        ## generate the new vector
+        bj = norm_func(eom,w,w)
+    
+
+        if abs(bj) < 0.00001:
+            print('coupling bj is small: ', bj, j)
+            break
+        w=w/np.sqrt(bj)
+        lanczos_vector.append(w)
+        print('lanczos vector euclidean norm: ',w.Norm())
+        nmm=0.
+        vs=np.zeros([1,1])
+        for m in range(j):
+            vl=lanczos_vector[m]
+            vm=lanczos_vector[j]
+            vec=vl*0.0
+            vec.SetHermitian()
+            vec=hv_func(eom,haml, vm,prjop)
+            nmm=norm_func(eom,vl,vec)
+            hall[m,j] =nmm
+            hall[j,m] =nmm
+        if(j+1 >= state_want ):
+            hsub=hall[0:j+1,0:j+1]
+            e,v = np.linalg.eig(hsub[0:j+1,0:j+1])
+            idx = np.argsort(e)   
+            e = e[idx]
+            vs = v[:,idx]
+            vec_a=lanczos_vector[j]*0.
+            for kk in range(len(e)):
+                vec_a = vec_a + lanczos_vector[kk]*vs[kk,0]
+
+
+            print('energy check: ', nmm)
+            if(abs(nmm-1.)>0.0001):
                 print('Lost Orthogonality, converged')
                 break
             #print("Energy on ", j+1 , ' th iteration: ', e[:] )
@@ -360,7 +525,6 @@ def arnoldi_proc( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,m
     print(hall)
 
     return(e, vs,lanczos_vector)
-
 
 
 
