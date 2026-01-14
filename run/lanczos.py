@@ -42,7 +42,7 @@ def norm3_multiref(eom, t1,t2,haml,ms):
     cm.comm231ss(t1,t3,nop)
     #cm.comm132ss(t1,t3,nop)
     rst = eom.GetVSEOM_Overlap_multiref(nop)
-    return(rst/2.)
+    return(-rst/2.)
 
 
 def Norm3_new(eom,t1,t2,haml,ms):
