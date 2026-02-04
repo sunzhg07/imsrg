@@ -29,20 +29,19 @@ def norm3_multiref(eom, t1,t2,haml,ms):
     rank_j, parity, rank_Tz, particle_rank = 0,0,0,3
     t3 = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
     t3.ThreeBody.SetMode("pn")
-    t3.SetHermitian()
     t3*=0.
-
     rst=0.
 
     nop=t1*0.0
     nop.SetHermitian()
+    t3.SetAntiHermitian()
 
     cm.comm223ss(haml,t2,t3)
     cm.comm232ss(t1,t3,nop)
     cm.comm231ss(t1,t3,nop)
-    #cm.comm132ss(t1,t3,nop)
+    cm.comm132ss(t1,t3,nop)
     rst = eom.GetVSEOM_Overlap_multiref(nop)
-    return(-rst/2.)
+    return(rst/2.)
 
 
 def Norm3_new(eom,t1,t2,haml,ms):
@@ -50,14 +49,12 @@ def Norm3_new(eom,t1,t2,haml,ms):
     rank_j, parity, rank_Tz, particle_rank = 0,0,0,3
     t3 = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
     t3.ThreeBody.SetMode("pn")
-    t2d=t1*0.
-    t2d.SetAntiHermitian()
-
-    t2d=eom.GetVSEOM_ladder_multiref(t2,1)
-    rst=0.
-    nop=t1*0.0
     t3*=0.
+    rst=0.
+
+    nop=t1*0.0
     nop.SetHermitian()
+
     t3.SetAntiHermitian()
     cm.comm223ss(haml,t2,t3)
     cm.comm232ss(t1,t3,nop)
@@ -676,120 +673,13 @@ def print_op(chi, ms):
 
 
 
-def dcom22232(chi2_in,chi_in,Hs,tdm_op):
-    chi=chi_in*1.
-    chi2=chi2_in*1.
-    rst=0.
-
-    chi2.EraseTwoBody()
-    chi.EraseOneBody()
-
+def dcom222312(eom,Hs,chi):
     opa=chi*0
     opa.SetHermitian()
-    
-#    op1 = chi*0.
-#    op1.SetAntiHermitian()
-#    cm.comm121ss(chi2,Hs, op1)
-#    cm.comm122ss(op1,chi,opa)
-#    rst=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-#    #print("Term a: ", rst)
-#    
-#    op1 = op1*0.
-#    cm.comm122ss(chi2,Hs, op1)
-#    opa=opa*0
-#    cm.comm222_pp_hhss(op1,chi,opa)
-#    cm.comm222_phss(op1,chi,opa)
-#    
-#    op1 = op1*0.
-#    cm.comm222_pp_hhss(Hs,chi,op1)
-#    cm.comm222_phss(Hs,chi,op1)
-#    opb=opa*0
-#    cm.comm122ss(chi2,op1,opb)
-#    rst+=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-#    #print('Term 2a: ',rst)
-#    rst-=gm.GetVSEOM_Overlap_rd(opb,tdm_op)
-#    #print('Term 2b: ',rst)
-#    
-#    
-#    op1 = chi*0.
-#    op1.SetAntiHermitian()
-#    cm.comm121ss(chi2,chi, op1)
-#    opa=chi*0
-#    opa.SetHermitian()
-#    cm.comm122ss(Hs,op1,opa)
-#    rst+=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-#    #print('Term c: ',rst)
-#    
-#    
-#    chi=chi_in*1.
-#    chi.EraseOneBody()
-#    chi2=chi2_in*1.
-#    chi2.EraseOneBody()
-#    op1=op1*0.
-#    opa=opa*0
-#    cm.comm221ss(chi2,chi,op1)
-#    cm.comm122ss(Hs,op1,opa)
-#    rst+=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-#    print('Term d: ',rst)
-#    
-#    
-#    chi=chi_in*1.
-#    chi.EraseOneBody()
-#    chi2=chi2_in*1.
-#    chi2.EraseOneBody()
-#    op1=op1*0.
-#    opa=opa*0
-#    op1.SetAntiHermitian()
-#    cm.comm222_pp_hhss(chi2,Hs,op1)
-#    cm.comm222_phss(chi2,Hs,op1)
-#    cm.comm222_pp_hhss(op1,chi,opa)
-#    cm.comm222_phss(op1,chi,opa)
-#    nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-#    rst+=nm
-#    print('Term f-a: ',nm)
-#    
-#
-#    op1=op1*0.
-#    opa=opa*0
-#    cm.comm222_pp_hhss(chi2,Hs,op1)
-#    cm.comm222_phss(op1,chi,opa)
-#    cm.comm222_pp_hhss(op1,chi,opa)
-#
-#    nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-#    print('Term f-b: ',nm)
-#    rst-=nm
-#
-#    
-#    
-#    chi=chi_in*1.
-#    chi.EraseOneBody()
-#    chi2=chi2_in*1.
-#    chi2.EraseOneBody()
-#    op1=op1*0.
-#    opa=opa*0
-#    cm.comm221ss(chi2,Hs,op1)
-#    cm.comm122ss(op1,chi,opa)
-#    nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-#    rst+=nm
-#    print('Term g: ',nm)
-
-
-
-    chi=chi_in*1.
-    chi2=chi2_in*1.
-    chi2.EraseOneBody()
-    chi.EraseOneBody()
-
-    opa=chi*0
-    opa.SetHermitian()
-    op1 = chi*0.
-    op1.SetAntiHermitian()
-
-    cm.comm222_pp_hhss(chi2,Hs,op1)
-    cm.comm222_phss(chi2,Hs,op1)
-    cm.comm221ss(op1,chi,opa)
-    nm=gm.GetVSEOM_Overlap_rd(opa,tdm_op)
-    rst+=nm
-
-
-    return(rst)
+    cm.FactorizedDoubleCommutator.SetUse_1b_Intermediates(True);
+    cm.FactorizedDoubleCommutator.SetUse_2b_Intermediates(True);
+    cm.FactorizedDoubleCommutator.comm223_231(chi, Hs, opa);
+    cm.FactorizedDoubleCommutator.comm223_232(chi, Hs, opa);
+    opa=-1*opa
+    rst=eom.GetVSEOM_Overlap_multiref(opa)
+    return(rst,opa)
