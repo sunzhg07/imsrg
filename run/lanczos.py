@@ -26,60 +26,28 @@ def norm_multiref(eom, T1, T2):
 
 def norm3_multiref(eom, t1,t2,haml,ms):
 
-    rank_j, parity, rank_Tz, particle_rank = 0,0,0,3
-    t3 = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
-    t3.ThreeBody.SetMode("pn")
-    t3*=0.
-    rst=0.
-
-    nop=t1*0.0
-    nop.SetHermitian()
-    t3.SetAntiHermitian()
-
-    cm.comm223ss(haml,t2,t3)
-    cm.comm232ss(t1,t3,nop)
-    cm.comm231ss(t1,t3,nop)
-    cm.comm132ss(t1,t3,nop)
-    rst = eom.GetVSEOM_Overlap_multiref(nop)
-    return(rst/2.)
-
-
-def Norm3_new(eom,t1,t2,haml,ms):
+    # tested
 
     rank_j, parity, rank_Tz, particle_rank = 0,0,0,3
     t3 = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
     t3.ThreeBody.SetMode("pn")
+    
     t3*=0.
     rst=0.
 
     nop=t1*0.0
     nop.SetHermitian()
+    t3.SetHermitian()
 
-    t3.SetAntiHermitian()
-    cm.comm223ss(haml,t2,t3)
-    cm.comm232ss(t1,t3,nop)
-    cm.comm231ss(t1,t3,nop)
+    cm.comm223ss(t2,haml,t3)
+#    cm.comm232ss(t1,t3,nop)
+#    cm.comm231ss(t1,t3,nop)
     cm.comm132ss(t1,t3,nop)
     rst = eom.GetVSEOM_Overlap_multiref(nop)
-    return(rst/2.)
+    return(rst/2)
 
-def norm3_multiref_fact(eom, t1,t2,haml,ms):
 
-    t2d=t1*0.
-    t2d.SetAntiHermitian()
 
-    t2d=eom.GetVSEOM_ladder_multiref(t2,1)
-    rst=0.
-    nop=t1*0.0
-    t3*=0.
-    nop.SetHermitian()
-    t3.SetAntiHermitian()
-    cm.comm223ss(haml,t2,t3)
-    cm.comm232ss(t1,t3,nop)
-    cm.comm231ss(t1,t3,nop)
-    cm.comm132ss(t1,t3,nop)
-    rst = eom.GetVSEOM_Overlap_multiref(nop)
-    return(rst/2.)
 
 def htc_single(eom,Haml, chi,proj=None):
     ht_plus= chi*0
@@ -676,10 +644,10 @@ def print_op(chi, ms):
 def dcom222312(eom,Hs,chi):
     opa=chi*0
     opa.SetHermitian()
-    cm.FactorizedDoubleCommutator.SetUse_1b_Intermediates(True);
-    cm.FactorizedDoubleCommutator.SetUse_2b_Intermediates(True);
-    cm.FactorizedDoubleCommutator.comm223_231(chi, Hs, opa);
-    cm.FactorizedDoubleCommutator.comm223_232(chi, Hs, opa);
-    opa=-1*opa
+#    cm.FactorizedDoubleCommutator.SetUse_1b_Intermediates(True);
+#    cm.FactorizedDoubleCommutator.SetUse_2b_Intermediates(True);
+#    cm.FactorizedDoubleCommutator.comm223_231(chi, Hs, opa);
+#    cm.FactorizedDoubleCommutator.comm223_232(chi, Hs, opa);
+    cm.FactorizedDoubleCommutator.comm223_132(chi, Hs, opa);
     rst=eom.GetVSEOM_Overlap_multiref(opa)
-    return(rst,opa)
+    return(rst/2,opa)

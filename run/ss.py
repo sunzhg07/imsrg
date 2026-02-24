@@ -5,16 +5,14 @@ from lanczos import *
 
 
 
-emax =5         # maximum number of oscillator quanta in the model space
-ref = 'O16'     # reference used for normal ordering
-val = 'sd-shell' # valence space
+emax =2         # maximum number of oscillator quanta in the model space
+ref = 'He4'     # reference used for normal ordering
+val = 'p-shell' # valence space
 
 core_generator = 'atan'   # definition of generator eta for decoupling the core (could also use 'white')
 valence_generator = 'shell-model-atan'  # definition of generator for decoupling the valence space (could also use 'shell-model-white'
-#smax_core = 50       # limit of integration in flow parameter s for first stage of decoupling
-#smax_valence = 100   # limit of s for second stage of decoupling
-smax_core = 0       # limit of integration in flow parameter s for first stage of decoupling
-smax_valence = 0   # limit of s for second stage of decoupling
+smax_core = 50       # limit of integration in flow parameter s for first stage of decoupling
+smax_valence = 100   # limit of s for second stage of decoupling
 
 #### Example format of how to read input interaction matrix elements from file (these are not included with the code)
 #f2b = 'input/chi2b_srg0800_eMax16_EMax16_hwHO020.me2j.gz'
@@ -100,108 +98,160 @@ imsrgsolver.SetGenerator(core_generator)
 imsrgsolver.SetSmax(smax_core)
 
 ### Do the first stage of integration to decouple the core
-#@imsrgsolver.Solve()
+imsrgsolver.Solve()
 
 ### Now set the generator for the second stage to decouple the valence space
 imsrgsolver.SetGenerator(valence_generator)
 imsrgsolver.SetSmax(smax_valence)
 
-#@imsrgsolver.Solve()
+imsrgsolver.Solve()
 
 ### Hs is the IMSRG-evolved Hamiltonian
 #rw.WriteTokyo( HNO, valence_fname,'')
 Hs = imsrgsolver.GetH_s()
-Hs=Hs*0.
-
-rw.ReadOperator( Hs, 'o16hs')
-
-#rw.WriteTokyo( Hs, 'sd.snt','')
-#Hs = Hs.DoNormalOrderingCore()
-
-### Write out the effective valence space interaction
-
 Hs.ZeroBody=0.
 
 
 
-cm=Commutator
-cm.SetIMSRG3Noqqq(True)
-cm.SetIMSRG3Onlyvvv(True)
+tdm_op=read_tdm("he6.ref",ms)
+
+
+#cm.SetIMSRG3Noqqq(True)
+#cm.SetIMSRG3Onlyvvv(True)
 gm=Generator()
-
-## read in the reduce transition matrix for reference 
-tdm_op=read_tdm("ne20.ref",ms)
+cm=Commutator
 
 
-unt = UnitTest(ms)
-rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,2,1
-h3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
-
-#val=h3.ThreeBody.GetME_pn (Jab_in, j0, Jde_in, a, b, c, d, e, f)
-#rw.WriteValence3body(h3.ThreeBody, 'test.ini')
-nm=gm.GetVSEOM_Overlap_rd(Hs,tdm_op)
-#nm=gm.GetVSEOM_Overlap(Hs)
-print('reference energy: ', nm, 'vs [ -4.19234292  9.75174484 ] in nmax2 for he6_2',)
-
-
-#eom = EOM(ms,tdm_op)
-#eom.ConstructConfigs()
-#eom.ConstructNormMatrix()
-#eom.ConstructProjectMatrix()
-#eom.PrintConfigs()
-print('------')
-
+#rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,2,1
+#
+#
+eom=EOM(Hs, tdm_op,rank_j, parity, rank_Tz)
+eom.ConstructConfigs()
+eom.ConstructNormMatrix()
+eom.ConstructProjectMatrix()
+#nm=eom.GetVSEOM_Overlap_multiref(Hs)
+#print('reference energy: ', nm, 'vs [ -4.19234292  9.75174484 ] in nmax2 for he6_2',)
 ##
-cfs=np.loadtxt('cfs')
-cfs=np.array(cfs)
-cfs=cfs.astype(int)
+##
+##
+##
+unt = UnitTest(ms)
+### set anti hermitian
+rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,2,1
+h1= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
+h2= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
+t3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, 3,herm)
+t3.ThreeBody.SetMode("pn")
 
-bench = np.loadtxt('benchs')
-bench=np.array(bench);
+chi_a=eom.GetVSEOM_ladder_multiref(h1,1)
+print(chi_a.IsAntiHermitian())
+opo=chi_a*0.
+opo.SetHermitian()
+chi_a.ThreeBody.Erase()
 
-id_bench = bench[:,0:2]
-id_bench=id_bench.astype(int)
-id_val = bench[:,2]
+cm.comm223ss(chi_a, Hs, t3)
+cm.comm231ss(chi_a, t3, opo )
+print('direct norm: ', opo.Norm())
+cm.comm232ss(chi_a, t3, opo )
+print('direct norm: ', opo.Norm())
 
-for i in range(1,84220,2):
-    ibra = id_bench[i,0]
-    iket = id_bench[i,1]
-    if(ibra >= 17):
-        continue
-    if(iket < 18):
-        continue
-    cfs_bra=cfs[ibra]
-    cfs_ket=cfs[iket]
+ops=chi_a*0.
+ops.SetHermitian()
 
-    ql=Hs*0.
-    qr=Hs*0.
+cm.FactorizedDoubleCommutator.SetUse_1b_Intermediates(True);
+cm.FactorizedDoubleCommutator.SetUse_2b_Intermediates(True);
+cm.FactorizedDoubleCommutator.comm223_231(chi_a, Hs, ops);
+print('fact norm: ', ops.Norm())
+cm.FactorizedDoubleCommutator.comm223_232(chi_a, Hs, ops);
+print('fact norm: ', ops.Norm())
 
-    ql.SetOneBody(cfs_bra[0],cfs_bra[1],1.)
-    qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],1.)
-    nm=Norm_vs_new(ql,qr,tdm_op)
-    ql.SetOneBody(cfs_bra[0],cfs_bra[1],0.)
-    qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],0.)
-    if(abs(nm-id_val[i])> 0.00001):
-        print(ibra,iket,nm, id_val[i])
+#chi_b=eom.GetVSEOM_ladder_multiref(h2,0)
 
+#print(chi_b.Norm())
 
+#hb=htc_multiref(eom,Hs, chi_b)
+#hab = norm_multiref(eom,chi_a, hb)
+#print('<a|H|b>= ',hab)
 
-
-#ibra = 4290
-#iket = 4049
-#ibench = 24623
-#cfs_bra=cfs[ibra]
-#cfs_ket=cfs[iket]
+#ha=htc_multiref(eom,Hs, chi_a)
+#hba = norm_multiref(eom,chi_b, ha)
+#print('<b|H|a>= ',hba)
 #
-#ql=Hs*0.
-#qr=Hs*0.
 #
-#ql.TwoBody.SetTBME_chij(cfs_bra[2],cfs_bra[2],cfs_bra[0],cfs_bra[1],1.)
-#qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],1.)
-#nm=Norm_vs_new(ql,qr,tdm_op)
-#ql.TwoBody.SetTBME_chij(cfs_bra[2],cfs_bra[2],cfs_bra[0],cfs_bra[1],0.)
-#qr.TwoBody.SetTBME_chij(cfs_ket[2],cfs_ket[2],cfs_ket[0],cfs_ket[1],0.)
-#print(ibra,iket,nm, id_val[ibench])
-#if(abs(nm-id_val[ibench])> 0.00001):
-#    print(ibra,iket,nm, id_val[ibench])
 #
+#nma, chi3aa = dcom222312(eom, Hs, chi_a)
+#print('<a|h3|a> facto= ',nma)
+
+#nmb, chi3bb = dcom222312(eom, Hs, chi_b)
+#print('<b|h3|b>= ',nmb, chi3bb.Norm())
+#
+#chiab=chi_a+chi_b
+#nmab, chi3apb = dcom222312(eom, Hs, chiab)
+#print('<a+b|h3|a+b>= ',nmab, chi3apb.Norm())
+#
+#nmab=nmab-nma-nmb
+#
+#h3ab=(hba-hab+nmab)/2.
+#h3ba=-(hba-hab-nmab)/2.
+#
+#print('<a|h3|b> in direct= ', h3ab/2)
+#print('<b|h3|a> in direct= ', h3ba/2)
+#unt.TestFactorizedDoubleCommutators()
+
+#nm3=norm3_multiref_fact(eom, chi_a,chi_a, Hs, ms)
+#print('<a|h3|a> direct= ',nm3)
+#nmaa, chi3apb = dcom222312(eom, Hs, chi_a)
+#print('<a|h3|a> factor= ',nmaa)
+
+#
+#nm3=norm3_multiref(eom, chi_b,chi_b, Hs, ms)
+#print('<b|h3|b> direct= ',nm3)
+
+#nm3=norm3_multiref(eom, chi_a,chi_b, Hs, ms)
+#print('<a|h3|b> direct= ',nm3)
+#
+#nm3=norm3_multiref(eom, chi_b,chi_a, Hs, ms)
+#print('<b|h3|a> direct= ',nm3)
+
+
+
+
+
+#e,v1,v2=lanczos_proc(htc_multiref, norm_multiref, Hs, chi_a, 140, 8,ms,eom,  prjop=eom.ProjectOprator)
+
+#e,v1,v2=arnoldi_proc_new(htc_multiref, norm_multiref, norm3_multiref, Hs, chi, 140, 4,ms,eom, prjop=eom.ProjectOprator)
+
+
+jrank = 0;
+tz = 0;
+parity = 0;
+particle_rank = 2;
+
+eta = chi_a
+H = Hs
+t3=Operator(ms, jrank, tz, parity, 3);
+opo=chi_a*0.
+ops=chi_a*0.
+opo.SetHermitian()
+ops.SetHermitian()
+
+#opo=Operator(ms, jrank, tz, parity, 2);
+#ops=Operator(ms, jrank, tz, parity, 2);
+t3.ThreeBody.SetMode("pn");
+
+
+print('eta norm: ', eta.Norm())
+print('H norm: ', H.Norm())
+cm.comm223ss(eta, H, t3);
+print('t3 norm: ', t3.Norm(),t3.IsHermitian())
+cm.comm231ss(eta, t3, opo);
+cm.comm232ss(eta, t3, opo);
+
+
+cm.FactorizedDoubleCommutator.SetUse_1b_Intermediates(True);
+cm.FactorizedDoubleCommutator.SetUse_2b_Intermediates(True);
+cm.FactorizedDoubleCommutator.comm223_231(eta, H, ops);
+cm.FactorizedDoubleCommutator.comm223_232(eta, H, ops);
+
+
+print(opo.Norm(),ops.Norm())

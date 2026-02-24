@@ -729,7 +729,7 @@ namespace Commutator
         size_t b = bra.q;
         double na = bra.op->occ;
         double nb = bra.oq->occ;
-        double ab_symm = 2;
+        double ab_symm = 2;  // note, this code using un-normalized TBME, we multiplu by 2 to pretent we have a>b states.
         if (a == b)
           ab_symm = 1;
         int ketmin = 0;
@@ -755,7 +755,7 @@ namespace Commutator
           double ycdab = Y2.GetTBME_J(J, J, ket.p, ket.q, bra.p, bra.q);
           comm = (xabcd * ycdab - yabcd * xcdab);
           double term = 0;
-          term += 1. / 4 * (2 * J + 1) * ab_symm * cd_symm * occfactor * comm;
+          term += 1. / 4 * (2 * J + 1) * ab_symm * cd_symm * occfactor * comm; // the factor 1/4 is from m-scheme
           if (pX == 1 and pY == 1)
           {
             term /= 2;

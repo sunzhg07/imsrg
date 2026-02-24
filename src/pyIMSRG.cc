@@ -971,6 +971,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
       "comm223_231", &Commutator::FactorizedDoubleCommutator::comm223_231);
   FactorizedDoubleCommutator.def(
       "comm223_232", &Commutator::FactorizedDoubleCommutator::comm223_232);
+  FactorizedDoubleCommutator.def(
+      "comm223_132", &Commutator::FactorizedDoubleCommutator::comm223_132);
 
   FactorizedDoubleCommutator.def(
       "comm223_231_chi2b",
