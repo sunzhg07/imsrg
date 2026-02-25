@@ -129,8 +129,8 @@ eom=EOM(Hs, tdm_op,rank_j, parity, rank_Tz)
 eom.ConstructConfigs()
 eom.ConstructNormMatrix()
 eom.ConstructProjectMatrix()
-#nm=eom.GetVSEOM_Overlap_multiref(Hs)
-#print('reference energy: ', nm, 'vs [ -4.19234292  9.75174484 ] in nmax2 for he6_2',)
+nm=eom.GetVSEOM_Overlap_multiref(Hs)
+print('reference energy: ', nm, 'vs [ -4.19234292  9.75174484 ] in nmax2 for he6_2',)
 ##
 ##
 ##
@@ -150,7 +150,9 @@ chi_b=eom.GetVSEOM_ladder_multiref(h2,1)
 nm=norm_multiref(eom,chi_a,chi_b)
 print(nm)
 eom.ProjectOprator(chi_a)
-
+nm=norm_multiref(eom,chi_a,chi_b)
+print(nm)
+eom.ProjectOprator(chi_a)
 nm=norm_multiref(eom,chi_a,chi_b)
 print(nm)
 

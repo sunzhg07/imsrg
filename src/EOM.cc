@@ -894,37 +894,30 @@ void EOM::ConstructProjectMatrix() {
     block_svd(coupled_idx);
   }
 }
-void EOM::SqrtMat(arma::mat &Amat, size_t n) {
-  arma::mat U, V;
-  arma::vec s;
-  s.set_size(n);
-  s.fill(0.);
-  U.set_size(n, n);
-  U.fill(0.);
-  V.set_size(n, n);
-  V.fill(0.);
-  arma::svd(U, s, V, Amat);
-  size_t nnz = 0;
-  std::vector<int> s_idx;
-  std::vector<double> s_sqrt;
-  for (index_t i = 0; i < s.size(); i++) {
-    if (abs(s[i] < 0.01))
-      continue;
-    nnz++;
-    s_idx.push_back(i);
-    s_sqrt.push_back(1. / sqrt(s[i]));
-  }
 
-  arma::uvec s_idx_new(s_idx.size());
-  for (index_t i; i < s_idx.size(); i++)
-    s_idx_new[i] = s_idx[i];
-  arma::vec s_sqrt_new(s_idx.size());
-  for (index_t i; i < s_idx.size(); i++)
-    s_sqrt_new[i] = s_sqrt[i];
-  Amat.fill(0.);
-  arma::mat Us = U.cols(s_idx_new);
-  Amat = Us * arma::diagmat(s_sqrt_new) * Us.t();
-  return;
+       // True orthogonal projector P = U_r * U_r^T  (idempotent: P*P = P)
+        // Projects onto the range of the norm matrix, removing the null space.
+void EOM::SqrtMat(arma::mat& Amat, size_t n)
+{
+    arma::mat U, V;
+    arma::vec s;
+    s.set_size(n); s.fill(0.);
+    U.set_size(n,n); U.fill(0.);
+    V.set_size(n,n); V.fill(0.);
+    arma::svd(U, s, V, Amat);
+    std::vector<int> s_idx;
+    for ( index_t i=0; i<s.size(); i++){
+        if(abs(s[i]) < 0.000001) continue;
+        s_idx.push_back(i);
+    }
+
+    arma::uvec s_idx_new(s_idx.size());
+    for(index_t i=0; i<s_idx.size(); i++) s_idx_new[i]=s_idx[i];
+    Amat.fill(0.);
+    arma::mat Us=U.cols(s_idx_new);
+    Amat=Us * Us.t();
+    return ;
+
 }
 
 void EOM::ProjectOprator(Operator &Qin) {
