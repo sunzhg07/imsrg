@@ -15,12 +15,12 @@ def norm_single(eom, T1, T2):
     return(eom.GetVSEOM_Overlap_single(T1,T2))
 
 def norm_multiref(eom, T1, T2):
-    T2d=T1*0.
-    T2d.SetAntiHermitian()
-    T2d=eom.GetVSEOM_ladder_multiref(T2,1)
+    T1d=T1*0.
+    T1d.SetHermitian()
+    T1d=eom.GetVSEOM_ladder_multiref(T1,0)
     nop=T1*0.
     nop.SetHermitian()
-    nop= cm.Commutator(T1,T2d)
+    nop= cm.Commutator(T1d,T2)
     rst = eom.GetVSEOM_Overlap_multiref(nop)
     return(rst/2.)
 
@@ -40,8 +40,8 @@ def norm3_multiref(eom, t1,t2,haml,ms):
     t3.SetHermitian()
 
     cm.comm223ss(t2,haml,t3)
-#    cm.comm232ss(t1,t3,nop)
-#    cm.comm231ss(t1,t3,nop)
+    cm.comm232ss(t1,t3,nop)
+    cm.comm231ss(t1,t3,nop)
     cm.comm132ss(t1,t3,nop)
     rst = eom.GetVSEOM_Overlap_multiref(nop)
     return(rst/2)
@@ -59,23 +59,13 @@ def htc_single(eom,Haml, chi,proj=None):
 
 def htc_multiref(eom, Haml, chi,prjop=None):
 
-    chi_d=chi*0
-    chi_d.SetAntiHermitian()
-    chi_d = eom.GetVSEOM_ladder_multiref(chi, 1)
     ht_minus= chi*0
     ht_minus.SetHermitian()  
-    ht_minus = cm.Commutator(Haml, chi_d )
-    heom= eom.GetVSEOM_ladder_multiref(ht_minus, 0)
+    ht_minus = cm.Commutator(Haml, chi )
+    heom= eom.GetVSEOM_ladder_multiref(ht_minus, 1)
     if(prjop != None):
         prjop(heom)
     return(heom)
-
-
-
-
-
-
-
 
 
 
@@ -138,358 +128,6 @@ def lanczos_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_th
 
 
 
-def arnoldi_proc_new( hv_func, norm_func,norm_three, haml, vi, max_iter,state_want,ms,eom, prjop):
-    lanczos_vector = []
-    hall = np.zeros([max_iter,max_iter])
-    hall[0,0]=0.
-
-    converged = 0
-    ## normalize it to 1
-    nn=norm_func(eom,vi,vi)
-    print('initial norm vector', nn)
-    vi=vi/np.sqrt(nn)
-    lanczos_vector.append(vi)
-    norm_e_old=-10000
-    norm_e_new=-1000
-    e=np.zeros(state_want)
-
-    for j in range(max_iter-1):
-        w = hv_func(eom,haml,lanczos_vector[j],prjop)
-        ai=norm_func(eom,w,lanczos_vector[j])
-        hall[j,j]=ai
-
-        w=w-ai*lanczos_vector[j]
-
-        if(j>0):
-            for i in range(j):
-                bj=norm_func(eom,w,lanczos_vector[i])
-                w=w-bj*lanczos_vector[i]
-
-        bj = norm_func(eom,w,w)
-
-        if abs(bj) < 0.00001:
-            print('coupling bj is small: ', bj, j)
-            break
-        w=w/np.sqrt(bj)
-        lanczos_vector.append(w)
-        print('lanczos vector euclidean norm: ',w.Norm())
-        nmm=0.
-        nm3=0.
-        vs=np.zeros([1,1])
-        for m in range(j):
-            vl=lanczos_vector[m]
-            vm=lanczos_vector[j]
-            vec=vl*0.0
-            vec.SetHermitian()
-            vec=hv_func(eom,haml, vm,prjop)
-            nmm=norm_func(eom,vl,vec)
-            nm3=norm_three(eom,vl,vm,haml, ms)
-            hall[m,j] =nmm+nm3
-            hall[j,m] =nmm+nm3
-        if(j+1 >= state_want ):
-            hsub=hall[0:j+1,0:j+1]
-            e,v = np.linalg.eig(hsub[0:j+1,0:j+1])
-            idx = np.argsort(e)   
-            e = e[idx]
-            vs = v[:,idx]
-            vec_a=lanczos_vector[j]*0.
-            for kk in range(len(e)):
-                vec_a = vec_a + lanczos_vector[kk]*vs[kk,0]
-
-            vec_b=hv_func(eom,haml, vec_a,prjop)
-            nmm=norm_func(eom,vec_a,vec_b)
-            nm3=norm_three(eom,vec_a,vec_a,haml, ms)
-            nm=norm_func(eom,vec_a,vec_a)
-
-            print('energy check: ', nmm+nm3,nm)
-            if(abs(nm-1.)>0.0001):
-                print('Lost Orthogonality, converged')
-                break
-            print("Energy on ", j+1 , ' th iteration: ', e[:] )
-
-            norm_e_new=0.0
-            for k in range(state_want):
-                norm_e_new += e[k]*e[k]
-            if(abs(norm_e_new-norm_e_old) < 0.0000001):
-                print('energy converge')
-                break
-            norm_e_old=norm_e_new
-
-
-    print('Arnoldi converged with ', j+1, ' step')
-    lanczos_vector.pop()
-    print(hall)
-
-    return(e, vs,lanczos_vector)
-
-
-
-import numpy as np
-
-def arnoldi_solver(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,norm_three=None, rdmat=None, prjop=None):
-    """
-    Final Professional Version:
-    - Renamed basis to lanczos_vector.
-    - Double Orthogonalization (Twice is Enough) to kill spurious zero-states.
-    - Periodic energy reporting.
-    """
-    tol=1e-3
-    res_tol=1e-5
-    lanczos_vector = []
-    hall = np.zeros([max_iter, max_iter], dtype=complex)
-    
-    # Normalize initial guess
-
-    nn = norm_func(eom, vi, vi)
-    if nn <= 0: 
-        raise ValueError("Initial vector has zero or negative norm.")
-    
-    vi = vi / np.sqrt(nn)
-    lanczos_vector.append(vi)
-    
-    e_vals = np.zeros(state_want, dtype=complex)
-    subspace_vs = None
-    norm_e_old = -1000.0
-
-    # --- 2. Main Iteration Loop ---
-    for j in range(max_iter - 1):
-        # A. Apply Operator (Once per step)
-        w = hv_func(eom, haml, lanczos_vector[j], prjop)
-        
-        # B. Modified Gram-Schmidt Orthogonalization
-        # Fills the j-th column of the Hessenberg matrix
-        for i in range(j + 1):
-            h_ij = norm_func(eom, w, lanczos_vector[i])
-            hall[i, j] = h_ij
-            w = w - h_ij * lanczos_vector[i]
-            
-        # C. Sub-diagonal element and normalization
-        bj_sq = norm_func(eom, w, w)
-        bj = np.sqrt(max(0, bj_sq.real))
-
-        if bj < 1e-1:
-            print(f"Breakdown at step {j}: Subspace converged.")
-            break
-            
-        if (j + 1) < max_iter:
-            hall[j + 1, j] = bj
-            
-        w_next = w / bj
-        lanczos_vector.append(w_next)
-        
-        # --- 3. Convergence & Reporting ---
-        if (j + 1) >= state_want:
-            h_sub = hall[0:j+1, 0:j+1]
-            h_sub=(h_sub+h_sub.T)/2
-
-            vals, vecs = np.linalg.eig(h_sub)
-            
-            # Sort energies (real part)
-            idx = np.argsort(np.real(vals))
-            current_evals = vals[idx]
-            current_vs = vecs[:, idx]
-            
-            # D. Periodic Energy Report (Every 5 steps)
-            if (j + 1) % state_want == 0:
-                print(f"Iteration {j+1}: Target Energies = {current_evals[:state_want].real}")
-
-            # E. Convergence Check
-            norm_e_new = np.sum(np.abs(current_evals[:state_want])**2)
-            if abs(norm_e_new - norm_e_old) < tol:
-                print(f"Energy converged at iteration {j+1}")
-                e_vals, subspace_vs = current_evals, current_vs
-                break
-            
-            norm_e_old = norm_e_new
-            e_vals, subspace_vs = current_evals, current_vs
-
-    # --- 4. Final Ritz Vector Construction ---
-    physical_states = []
-    if subspace_vs is not None:
-        for k in range(state_want):
-            # Transform coefficients back to full basis
-            ritz_vec = lanczos_vector[0] * 0.0
-            for i in range(len(lanczos_vector)-1):
-                ritz_vec += subspace_vs[i, k].real * lanczos_vector[i]
-            physical_states.append(ritz_vec)
-
-    print(f"Arnoldi converged with {len(lanczos_vector)} steps")
-    return e_vals[:state_want], physical_states, lanczos_vector
-
-
-
-import numpy as np
-
-def subspace_solver(h1_func, norm_func, h2_expect_func, haml, vi, max_basis_size, state_want, ms, eom, rdmat=None ,  prjop=None):
-    tol=1e-8
-    """
-    Subspace expansion for H = H1 + H2.
-    Only <v1|H2|v2> is used for H2.
-    Elements are cached to prevent redundant computation.
-    """
-    basis = []
-    # Cache for H1 and H2 matrix elements
-    h1_cache = np.zeros((max_basis_size, max_basis_size), dtype=complex)
-    h2_cache = np.zeros((max_basis_size, max_basis_size), dtype=complex)
-
-    # Normalize initial guess
-    nn = norm_func(eom, vi, vi)
-    if nn <= 0:
-        raise ValueError("Initial vector norm is 0 or negative.")
-
-    v = vi / np.sqrt(nn)
-
-    basis.append(v)
-
-    prev_energy = 0.0
-
-    for j in range(max_basis_size):
-        m = len(basis)
-        new_idx = m - 1 # The index of the newest vector added
-
-        # 1. Update the Cache for the new row/column
-        # We only need to compute the interaction of the NEW vector with all vectors
-        h1_v_new = h1_func(eom, haml, basis[new_idx], prjop)
-
-        for i in range(m):
-            # Compute H1 part: <basis_i | H1 | basis_new>
-            val_h1 =  norm_func(eom, basis[i], h1_v_new)
-            h1_cache[i, new_idx] = val_h1
-            h1_cache[new_idx, i] = np.conj(val_h1)
-
-            # Compute H2 part: <basis_i | H2 | basis_new>
-            val_h2 = h2_expect_func(eom,basis[i], basis[new_idx],haml,ms)
-            h2_cache[i, new_idx] = val_h2
-            h2_cache[new_idx, i] = np.conj(val_h2)
-
-        # 2. Extract the current active subspace matrix
-        H_sub = h1_cache[:m, :m] + h2_cache[:m, :m]
-
-        # 3. Solve the Hermitian eigenvalue problem
-        evals, evecs = np.linalg.eigh(H_sub)
-
-        current_energy = evals[0].real
-        print(f"Iteration {j+1}: Basis Size = {m}, Energy = {current_energy:.10f}")
-
-        # Convergence check
-        if j > 0 and abs(current_energy - prev_energy) < tol:
-            print("Converged!")
-            break
-        prev_energy = current_energy
-
-        # 4. Generate next basis vector using H1 (Krylov expansion)
-        # We apply H1 to the most recent vector to explore new directions
-        w_next =  h1_func(eom, haml, basis[new_idx], prjop)
-
-        # Modified Gram-Schmidt Orthonormalization
-        for b in basis:
-            nm=norm_func(eom, b, w_next)
-            w_next -= nm * b
-
-        norm=norm_func(eom, w_next, w_next)
-
-        # Handling linear dependency or H1-invariant subspaces
-        if norm < 1e-10:
-            if m >= max_basis_size: break
-            # Inject random noise to find new directions H2 might care about
-            w_next = np.random.normal(0, 1, vi.shape).astype(vi.dtype)
-            for b in basis:
-                nm=norm_func(eom, b, w_next)
-                w_next -= nm * b
-            norm = norm_func(eom, w_next, w_next)
-
-        basis.append(w_next* ( 1./ norm))
-
-    # Construct the final Ritz vectors (physical states)
-    physical_states = []
-    for k in range(min(state_want, m)):
-        state = basis[0] * 0.0
-        for i in range(m):
-            state += evecs[i, k] * basis[i]
-        physical_states.append(state)
-
-    return evals[:state_want], physical_states
-
-
-def arnoldi_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_three=None,rdmat=None,prjop=None):
-    lanczos_vector = []
-    hall = np.zeros([max_iter,max_iter])
-    hall[0,0]=0.
-
-    converged = 0
-    ## normalize it to 1
-    nn=norm_func(eom,vi,vi,rdmat)
-    print('initial norm vector', nn)
-    vi=vi/np.sqrt(nn)
-    lanczos_vector.append(vi)
-    norm_e_old=-10000
-    norm_e_new=-1000
-    e=np.zeros(state_want)
-
-    for j in range(max_iter-1):
-        w = hv_func(eom,haml,lanczos_vector[j],prjop)
-        ai=norm_func(eom,w,lanczos_vector[j])
-        hall[j,j]=ai
-        w=w-ai*lanczos_vector[j]
-
-        if(j>0):
-            for i in range(j):
-                bj=norm_func(eom,w,lanczos_vector[i])
-                w=w-bj*lanczos_vector[i]
-
-
-        ## generate the new vector
-        bj = norm_func(eom,w,w)
-    
-
-        if abs(bj) < 0.00001:
-            print('coupling bj is small: ', bj, j)
-            break
-        w=w/np.sqrt(bj)
-        lanczos_vector.append(w)
-        print('lanczos vector euclidean norm: ',w.Norm())
-        nmm=0.
-        vs=np.zeros([1,1])
-        for m in range(j):
-            vl=lanczos_vector[m]
-            vm=lanczos_vector[j]
-            vec=vl*0.0
-            vec.SetHermitian()
-            vec=hv_func(eom,haml, vm,prjop)
-            nmm=norm_func(eom,vl,vec)
-            hall[m,j] =nmm
-            hall[j,m] =nmm
-        if(j+1 >= state_want ):
-            hsub=hall[0:j+1,0:j+1]
-            e,v = np.linalg.eig(hsub[0:j+1,0:j+1])
-            idx = np.argsort(e)   
-            e = e[idx]
-            vs = v[:,idx]
-            vec_a=lanczos_vector[j]*0.
-            for kk in range(len(e)):
-                vec_a = vec_a + lanczos_vector[kk]*vs[kk,0]
-
-
-            print('energy check: ', nmm)
-            if(abs(nmm-1.)>0.0001):
-                print('Lost Orthogonality, converged')
-                break
-            #print("Energy on ", j+1 , ' th iteration: ', e[:] )
-
-            norm_e_new=0.0
-            for k in range(state_want):
-                norm_e_new += e[k]*e[k]
-            if(abs(norm_e_new-norm_e_old) < 0.0000001):
-                print('energy converge')
-                break
-            norm_e_old=norm_e_new
-
-
-    print('Arnoldi converged with ', j+1, ' step')
-    lanczos_vector.pop()
-    print(hall)
-
-    return(e, vs,lanczos_vector)
 
 
 
@@ -641,13 +279,142 @@ def print_op(chi, ms):
 
 
 
+def arnoldi_proc(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,
+                 norm_three=None, rdmat=None, prjop=None):
+    """
+    Arnoldi eigensolver for H = H1 + H2 where H is hermitian but H1, H2 are not.
+
+    Builds a Krylov subspace using H1 (via hv_func), then computes the full
+    H = H1 + H2 matrix in that subspace and diagonalizes it.
+
+    Parameters
+    ----------
+    hv_func    : callable(eom, haml, v, prjop) -> H1*v   (e.g. htc_multiref)
+    norm_func  : callable(eom, v1, v2) -> <v1|v2>        (e.g. norm_multiref)
+    haml       : Hamiltonian operator
+    vi         : initial vector
+    max_iter   : maximum Arnoldi steps
+    state_want : number of lowest eigenvalues to target
+    ms         : model space
+    eom        : EOM object
+    norm_three : callable(eom, v1, v2, haml, ms) -> <v1|H2|v2>  (e.g. norm3_multiref)
+    rdmat      : unused (reserved for future transition density matrix usage)
+    prjop      : projection operator passed to hv_func to remove null space
+    """
+    def _norm(a, b):
+        return norm_func(eom, a, b)
+
+    lanczos_vector = []
+    h1v_cache = []          # cache H1*v_j so we don't recompute it
+    hall = np.zeros([max_iter, max_iter])
+
+    # Normalize initial vector
+    nn = _norm(vi, vi)
+    print('arnoldi: initial vector norm =', nn)
+    vi = vi / np.sqrt(nn)
+    lanczos_vector.append(vi)
+
+    prev_e = None
+    tol    = 1e-8
+    min_iter = state_want + 1
+    e  = np.zeros(state_want)
+    vs = np.zeros([1, 1])
+
+    for j in range(max_iter - 1):
+
+        # --- compute H1*v_j ---
+        # For matrix elements we need the RAW H1*v (no prjop), matching mr_eom.py.
+        # For subspace expansion we will project separately after Gram-Schmidt.
+        h1v_j = hv_func(eom, haml, lanczos_vector[j],prjop)   # no prjop
+        h1v_cache.append(h1v_j)
+
+        # --- H matrix elements for column j (and row j) ---
+        # Both directions are computed independently.
+        # H = H1+H2 is hermitian, so hall[i,j] == hall[j,i] must hold exactly.
+        # If they differ, something upstream is wrong — print a warning.
+        for i in range(j + 1):
+            h1ij = _norm(lanczos_vector[i], h1v_j)          # <v_i | H1 | v_j>
+            h1ji = _norm(lanczos_vector[j], h1v_cache[i])   # <v_j | H1 | v_i>
+            if norm_three is not None:
+                h2ij = norm_three(eom, lanczos_vector[i], lanczos_vector[j], haml, ms)
+                h2ji = norm_three(eom, lanczos_vector[j], lanczos_vector[i], haml, ms)
+            else:
+                h2ij = h2ji = 0.0
+            hall[i, j] = h1ij + h2ij
+            hall[j, i] = h1ji + h2ji
+            # Hermiticity check: report H1 and H2 separately to locate the source
+            diff_h1 = h1ij - h1ji
+            diff_h2 = h2ij - h2ji
+            diff_H  = hall[i, j] - hall[j, i]
+            scale   = max(1.0, abs(hall[i, j]), abs(hall[j, i]))
+            if abs(diff_H) / scale > 1e-6:
+                print(f'  HERM BREAK ({i},{j}):  '
+                      f'H[i,j]={hall[i,j]:.8f}  H[j,i]={hall[j,i]:.8f}  '
+                      f'|diff|={abs(diff_H):.3e}  '
+                      f'H1_ij={h1ij:.6f} H1_ji={h1ji:.6f} dH1={diff_h1:.3e}  '
+                      f'H2_ij={h2ij:.6f} H2_ji={h2ji:.6f} dH2={diff_h2:.3e}')
+
+        # --- expand subspace: project a copy of h1v_j then Gram-Schmidt ---
+        # Use a copy so h1v_cache[j] (used for matrix elements) stays unmodified.
+        # Project BEFORE GS (removes null space from the start direction).
+        # Project AGAIN AFTER GS (GS subtraction can reintroduce null-space drift
+        # via floating-point; without this the euclidean norm blows up over steps).
+        w = h1v_j * 1.0
+        if prjop is not None:
+            prjop(w)
+        for i in range(j + 1):
+            cij = _norm(lanczos_vector[i], w)
+            w   = w - cij * lanczos_vector[i]
+        if prjop is not None:
+            prjop(w)
+
+        bj = _norm(w, w)
+        if abs(bj) < 1e-12:
+            print('arnoldi: early breakdown at step', j + 1)
+            break
+        lanczos_vector.append(w / np.sqrt(bj))
+
+        # --- eigenvalue check / convergence ---
+        if j + 1 >= min_iter:
+            e, v = np.linalg.eig(hall[:j+1, :j+1])
+            idx  = np.argsort(e.real)
+            e    = e.real[idx]
+            vs   = v[:, idx]
+
+            if (j + 1) % 5 == 0:
+                print('arnoldi eigenvalues @ step', j + 1, ':', e[:state_want])
+
+            if prev_e is not None:
+                delta = np.max(np.abs(e[:state_want] - prev_e))
+                scale = max(1.0, np.max(np.abs(e[:state_want])))
+                if delta < tol or delta / scale < tol:
+                    print('Arnoldi converged with', j + 1, 'steps')
+                    break
+            prev_e = e[:state_want].copy()
+
+    print('Arnoldi finished with', j + 1, 'steps')
+    for k in range(state_want):
+        print('E(', k, ')=', e[k])
+
+    # build Ritz vectors
+    ritz_vecs = []
+    nb = len(lanczos_vector)
+    for k in range(state_want):
+        vec = lanczos_vector[0] * 0.0
+        for m in range(min(nb, vs.shape[0])):
+            vec = vec + float(vs[m, k]) * lanczos_vector[m]
+        ritz_vecs.append(vec)
+
+    return e[:state_want], vs, ritz_vecs
+
+
 def dcom222312(eom,Hs,chi):
     opa=chi*0
     opa.SetHermitian()
-#    cm.FactorizedDoubleCommutator.SetUse_1b_Intermediates(True);
-#    cm.FactorizedDoubleCommutator.SetUse_2b_Intermediates(True);
-#    cm.FactorizedDoubleCommutator.comm223_231(chi, Hs, opa);
-#    cm.FactorizedDoubleCommutator.comm223_232(chi, Hs, opa);
+    cm.FactorizedDoubleCommutator.SetUse_1b_Intermediates(True);
+    cm.FactorizedDoubleCommutator.SetUse_2b_Intermediates(True);
+    cm.FactorizedDoubleCommutator.comm223_231(chi, Hs, opa);
+    cm.FactorizedDoubleCommutator.comm223_232(chi, Hs, opa);
     cm.FactorizedDoubleCommutator.comm223_132(chi, Hs, opa);
     rst=eom.GetVSEOM_Overlap_multiref(opa)
     return(rst/2,opa)
