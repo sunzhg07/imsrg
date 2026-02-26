@@ -1178,6 +1178,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("ConstructNormMatrix", &EOM::ConstructNormMatrix)
       .def("Setup_rdm", &EOM::Setup_rdm)
       .def("ProjectOprator", &EOM::ProjectOprator, py::arg("Qin"))
+      .def("ComputeNorm", &EOM::ComputeNorm, py::arg("Op1"), py::arg("Op2"))
       .def("force_decouple", &EOM::force_decouple, py::arg("H"))
 
       .def("GetVSEOM_Overlap_single", &EOM::GetVSEOM_Overlap_single,

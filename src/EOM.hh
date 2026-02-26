@@ -74,6 +74,7 @@ public:
   void SqrtMat(arma::mat &Amat, size_t n);
   void ProjectOprator(Operator &Qin);
   void block_svd(std::vector<int> &coupled_vector);
+  double ComputeNorm(Operator &Op1, Operator &Op2);
 };
 
 #endif

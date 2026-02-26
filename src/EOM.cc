@@ -32,10 +32,8 @@ void EOM::ConstructConfigs() {
   int norbits = modelspace->norbits;
   for (index_t i_orb = 0; i_orb < norbits; i_orb++) {
     Orbit &oi = modelspace->GetOrbit(i_orb);
-
     if (oi.cvq != 2)
       continue;
-
     for (index_t j_orb = 0; j_orb < norbits; j_orb++) {
       Orbit &oj = modelspace->GetOrbit(j_orb);
       if (oj.cvq != 1)
@@ -47,13 +45,14 @@ void EOM::ConstructConfigs() {
       if (oj.tz2 != oi.tz2)
         continue;
       eom_confs.push_back({i_orb, j_orb, 0, eom_dims});
+//std::cout <<"qv conf "<< eom_dims<< " "<< i_orb<<" "<<j_orb<<std::endl;
       eom_dims += 1;
       qv_dim += 1;
     }
   }
   if (qv_dim > 0)
     qv_end = qv_start + qv_dim - 1;
-  std::cout << "dimension EOM qv: " << qv_start << " " << qv_end << std::endl;
+  //std::cout << "dimension EOM qv: " << qv_start << " " << qv_end << std::endl;
 
   ph_start = eom_confs.size();
   ph_end = 0;
@@ -72,6 +71,7 @@ void EOM::ConstructConfigs() {
       if (oj.tz2 != oi.tz2)
         continue;
       eom_confs.push_back({i_orb, j_orb, 0, eom_dims});
+     // std::cout <<"ph conf "<< eom_dims<< "with i,j = "<<i_orb<<" "<<j_orb<<std::endl;
       eom_dims += 1;
       ph_dim += 1;
     }
@@ -88,6 +88,7 @@ void EOM::ConstructConfigs() {
     for (auto &ibra : VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv())) {
       for (auto &iket : tbc.GetKetIndex_vv()) {
         eom_confs.push_back({ibra, iket, ich, eom_dims});
+   // std::cout<<"ppvv conf"<< eom_dims<< "ich, bra,ket = "<< ich<< " " << ibra<< " " <<iket<<std::endl;
         eom_dims += 1;
         ppvv_dim += 1;
       }
@@ -109,12 +110,8 @@ void EOM::ConstructConfigs() {
     for (auto &ibra : VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv(),
                                   tbc.GetKetIndex_vv())) {
       for (auto &iket : tbc.GetKetIndex_vc()) {
-        Ket &dbra = tbc.GetKet(ibra);
-        Ket &dket = tbc.GetKet(iket);
-        //        std::cout <<" Config pphv "<< eom_dims<<"
-        //        "<<dbra.p<<dbra.q<<dket.p<<dket.q<<" "<<ibra<<" "<<iket<<"
-        //        "<<ich<< " "<<tbc.J << std::endl;
         eom_confs.push_back({ibra, iket, ich, eom_dims});
+  //      std::cout <<" Config pphv "<< eom_dims<<"ich bra ket =  "<<ich<< " " <<ibra<<" "<<iket << std::endl;
         eom_dims += 1;
         pphv_dim += 1;
       }
@@ -133,12 +130,8 @@ void EOM::ConstructConfigs() {
     for (auto &ibra : VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv(),
                                   tbc.GetKetIndex_vv())) {
       for (auto &iket : tbc.GetKetIndex_cc()) {
-        Ket &dbra = tbc.GetKet(ibra);
-        Ket &dket = tbc.GetKet(iket);
-        // std::cout <<" Config pphh "<< eom_dims<<"
-        // "<<dbra.p<<dbra.q<<dket.p<<dket.q<<" "<<ibra<<" "<<iket<<" "<<ich<< "
-        // "<<tbc.J << std::endl;
         eom_confs.push_back({ibra, iket, ich, eom_dims});
+     //   std::cout <<" Config pphh "<< eom_dims<<"ich bra ket =  "<<ich<< " " <<ibra<<" "<<iket << std::endl;
         eom_dims += 1;
         pphh_dim += 1;
       }
@@ -158,9 +151,9 @@ arma::vec EOM::GetEnergies() { return Energies; }
 
 void EOM::ConstructNormMatrix() {
 
-  // Nkernel.set_size(eom_dims,eom_dims);
-  // Nkernel.zeros();
   Nkernel.set_size(eom_dims, eom_dims);
+
+  Nkernel.zeros();
   // B4, becnhmarked with srg
   if (qv_dim != 0) {
     for (index_t i = qv_start; i <= qv_end; i++) {
@@ -189,7 +182,6 @@ void EOM::ConstructNormMatrix() {
         }
         if (cf_bra[1] != cf_ket[1])
           continue;
-        std::cout << "ph " << i << " " << j << std::endl;
         Nkernel(i, j) -= rdm.OneBody(cf_ket[0], cf_bra[0]) * sqrt(obra.j2 + 1.);
       }
     }
@@ -206,17 +198,17 @@ void EOM::ConstructNormMatrix() {
         std::array<index_t, 4> &cf_ket = eom_confs.at(j);
 
         if (cf_bra[2] != cf_ket[2])
-          continue;
+          continue;  // same channel
         if (cf_bra[0] != cf_ket[0])
-          continue;
+          continue; 
         TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
+//        Ket &dbra1 = tbc_bra.GetKet(cf_bra[1]);
+//        Ket &dket1 = tbc_bra.GetKet(cf_ket[1]);
+//std::cout<< "ppvv norm"<< i<<" "<<j<< " is  "<< dbra1.p<<" "<<dbra1.q<<" "<<dket1.p<<" " <<dket1.q<< " "<< tbc_bra.J<<std::endl;
         double val =
             rdm.GetTwoBody(cf_bra[2], cf_ket[2], cf_bra[1], cf_ket[1]) *
             sqrt(2 * tbc_bra.J + 1.);
-
         Nkernel(i, j) += val;
-        //     if(abs(Nkernel(i,j))>0.0000001)std::cout<<i<<" "<<j<<"
-        //     "<<Nkernel(i,j)<<" cpp"<<std::endl;
       }
     }
   }
@@ -258,8 +250,7 @@ void EOM::ConstructNormMatrix() {
 
         Nkernel(i, j) +=
             rdm.OneBody(c1, c2) * (2 * tbc_bra.J + 1.) / sqrt(oc1.j2 + 1.);
-        // if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<" " <<
-        // Nkernel(i,j) << std::endl;
+        // if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<" " << Nkernel(i,j) << std::endl;
 
         // if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<"
         // "<<dbra.p<<dbra.q<<e1<<c1<<e2<<c2<<" " << Nkernel(i,j) << std::endl;
@@ -511,9 +502,13 @@ void EOM::ConstructNormMatrix() {
         if (c1 == b) {
           Nkernel(i, j) += norm_fact * dbra1.Phase(j1) * rdm.OneBody(a, d) *
                            (2 * j1 + 1.) / sqrt(oa.j2 + 1.);
+          Nkernel(j, i) += norm_fact * dbra1.Phase(j1) * rdm.OneBody(a, d) *
+                           (2 * j1 + 1.) / sqrt(oa.j2 + 1.);
         }
         if (c1 == a && a != b) {
           Nkernel(i, j) +=
+              norm_fact * rdm.OneBody(b, d) * (2 * j1 + 1.) / sqrt(ob.j2 + 1.);
+          Nkernel(j, i) +=
               norm_fact * rdm.OneBody(b, d) * (2 * j1 + 1.) / sqrt(ob.j2 + 1.);
         }
         //     if(abs(Nkernel(i,j))>0.001)std::cout <<i<<" "<<j << "
@@ -556,6 +551,7 @@ void EOM::ConstructNormMatrix() {
               rdm.TwoBody.GetTBME_J_norm(tbc_bra.J, tbc_bra.J, a, b, c1, d) *
               sqrt(j1 * 2. + 1.);
           Nkernel(i, j) -= val2 * norm_fact;
+          Nkernel(j, i) -= val2 * norm_fact;
         }
         //            if(abs(Nkernel(i,j))>0.000001) std::cout <<i<<" "<<j<<" "
         //            << Nkernel(i,j)<<std::endl;
@@ -596,6 +592,7 @@ void EOM::ConstructNormMatrix() {
               rdm.TwoBody.GetTBME_J_norm(tbc_bra.J, tbc_bra.J, a, b1, c, d) *
               sqrt(2 * j1 + 1.);
           Nkernel(i, j) += val2 * norm_fact;
+          Nkernel(j, i) += val2 * norm_fact;
         }
         // if(abs(Nkernel(i,j))>0.000001) std::cout <<i<<" "<<j<<" " <<
         // Nkernel(i,j)<<std::endl;
@@ -608,14 +605,6 @@ void EOM::ConstructNormMatrix() {
   // Nkernel.n_nonzero << std::endl; std::cout << "\nNon-zero elements of A:" <<
   // std::endl;
 
-  // for (arma::uword r = 0; r < Nkernel.n_rows; ++r) {
-  //     for (arma::uword c = 0; c < Nkernel.n_cols; ++c) {
-  //         if (Nkernel(r, c) != 0) {
-  //             std::cout <<  r << " " << c << " " << Nkernel(r, c) <<
-  //             std::endl;
-  //         }
-  //     }
-  // }
 }
 
 double EOM::Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
@@ -665,6 +654,7 @@ void EOM::PrintConfigs() {
 void EOM::ConstructProjectMatrix() {
 
   Prj_kernel.set_size(eom_dims, eom_dims);
+  Prj_kernel.zeros();
 
   size_t number_channels = modelspace->GetNumberTwoBodyChannels();
   int nconf_pphh_ch[number_channels] = {0};
@@ -686,7 +676,7 @@ void EOM::ConstructProjectMatrix() {
 
   // first we do pphh, it have no coupling to other diagrams, and no coupling
   // bettwen channels
-  std::cout << " svd for pphh : " << std::endl;
+//  std::cout << " svd for pphh : " << std::endl;
 
   for (index_t ich = 0; ich < number_channels; ich++) {
     if (nconf_pphh_ch[ich] == 0)
@@ -706,7 +696,7 @@ void EOM::ConstructProjectMatrix() {
   //
   // we do vqvv together with onebody qv first
   std::vector<int> coupled_idx;
-  std::cout << " svd for vqvv and pv : " << std::endl;
+ // std::cout << " svd for vqvv and pv : " << std::endl;
   for (index_t i = ppvv_start; i <= ppvv_end; i++) {
     index_t ich = eom_confs.at(i)[2];
     size_t ibra = eom_confs.at(i)[0];
@@ -723,19 +713,19 @@ void EOM::ConstructProjectMatrix() {
     coupled_idx.push_back(i);
   }
 
-  std::cout << " svd for vqvv and pv a : " << qv_start << " " << qv_end
-            << std::endl;
+//  std::cout << " svd for vqvv and pv a : " << qv_start << " " << qv_end
+//            << std::endl;
 
   for (index_t i = qv_start; i <= qv_end; i++)
     coupled_idx.push_back(i);
-  std::cout << " svd for vqvv and pv b : " << std::endl;
+//  std::cout << " svd for vqvv and pv b : " << std::endl;
 
   if (coupled_idx.size() != 0)
     block_svd(coupled_idx);
 
   // now all qqvv channels
   //
-  std::cout << " svd for qqvv : " << std::endl;
+ // std::cout << " svd for qqvv : " << std::endl;
   for (index_t ich = 0; ich < number_channels; ich++) {
 
     if (nconf_ppvv_ch[ich] == 0)
@@ -767,7 +757,7 @@ void EOM::ConstructProjectMatrix() {
 
   // now ph and pphv,
   // vvhv and vh, sort by hole line
-  std::cout << " svd for vvhv and vh : " << std::endl;
+//  std::cout << " svd for vvhv and vh : " << std::endl;
   for (index_t i = 0; i < modelspace->norbits; i++) {
     Orbit &oi = modelspace->GetOrbit(i);
     if (oi.occ != 1)
@@ -816,7 +806,7 @@ void EOM::ConstructProjectMatrix() {
   }
 
   // vphv and qh
-  std::cout << " svd for vpvh and qh : " << std::endl;
+//  std::cout << " svd for vpvh and qh : " << std::endl;
   for (index_t i = 0; i < modelspace->norbits; i++) {
     Orbit &oi = modelspace->GetOrbit(i);
     if (oi.occ != 1)
@@ -866,7 +856,7 @@ void EOM::ConstructProjectMatrix() {
   // pphv itself, no coupling between channels
   //
   //
-  std::cout << " svd for qqhv : " << std::endl;
+//  std::cout << " svd for qqhv : " << std::endl;
   for (index_t ich = 0; ich < number_channels; ich++) {
 
     if (nconf_pphv_ch[ich] == 0)
@@ -895,29 +885,111 @@ void EOM::ConstructProjectMatrix() {
   }
 }
 
-       // True orthogonal projector P = U_r * U_r^T  (idempotent: P*P = P)
-        // Projects onto the range of the norm matrix, removing the null space.
+// True orthogonal projector P = U_r * U_r^T  (idempotent: P*P = P)
+// Projects onto the range of the norm matrix, removing the null space.
 void EOM::SqrtMat(arma::mat& Amat, size_t n)
 {
     arma::mat U, V;
     arma::vec s;
-    s.set_size(n); s.fill(0.);
-    U.set_size(n,n); U.fill(0.);
-    V.set_size(n,n); V.fill(0.);
     arma::svd(U, s, V, Amat);
-    std::vector<int> s_idx;
-    for ( index_t i=0; i<s.size(); i++){
-        if(abs(s[i]) < 0.000001) continue;
-        s_idx.push_back(i);
+
+    double s_max = (s.n_elem > 0) ? arma::max(s) : 0.0;
+
+    // If the entire block is zero, the projector is zero.
+    if (s_max < 1e-14) {
+        Amat.zeros(n, n);
+        return;
     }
 
-    arma::uvec s_idx_new(s_idx.size());
-    for(index_t i=0; i<s_idx.size(); i++) s_idx_new[i]=s_idx[i];
-    Amat.fill(0.);
-    arma::mat Us=U.cols(s_idx_new);
-    Amat=Us * Us.t();
-    return ;
+    // Use a relative threshold to cleanly separate range from null space.
+    // Vectors with s_i < 1e-6 * s_max are floating-point noise, not in the range.
+    arma::uvec range_idx = arma::find(s >= 1e-6 * s_max);
 
+    Amat.zeros(n, n);
+    if (range_idx.n_elem > 0) {
+        arma::mat Us = U.cols(range_idx);
+        Amat = Us * Us.t();
+    }
+    return;
+
+}
+
+double EOM::ComputeNorm(Operator &Op1, Operator &Op2) {
+  // Flatten Op1 to vector (raw matrix elements, angular momentum factors are in Nkernel)
+  arma::vec v1(eom_confs.size());
+  v1.fill(0.);
+
+  for (index_t i = qv_start; i <= qv_end; i++) {
+    size_t p = eom_confs.at(i)[0];
+    size_t q = eom_confs.at(i)[1];
+    v1(i) = Op1.GetOneBody(p, q);
+  }
+  for (index_t i = ph_start; i <= ph_end; i++) {
+    size_t p = eom_confs.at(i)[0];
+    size_t q = eom_confs.at(i)[1];
+    v1(i) = Op1.GetOneBody(p, q);
+  }
+
+  for (index_t i = pphh_start; i <= pphh_end; i++) {
+    size_t ibra = eom_confs.at(i)[0];
+    size_t iket = eom_confs.at(i)[1];
+    size_t ich = eom_confs.at(i)[2];
+    v1(i) = Op1.GetTwoBody(ich, ich, ibra, iket);
+  }
+
+  for (index_t i = ppvv_start; i <= ppvv_end; i++) {
+    size_t ibra = eom_confs.at(i)[0];
+    size_t iket = eom_confs.at(i)[1];
+    size_t ich = eom_confs.at(i)[2];
+    v1(i) = Op1.GetTwoBody(ich, ich, ibra, iket);
+  }
+  for (index_t i = pphv_start; i <= pphv_end; i++) {
+    size_t ibra = eom_confs.at(i)[0];
+    size_t iket = eom_confs.at(i)[1];
+    size_t ich = eom_confs.at(i)[2];
+    v1(i) = Op1.GetTwoBody(ich, ich, ibra, iket);
+  }
+
+  // Flatten Op2 to vector (raw matrix elements, angular momentum factors are in Nkernel)
+  arma::vec v2(eom_confs.size());
+  v2.fill(0.);
+
+  for (index_t i = qv_start; i <= qv_end; i++) {
+    size_t p = eom_confs.at(i)[0];
+    size_t q = eom_confs.at(i)[1];
+    v2(i) = Op2.GetOneBody(p, q);
+  }
+  for (index_t i = ph_start; i <= ph_end; i++) {
+    size_t p = eom_confs.at(i)[0];
+    size_t q = eom_confs.at(i)[1];
+    v2(i) = Op2.GetOneBody(p, q);
+  }
+
+  for (index_t i = pphh_start; i <= pphh_end; i++) {
+    size_t ibra = eom_confs.at(i)[0];
+    size_t iket = eom_confs.at(i)[1];
+    size_t ich = eom_confs.at(i)[2];
+    v2(i) = Op2.GetTwoBody(ich, ich, ibra, iket);
+  }
+
+  for (index_t i = ppvv_start; i <= ppvv_end; i++) {
+    size_t ibra = eom_confs.at(i)[0];
+    size_t iket = eom_confs.at(i)[1];
+    size_t ich = eom_confs.at(i)[2];
+    v2(i) = Op2.GetTwoBody(ich, ich, ibra, iket);
+  }
+  for (index_t i = pphv_start; i <= pphv_end; i++) {
+    size_t ibra = eom_confs.at(i)[0];
+    size_t iket = eom_confs.at(i)[1];
+    size_t ich = eom_confs.at(i)[2];
+    v2(i) = Op2.GetTwoBody(ich, ich, ibra, iket);
+  }
+
+  // Compute v1.t() * Nkernel * v2
+  arma::vec temp = Nkernel * v2;
+  double norm = arma::dot(v1, temp);
+
+  return norm;
 }
 
 void EOM::ProjectOprator(Operator &Qin) {
@@ -997,7 +1069,7 @@ void EOM::block_svd(std::vector<int> &coupled_vector) {
   int n = coupled_vector.size();
   Amat.set_size(n, n);
   Amat.fill(0.);
-  std::cout << "New svd with block size: " << n << std::endl;
+ // std::cout << "New svd with block size: " << n << std::endl;
   for (index_t i = 0; i < n; i++) {
     index_t ia = coupled_vector.at(i);
     std::array<index_t, 4> &cfs_bra = eom_confs.at(ia);
@@ -1255,7 +1327,8 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
   // H int herm, 0 for hermit, and 1 for antihermit
   int hZ = H.IsHermitian() ? +1 : -1;
   Operator Hod = 0.0 * H;
-  int herm_phase = 1;
+
+  int herm_phase = -1;
 
   if (herm == 0) {
     Hod.SetHermitian();
@@ -1265,6 +1338,7 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
     Hod.SetAntiHermitian();
     herm_phase = -1;
   }
+ // std::cout<< "input herm "<< herm<<" and herm phase is: "<< herm_phase<< std::endl;
 
 
   // One body piece -- eliminate ph bits

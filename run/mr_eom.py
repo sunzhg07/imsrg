@@ -136,25 +136,53 @@ print('reference energy: ', nm, 'vs [ -4.19234292  9.75174484 ] in nmax2 for he6
 ##
 ##
 
-eom.force_decouple(Hs)
 unt = UnitTest(ms)
 ### set anti hermitian
 rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,2,1
+
 h1= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
 h2= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
-#t3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, 3,herm)
-#t3.ThreeBody.SetMode("pn")
-
+##t3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, 3,herm)
+##t3.ThreeBody.SetMode("pn")
+#
 chi_a=eom.GetVSEOM_ladder_multiref(h1,1)
 chi_b=eom.GetVSEOM_ladder_multiref(h2,1)
-nm=norm_multiref(eom,chi_a,chi_b)
-print(nm)
-eom.ProjectOprator(chi_a)
-nm=norm_multiref(eom,chi_a,chi_b)
-print(nm)
-eom.ProjectOprator(chi_a)
-nm=norm_multiref(eom,chi_a,chi_b)
-print(nm)
+
+#nm=norm_multiref(eom,chi_a,chi_b)
+#print('original py ab: ',nm)
+#
+#nm=norm_multiref(eom,chi_b,chi_a)
+#print('original py ba: ',nm)
+#nm=eom.ComputeNorm(chi_a,chi_b)
+#print('original c++ ab: ', nm)
+#nm=eom.ComputeNorm(chi_b,chi_a)
+#print('original c++ ba: ', nm)
+#
+#
+#nm=eom.ComputeNorm(chi_a,chi_a)
+#print('original c++ aa: ', nm)
+#nm=eom.ComputeNorm(chi_a,chi_a)
+#print('original c++ aa: ', nm)
+#
+#chi_b=1.0*chi_a
+#
+#eom.ProjectOprator(chi_a)
+#chi_b=chi_b-chi_a
+#
+#nm=eom.ComputeNorm(chi_a,chi_a)
+#print('c++ after proj aa: ', nm)
+#
+#nm=eom.ComputeNorm(chi_b,chi_b)
+#print('c++ after proj 1-aa: ', nm)
+
+#print("vecryfy p*p=p")
+#eom.ProjectOprator(chi_a)
+#eom.ProjectOprator(chi_b)
+#
+#nm=eom.ComputeNorm(chi_a,chi_b)
+#print('c++ after proj: ', nm)
+#nm=norm_multiref(eom,chi_a,chi_b)
+#print('python after proj: ',nm)
 
 
 #eom.ProjectOprator(chi_b)
@@ -220,17 +248,17 @@ print(nm)
 #
 #
 #
-##e,vs,v2=arnoldi_proc(
-##   htc_multiref,
-##   norm_multiref,
-##   Hs,
-##   chi_a,
-##   max_iter=80,
-##   state_want=6,
-##   ms=ms,
-##   eom=eom,
-##   norm_three=norm3_multiref,
-##   rdmat=tdm_op,
-##   prjop=eom.ProjectOprator)
+e,vs,v2=arnoldi_proc(
+   htc_multiref,
+   norm_multiref,
+   Hs,
+   chi_a,
+   max_iter=60,
+   state_want=6,
+   ms=ms,
+   eom=eom,
+   norm_three=norm3_multiref,
+   rdmat=tdm_op,
+   prjop=eom.ProjectOprator)
 
 

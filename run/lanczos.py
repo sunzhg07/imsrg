@@ -18,9 +18,11 @@ def norm_multiref(eom, T1, T2):
     T1d=T1*0.
     T1d.SetHermitian()
     T1d=eom.GetVSEOM_ladder_multiref(T1,0)
+
     nop=T1*0.
     nop.SetHermitian()
     nop= cm.Commutator(T1d,T2)
+
     rst = eom.GetVSEOM_Overlap_multiref(nop)
     return(rst/2.)
 
@@ -354,14 +356,23 @@ def arnoldi_proc(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,
                       f'H1_ij={h1ij:.6f} H1_ji={h1ji:.6f} dH1={diff_h1:.3e}  '
                       f'H2_ij={h2ij:.6f} H2_ji={h2ji:.6f} dH2={diff_h2:.3e}')
 
-        # --- expand subspace: project a copy of h1v_j then Gram-Schmidt ---
-        # Use a copy so h1v_cache[j] (used for matrix elements) stays unmodified.
-        # Project BEFORE GS (removes null space from the start direction).
-        # Project AGAIN AFTER GS (GS subtraction can reintroduce null-space drift
-        # via floating-point; without this the euclidean norm blows up over steps).
+        # --- expand subspace: double-pass CGS with projection ---
+        # Double-pass Classical Gram-Schmidt: do two sweeps of orthogonalisation
+        # against all existing basis vectors.  The second sweep corrects the
+        # floating-point errors accumulated in the first pass, which is the
+        # primary source of the ghost near-zero states after ~35 steps.
+        # Projection (onto the range of N) is applied before each pass and once
+        # more after to suppress null-space drift independently.
         w = h1v_j * 1.0
         if prjop is not None:
             prjop(w)
+        # first pass
+        for i in range(j + 1):
+            cij = _norm(lanczos_vector[i], w)
+            w   = w - cij * lanczos_vector[i]
+        if prjop is not None:
+            prjop(w)
+        # second pass (corrects residual non-orthogonality from first pass)
         for i in range(j + 1):
             cij = _norm(lanczos_vector[i], w)
             w   = w - cij * lanczos_vector[i]
