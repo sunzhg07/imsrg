@@ -67,14 +67,12 @@ void EOM::ConstructConfigs() {
       if (oj.tz2 != oi.tz2)
         continue;
       eom_confs.push_back({i_orb, j_orb, 0, eom_dims});
-//std::cout <<"qv conf "<< eom_dims<< " "<< i_orb<<" "<<j_orb<<std::endl;
       eom_dims += 1;
       qv_dim += 1;
     }
   }
   if (qv_dim > 0)
     qv_end = qv_start + qv_dim - 1;
-  //std::cout << "dimension EOM qv: " << qv_start << " " << qv_end << std::endl;
 
   ph_start = eom_confs.size();
   ph_end = 0;
@@ -93,7 +91,6 @@ void EOM::ConstructConfigs() {
       if (oj.tz2 != oi.tz2)
         continue;
       eom_confs.push_back({i_orb, j_orb, 0, eom_dims});
-     // std::cout <<"ph conf "<< eom_dims<< "with i,j = "<<i_orb<<" "<<j_orb<<std::endl;
       eom_dims += 1;
       ph_dim += 1;
     }
@@ -110,13 +107,10 @@ void EOM::ConstructConfigs() {
     for (auto &ibra : VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv())) {
       for (auto &iket : tbc.GetKetIndex_vv()) {
         eom_confs.push_back({ibra, iket, ich, eom_dims});
-   // std::cout<<"ppvv conf"<< eom_dims<< "ich, bra,ket = "<< ich<< " " << ibra<< " " <<iket<<std::endl;
         eom_dims += 1;
         ppvv_dim += 1;
       }
     }
-    // std::cout << "Dimension of ppvv at channel "<< tbc.J<<" "<<tbc.parity <<
-    // " "<<tbc.Tz<<" is: "<< ppvv_dim<<std::endl;
   }
   if (ppvv_dim > 0)
     ppvv_end = ppvv_start + ppvv_dim - 1;
@@ -133,7 +127,6 @@ void EOM::ConstructConfigs() {
                                   tbc.GetKetIndex_vv())) {
       for (auto &iket : tbc.GetKetIndex_vc()) {
         eom_confs.push_back({ibra, iket, ich, eom_dims});
-  //      std::cout <<" Config pphv "<< eom_dims<<"ich bra ket =  "<<ich<< " " <<ibra<<" "<<iket << std::endl;
         eom_dims += 1;
         pphv_dim += 1;
       }
@@ -153,12 +146,10 @@ void EOM::ConstructConfigs() {
                                   tbc.GetKetIndex_vv())) {
       for (auto &iket : tbc.GetKetIndex_cc()) {
         eom_confs.push_back({ibra, iket, ich, eom_dims});
-     //   std::cout <<" Config pphh "<< eom_dims<<"ich bra ket =  "<<ich<< " " <<ibra<<" "<<iket << std::endl;
         eom_dims += 1;
         pphh_dim += 1;
       }
     }
-    // std::cout<< "dim pphh "<< eom_dims<<std::endl;
   }
   if (pphh_dim > 0)
     pphh_end = pphh_start + pphh_dim - 1;
@@ -208,8 +199,6 @@ void EOM::ConstructNormMatrix() {
       }
     }
   }
-  std::cout << "done dimension EOM ph: " << ph_start << " " << ph_end
-            << std::endl;
   // C1, benchmarked, maybe, it too many
   if (ppvv_dim != 0) {
 
@@ -224,9 +213,6 @@ void EOM::ConstructNormMatrix() {
         if (cf_bra[0] != cf_ket[0])
           continue; 
         TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
-//        Ket &dbra1 = tbc_bra.GetKet(cf_bra[1]);
-//        Ket &dket1 = tbc_bra.GetKet(cf_ket[1]);
-//std::cout<< "ppvv norm"<< i<<" "<<j<< " is  "<< dbra1.p<<" "<<dbra1.q<<" "<<dket1.p<<" " <<dket1.q<< " "<< tbc_bra.J<<std::endl;
         double val =
             rdm.GetTwoBody(cf_bra[2], cf_ket[2], cf_bra[1], cf_ket[1]) *
             sqrt(2 * tbc_bra.J + 1.);
@@ -283,7 +269,6 @@ void EOM::ConstructNormMatrix() {
   if (pphv_dim != 0) {
 
     for (index_t i = pphv_start; i <= pphv_end; i++) {
-      // for (index_t i =4290; i <= 4290; i++){
       std::array<index_t, 4> &cf_bra = eom_confs.at(i);
       TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
       Ket &dbra1 = tbc_bra.GetKet(cf_bra[0]);
@@ -307,7 +292,6 @@ void EOM::ConstructNormMatrix() {
         norm_fact1 = sqrt(2);
 
       for (index_t j = pphv_start; j <= pphv_end; j++) {
-        // for (index_t j =4049; j <= 4049; j++){
         std::array<index_t, 4> &cf_ket = eom_confs.at(j);
         TwoBodyChannel &tbc_ket = modelspace->GetTwoBodyChannel(cf_ket[2]);
         Ket &dbra2 = tbc_ket.GetKet(cf_ket[0]);
@@ -336,36 +320,20 @@ void EOM::ConstructNormMatrix() {
         if (b1 == a2 && oa1.cvq == 1 && ob2.cvq == 1) {
           val += norm_fact * Core_Diagram(d1, b2, a1, d2, a2, c1, j1, j2) *
                  dket1.Phase(j1);
-          // std::cout<< "a run " <<
-          // norm_fact*Core_Diagram(d1,b2,a2,d2,a2,c1,j1,j2)*dket1.Phase(j1) <<
-          // std::endl;
         }
         if (a1 == a2 && ob1.cvq == 1 && ob2.cvq == 1 && a1 != b1) {
           val += norm_fact * Core_Diagram(d1, b2, b1, d2, a2, c1, j1, j2) *
                  dket1.Phase(j1) * dbra1.Phase(j1);
-          // std::cout<< "b run " <<
-          // norm_fact*Core_Diagram(d1,b2,b1,d2,a2,c1,j1,j2)*dket1.Phase(j1)*dbra1.Phase(j1)
-          // << std::endl;
         }
         if (b1 == b2 && oa1.cvq == 1 && oa2.cvq == 1 && a2 != b2) {
           val += norm_fact * Core_Diagram(d1, a2, a1, d2, b2, c1, j1, j2) *
                  dket1.Phase(j1) * dbra2.Phase(j2);
-          // std::cout<< "c run " <<
-          // norm_fact*Core_Diagram(d1,a2,a1,d2,b2,c1,j1,j2)*dket1.Phase(j1)*dbra2.Phase(j2)
-          // << std::endl;
         }
         if (a1 == b2 && ob1.cvq == 1 && oa2.cvq == 1 && a1 != b1 && a2 != b2) {
           val += norm_fact * Core_Diagram(d1, a2, b1, d2, b2, c1, j1, j2) *
                  dket1.Phase(j1) * dbra1.Phase(j1) * dbra2.Phase(j2);
-          // std::cout<< "d run " <<
-          // norm_fact*Core_Diagram(d1,a2,b1,d2,b2,c1,j1,j2)*dket1.Phase(j1)*dbra1.Phase(j1)*dbra2.Phase(j2)
-          // << std::endl;
         }
         Nkernel(i, j) += val;
-        // std::cout<<a1<<" "<<b1<<" "<<c1<<" "<<d1<<" "<<a2<<" "<<b2<<"
-        // "<<c2<<" "<<d2<<" "<<Nkernel(i,j)<<std::endl;
-        // if(abs(Nkernel(i,j))>0.0000001)std::cout<<i<<" "<<j<<"
-        // "<<Nkernel(i,j)<<std::endl;
       }
     }
   }
@@ -415,9 +383,6 @@ void EOM::ConstructNormMatrix() {
             rdm.TwoBody.GetTBME_J_norm(tbc_bra.J, tbc_bra.J, a, b, c, d) *
             sqrt(2 * tbc_bra.J + 1.);
         Nkernel(i, j) += val2;
-
-        // if(abs(Nkernel(i,j))>0.00001)std::cout << i<<" "<<j<<"
-        // "<<Nkernel(i,j)<<std::endl;
       }
     }
   }
@@ -460,31 +425,21 @@ void EOM::ConstructNormMatrix() {
       if (b == d) {
         Nkernel(i, j) -= norm_fact * rdm.OneBody(c, a) * (2 * tbc_bra.J + 1.) /
                          sqrt(oc.j2 + 1.);
-        // std::cout<<" a cont "<< std::endl;
       }
 
       if (b != a && ob.cvq == 1 && a == d) {
         Nkernel(i, j) -= norm_fact * rdm.OneBody(c, b) * (2 * tbc_bra.J + 1.) *
                          dbra1.Phase(tbc_bra.J) / sqrt(oc.j2 + 1.);
-        //   std::cout<<" b cont"<< std::endl;
       }
       if (c != d && od.cvq == 1 && b == c) {
         Nkernel(i, j) -= norm_fact * rdm.OneBody(d, a) * (2 * tbc_bra.J + 1.) *
                          dbra2.Phase(tbc_ket.J) / sqrt(od.j2 + 1.);
-        // std::cout<<" c cont"<< std::endl;
       }
       if (b != a && c != d && od.cvq == 1 && ob.cvq == 1 && a == c) {
         Nkernel(i, j) -= norm_fact * rdm.OneBody(d, b) * (2 * tbc_bra.J + 1.) *
                          dbra2.Phase(tbc_ket.J) * dbra1.Phase(tbc_bra.J) /
                          sqrt(od.j2 + 1.);
-        // std::cout<<" d cont"<< std::endl;
       }
-      // if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<" " <<
-      // Nkernel(i,j) << std::endl;
-      //  if(abs(Nkernel(i,j))>0.001)std::cout <<
-      //  cf_bra[2]<<cf_bra[0]<<cf_bra[1]<<"
-      //  "<<cf_ket[2]<<cf_ket[0]<<cf_ket[1]<<Nkernel(i,j)<<" "<<tbc_bra.J <<"
-      //  "<<(2*tbc_bra.J+1.)/(oc.j2+1.)<<std::endl;
     }
   }
 
@@ -533,8 +488,6 @@ void EOM::ConstructNormMatrix() {
           Nkernel(j, i) +=
               norm_fact * rdm.OneBody(b, d) * (2 * j1 + 1.) / sqrt(ob.j2 + 1.);
         }
-        //     if(abs(Nkernel(i,j))>0.001)std::cout <<i<<" "<<j << "
-        //     "<<Nkernel(i,j)<<std::endl;
       }
     }
   }
@@ -575,13 +528,11 @@ void EOM::ConstructNormMatrix() {
           Nkernel(i, j) -= val2 * norm_fact;
           Nkernel(j, i) -= val2 * norm_fact;
         }
-        //            if(abs(Nkernel(i,j))>0.000001) std::cout <<i<<" "<<j<<" "
-        //            << Nkernel(i,j)<<std::endl;
       }
     }
   }
 
-  //// c2
+  // c2
   if (ppvv_dim != 0 && qv_dim != 0) {
 
     for (index_t i = ppvv_start; i <= ppvv_end; i++) {
@@ -616,17 +567,9 @@ void EOM::ConstructNormMatrix() {
           Nkernel(i, j) += val2 * norm_fact;
           Nkernel(j, i) += val2 * norm_fact;
         }
-        // if(abs(Nkernel(i,j))>0.000001) std::cout <<i<<" "<<j<<" " <<
-        // Nkernel(i,j)<<std::endl;
       }
     }
   }
-  //  all done
-
-  // std::cout<< "Number of nonzero matrix elements in norm kernel: " <<
-  // Nkernel.n_nonzero << std::endl; std::cout << "\nNon-zero elements of A:" <<
-  // std::endl;
-
 }
 
 double EOM::Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
@@ -696,10 +639,7 @@ void EOM::ConstructProjectMatrix() {
     nconf_pphv_ch[ich] += 1;
   }
 
-  // first we do pphh, it have no coupling to other diagrams, and no coupling
-  // bettwen channels
-//  std::cout << " svd for pphh : " << std::endl;
-
+  // pphh: no coupling to other diagrams, no coupling between channels
   for (index_t ich = 0; ich < number_channels; ich++) {
     if (nconf_pphh_ch[ich] == 0)
       continue;
@@ -713,12 +653,8 @@ void EOM::ConstructProjectMatrix() {
     block_svd(coupled_idx);
   }
 
-  // ppvv
-  // pv is coupled to all vqvv, but qqvv is not coupled
-  //
-  // we do vqvv together with onebody qv first
+  // vqvv coupled with 1-body qv
   std::vector<int> coupled_idx;
- // std::cout << " svd for vqvv and pv : " << std::endl;
   for (index_t i = ppvv_start; i <= ppvv_end; i++) {
     index_t ich = eom_confs.at(i)[2];
     size_t ibra = eom_confs.at(i)[0];
@@ -735,19 +671,13 @@ void EOM::ConstructProjectMatrix() {
     coupled_idx.push_back(i);
   }
 
-//  std::cout << " svd for vqvv and pv a : " << qv_start << " " << qv_end
-//            << std::endl;
-
   for (index_t i = qv_start; i <= qv_end; i++)
     coupled_idx.push_back(i);
-//  std::cout << " svd for vqvv and pv b : " << std::endl;
 
   if (coupled_idx.size() != 0)
     block_svd(coupled_idx);
 
-  // now all qqvv channels
-  //
- // std::cout << " svd for qqvv : " << std::endl;
+  // qqvv channels (no coupling between channels)
   for (index_t ich = 0; ich < number_channels; ich++) {
 
     if (nconf_ppvv_ch[ich] == 0)
@@ -777,9 +707,8 @@ void EOM::ConstructProjectMatrix() {
     block_svd(coupled_idx);
   }
 
-  // now ph and pphv,
-  // vvhv and vh, sort by hole line
-//  std::cout << " svd for vvhv and vh : " << std::endl;
+  // pphv coupled with 1-body ph, sorted by hole orbit
+  // vvhv and vh
   for (index_t i = 0; i < modelspace->norbits; i++) {
     Orbit &oi = modelspace->GetOrbit(i);
     if (oi.occ != 1)
@@ -823,12 +752,9 @@ void EOM::ConstructProjectMatrix() {
     if (coupled_idx.size() == 0)
       continue;
     block_svd(coupled_idx);
-
-    // std::cout << " vvhv part 1 dim in New Channel: " << n<< std::endl;
   }
 
   // vphv and qh
-//  std::cout << " svd for vpvh and qh : " << std::endl;
   for (index_t i = 0; i < modelspace->norbits; i++) {
     Orbit &oi = modelspace->GetOrbit(i);
     if (oi.occ != 1)
@@ -872,13 +798,9 @@ void EOM::ConstructProjectMatrix() {
     if (coupled_idx.size() == 0)
       continue;
     block_svd(coupled_idx);
-    // std::cout << " vphv dim in New Channel: " << n<< std::endl;
   }
 
   // pphv itself, no coupling between channels
-  //
-  //
-//  std::cout << " svd for qqhv : " << std::endl;
   for (index_t ich = 0; ich < number_channels; ich++) {
 
     if (nconf_pphv_ch[ich] == 0)
@@ -1091,7 +1013,6 @@ void EOM::block_svd(std::vector<int> &coupled_vector) {
   int n = coupled_vector.size();
   Amat.set_size(n, n);
   Amat.fill(0.);
- // std::cout << "New svd with block size: " << n << std::endl;
   for (index_t i = 0; i < n; i++) {
     index_t ia = coupled_vector.at(i);
     std::array<index_t, 4> &cfs_bra = eom_confs.at(ia);
@@ -1113,30 +1034,19 @@ void EOM::block_svd(std::vector<int> &coupled_vector) {
   }
 }
 
-void EOM::SolveEOM() {}
-
-void EOM::Setup_rdm() {}
-
 // we enforce the decoupling condition for numerical stability
 void EOM::force_decouple(Operator &H) {
-
-  // One body piece -- eliminate ph bits
-  //  particle hole excitation
-  //
+  // Enforce decoupling: zero out all ph / qq-vv / qq-vc / qq-vv matrix elements.
+  // One-body: kill core↔active and valence↔qspace off-diagonal blocks.
   for (auto &i : H.modelspace->core) {
-    Orbit &oi = H.modelspace->GetOrbit(i);
     for (auto &a : VectorUnion(H.modelspace->valence, H.modelspace->qspace)) {
-      Orbit &oa = H.modelspace->GetOrbit(a);
       H.OneBody(a, i) = 0.;
       H.OneBody(i, a) = 0.;
     }
   }
 
   for (auto &i : H.modelspace->valence) {
-    Orbit &oi = H.modelspace->GetOrbit(i);
     for (auto &a : H.modelspace->qspace) {
-      Orbit &oa = H.modelspace->GetOrbit(a);
-
       H.OneBody(a, i) = 0.;
       H.OneBody(i, a) = 0.;
     }
@@ -1204,8 +1114,7 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
     herm_phase = -1;
   }
 
-  // One body piece -- eliminate ph bits
-  //
+  // One body: copy ph and vq blocks, applying (anti-)hermitian phase.
   for (auto &i : H.modelspace->core) {
     Orbit &oi = H.modelspace->GetOrbit(i);
     for (auto &a : VectorUnion(H.modelspace->valence, H.modelspace->qspace)) {
@@ -1216,26 +1125,17 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
     }
   }
 
-  // Two body piece only stored half channel, no need to change
+  // Two body: copy pp-hh, pp-vh and pp-vv blocks; (anti-)hermitian partner added automatically.
   for (auto &iter : H.TwoBody.MatEl) {
     size_t ch_bra = iter.first[0];
     size_t ch_ket = iter.first[1];
     TwoBodyChannel &tbc_bra = H.modelspace->GetTwoBodyChannel(ch_bra);
     TwoBodyChannel &tbc_ket = H.modelspace->GetTwoBodyChannel(ch_ket);
-
     arma::mat &H2 = iter.second;
 
-    arma::mat &Hod2 = Hod.TwoBody.GetMatrix(ch_bra, ch_ket);
-
-    // diagonal channel
-    // diagnal channel, add <ab|ij> and <ij||ab> will be automatically added
-    // with proper factor from (anti)hermitian
+    // diagonal and off-diagonal channels treated the same for pp-hh block
     if (ch_bra == ch_ket) {
-
-      for (auto &iket :
-           tbc_ket.GetKetIndex_cc()) // cc means core-core ('holes' refer to the
-                                     // reference state)
-      {
+      for (auto &iket : tbc_ket.GetKetIndex_cc()) {
         for (auto &ibra :
              VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
                          tbc_bra.GetKetIndex_qv())) {
@@ -1245,29 +1145,18 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
     }
 
     if (ch_bra != ch_ket) {
-
-      // off-diagonal channel
-
-      for (auto &iket :
-           tbc_ket.GetKetIndex_cc()) // cc means core-core ('holes' refer to the
-                                     // reference state)
-      {
+      for (auto &iket : tbc_ket.GetKetIndex_cc()) {
         for (auto &ibra :
              VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
                          tbc_bra.GetKetIndex_qv())) {
-          // Hod2(ibra,iket)= H2(ibra,iket);
           Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
         }
       }
 
-      for (auto &ibra :
-           tbc_bra.GetKetIndex_cc()) // cc means core-core ('holes' refer to the
-                                     // reference state)
-      {
+      for (auto &ibra : tbc_bra.GetKetIndex_cc()) {
         for (auto &iket :
              VectorUnion(tbc_ket.GetKetIndex_qq(), tbc_ket.GetKetIndex_vv(),
                          tbc_ket.GetKetIndex_qv())) {
-          // Hod2(ibra,iket)= H2(ibra,iket)*hZ*herm_phase;
           Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket,
                                 H2(ibra, iket) * hZ * herm_phase);
         }
@@ -1280,11 +1169,8 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
 
 double EOM::GetVSEOM_Overlap_single(Operator &H1, Operator &H2) {
   double ovlp = 0;
-  // One body piece -- eliminate ph bits
+  // One-body contribution: ph and vq blocks
   for (auto &i : H1.modelspace->holes) {
-
-    Orbit &oi = H1.modelspace->GetOrbit(i);
-
     for (auto &a : VectorUnion(H1.modelspace->valence, H1.modelspace->qspace)) {
       ovlp += H1.OneBody(a, i) * H2.OneBody(a, i);
     }
@@ -1360,8 +1246,6 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
     Hod.SetAntiHermitian();
     herm_phase = -1;
   }
- // std::cout<< "input herm "<< herm<<" and herm phase is: "<< herm_phase<< std::endl;
-
 
   // One body piece -- eliminate ph bits
   //
@@ -1384,10 +1268,8 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
 
     arma::mat &H2 = iter.second;
 
-    arma::mat &Hod2 = Hod.TwoBody.GetMatrix(ch_bra, ch_ket);
-
     // diagonal channel
-    // diagnal channel, add <ab|ij> and <ij||ab> will be automatically added
+    // add <ab|ij> and <ij||ab> will be automatically added
     // with proper factor from (anti)hermitian
     if (ch_bra == ch_ket) {
 
@@ -1414,7 +1296,6 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
         for (auto &ibra :
              VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
                          tbc_bra.GetKetIndex_qv())) {
-          // Hod2(ibra,iket)= H2(ibra,iket);
           Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
         }
       }
@@ -1426,7 +1307,6 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
         for (auto &iket :
              VectorUnion(tbc_ket.GetKetIndex_qq(), tbc_ket.GetKetIndex_vv(),
                          tbc_ket.GetKetIndex_qv())) {
-          // Hod2(ibra,iket)= H2(ibra,iket)*hZ*herm_phase;
           Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket,
                                 H2(ibra, iket) * hZ * herm_phase);
         }
@@ -1435,10 +1315,7 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
   }
 
   for (auto &i : H.modelspace->valence) {
-    Orbit &oi = H.modelspace->GetOrbit(i);
     for (auto &a : H.modelspace->qspace) {
-      Orbit &oa = H.modelspace->GetOrbit(a);
-
       Hod.OneBody(a, i) = H.OneBody(a, i);
       Hod.OneBody(i, a) = H.OneBody(a, i) * herm_phase;
     }
@@ -1452,14 +1329,10 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
     TwoBodyChannel &tbc_bra = H.modelspace->GetTwoBodyChannel(ch_bra);
     TwoBodyChannel &tbc_ket = H.modelspace->GetTwoBodyChannel(ch_ket);
     arma::mat &H2 = iter.second;
-    arma::mat &Hod2 = Hod.TwoBody.GetMatrix(ch_bra, ch_ket);
 
-    // PPvc
-    //
-    for (auto &iket : tbc_ket.GetKetIndex_vc()) // cc means core-core ('holes'
-                                                // refer to the reference state)
+    // PPvc: valence-core pairs
+    for (auto &iket : tbc_ket.GetKetIndex_vc())
     {
-      Ket &dket = tbc_ket.GetKet(iket);
       for (auto &ibra :
            VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
                        tbc_bra.GetKetIndex_qv())) {
@@ -1467,13 +1340,9 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
       }
     }
 
-    // PPvv
-    //
-    for (auto &iket : tbc_ket.GetKetIndex_vv()) // cc means core-core ('holes'
-                                                // refer to the reference state)
+    // PPvv: valence-valence pairs
+    for (auto &iket : tbc_ket.GetKetIndex_vv())
     {
-      Ket &dket = tbc_ket.GetKet(iket);
-
       for (auto &ibra :
            VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_qv())) {
         Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
@@ -1485,8 +1354,7 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
 }
 
 double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
-  // [S+S', S-S']=[S',S] - [S,S']=2[S',S]
-  double ovlp = 0;
+  double ovlp  = 0;
   double ovlp1 = 0;
   double ovlp2 = 0;
 
@@ -1495,8 +1363,6 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
   for (auto &i : H.modelspace->valence) {
     Orbit &oi = H.modelspace->GetOrbit(i);
     for (auto &j : H.modelspace->valence) {
-      Orbit &oj = H.modelspace->GetOrbit(j);
-
       ovlp1 += H.OneBody(i, j) * rdm.OneBody(i, j) * sqrt((oi.j2 + 1));
     }
   }
@@ -1509,8 +1375,7 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
     arma::mat &H2 = iter.second;
     arma::mat &r2 = rdm.TwoBody.GetMatrix(ch_bra, ch_ket);
 
-    for (auto &iket : tbc_ket.GetKetIndex_vv()) 
-                                                
+    for (auto &iket : tbc_ket.GetKetIndex_vv())
     {
 
       Ket &dket = tbc_ket.GetKet(iket);
@@ -1528,8 +1393,6 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
       }
     }
   }
-
-//std::cout << " overlap, 0b, 1b,2b : "<<ovlp <<" " << ovlp1 << " " <<ovlp2<< std::endl;
 
   return (ovlp + ovlp1 + ovlp2);
 }
@@ -1633,7 +1496,6 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
 
   // normalize initial vector
   double nn = NormSingle(vi, vi);
-  std::cout << "lanczos: initial vector norm = " << nn << std::endl;
   Operator v0 = vi / std::sqrt(nn);
   lanczos_vector.push_back(v0);
 
@@ -1665,17 +1527,20 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
       hall(j + 1, j) = bj;
     }
 
-    if (bj < 0.01)
+    if (bj < 1e-10)
     {
-      std::cout << "lanczos: bj is small, stopping" << std::endl;
+      std::cout << "lanczos: exact breakdown at step " << j + 1 << ", stopping" << std::endl;
       break;
     }
+    if (bj < 0.01)
+      std::cout << "lanczos: bj is small (" << bj << "), continuing" << std::endl;
 
     lanczos_vector.push_back(w / bj);
 
-    if (j > state_want && j % 4 == 0)
+    if ((int)lanczos_vector.size() > state_want && j % 4 == 0)
     {
-      arma::mat sub = hall.submat(0, 0, j - 1, j - 1);
+      int dim = (int)lanczos_vector.size() - 1; // subspace built so far
+      arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
       arma::vec eigval;
       arma::mat eigvec;
       arma::eig_sym(eigval, eigvec, sub);
@@ -1701,7 +1566,19 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
     }
   }
 
-  std::cout << "Lanczos converged with " << j_final + 1 << " steps" << std::endl;
+  // Always do a final eigensolution on the full accumulated subspace.
+  // This guarantees correct results even when the space is small or bj was tiny.
+  {
+    int dim = (int)lanczos_vector.size();
+    arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
+    arma::vec eigval_f;
+    arma::mat eigvec_f;
+    arma::eig_sym(eigval_f, eigvec_f, sub);
+    int nshow = std::min(state_want, (int)eigval_f.n_elem);
+    e = eigval_f.head(nshow);
+  }
+
+  std::cout << "Lanczos finished with " << j_final + 1 << " steps" << std::endl;
   for (int k = 0; k < (int)e.n_elem; ++k)
     std::cout << "E(" << k << ") = " << e(k) << std::endl;
 
@@ -1727,7 +1604,6 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
 
   // normalize initial vector
   double nn = NormMultiref(vi, vi);
-  std::cout << "arnoldi: initial vector norm = " << nn << std::endl;
   Operator v0 = vi / std::sqrt(nn);
   lanczos_vector.push_back(v0);
   h2_diag.push_back(DcomMultiref(Hs, v0).first);
@@ -1778,6 +1654,16 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
     if (std::abs(bj) < bj_tol)
     {
       std::cout << "arnoldi: exact breakdown at step " << j + 1 << ", stopping" << std::endl;
+      // The j+1 vectors form an invariant subspace — solve it exactly.
+      {
+        int dim = j + 1;
+        arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
+        arma::vec eigval_bd;
+        arma::mat eigvec_bd;
+        arma::eig_sym(eigval_bd, eigvec_bd, sub);
+        e  = eigval_bd.head(std::min(state_want, (int)eigval_bd.n_elem));
+        vs = eigvec_bd;
+      }
       break;
     }
 
@@ -1793,18 +1679,18 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
       arma::mat eigvec;
       arma::eig_sym(eigval, eigvec, sub);
 
-      if ((j + 1) % 5 == 0)
-      {
-        std::cout << "arnoldi eigenvalues @ step " << j + 1 << ": ";
-        for (int k = 0; k < std::min(state_want, (int)eigval.n_elem); ++k)
-          std::cout << eigval(k) << " ";
-        std::cout << std::endl;
-      }
-
       e  = eigval.head(std::min(state_want, (int)eigval.n_elem));
       vs = eigvec;
 
-      if (prev_e_valid)
+      if ((j + 1) % 5 == 0)
+      {
+        std::cout << "arnoldi eigenvalues @ step " << j + 1 << ": ";
+        for (int k = 0; k < (int)e.n_elem; ++k)
+          std::cout << e(k) << " ";
+        std::cout << std::endl;
+      }
+
+      if (prev_e_valid && prev_e.n_elem == e.n_elem)
       {
         double delta = arma::max(arma::abs(e - prev_e));
         double scale = std::max(1.0, arma::max(arma::abs(e)));
@@ -1817,6 +1703,18 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
       prev_e       = e;
       prev_e_valid = true;
     }
+  }
+
+  // Always do a final eigensolution on the full accumulated subspace.
+  // Guarantees correct results when the space is small or iteration stopped early.
+  {
+    int nb_cur = (int)lanczos_vector.size();
+    arma::mat sub = hall.submat(0, 0, nb_cur - 1, nb_cur - 1);
+    arma::vec eigval_f;
+    arma::mat eigvec_f;
+    arma::eig_sym(eigval_f, eigvec_f, sub);
+    e  = eigval_f.head(std::min(state_want, (int)eigval_f.n_elem));
+    vs = eigvec_f;
   }
 
   std::cout << "Arnoldi finished with " << j_final + 1 << " steps" << std::endl;

@@ -112,7 +112,7 @@ Hs = imsrgsolver.GetH_s()
 
 # ---------------------------------------------------------------
 eom = EOM(Hs, read_tdm('he6.ref', ms), 0, 0, 0)
-res = eom.Run(60, 4)
+res = eom.Run(60, 10)
 # ---------------------------------------------------------------
 print(f'\n  [he6.ref]  E_ref = {res.eref:.6f} MeV')
 for k, e in enumerate(res.arnoldi.energies):
