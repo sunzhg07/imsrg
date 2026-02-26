@@ -282,9 +282,9 @@ def print_op(chi, ms):
 
 
 def arnoldi_proc(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,
-                 norm_three=None, rdmat=None, prjop=None):
+                 norm_three=None, rdmat=None, prjop=None, restart_gen=None):
     """
-    Arnoldi eigensolver for H = H1 + H2 where H is hermitian but H1, H2 are not.
+    Restarted Arnoldi eigensolver for H = H1 + H2 where H is hermitian.
 
     Builds a Krylov subspace using H1 (via hv_func), then computes the full
     H = H1 + H2 matrix in that subspace and diagonalizes it.
@@ -296,20 +296,26 @@ def arnoldi_proc(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,
     This avoids expensive off-diagonal norm3_multiref calls and enforces
     exact symmetry of the Hamiltonian matrix by construction.
 
+    When the Krylov subspace is (nearly) exhausted (bj < restart_tol), a new
+    random direction orthogonal to the existing subspace is injected, extending
+    coverage of the full projected space.
+
     Parameters
     ----------
-    hv_func    : callable(eom, haml, v, prjop) -> H1*v   (e.g. htc_multiref)
-    norm_func  : callable(eom, v1, v2) -> <v1|v2>        (e.g. norm_multiref)
-    haml       : Hamiltonian operator
-    vi         : initial vector
-    max_iter   : maximum Arnoldi steps
-    state_want : number of lowest eigenvalues to target
-    ms         : model space
-    eom        : EOM object
-    norm_three : callable(eom, v, v, haml, ms) -> <v|H2|v>  diagonal only
-                 (e.g. lambda eom,a,b,h,ms: dcom222312(eom,h,a)[0])
-    rdmat      : unused (reserved for future use)
-    prjop      : projection operator applied during Gram-Schmidt
+    hv_func     : callable(eom, haml, v, prjop) -> H1*v   (e.g. htc_multiref)
+    norm_func   : callable(eom, v1, v2) -> <v1|v2>        (e.g. norm_multiref)
+    haml        : Hamiltonian operator
+    vi          : initial vector
+    max_iter    : maximum Arnoldi steps
+    state_want  : number of lowest eigenvalues to target
+    ms          : model space
+    eom         : EOM object
+    norm_three  : callable(eom, v, v, haml, ms) -> <v|H2|v>  diagonal only
+                  (e.g. lambda eom,a,b,h,ms: dcom222312(eom,h,a)[0])
+    rdmat       : unused (reserved for future use)
+    prjop       : projection operator applied during Gram-Schmidt
+    restart_gen : callable() -> new random Operator vector for restart injection.
+                  If None, exact breakdown will terminate the loop.
     """
     def _norm(a, b):
         return norm_func(eom, a, b)
@@ -386,11 +392,36 @@ def arnoldi_proc(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,
             prjop(w)
 
         bj = _norm(w, w)
-        if abs(bj) < 1e-30:
-            print('arnoldi: exact breakdown at step', j + 1)
-            break
-        if abs(bj) < 1e-12:
-            print(f'arnoldi: near-breakdown at step {j+1}, bj={bj:.3e}, continuing')
+        restart_tol = 1e-10
+        if abs(bj) < restart_tol:
+            if restart_gen is None:
+                print(f'arnoldi: exact breakdown at step {j+1}, no restart_gen provided')
+                break
+            # --- restart: inject a new random direction orthogonal to existing subspace ---
+            print(f'arnoldi: breakdown at step {j+1} (bj={bj:.2e}), restarting with new direction')
+            max_restart_attempts = 20
+            found = False
+            for _attempt in range(max_restart_attempts):
+                w_new = restart_gen()
+                if prjop is not None:
+                    prjop(w_new)
+                # two-pass GS against all existing vectors
+                for _pass in range(2):
+                    for vi_ in lanczos_vector:
+                        c = _norm(vi_, w_new)
+                        w_new = w_new - c * vi_
+                    if prjop is not None:
+                        prjop(w_new)
+                bj_new = _norm(w_new, w_new)
+                if abs(bj_new) > restart_tol:
+                    w   = w_new
+                    bj  = bj_new
+                    found = True
+                    break
+            if not found:
+                print('arnoldi: could not find independent restart direction, stopping')
+                break
+
         new_vec = w / np.sqrt(abs(bj))
         lanczos_vector.append(new_vec)
         # Cache H2 diagonal for the new basis vector
@@ -428,7 +459,7 @@ def arnoldi_proc(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,
             vec = vec + float(vs[m, k]) * lanczos_vector[m]
         ritz_vecs.append(vec)
 
-    return e[:state_want], vs, ritz_vecs
+    return e[:state_want], vs, ritz_vecs, hall[:nb, :nb].copy()
 
 
 def dcom222312(eom,Hs,chi):

@@ -1422,7 +1422,6 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
     }
   }
 
-  // Hod.EraseTwoBody();
 
   // Two body piece only stored half channel, no need to change
   for (auto &iter : H.TwoBody.MatEl) {

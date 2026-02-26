@@ -109,158 +109,77 @@ imsrgsolver.Solve()
 ### Hs is the IMSRG-evolved Hamiltonian
 #rw.WriteTokyo( HNO, valence_fname,'')
 Hs = imsrgsolver.GetH_s()
-Hs.ZeroBody=0.
 
-
-
-tdm_op=read_tdm("he6.ref",ms)
 
 
 #cm.SetIMSRG3Noqqq(True)
 #cm.SetIMSRG3Onlyvvv(True)
-gm=Generator()
-cm=Commutator
-
-
-#rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,2,1
-#
-#
-eom=EOM(Hs, tdm_op,rank_j, parity, rank_Tz)
-eom.ConstructConfigs()
-eom.ConstructNormMatrix()
-eom.ConstructProjectMatrix()
-nm=eom.GetVSEOM_Overlap_multiref(Hs)
-print('reference energy: ', nm, 'vs [ -4.19234292  9.75174484 ] in nmax2 for he6_2',)
-##
-##
-##
-##
-
+gm  = Generator()
+cm  = Commutator
 unt = UnitTest(ms)
-### set anti hermitian
-rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,2,1
 
-h1= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
-h2= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
-##t3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, 3,herm)
-##t3.ThreeBody.SetMode("pn")
-#
-chi_a=eom.GetVSEOM_ladder_multiref(h1,1)
-chi_b=eom.GetVSEOM_ladder_multiref(h2,1)
-eom.ProjectOprator(chi_a)
-eom.ProjectOprator(chi_b)
+ref_files = [f'he6_t{round(i*0.1,1):.1f}.ref' for i in range(-13, 14)]
+results   = {}   # {ref_file: (eref, e_array, hall_nb, v2, eom)}
 
-#nm=norm_multiref(eom,chi_a,chi_b)
-#print('original py ab: ',nm)
-#
-#nm=norm_multiref(eom,chi_b,chi_a)
-#print('original py ba: ',nm)
-#nm=eom.ComputeNorm(chi_a,chi_b)
-#print('original c++ ab: ', nm)
-#nm=eom.ComputeNorm(chi_b,chi_a)
-#print('original c++ ba: ', nm)
-#
-#
-#nm=eom.ComputeNorm(chi_a,chi_a)
-#print('original c++ aa: ', nm)
-#nm=eom.ComputeNorm(chi_a,chi_a)
-#print('original c++ aa: ', nm)
-#
-#chi_b=1.0*chi_a
-#
-#eom.ProjectOprator(chi_a)
-#chi_b=chi_b-chi_a
-#
-#nm=eom.ComputeNorm(chi_a,chi_a)
-#print('c++ after proj aa: ', nm)
-#
-#nm=eom.ComputeNorm(chi_b,chi_b)
-#print('c++ after proj 1-aa: ', nm)
+for ref_file in ref_files:
+    print(f'\n{"="*60}')
+    print(f'  Reference state: {ref_file}')
+    print(f'{"="*60}')
 
-#print("vecryfy p*p=p")
-#eom.ProjectOprator(chi_a)
-#eom.ProjectOprator(chi_b)
-#
-#nm=eom.ComputeNorm(chi_a,chi_b)
-#print('c++ after proj: ', nm)
-#nm=norm_multiref(eom,chi_a,chi_b)
-#print('python after proj: ',nm)
+    tdm_op = read_tdm(ref_file, ms)
 
+    rank_j, parity, rank_Tz, particle_rank, herm = 0, 0, 0, 2, 1
+    eom = EOM(Hs, tdm_op, rank_j, parity, rank_Tz)
+    eom.ConstructConfigs()
+    eom.ConstructNormMatrix()
+    eom.ConstructProjectMatrix()
+    nm   = eom.GetVSEOM_Overlap_multiref(Hs)
+    eref = nm 
+    print(f'  E_ref (valence) = {nm:.6f}   ZeroBody = {Hs.ZeroBody:.6f}   E_ref total = {eref:.6f} MeV')
 
-#eom.ProjectOprator(chi_b)
-#
-#
-#hb=htc_multiref(eom, Hs, chi_b)
-#hab = norm_multiref(eom,chi_a,hb)
-#h3ab = norm3_multiref(eom,chi_a,chi_b,Hs,ms)
-#print("hab: ", hab, "h3ab: ", h3ab)
-#print("hab+h3ab: ", hab+h3ab)
-#
-#
-#ha = htc_multiref(eom, Hs, chi_a)
-#hba = norm_multiref(eom, chi_b,ha)
-#h3ba = norm3_multiref(eom,chi_b,chi_a,Hs,ms)
-#print("hba: ", hba, "h3ba: ", h3ba)
-#print("hba+h3ba: ", hba+h3ba)
-#print("diff:", hab-hba)
-#
-## ---------------------------------------------------------------
-## Test: does projecting the Arnoldi vector break hermiticity?
-## Take chi_a (projected), compute w = H1*chi_a (raw, no prjop).
-## Then compare H[chi_a, w] vs H[chi_a, w_proj] where w_proj = P*w.
-## If projection breaks hermiticity, H[chi_a,w_proj] != H[w_proj,chi_a].
-## ---------------------------------------------------------------
-##print("\n--- hermiticity test: unprojected vs projected Arnoldi vector ---")
-##w_raw  = htc_multiref(eom, Hs, chi_a)          # H1*chi_a, no projection
-##w_proj = w_raw * 1.0
-##eom.ProjectOprator(w_proj)                       # P * (H1*chi_a)
-##nm=norm_multiref(eom, chi_a, w_raw)
-##print(nm)
-##nm=norm_multiref(eom, chi_a, w_proj)
-##print(nm)
-#
-## matrix elements with raw w
-##H_ab_raw = norm_multiref(eom, chi_a, w_raw) # + norm3_multiref(eom, chi_a, w_raw,  Hs, ms)
-##H_ba_raw = norm_multiref(eom, w_raw,  chi_a)# + norm3_multiref(eom, w_raw,  chi_a, Hs, ms)
-##print(f"  raw  w:  H[chi_a,w]={H_ab_raw:.8f}  H[w,chi_a]={H_ba_raw:.8f}  diff={H_ab_raw-H_ba_raw:.3e}")
-##
-### matrix elements with projected w
-##H_ab_prj = norm_multiref(eom, chi_a, w_proj) #+ norm3_multiref(eom, chi_a, w_proj, Hs, ms)
-##H_ba_prj = norm_multiref(eom, w_proj, chi_a) #+ norm3_multiref(eom, w_proj, chi_a, Hs, ms)
-##print(f"  proj w:  H[chi_a,w]={H_ab_prj:.8f}  H[w,chi_a]={H_ba_prj:.8f}  diff={H_ab_prj-H_ba_prj:.3e}")
-## ---------------------------------------------------------------
-#
-##n3a =norm3_multiref(eom, chi_a,chi_a,Hs,ms)
-##n3b =norm3_multiref(eom, chi_b,chi_b,Hs,ms)
-##n3ab =norm3_multiref(eom, chi_a+chi_b,chi_a+chi_b,Hs,ms)
-#
-##n3a , oprs = dcom222312(eom, Hs,chi_a)
-##n3b , oprs = dcom222312(eom, Hs,chi_b)
-##n3ab , oprs = dcom222312(eom, Hs,chi_a+chi_b)
-##
-##print("n3a: ",n3a )
-##print("n3b: ",n3b )
-##print("n3ab: ",n3ab )
-##
-##fab=(n3ab-n3a-n3b-hab+hba)/2
-##print("fab: ", fab)
-##
-##fba=(n3ab-n3a-n3b+hab-hba)/2
-##print("fba: ", fba)
-#
-#
-#
-e,vs,v2=arnoldi_proc(
-   htc_multiref,
-   norm_multiref,
-   Hs,
-   chi_b,
-   max_iter=200,
-   state_want=6,
-   ms=ms,
-   eom=eom,
-   norm_three=lambda eom,a,b,h,ms: dcom222312(eom,h,a)[0],  # diagonal H2 via polarization identity
-   rdmat=tdm_op,
-   prjop=eom.ProjectOprator)
+    h1    = unt.RandomOp(ms, rank_j, rank_Tz, parity, particle_rank, herm)
+    h2    = unt.RandomOp(ms, rank_j, rank_Tz, parity, particle_rank, herm)
+    chi_a = eom.GetVSEOM_ladder_multiref(h1, 1)
+    chi_b = eom.GetVSEOM_ladder_multiref(h2, 1)
+    eom.ProjectOprator(chi_a)
+    eom.ProjectOprator(chi_b)
+    e, vs, v2, hall_nb = arnoldi_proc(
+        htc_multiref, norm_multiref, Hs, chi_b,
+        max_iter=200, state_want=6, ms=ms, eom=eom,
+        norm_three=lambda eom, a, b, h, ms: dcom222312(eom, h, a)[0],
+        rdmat=tdm_op, prjop=eom.ProjectOprator,
+        restart_gen=lambda: eom.GetVSEOM_ladder_multiref(unt.RandomOp(ms, 0, 0, 0, 2, 1), 1))
+
+    print(f'\n  [{ref_file}] Arnoldi eigenvalues:')
+    print(f'  E_ref = {eref:.6f} MeV')
+    for k in range(len(e)):
+        print(f'    E({k}): excitation={e[k]:.4f}  absolute={e[k]+eref:.4f} MeV')
+
+    results[ref_file] = (eref, e.copy(), hall_nb, v2, eom)
+
+# ========================================================
+#  Cross-reference comparison (EOM reference-independence)
+#  For an exact EOM, E_ref1 + omega_k1 == E_ref2 + omega_k2
+#  Deviations show the truncation error of the 2-body EOM.
+# ========================================================
+print(f'\n{"="*60}')
+print('  COMPARISON: absolute energies (E_ref + excitation)')
+print('  EOM is exact iff both columns are identical')
+print(f'{"="*60}')
+refs = list(results.keys())
+n_states = min(len(results[r][1]) for r in refs)
+header = f'  {"State":<8}' + ''.join(f'  {r:<22}' for r in refs) + '  diff (MeV)'
+print(header)
+print('  ' + '-' * (len(header) - 2))
+for k in range(n_states):
+    vals = [results[r][0] + results[r][1][k] for r in refs]
+    diff = vals[-1] - vals[0]
+    row  = f'  E({k})    ' + ''.join(f'  {v:<22.4f}' for v in vals) + f'  {diff:+.4f}'
+    print(row)
+
+print(f'\n  E_ref values:')
+for r in refs:
+    print(f'    {r}: {results[r][0]:.6f} MeV')
+
 
 
