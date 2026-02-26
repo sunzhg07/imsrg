@@ -100,23 +100,10 @@ imsrgsolver.Solve()
 ### Hs is the IMSRG-evolved Hamiltonian
 Hs = imsrgsolver.GetH_s()
 
-
-eom=EOM(Hs, 0,0,0)
-
-eom.force_decouple(Hs)
-
-unt = UnitTest(ms)
-rank_j, parity, rank_Tz, particle_rank, herm= 0,0,1,2,1
-h3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
-
-
-## initialize vector
-chi=eom.GetVSEOM_ladder_single(h3, 0)
-
-## normalize the vector
-nm=norm_single(eom, chi,chi)
-chi=chi/np.sqrt(nm)
-
-e,v,lvs = lanczos_proc( htc_single, norm_single,Hs,\
-        chi,40,2,ms,\
-        eom,norm_three=None,prjop=None)
+# ---------------------------------------------------------------
+eom = EOM(Hs, 0, 0, 0)
+res = eom.Run(40, 2)
+# ---------------------------------------------------------------
+print(f'\n  [SR EOM]  ZeroBody(eref) = {res.eref:.6f} MeV')
+for k, e in enumerate(res.arnoldi.energies):
+    print(f'    E({k}): excitation={e:.4f}  absolute={e+res.eref:.4f} MeV')

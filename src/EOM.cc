@@ -1,13 +1,22 @@
 #include "EOM.hh"
 #include "AngMom.hh"
 #include "PhysicalConstants.hh"
+#include "Commutator.hh"
+#include "IMSRG3Commutators.hh"
+#include "FactorizedDoubleCommutator.hh"
+#include "UnitTest.hh"
+#include <cmath>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <stdexcept>
 using PhysConst::SQRT2;
 
 // we have two constructor for the EOM, w/o the rdm for multi-reference and
 // single reference
 EOM::EOM(Operator &Hs, Operator &rdm, int J2, int parity, int itz)
     : modelspace(Hs.modelspace), Hs(Hs), rdm(rdm), J2(J2), parity(parity),
-      itz(itz) {
+      itz(itz), is_multiref(true) {
   eom_dims = 0;
   qv_dim = 0;
   ph_dim = 0;
@@ -16,8 +25,21 @@ EOM::EOM(Operator &Hs, Operator &rdm, int J2, int parity, int itz)
   pphh_dim = 0;
 };
 
+EOM::EOM(Operator &Hs, const std::string &tdm_file, int J2, int parity, int itz)
+    : modelspace(Hs.modelspace), Hs(Hs), rdm(*Hs.modelspace), J2(J2), parity(parity),
+      itz(itz), is_multiref(true) {
+  eom_dims = 0;
+  qv_dim = 0;
+  ph_dim = 0;
+  ppvv_dim = 0;
+  pphv_dim = 0;
+  pphh_dim = 0;
+  rdm = ReadTdm(tdm_file);
+};
+
 EOM::EOM(Operator &Hs, int J2, int parity, int itz)
-    : modelspace(Hs.modelspace), Hs(Hs), J2(J2), parity(parity), itz(itz) {};
+    : modelspace(Hs.modelspace), Hs(Hs), J2(J2), parity(parity),
+      itz(itz), is_multiref(false) {};
 
 ///  In case we want to construct the A matrix for a single channel
 ///  and it's more convenient to specify J,parity,Tz than the channel index.
@@ -1510,4 +1532,541 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
 //std::cout << " overlap, 0b, 1b,2b : "<<ovlp <<" " << ovlp1 << " " <<ovlp2<< std::endl;
 
   return (ovlp + ovlp1 + ovlp2);
+}
+
+// ============================================================
+//  Lanczos / Arnoldi helpers  (translated from run/lanczos.py)
+// ============================================================
+
+// -----------  norm helpers  ---------------------------------
+
+/// Thin wrapper around GetVSEOM_Overlap_single.
+double EOM::NormSingle(Operator &T1, Operator &T2)
+{
+  return GetVSEOM_Overlap_single(T1, T2);
+}
+
+/// <T1|T2> using the multiref metric:
+///   D† = GetVSEOM_ladder_multiref(T1, 0)
+///   nop = [D†, T2]
+///   result = GetVSEOM_Overlap_multiref(nop) / 2
+double EOM::NormMultiref(Operator &T1, Operator &T2)
+{
+  Operator T1d = GetVSEOM_ladder_multiref(T1, 0);
+  Operator nop = Commutator::Commutator(T1d, T2);
+  nop.SetHermitian();
+  return GetVSEOM_Overlap_multiref(nop) / 2.0;
+}
+
+/// 3-body contribution to <t1|t2>:
+///   t3  = comm223ss(t2, haml)
+///   nop = comm232ss(t1,t3) + comm231ss(t1,t3) + comm132ss(t1,t3)
+///   result = GetVSEOM_Overlap_multiref(nop) / 2
+double EOM::Norm3Multiref(Operator &t1, Operator &t2, Operator &haml)
+{
+  Operator t3(*modelspace, 0, 0, 0, 3);
+  t3.ThreeBody.SetMode("pn");
+  t3 *= 0.0;
+  t3.SetHermitian();
+
+  Operator nop = t1 * 0.0;
+  nop.SetHermitian();
+
+  Commutator::comm223ss(t2, haml, t3);
+  Commutator::comm232ss(t1, t3, nop);
+  Commutator::comm231ss(t1, t3, nop);
+  Commutator::comm132ss(t1, t3, nop);
+
+  return GetVSEOM_Overlap_multiref(nop) / 2.0;
+}
+
+// -----------  H * v helpers  --------------------------------
+
+/// Single-reference action: [Haml, chi], then apply ladder (herm=0).
+Operator EOM::HtcSingle(Operator &haml, Operator &chi)
+{
+  Operator ht_plus = Commutator::Commutator(haml, chi);
+  ht_plus.SetAntiHermitian();
+  return GetVSEOM_ladder_single(ht_plus, 0);
+}
+
+/// Multiref action: [Haml, chi], then apply ladder (herm=1) and project.
+Operator EOM::HtcMultiref(Operator &haml, Operator &chi)
+{
+  Operator ht_minus = Commutator::Commutator(haml, chi);
+  ht_minus.SetHermitian();
+  Operator heom = GetVSEOM_ladder_multiref(ht_minus, 1);
+  ProjectOprator(heom);
+  return heom;
+}
+
+// -----------  double commutator diagonal  -------------------
+
+/// Diagonal double-commutator contribution:
+///   opa += comm223_231 + comm223_232 + comm223_132
+///   returns { GetVSEOM_Overlap_multiref(opa)/2, opa }
+std::pair<double, Operator> EOM::DcomMultiref(Operator &haml, Operator &chi)
+{
+  Operator opa = chi * 0.0;
+  opa.SetHermitian();
+
+  Commutator::FactorizedDoubleCommutator::SetUse_1b_Intermediates(true);
+  Commutator::FactorizedDoubleCommutator::SetUse_2b_Intermediates(true);
+  Commutator::FactorizedDoubleCommutator::comm223_231(chi, haml, opa);
+  Commutator::FactorizedDoubleCommutator::comm223_232(chi, haml, opa);
+  Commutator::FactorizedDoubleCommutator::comm223_132(chi, haml, opa);
+
+  double rst = GetVSEOM_Overlap_multiref(opa);
+  return {rst / 2.0, opa};
+}
+
+// ============================================================
+//  LanczosSolve
+//  Translated from lanczos_proc() in run/lanczos.py
+// ============================================================
+
+std::pair<arma::vec, std::vector<Operator>>
+EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
+{
+  std::vector<Operator> lanczos_vector;
+  arma::mat hall(max_iter, max_iter, arma::fill::zeros);
+
+  // normalize initial vector
+  double nn = NormSingle(vi, vi);
+  std::cout << "lanczos: initial vector norm = " << nn << std::endl;
+  Operator v0 = vi / std::sqrt(nn);
+  lanczos_vector.push_back(v0);
+
+  double norm_e_old = -1000.0;
+  double norm_e_new = -1000.0;
+  arma::vec e(state_want, arma::fill::zeros);
+  int j_final = 0;
+  double bj = 0.0;
+
+  for (int j = 0; j < max_iter; ++j)
+  {
+    j_final = j;
+    Operator w = HtcSingle(Hs, lanczos_vector[j]);
+
+    double ai = NormSingle(w, lanczos_vector[j]);
+    hall(j, j) = ai;
+
+    if (j > 0)
+      w = w - ai * lanczos_vector[j] - bj * lanczos_vector[j - 1];
+    else
+      w = w - ai * lanczos_vector[j];
+
+    double nm = NormSingle(w, w);
+    bj = std::sqrt(nm);
+
+    if (j < max_iter - 1)
+    {
+      hall(j, j + 1) = bj;
+      hall(j + 1, j) = bj;
+    }
+
+    if (bj < 0.01)
+    {
+      std::cout << "lanczos: bj is small, stopping" << std::endl;
+      break;
+    }
+
+    lanczos_vector.push_back(w / bj);
+
+    if (j > state_want && j % 4 == 0)
+    {
+      arma::mat sub = hall.submat(0, 0, j - 1, j - 1);
+      arma::vec eigval;
+      arma::mat eigvec;
+      arma::eig_sym(eigval, eigvec, sub);
+
+      int nshow = std::min(state_want, (int)eigval.n_elem);
+      std::cout << "lanczos energy @ step " << j << ": ";
+      for (int k = 0; k < nshow; ++k)
+        std::cout << eigval(k) << " ";
+      std::cout << std::endl;
+
+      e = eigval.head(nshow);
+
+      norm_e_new = 0.0;
+      for (int k = 0; k < (int)e.n_elem; ++k)
+        norm_e_new += e(k) * e(k);
+
+      if (std::abs(norm_e_new - norm_e_old) < 0.01)
+      {
+        std::cout << "lanczos: energy converged" << std::endl;
+        break;
+      }
+      norm_e_old = norm_e_new;
+    }
+  }
+
+  std::cout << "Lanczos converged with " << j_final + 1 << " steps" << std::endl;
+  for (int k = 0; k < (int)e.n_elem; ++k)
+    std::cout << "E(" << k << ") = " << e(k) << std::endl;
+
+  return {e, lanczos_vector};
+}
+
+// ============================================================
+//  ArnoldiSolve
+//  Translated from arnoldi_proc() in run/lanczos.py
+// ============================================================
+
+EOM::ArnoldiResult
+EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
+{
+  const double tol      = 1e-8;
+  const double bj_tol   = 1e-10;
+  const int    min_iter = state_want + 1;
+
+  std::vector<Operator> lanczos_vector;
+  std::vector<Operator> h1v_cache;
+  std::vector<double>   h2_diag;
+  arma::mat hall(max_iter, max_iter, arma::fill::zeros);
+
+  // normalize initial vector
+  double nn = NormMultiref(vi, vi);
+  std::cout << "arnoldi: initial vector norm = " << nn << std::endl;
+  Operator v0 = vi / std::sqrt(nn);
+  lanczos_vector.push_back(v0);
+  h2_diag.push_back(DcomMultiref(Hs, v0).first);
+
+  arma::vec   e(state_want, arma::fill::zeros);
+  arma::mat   vs(1, 1, arma::fill::zeros);
+  arma::vec   prev_e;
+  bool        prev_e_valid = false;
+  int         j_final = 0;
+
+  for (int j = 0; j < max_iter - 1; ++j)
+  {
+    j_final = j;
+
+    // H1 * v_j  (raw, before projection — used for matrix elements)
+    Operator h1v_j = HtcMultiref(Hs, lanczos_vector[j]);
+    h1v_cache.push_back(h1v_j);
+
+    // fill row / column j of Hamiltonian matrix using polarization identity
+    for (int i = 0; i <= j; ++i)
+    {
+      double h1ij  = NormMultiref(lanczos_vector[i], h1v_j);
+      double h1ji  = NormMultiref(lanczos_vector[j], h1v_cache[i]);
+      double h1_sym = 0.5 * (h1ij + h1ji);
+
+      Operator v_sum  = lanczos_vector[i] + lanczos_vector[j];
+      double h2_cross = DcomMultiref(Hs, v_sum).first;
+      double h2_sym   = 0.5 * (h2_cross - h2_diag[i] - h2_diag[j]);
+
+      hall(i, j) = hall(j, i) = h1_sym + h2_sym;
+    }
+
+    // double-pass Classical Gram-Schmidt orthogonalization
+    Operator w = h1v_j * 1.0;
+    ProjectOprator(w);
+    for (int pass = 0; pass < 2; ++pass)
+    {
+      for (int i = 0; i <= j; ++i)
+      {
+        double cij = NormMultiref(lanczos_vector[i], w);
+        w = w - cij * lanczos_vector[i];
+      }
+      ProjectOprator(w);
+    }
+
+    double bj = NormMultiref(w, w);
+
+    if (std::abs(bj) < bj_tol)
+    {
+      std::cout << "arnoldi: exact breakdown at step " << j + 1 << ", stopping" << std::endl;
+      break;
+    }
+
+    Operator new_vec = w / std::sqrt(std::abs(bj));
+    lanczos_vector.push_back(new_vec);
+    h2_diag.push_back(DcomMultiref(Hs, new_vec).first);
+
+    // eigenvalue check / convergence
+    if (j + 1 >= min_iter)
+    {
+      arma::mat sub = hall.submat(0, 0, j, j);
+      arma::vec eigval;
+      arma::mat eigvec;
+      arma::eig_sym(eigval, eigvec, sub);
+
+      if ((j + 1) % 5 == 0)
+      {
+        std::cout << "arnoldi eigenvalues @ step " << j + 1 << ": ";
+        for (int k = 0; k < std::min(state_want, (int)eigval.n_elem); ++k)
+          std::cout << eigval(k) << " ";
+        std::cout << std::endl;
+      }
+
+      e  = eigval.head(std::min(state_want, (int)eigval.n_elem));
+      vs = eigvec;
+
+      if (prev_e_valid)
+      {
+        double delta = arma::max(arma::abs(e - prev_e));
+        double scale = std::max(1.0, arma::max(arma::abs(e)));
+        if (delta < tol || delta / scale < tol)
+        {
+          std::cout << "Arnoldi converged with " << j + 1 << " steps" << std::endl;
+          break;
+        }
+      }
+      prev_e       = e;
+      prev_e_valid = true;
+    }
+  }
+
+  std::cout << "Arnoldi finished with " << j_final + 1 << " steps" << std::endl;
+  for (int k = 0; k < (int)e.n_elem; ++k)
+    std::cout << "E(" << k << ") = " << e(k) << std::endl;
+
+  // build Ritz vectors
+  std::vector<Operator> ritz_vecs;
+  int nb = (int)lanczos_vector.size();
+  for (int k = 0; k < (int)e.n_elem; ++k)
+  {
+    Operator vec = lanczos_vector[0] * 0.0;
+    for (int m = 0; m < std::min(nb, (int)vs.n_rows); ++m)
+      vec = vec + (double)vs(m, k) * lanczos_vector[m];
+    ritz_vecs.push_back(vec);
+  }
+
+  ArnoldiResult result;
+  result.energies = e;
+  result.eigvecs  = vs;
+  result.ritz     = ritz_vecs;
+  result.hall     = hall.submat(0, 0, nb - 1, nb - 1);
+  return result;
+}
+
+// ============================================================
+//  ReadTdm
+//  Translated from read_tdm() in run/lanczos.py
+// ============================================================
+
+/// Read a transition density matrix file and populate a scalar 2-body Operator.
+Operator EOM::ReadTdm(const std::string &tdm_file)
+{
+  // Create a scalar 2-body operator (Jrank=0, Trank=0, parity=0, particle_rank=2)
+  Operator ops(*modelspace, 0, 0, 0, 2);
+  ops *= 0.0;
+
+  std::ifstream infile(tdm_file);
+  if (!infile)
+    throw std::runtime_error("ReadTdm: cannot open file " + tdm_file);
+
+  std::vector<std::string> lines;
+  {
+    std::string buf;
+    while (std::getline(infile, buf))
+      lines.push_back(buf);
+  }
+  infile.close();
+
+  int lidx = 0;
+
+  // --- line 0: J_total ---
+  {
+    std::istringstream ss(lines[lidx++]);
+    double jtotal;
+    ss >> jtotal;
+    double factor = std::sqrt(2.0 * jtotal + 1.0);
+
+    // --- line 1: number of single-particle orbits ---
+    {
+      std::istringstream ss2(lines[lidx++]);
+      int norb;
+      ss2 >> norb;
+
+      // ob_idx[obs] = {orbit_index, l, tz2}
+      struct OrbEntry { int idx, l, tz2; };
+      std::vector<OrbEntry> ob_idx(norb);
+
+      for (int obs = 0; obs < norb; ++obs)
+      {
+        std::istringstream sl(lines[lidx++]);
+        int dummy, nn, ll, jj, tt;
+        sl >> dummy >> nn >> ll >> jj >> tt;
+        ob_idx[obs].idx = (int)modelspace->GetOrbitIndex(nn, ll, jj, tt);
+        ob_idx[obs].l   = ll;
+        ob_idx[obs].tz2 = tt;
+      }
+
+      // --- one-body density matrix elements ---
+      {
+        std::istringstream sn(lines[lidx++]);
+        int n_obtd;
+        sn >> n_obtd;
+        for (int obs = 0; obs < n_obtd; ++obs)
+        {
+          std::istringstream sl2(lines[lidx++]);
+          std::vector<std::string> tok;
+          std::string w;
+          while (sl2 >> w) tok.push_back(w);
+
+          int aa = ob_idx[std::stoi(tok[1]) - 1].idx;
+          int bb = ob_idx[std::stoi(tok[2]) - 1].idx;
+          double rd = std::stod(tok.back()) / factor;
+          ops.SetOneBody(aa, bb, rd);
+        }
+      }
+
+      // --- two-body density matrix elements ---
+      {
+        std::istringstream sn(lines[lidx++]);
+        int n_tbtd;
+        sn >> n_tbtd;
+        for (int obs = 0; obs < n_tbtd; ++obs)
+        {
+          std::istringstream sl2(lines[lidx++]);
+          std::vector<std::string> tok;
+          std::string w;
+          while (sl2 >> w) tok.push_back(w);
+
+          int ia = std::stoi(tok[1]) - 1;
+          int ib = std::stoi(tok[2]) - 1;
+          int ic = std::stoi(tok[3]) - 1;
+          int id = std::stoi(tok[4]) - 1;
+
+          int aa = ob_idx[ia].idx;
+          int bb = ob_idx[ib].idx;
+          int cc = ob_idx[ic].idx;
+          int dd = ob_idx[id].idx;
+
+          int jij = std::stoi(tok[5]);
+          int pij = (ob_idx[ia].l + ob_idx[ib].l) % 2;
+          int tij = (ob_idx[ia].tz2 + ob_idx[ib].tz2) / 2;
+
+          int jkl = std::stoi(tok[5]);   // same column as jij in this format
+          int pkl = (ob_idx[ic].l + ob_idx[id].l) % 2;
+          int tkl = (ob_idx[ic].tz2 + ob_idx[id].tz2) / 2;
+
+          double rd = std::stod(tok.back()) / factor;
+          ops.SetTwoBody(jij, pij, tij, jkl, pkl, tkl, aa, bb, cc, dd, rd);
+        }
+      }
+
+      // --- three-body density matrix elements ---
+      {
+        std::istringstream sn(lines[lidx++]);
+        int n_3btd;
+        sn >> n_3btd;
+        for (int obs = 0; obs < n_3btd; ++obs)
+        {
+          std::istringstream sl2(lines[lidx++]);
+          std::vector<std::string> tok;
+          std::string w;
+          while (sl2 >> w) tok.push_back(w);
+
+          int aa = ob_idx[std::stoi(tok[1]) - 1].idx;
+          int bb = ob_idx[std::stoi(tok[2]) - 1].idx;
+          int cc = ob_idx[std::stoi(tok[3]) - 1].idx;
+          int ee = ob_idx[std::stoi(tok[4]) - 1].idx;
+          int ff = ob_idx[std::stoi(tok[5]) - 1].idx;
+          int kk = ob_idx[std::stoi(tok[6]) - 1].idx;
+
+          int jab  = std::stoi(tok[7]) / 2;
+          int jef  = std::stoi(tok[8]) / 2;
+          int jtot = std::stoi(tok[9]);
+
+          double rd = std::stod(tok.back()) / factor;
+          ops.ThreeBody.SetME_pn(jab, jef, jtot, aa, bb, cc, ee, ff, kk, (ThreeBME_type)rd);
+        }
+      }
+    } // norb scope
+  } // jtotal / factor scope
+
+  return ops;
+}
+
+// ============================================================
+//  Run
+//  Mirrors lines 133-173 of run/mr_eom.py:
+//    ConstructConfigs / ConstructNormMatrix / ConstructProjectMatrix
+//    compute eref, build random projected initial vector, run ArnoldiSolve.
+// ============================================================
+
+EOM::RunResult EOM::Run(int max_iter, int state_want)
+{
+  if (is_multiref)
+    return RunMR(max_iter, state_want);
+  else
+    return RunSR(max_iter, state_want);
+}
+
+// ---------------------------------------------------------------------------
+// SR solve: mirrors run/sr_eom.py
+//   force_decouple → random initial vector via GetVSEOM_ladder_single
+//   → normalise → LanczosSolve(HtcSingle, NormSingle)
+// ---------------------------------------------------------------------------
+EOM::RunResult EOM::RunSR(int max_iter, int state_want)
+{
+  force_decouple(Hs);
+
+  UnitTest unt(*modelspace);
+  // Python: h3 = unt.RandomOp(ms,0,0,1,2,1)  (rank_Tz=1 for isospin-changing)
+  Operator h_rand = unt.RandomOp(*modelspace, 0, 1, 0, 2, 1);
+  Operator chi    = GetVSEOM_ladder_single(h_rand, 0);
+
+  double nm = NormSingle(chi, chi);
+  if (nm <= 0.0)
+    throw std::runtime_error("EOM::RunSR: initial vector has zero norm");
+  chi = chi / std::sqrt(nm);
+
+  auto lr = LanczosSolve(chi, max_iter, state_want);
+  arma::vec e               = lr.first;
+  std::vector<Operator> ritz = std::move(lr.second);
+
+  double eref = Hs.ZeroBody;
+
+  std::cout << "\n  SR EOM eigenvalues (Lanczos):" << std::endl;
+  std::cout << "  ZeroBody (eref) = " << eref << " MeV" << std::endl;
+  for (int k = 0; k < (int)e.n_elem; ++k)
+    std::cout << "    E(" << k << "): excitation=" << e(k)
+              << "  absolute=" << e(k) + eref << " MeV" << std::endl;
+
+  ArnoldiResult ar;
+  ar.energies = e;
+  ar.ritz     = std::move(ritz);
+  return RunResult{eref, ar};
+}
+
+// ---------------------------------------------------------------------------
+// MR solve: mirrors run/mr_eom.py lines 133-173
+//   ConstructConfigs → NormMatrix → ProjectMatrix
+//   → random projected initial vector → ArnoldiSolve (MR)
+// ---------------------------------------------------------------------------
+EOM::RunResult EOM::RunMR(int max_iter, int state_want)
+{
+  // --- (1) Setup ---
+  ConstructConfigs();
+  ConstructNormMatrix();
+  ConstructProjectMatrix();
+
+  // --- (2) Reference energy = <Hs> in the valence space ---
+  double eref = GetVSEOM_Overlap_multiref(Hs);
+  std::cout << "  E_ref (valence) = " << eref
+            << "   ZeroBody = " << Hs.ZeroBody
+            << "   E_ref total = " << eref << " MeV" << std::endl;
+
+  // --- (3) Random projected initial vector ---
+  UnitTest unt(*modelspace);
+  Operator h_rand = unt.RandomOp(*modelspace, 0, 0, 0, 2, 1);
+  Operator chi_b  = GetVSEOM_ladder_multiref(h_rand, 1);
+  ProjectOprator(chi_b);
+
+  // --- (4) Solve ---
+  ArnoldiResult ar = ArnoldiSolve(chi_b, max_iter, state_want);
+
+  // --- (5) Print summary ---
+  std::cout << "\n  MR EOM eigenvalues (Arnoldi):" << std::endl;
+  std::cout << "  E_ref = " << eref << " MeV" << std::endl;
+  for (int k = 0; k < (int)ar.energies.n_elem; ++k)
+    std::cout << "    E(" << k << "): excitation=" << ar.energies(k)
+              << "  absolute=" << ar.energies(k) + eref << " MeV" << std::endl;
+
+  return RunResult{eref, ar};
 }

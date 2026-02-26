@@ -742,6 +742,22 @@ target_link_libraries(
     OpenMP::OpenMP_CXX
 )
 
+# EOM integration test (mirrors run/mr_eom.py and run/sr_eom.py with Minnesota)
+add_executable(
+    test_eom
+    ../test/test_eom.cc
+)
+target_include_directories(
+    test_eom PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_link_libraries(
+    test_eom
+    PUBLIC
+    IMSRG
+    EOM
+    OpenMP::OpenMP_CXX
+)
+
 
 #target_link_libraries(
 #    UnitTest
@@ -788,3 +804,4 @@ add_test(NAME Factorized   COMMAND  python3 ../test/UnitTestFactorized.py )
 add_test(NAME Triples      COMMAND  python3 ../test/UnitTestTriples.py )
 add_test(NAME Tensor       COMMAND  python3 ../test/UnitTestTensor.py )
 add_test(NAME NormalOrdering    COMMAND  python3 ../test/UnitTestNormalOrdering.py )
+add_test(NAME EOM_cpp COMMAND test_eom ../run)

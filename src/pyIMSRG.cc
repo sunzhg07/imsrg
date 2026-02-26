@@ -1169,25 +1169,44 @@ PYBIND11_MODULE(pyIMSRG, m) {
   ReferenceImplementations.def("comm333_pph_hhpst",
                                &ReferenceImplementations::comm333_pph_hhpst);
 
-  py::class_<EOM>(m, "EOM")
-      .def(py::init<Operator &, Operator &, int, int, int>())
-      .def(py::init<Operator &, int, int, int>())
-      .def("ConstructConfigs", &EOM::ConstructConfigs)
-      .def("PrintConfigs", &EOM::PrintConfigs)
-      .def("ConstructProjectMatrix", &EOM::ConstructProjectMatrix)
-      .def("ConstructNormMatrix", &EOM::ConstructNormMatrix)
-      .def("Setup_rdm", &EOM::Setup_rdm)
-      .def("ProjectOprator", &EOM::ProjectOprator, py::arg("Qin"))
-      .def("ComputeNorm", &EOM::ComputeNorm, py::arg("Op1"), py::arg("Op2"))
-      .def("force_decouple", &EOM::force_decouple, py::arg("H"))
+  // EOM::ArnoldiResult — returned by ArnoldiSolve and Run()
+  py::class_<EOM::ArnoldiResult>(m, "ArnoldiResult")
+      .def_property_readonly("energies",
+           [](const EOM::ArnoldiResult &r) {
+             std::vector<double> v(r.energies.begin(), r.energies.end());
+             return v;
+           });
 
-      .def("GetVSEOM_Overlap_single", &EOM::GetVSEOM_Overlap_single,
+  // EOM::RunResult — returned by EOM.Run()
+  py::class_<EOM::RunResult>(m, "RunResult")
+      .def_readonly("eref",    &EOM::RunResult::eref)
+      .def_readonly("arnoldi", &EOM::RunResult::arnoldi);
+
+  py::class_<EOM>(m, "EOM")
+      // constructors
+      .def(py::init<Operator &, Operator &, int, int, int>(),
+           py::arg("Hs"), py::arg("rdm"), py::arg("J2"), py::arg("parity"), py::arg("itz"))
+      .def(py::init<Operator &, int, int, int>(),
+           py::arg("Hs"), py::arg("J2"), py::arg("parity"), py::arg("itz"))
+      // high-level entry point: init + solve in one call
+      .def("Run", &EOM::Run,
+           py::arg("max_iter") = 200, py::arg("state_want") = 6)
+      // MR setup — must be called before operator-level methods in MR mode
+      .def("ConstructConfigs",       &EOM::ConstructConfigs)
+      .def("ConstructNormMatrix",    &EOM::ConstructNormMatrix)
+      .def("ConstructProjectMatrix", &EOM::ConstructProjectMatrix)
+      // operator-level building blocks used in Python EOM loops
+      .def("force_decouple",            &EOM::force_decouple,
+           py::arg("H"))
+      .def("ProjectOprator",            &EOM::ProjectOprator,
+           py::arg("Qin"))
+      .def("GetVSEOM_Overlap_single",   &EOM::GetVSEOM_Overlap_single,
            py::arg("H1"), py::arg("H2"))
       .def("GetVSEOM_Overlap_multiref", &EOM::GetVSEOM_Overlap_multiref,
            py::arg("H"))
-      .def("GetVSEOM_ladder_single", &EOM::GetVSEOM_ladder_single, py::arg("H"),
-           py::arg("herm"))
-      .def("GetVSEOM_ladder_multiref", &EOM::GetVSEOM_ladder_multiref,
+      .def("GetVSEOM_ladder_single",    &EOM::GetVSEOM_ladder_single,
+           py::arg("H"), py::arg("herm"))
+      .def("GetVSEOM_ladder_multiref",  &EOM::GetVSEOM_ladder_multiref,
            py::arg("H"), py::arg("herm"));
 
   py::class_<RPA>(m, "RPA")

@@ -110,76 +110,82 @@ imsrgsolver.Solve()
 #rw.WriteTokyo( HNO, valence_fname,'')
 Hs = imsrgsolver.GetH_s()
 
-
+# ---------------------------------------------------------------
+eom = EOM(Hs, read_tdm('he6.ref', ms), 0, 0, 0)
+res = eom.Run(60, 4)
+# ---------------------------------------------------------------
+print(f'\n  [he6.ref]  E_ref = {res.eref:.6f} MeV')
+for k, e in enumerate(res.arnoldi.energies):
+    print(f'    E({k}): excitation={e:.4f}  absolute={e+res.eref:.4f} MeV')
 
 #cm.SetIMSRG3Noqqq(True)
-#cm.SetIMSRG3Onlyvvv(True)
-gm  = Generator()
-cm  = Commutator
-unt = UnitTest(ms)
-
-ref_files = [f'he6_t{round(i*0.1,1):.1f}.ref' for i in range(-13, 14)]
-results   = {}   # {ref_file: (eref, e_array, hall_nb, v2, eom)}
-
-for ref_file in ref_files:
-    print(f'\n{"="*60}')
-    print(f'  Reference state: {ref_file}')
-    print(f'{"="*60}')
-
-    tdm_op = read_tdm(ref_file, ms)
-
-    rank_j, parity, rank_Tz, particle_rank, herm = 0, 0, 0, 2, 1
-    eom = EOM(Hs, tdm_op, rank_j, parity, rank_Tz)
-    eom.ConstructConfigs()
-    eom.ConstructNormMatrix()
-    eom.ConstructProjectMatrix()
-    nm   = eom.GetVSEOM_Overlap_multiref(Hs)
-    eref = nm 
-    print(f'  E_ref (valence) = {nm:.6f}   ZeroBody = {Hs.ZeroBody:.6f}   E_ref total = {eref:.6f} MeV')
-
-    h1    = unt.RandomOp(ms, rank_j, rank_Tz, parity, particle_rank, herm)
-    h2    = unt.RandomOp(ms, rank_j, rank_Tz, parity, particle_rank, herm)
-    chi_a = eom.GetVSEOM_ladder_multiref(h1, 1)
-    chi_b = eom.GetVSEOM_ladder_multiref(h2, 1)
-    eom.ProjectOprator(chi_a)
-    eom.ProjectOprator(chi_b)
-    e, vs, v2, hall_nb = arnoldi_proc(
-        htc_multiref, norm_multiref, Hs, chi_b,
-        max_iter=200, state_want=6, ms=ms, eom=eom,
-        norm_three=lambda eom, a, b, h, ms: dcom222312(eom, h, a)[0],
-        rdmat=tdm_op, prjop=eom.ProjectOprator,
-        restart_gen=lambda: eom.GetVSEOM_ladder_multiref(unt.RandomOp(ms, 0, 0, 0, 2, 1), 1))
-
-    print(f'\n  [{ref_file}] Arnoldi eigenvalues:')
-    print(f'  E_ref = {eref:.6f} MeV')
-    for k in range(len(e)):
-        print(f'    E({k}): excitation={e[k]:.4f}  absolute={e[k]+eref:.4f} MeV')
-
-    results[ref_file] = (eref, e.copy(), hall_nb, v2, eom)
-
-# ========================================================
-#  Cross-reference comparison (EOM reference-independence)
-#  For an exact EOM, E_ref1 + omega_k1 == E_ref2 + omega_k2
-#  Deviations show the truncation error of the 2-body EOM.
-# ========================================================
-print(f'\n{"="*60}')
-print('  COMPARISON: absolute energies (E_ref + excitation)')
-print('  EOM is exact iff both columns are identical')
-print(f'{"="*60}')
-refs = list(results.keys())
-n_states = min(len(results[r][1]) for r in refs)
-header = f'  {"State":<8}' + ''.join(f'  {r:<22}' for r in refs) + '  diff (MeV)'
-print(header)
-print('  ' + '-' * (len(header) - 2))
-for k in range(n_states):
-    vals = [results[r][0] + results[r][1][k] for r in refs]
-    diff = vals[-1] - vals[0]
-    row  = f'  E({k})    ' + ''.join(f'  {v:<22.4f}' for v in vals) + f'  {diff:+.4f}'
-    print(row)
-
-print(f'\n  E_ref values:')
-for r in refs:
-    print(f'    {r}: {results[r][0]:.6f} MeV')
+###cm.SetIMSRG3Onlyvvv(True)
+##
+##cm  = Commutator
+##unt = UnitTest(ms)
+##
+##ref_files = [f'he6_t{round(i*0.1,1):.1f}.ref' for i in range(-13, 14)]
+##results   = {}   # {ref_file: (eref, e_array, hall_nb, v2, eom)}
+##
+##for ref_file in ref_files:
+##    print(f'\n{"="*60}')
+##    print(f'  Reference state: {ref_file}')
+##    print(f'{"="*60}')
+##
+##    tdm_op = read_tdm(ref_file, ms)
+##
+##    rank_j, parity, rank_Tz, particle_rank, herm = 0, 0, 0, 2, 1
+##    eom = EOM(Hs, tdm_op, rank_j, parity, rank_Tz)
+##    eom.ConstructConfigs()
+##    eom.ConstructNormMatrix()
+##    eom.ConstructProjectMatrix()
+##    nm   = eom.GetVSEOM_Overlap_multiref(Hs)
+##    eref = nm 
+##    print(f'  E_ref (valence) = {nm:.6f}   ZeroBody = {Hs.ZeroBody:.6f}   E_ref total = {eref:.6f} MeV')
+##
+##    h1    = unt.RandomOp(ms, rank_j, rank_Tz, parity, particle_rank, herm)
+##    h2    = unt.RandomOp(ms, rank_j, rank_Tz, parity, particle_rank, herm)
+##    chi_a = eom.GetVSEOM_ladder_multiref(h1, 1)
+##    chi_b = eom.GetVSEOM_ladder_multiref(h2, 1)
+##    eom.ProjectOprator(chi_a)
+##    eom.ProjectOprator(chi_b)
+##    e, vs, v2, hall_nb = arnoldi_proc(
+##        htc_multiref, norm_multiref, Hs, chi_b,
+##        max_iter=200, state_want=6, ms=ms, eom=eom,
+##        norm_three=lambda eom, a, b, h, ms: dcom222312(eom, h, a)[0],
+##        rdmat=tdm_op, prjop=eom.ProjectOprator,
+##        restart_gen=lambda: eom.GetVSEOM_ladder_multiref(unt.RandomOp(ms, 0, 0, 0, 2, 1), 1))
+##
+##    print(f'\n  [{ref_file}] Arnoldi eigenvalues:')
+##    print(f'  E_ref = {eref:.6f} MeV')
+##    for k in range(len(e)):
+##        print(f'    E({k}): excitation={e[k]:.4f}  absolute={e[k]+eref:.4f} MeV')
+##
+##    results[ref_file] = (eref, e.copy(), hall_nb, v2, eom)
+##
+### ========================================================
+###  Cross-reference comparison (EOM reference-independence)
+###  For an exact EOM, E_ref1 + omega_k1 == E_ref2 + omega_k2
+###  Deviations show the truncation error of the 2-body EOM.
+### ========================================================
+##print(f'\n{"="*60}')
+##print('  COMPARISON: absolute energies (E_ref + excitation)')
+##print('  EOM is exact iff both columns are identical')
+##print(f'{"="*60}')
+##refs = list(results.keys())
+##n_states = min(len(results[r][1]) for r in refs)
+##header = f'  {"State":<8}' + ''.join(f'  {r:<22}' for r in refs) + '  diff (MeV)'
+##print(header)
+##print('  ' + '-' * (len(header) - 2))
+##for k in range(n_states):
+##    vals = [results[r][0] + results[r][1][k] for r in refs]
+##    diff = vals[-1] - vals[0]
+##    row  = f'  E({k})    ' + ''.join(f'  {v:<22.4f}' for v in vals) + f'  {diff:+.4f}'
+##    print(row)
+##
+##print(f'\n  E_ref values:')
+##for r in refs:
+##    print(f'    {r}: {results[r][0]:.6f} MeV')
 
 
 
