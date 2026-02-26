@@ -147,6 +147,8 @@ h2= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
 #
 chi_a=eom.GetVSEOM_ladder_multiref(h1,1)
 chi_b=eom.GetVSEOM_ladder_multiref(h2,1)
+eom.ProjectOprator(chi_a)
+eom.ProjectOprator(chi_b)
 
 #nm=norm_multiref(eom,chi_a,chi_b)
 #print('original py ab: ',nm)
@@ -252,12 +254,12 @@ e,vs,v2=arnoldi_proc(
    htc_multiref,
    norm_multiref,
    Hs,
-   chi_a,
-   max_iter=60,
+   chi_b,
+   max_iter=200,
    state_want=6,
    ms=ms,
    eom=eom,
-   norm_three=norm3_multiref,
+   norm_three=lambda eom,a,b,h,ms: dcom222312(eom,h,a)[0],  # diagonal H2 via polarization identity
    rdmat=tdm_op,
    prjop=eom.ProjectOprator)
 

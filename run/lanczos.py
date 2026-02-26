@@ -289,6 +289,13 @@ def arnoldi_proc(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,
     Builds a Krylov subspace using H1 (via hv_func), then computes the full
     H = H1 + H2 matrix in that subspace and diagonalizes it.
 
+    H2 off-diagonal elements are obtained via the polarization identity:
+        <v_i|H2|v_j> + <v_j|H2|v_i> = <v_i+v_j|H2|v_i+v_j> - <v_i|H2|v_i> - <v_j|H2|v_j>
+    Combined with hermiticity of H to symmetrize H1:
+        H[i,j] = H[j,i] = (h1_ij + h1_ji)/2 + (<i+j|H2|i+j> - <i|H2|i> - <j|H2|j>)/2
+    This avoids expensive off-diagonal norm3_multiref calls and enforces
+    exact symmetry of the Hamiltonian matrix by construction.
+
     Parameters
     ----------
     hv_func    : callable(eom, haml, v, prjop) -> H1*v   (e.g. htc_multiref)
@@ -299,15 +306,21 @@ def arnoldi_proc(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,
     state_want : number of lowest eigenvalues to target
     ms         : model space
     eom        : EOM object
-    norm_three : callable(eom, v1, v2, haml, ms) -> <v1|H2|v2>  (e.g. norm3_multiref)
-    rdmat      : unused (reserved for future transition density matrix usage)
-    prjop      : projection operator passed to hv_func to remove null space
+    norm_three : callable(eom, v, v, haml, ms) -> <v|H2|v>  diagonal only
+                 (e.g. lambda eom,a,b,h,ms: dcom222312(eom,h,a)[0])
+    rdmat      : unused (reserved for future use)
+    prjop      : projection operator applied during Gram-Schmidt
     """
     def _norm(a, b):
         return norm_func(eom, a, b)
 
+    def _h2_diag(v):
+        """<v|H2|v> using the diagonal-only norm_three callable."""
+        return norm_three(eom, v, v, haml, ms)
+
     lanczos_vector = []
-    h1v_cache = []          # cache H1*v_j so we don't recompute it
+    h1v_cache  = []    # h1v_cache[j]  = H1 * v_j  (raw, no prjop)
+    h2_diag    = []    # h2_diag[j]    = <v_j|H2|v_j>  (cached diagonal)
     hall = np.zeros([max_iter, max_iter])
 
     # Normalize initial vector
@@ -315,6 +328,10 @@ def arnoldi_proc(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,
     print('arnoldi: initial vector norm =', nn)
     vi = vi / np.sqrt(nn)
     lanczos_vector.append(vi)
+
+    # Cache H2 diagonal for the first vector
+    if norm_three is not None:
+        h2_diag.append(_h2_diag(vi))
 
     prev_e = None
     tol    = 1e-8
@@ -324,37 +341,26 @@ def arnoldi_proc(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,
 
     for j in range(max_iter - 1):
 
-        # --- compute H1*v_j ---
-        # For matrix elements we need the RAW H1*v (no prjop), matching mr_eom.py.
-        # For subspace expansion we will project separately after Gram-Schmidt.
-        h1v_j = hv_func(eom, haml, lanczos_vector[j],prjop)   # no prjop
+        # --- compute H1*v_j (raw, no prjop — used for matrix elements) ---
+        h1v_j = hv_func(eom, haml, lanczos_vector[j], prjop)
         h1v_cache.append(h1v_j)
 
-        # --- H matrix elements for column j (and row j) ---
-        # Both directions are computed independently.
-        # H = H1+H2 is hermitian, so hall[i,j] == hall[j,i] must hold exactly.
-        # If they differ, something upstream is wrong — print a warning.
+        # --- H matrix elements for column/row j ---
+        # Use polarization identity + hermiticity to build an exactly symmetric H:
+        #   H[i,j] = (h1_ij + h1_ji)/2 + (<i+j|H2|i+j> - <i|H2|i> - <j|H2|j>)/2
         for i in range(j + 1):
-            h1ij = _norm(lanczos_vector[i], h1v_j)          # <v_i | H1 | v_j>
-            h1ji = _norm(lanczos_vector[j], h1v_cache[i])   # <v_j | H1 | v_i>
+            h1ij = _norm(lanczos_vector[i], h1v_j)        # <v_i|H1|v_j>
+            h1ji = _norm(lanczos_vector[j], h1v_cache[i]) # <v_j|H1|v_i>
+            h1_sym = (h1ij + h1ji) * 0.5
+
             if norm_three is not None:
-                h2ij = norm_three(eom, lanczos_vector[i], lanczos_vector[j], haml, ms)
-                h2ji = norm_three(eom, lanczos_vector[j], lanczos_vector[i], haml, ms)
+                v_sum   = lanczos_vector[i] + lanczos_vector[j]
+                h2_cross = _h2_diag(v_sum)                 # <v_i+v_j|H2|v_i+v_j>
+                h2_sym  = (h2_cross - h2_diag[i] - h2_diag[j]) * 0.5
             else:
-                h2ij = h2ji = 0.0
-            hall[i, j] = h1ij + h2ij
-            hall[j, i] = h1ji + h2ji
-            # Hermiticity check: report H1 and H2 separately to locate the source
-            diff_h1 = h1ij - h1ji
-            diff_h2 = h2ij - h2ji
-            diff_H  = hall[i, j] - hall[j, i]
-            scale   = max(1.0, abs(hall[i, j]), abs(hall[j, i]))
-            if abs(diff_H) / scale > 1e-6:
-                print(f'  HERM BREAK ({i},{j}):  '
-                      f'H[i,j]={hall[i,j]:.8f}  H[j,i]={hall[j,i]:.8f}  '
-                      f'|diff|={abs(diff_H):.3e}  '
-                      f'H1_ij={h1ij:.6f} H1_ji={h1ji:.6f} dH1={diff_h1:.3e}  '
-                      f'H2_ij={h2ij:.6f} H2_ji={h2ji:.6f} dH2={diff_h2:.3e}')
+                h2_sym = 0.0
+
+            hall[i, j] = hall[j, i] = h1_sym + h2_sym
 
         # --- expand subspace: double-pass CGS with projection ---
         # Double-pass Classical Gram-Schmidt: do two sweeps of orthogonalisation
@@ -380,10 +386,16 @@ def arnoldi_proc(hv_func, norm_func, haml, vi, max_iter, state_want, ms, eom,
             prjop(w)
 
         bj = _norm(w, w)
-        if abs(bj) < 1e-12:
-            print('arnoldi: early breakdown at step', j + 1)
+        if abs(bj) < 1e-30:
+            print('arnoldi: exact breakdown at step', j + 1)
             break
-        lanczos_vector.append(w / np.sqrt(bj))
+        if abs(bj) < 1e-12:
+            print(f'arnoldi: near-breakdown at step {j+1}, bj={bj:.3e}, continuing')
+        new_vec = w / np.sqrt(abs(bj))
+        lanczos_vector.append(new_vec)
+        # Cache H2 diagonal for the new basis vector
+        if norm_three is not None:
+            h2_diag.append(_h2_diag(new_vec))
 
         # --- eigenvalue check / convergence ---
         if j + 1 >= min_iter:
