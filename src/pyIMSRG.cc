@@ -1192,6 +1192,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("Run", &EOM::Run,
            py::arg("max_iter") = 200, py::arg("state_want") = 6)
       // MR setup — must be called before operator-level methods in MR mode
+      .def("ComputeNorm", &EOM::ComputeNorm, py::arg("Op1"), py::arg("Op2"))
       .def("ConstructConfigs",       &EOM::ConstructConfigs)
       .def("ConstructNormMatrix",    &EOM::ConstructNormMatrix)
       .def("ConstructProjectMatrix", &EOM::ConstructProjectMatrix)

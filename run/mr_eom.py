@@ -5,8 +5,8 @@ from lanczos import *
 
 
 
-emax =2         # maximum number of oscillator quanta in the model space
-ref = 'He4'     # reference used for normal ordering
+emax =3         # maximum number of oscillator quanta in the model space
+ref = 'He8'     # reference used for normal ordering
 val = 'p-shell' # valence space
 
 core_generator = 'atan'   # definition of generator eta for decoupling the core (could also use 'white')
@@ -86,10 +86,6 @@ hf.PrintSPEandWF()
 
 ### Do normal ordering with respect to the HF basis
 HNO = hf.GetNormalOrderedH(2)
-ips1 = ms.GetOrbitIndex(0,0,1,-1)
-ins1 = ms.GetOrbitIndex(0,0,1,+1)
-HNO.SetOneBody(ips1,ips1, HNO.GetOneBody(ips1,ips1)-10)
-HNO.SetOneBody(ins1,ins1, HNO.GetOneBody(ins1,ins1)-10)
 ### Create an instance of the IMSRGSolver class, used for solving the IMSRG flow equations
 imsrgsolver = IMSRGSolver(HNO)
 imsrgsolver.SetMethod('magnus')  # Solve using the Magnus formulation. Could also be 'flow_RK4'
@@ -109,14 +105,44 @@ imsrgsolver.Solve()
 ### Hs is the IMSRG-evolved Hamiltonian
 #rw.WriteTokyo( HNO, valence_fname,'')
 Hs = imsrgsolver.GetH_s()
+Hs.UndoNormalOrdering()
+ms2 = ModelSpace(emax,'He4',val)
+Hs.SetModelSpace(ms2)
+Hs.DoNormalOrdering()
 
-# ---------------------------------------------------------------
-eom = EOM(Hs, read_tdm('he6.ref', ms), 0, 0, 0)
+
+#tdm_op = read_tdm('he8_pshell_e3_em1290_gs.dat', ms2)
+#
+#rank_j, parity, rank_Tz, particle_rank, herm = 0, 0, 0, 2, 1
+#unt = UnitTest(ms2)
+#h1    = unt.RandomOp(ms2, rank_j, rank_Tz, parity, particle_rank, herm)
+#h2    = unt.RandomOp(ms2, rank_j, rank_Tz, parity, particle_rank, herm)
+#
+#
+#eom = EOM(Hs, tdm_op, rank_j, parity, rank_Tz)
+#eom.ConstructConfigs()
+#eom.ConstructNormMatrix()
+#eom.ConstructProjectMatrix()
+#
+#chi_a = eom.GetVSEOM_ladder_multiref(h1, 1)
+#chi_b = eom.GetVSEOM_ladder_multiref(h2, 1)
+#
+#nm=norm_multiref(eom,chi_a,chi_b)
+#print('norm comm: ', nm)
+#nm=eom.ComputeNorm(chi_a,chi_b)
+#print('norm matmul: ', nm)
+#
+#eom.ProjectOprator(chi_a)
+#eom.ProjectOprator(chi_b)
+
+
+## ---------------------------------------------------------------
+eom = EOM(Hs, read_tdm('he8_pshell_e3_em1290_gs.dat', ms2), 0, 0, 0)
 res = eom.Run(60, 10)
-# ---------------------------------------------------------------
-print(f'\n  [he6.ref]  E_ref = {res.eref:.6f} MeV')
-for k, e in enumerate(res.arnoldi.energies):
-    print(f'    E({k}): excitation={e:.4f}  absolute={e+res.eref:.4f} MeV')
+## ---------------------------------------------------------------
+#print(f'\n  [he6.ref]  E_ref = {res.eref:.6f} MeV')
+#for k, e in enumerate(res.arnoldi.energies):
+#    print(f'    E({k}): excitation={e:.4f}  absolute={e+res.eref:.4f} MeV')
 
 #cm.SetIMSRG3Noqqq(True)
 ###cm.SetIMSRG3Onlyvvv(True)

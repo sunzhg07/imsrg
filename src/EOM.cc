@@ -840,7 +840,7 @@ void EOM::SqrtMat(arma::mat& Amat, size_t n)
     double s_max = (s.n_elem > 0) ? arma::max(s) : 0.0;
 
     // If the entire block is zero, the projector is zero.
-    if (s_max < 1e-14) {
+    if (s_max < 1e-10) {
         Amat.zeros(n, n);
         return;
     }
@@ -1595,6 +1595,7 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
 {
   const double tol      = 1e-8;
   const double bj_tol   = 1e-10;
+  const double null_tol = 1e-6;
   const int    min_iter = state_want + 1;
 
   std::vector<Operator> lanczos_vector;
@@ -1607,12 +1608,13 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
   Operator v0 = vi / std::sqrt(nn);
   lanczos_vector.push_back(v0);
   h2_diag.push_back(DcomMultiref(Hs, v0).first);
+  const double cn0 = ComputeNorm(v0, v0);
 
-  arma::vec   e(state_want, arma::fill::zeros);
-  arma::mat   vs(1, 1, arma::fill::zeros);
-  arma::vec   prev_e;
-  bool        prev_e_valid = false;
-  int         j_final = 0;
+  arma::vec e(state_want, arma::fill::zeros);
+  arma::mat vs(1, 1, arma::fill::zeros);
+  arma::vec prev_e;
+  bool      prev_e_valid = false;
+  int       j_final      = 0;
 
   for (int j = 0; j < max_iter - 1; ++j)
   {
@@ -1625,8 +1627,8 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
     // fill row / column j of Hamiltonian matrix using polarization identity
     for (int i = 0; i <= j; ++i)
     {
-      double h1ij  = NormMultiref(lanczos_vector[i], h1v_j);
-      double h1ji  = NormMultiref(lanczos_vector[j], h1v_cache[i]);
+      double h1ij   = NormMultiref(lanczos_vector[i], h1v_j);
+      double h1ji   = NormMultiref(lanczos_vector[j], h1v_cache[i]);
       double h1_sym = 0.5 * (h1ij + h1ji);
 
       Operator v_sum  = lanczos_vector[i] + lanczos_vector[j];
@@ -1636,7 +1638,7 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
       hall(i, j) = hall(j, i) = h1_sym + h2_sym;
     }
 
-    // double-pass Classical Gram-Schmidt orthogonalization
+    // double-pass classical Gram-Schmidt orthogonalization
     Operator w = h1v_j * 1.0;
     ProjectOprator(w);
     for (int pass = 0; pass < 2; ++pass)
@@ -1649,25 +1651,52 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
       ProjectOprator(w);
     }
 
-    double bj = NormMultiref(w, w);
+    double bj        = NormMultiref(w, w);
+    double bj_kernel = ComputeNorm(w, w);
 
-    if (std::abs(bj) < bj_tol)
+    // null-space breakdown: w exhausted the physical subspace
+    if (std::abs(bj_kernel) < null_tol * cn0)
     {
-      std::cout << "arnoldi: exact breakdown at step " << j + 1 << ", stopping" << std::endl;
-      // The j+1 vectors form an invariant subspace — solve it exactly.
-      {
-        int dim = j + 1;
-        arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
-        arma::vec eigval_bd;
-        arma::mat eigvec_bd;
-        arma::eig_sym(eigval_bd, eigvec_bd, sub);
-        e  = eigval_bd.head(std::min(state_want, (int)eigval_bd.n_elem));
-        vs = eigvec_bd;
-      }
+      std::cout << "arnoldi: null vector (breakdown) at step " << j + 1
+                << " (ComputeNorm=" << bj_kernel << "), stopping." << std::endl;
+      int dim = j + 1;
+      arma::mat sub = hall.submat(0, 0, dim-1, dim-1);
+      arma::vec ev; arma::mat evec;
+      arma::eig_sym(ev, evec, sub);
+      e  = ev.head(std::min(state_want, (int)ev.n_elem));
+      vs = evec;
       break;
     }
 
-    Operator new_vec = w / std::sqrt(std::abs(bj));
+    // exact breakdown: w == 0
+    if (std::abs(bj) < bj_tol)
+    {
+      std::cout << "arnoldi: exact breakdown at step " << j + 1 << ", stopping." << std::endl;
+      int dim = j + 1;
+      arma::mat sub = hall.submat(0, 0, dim-1, dim-1);
+      arma::vec ev; arma::mat evec;
+      arma::eig_sym(ev, evec, sub);
+      e  = ev.head(std::min(state_want, (int)ev.n_elem));
+      vs = evec;
+      break;
+    }
+
+    // negative norm: indefinite metric hit — solve and stop
+    if (bj < 0.0)
+    {
+      std::cout << "arnoldi: bj=" << bj << " < 0 at step " << j + 1
+                << " (indefinite metric), stopping." << std::endl;
+      int dim = j + 1;
+      arma::mat sub = hall.submat(0, 0, dim-1, dim-1);
+      arma::vec ev; arma::mat evec;
+      arma::eig_sym(ev, evec, sub);
+      e  = ev.head(std::min(state_want, (int)ev.n_elem));
+      vs = evec;
+      break;
+    }
+
+    // normal step: add new basis vector
+    Operator new_vec = w / std::sqrt(bj);
     lanczos_vector.push_back(new_vec);
     h2_diag.push_back(DcomMultiref(Hs, new_vec).first);
 
@@ -1675,8 +1704,7 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
     if (j + 1 >= min_iter)
     {
       arma::mat sub = hall.submat(0, 0, j, j);
-      arma::vec eigval;
-      arma::mat eigvec;
+      arma::vec eigval; arma::mat eigvec;
       arma::eig_sym(eigval, eigvec, sub);
 
       e  = eigval.head(std::min(state_want, (int)eigval.n_elem));
@@ -1696,7 +1724,7 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
         double scale = std::max(1.0, arma::max(arma::abs(e)));
         if (delta < tol || delta / scale < tol)
         {
-          std::cout << "Arnoldi converged with " << j + 1 << " steps" << std::endl;
+          std::cout << "Arnoldi converged at step " << j + 1 << std::endl;
           break;
         }
       }
@@ -1705,13 +1733,11 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
     }
   }
 
-  // Always do a final eigensolution on the full accumulated subspace.
-  // Guarantees correct results when the space is small or iteration stopped early.
+  // Final eigensolution on the full accumulated subspace.
   {
     int nb_cur = (int)lanczos_vector.size();
     arma::mat sub = hall.submat(0, 0, nb_cur - 1, nb_cur - 1);
-    arma::vec eigval_f;
-    arma::mat eigvec_f;
+    arma::vec eigval_f; arma::mat eigvec_f;
     arma::eig_sym(eigval_f, eigvec_f, sub);
     e  = eigval_f.head(std::min(state_want, (int)eigval_f.n_elem));
     vs = eigvec_f;
@@ -1721,7 +1747,7 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
   for (int k = 0; k < (int)e.n_elem; ++k)
     std::cout << "E(" << k << ") = " << e(k) << std::endl;
 
-  // build Ritz vectors
+  // Build Ritz vectors.
   std::vector<Operator> ritz_vecs;
   int nb = (int)lanczos_vector.size();
   for (int k = 0; k < (int)e.n_elem; ++k)
