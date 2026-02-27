@@ -1449,7 +1449,6 @@ double EOM::Norm3Multiref(Operator &t1, Operator &t2, Operator &haml)
 Operator EOM::HtcSingle(Operator &haml, Operator &chi)
 {
   Operator ht_plus = Commutator::Commutator(haml, chi);
-  ht_plus.SetAntiHermitian();
   return GetVSEOM_ladder_single(ht_plus, 0);
 }
 
@@ -1457,7 +1456,6 @@ Operator EOM::HtcSingle(Operator &haml, Operator &chi)
 Operator EOM::HtcMultiref(Operator &haml, Operator &chi)
 {
   Operator ht_minus = Commutator::Commutator(haml, chi);
-  ht_minus.SetHermitian();
   Operator heom = GetVSEOM_ladder_multiref(ht_minus, 1);
   ProjectOprator(heom);
   return heom;
@@ -1540,7 +1538,7 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
 
     if ((int)lanczos_vector.size() > state_want && j % 4 == 0)
     {
-      int dim = (int)lanczos_vector.size() - 1; // subspace built so far
+      int dim = std::min((int)lanczos_vector.size() - 1, max_iter); // subspace built so far
       arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
       arma::vec eigval;
       arma::mat eigvec;
@@ -1573,7 +1571,7 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
   // added after the converged subspace.
   if (!converged)
   {
-    int dim = (int)lanczos_vector.size();
+    int dim = std::min((int)lanczos_vector.size(), max_iter);
     arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
     arma::vec eigval_f;
     arma::mat eigvec_f;
@@ -1935,8 +1933,7 @@ EOM::RunResult EOM::RunSR(int max_iter, int state_want)
   force_decouple(Hs);
 
   UnitTest unt(*modelspace);
-  // Python: h3 = unt.RandomOp(ms,0,0,1,2,1)  (rank_Tz=1 for isospin-changing)
-  Operator h_rand = unt.RandomOp(*modelspace, 0, 1, 0, 2, 1);
+  Operator h_rand = unt.RandomOp(*modelspace, J2, parity, itz, 2, 1);
   Operator chi    = GetVSEOM_ladder_single(h_rand, 0);
 
   double nm = NormSingle(chi, chi);
@@ -1982,7 +1979,7 @@ EOM::RunResult EOM::RunMR(int max_iter, int state_want)
 
   // --- (3) Random projected initial vector ---
   UnitTest unt(*modelspace);
-  Operator h_rand = unt.RandomOp(*modelspace, 0, 0, 0, 2, 1);
+  Operator h_rand = unt.RandomOp(*modelspace, 0, 0, 0, 2, 1); // now we can only deal with scaler
   Operator chi_b  = GetVSEOM_ladder_multiref(h_rand, 1);
   ProjectOprator(chi_b);
 

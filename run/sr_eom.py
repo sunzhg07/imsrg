@@ -102,7 +102,7 @@ Hs = imsrgsolver.GetH_s()
 
 # ---------------------------------------------------------------
 eom = EOM(Hs, 0, 0, 0)
-res = eom.Run(40, 2)
+res = eom.Run(40, 6)
 # ---------------------------------------------------------------
 print(f'\n  [SR EOM]  ZeroBody(eref) = {res.eref:.6f} MeV')
 for k, e in enumerate(res.arnoldi.energies):
