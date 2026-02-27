@@ -1504,6 +1504,7 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
   arma::vec e(state_want, arma::fill::zeros);
   int j_final = 0;
   double bj = 0.0;
+  bool converged = false;
 
   for (int j = 0; j < max_iter; ++j)
   {
@@ -1560,14 +1561,17 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
       if (std::abs(norm_e_new - norm_e_old) < 0.01)
       {
         std::cout << "lanczos: energy converged" << std::endl;
+        converged = true;
         break;
       }
       norm_e_old = norm_e_new;
     }
   }
 
-  // Always do a final eigensolution on the full accumulated subspace.
-  // This guarantees correct results even when the space is small or bj was tiny.
+  // Final eigensolution only when convergence was not already reached during
+  // the iteration — avoids spurious low eigenvalues from extra basis vectors
+  // added after the converged subspace.
+  if (!converged)
   {
     int dim = (int)lanczos_vector.size();
     arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
