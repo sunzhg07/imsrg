@@ -53,9 +53,9 @@ def norm3_multiref(eom, t1,t2,haml,ms):
 
 def htc_single(eom,Haml, chi,proj=None):
     ht_plus= chi*0
-    ht_plus.SetAntiHermitian()
+    ht_plus.SetHermitian()
     ht_plus = cm.Commutator(Haml, chi )
-    heom1= eom.GetVSEOM_ladder_single(ht_plus, 0)
+    heom1= eom.GetVSEOM_ladder_single(ht_plus, 1)
     hod = heom1
     return(hod)
 

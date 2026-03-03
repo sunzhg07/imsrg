@@ -101,7 +101,8 @@ imsrgsolver.Solve()
 Hs = imsrgsolver.GetH_s()
 
 # ---------------------------------------------------------------
-eom = EOM(Hs, 0, 0, 0)
+rank_j, parity, rank_Tz = 0,0,0
+eom = EOM(Hs, rank_j, parity, rank_Tz)
 res = eom.Run(40, 6)
 # ---------------------------------------------------------------
 print(f'\n  [SR EOM]  ZeroBody(eref) = {res.eref:.6f} MeV')

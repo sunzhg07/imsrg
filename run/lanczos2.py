@@ -83,8 +83,8 @@ def htc_vs(Haml, chi):
     return(hod)
 
 
-def Norm(T1, T2):
-    return(gm.GetEOM_Overlap(T1,T2))
+def Norm(eom,T1, T2):
+    return(eom.GetVSEOM_Overlap_single(T1,T2))
 
 
 def Norm_vs_new(T1,T2):
@@ -178,13 +178,13 @@ def Norm3(t1,t2,haml,ms):
 
 import numpy as np
 
-def lanczos_proc( hv_func, norm_func, haml, vi, max_iter,state_want, ms):
+def lanczos_proc( hv_func, norm_func, haml, vi, max_iter,state_want, ms,eom):
     lanczos_vector = []
     hall = np.zeros([max_iter,max_iter])
     hall[0,0]=0.
 
     ## normalize it to 1
-    nn=norm_func(vi,vi)
+    nn=norm_func(eom,vi,vi)
     print('initial norm vector', nn)
     vi=vi/np.sqrt(nn)
     lanczos_vector.append(vi)
@@ -202,8 +202,7 @@ def lanczos_proc( hv_func, norm_func, haml, vi, max_iter,state_want, ms):
 
         w = hv_func(haml,lanczos_vector[j])
 
-        ai=norm_func(w,lanczos_vector[j])
-        ai-=Norm3(lanczos_vector[j],lanczos_vector[j],haml,ms)
+        ai=norm_func(eom,w,lanczos_vector[j])
         print('ai at', j, ': ', ai )
 
 

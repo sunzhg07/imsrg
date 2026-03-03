@@ -97,9 +97,10 @@ imsrgsolver.Solve()
 ### Hs is the IMSRG-evolved Hamiltonian
 Hs = imsrgsolver.GetH_s()
 
-from  lanczos import *
+from  lanczos2 import *
 cm=Commutator
 gm=Generator()
+eom=EOM(Hs,0,0,0)
 
 
 max_iter=100
@@ -108,18 +109,18 @@ rank_j, parity, rank_Tz, particle_rank, herm= 0,0,2,2,1
 
 h3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, particle_rank,herm)
 
-chi= gm.GetEOM_ladder(h3,0)
+chi= eom.GetVSEOM_ladder_single(h3,0)
 
 
-cnorm=Norm(chi,chi)
+cnorm=Norm(eom,chi,chi)
 
 chi=chi/np.sqrt(cnorm)
 
-cnorm=Norm(chi,chi)
+cnorm=Norm(eom,chi,chi)
 
 
 ## initialize T+T'
 
-e,v,lvs = lanczos_proc( htc, Norm, Hs, chi, max_iter, 2)
+e,v,lvs = lanczos_proc( htc, Norm, Hs, chi, max_iter, 2,ms,eom)
 
 

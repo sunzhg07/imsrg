@@ -1102,7 +1102,7 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
   // H int herm, 0 for hermit, and 1 for antihermit
   int hZ = H.IsHermitian() ? +1 : -1;
 
-  int herm_phase = 0;
+  int herm_phase = 1;
   Operator Hod = 0.0 * H;
 
   if (herm == 0) {
@@ -1406,6 +1406,15 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
 /// Thin wrapper around GetVSEOM_Overlap_single.
 double EOM::NormSingle(Operator &T1, Operator &T2)
 {
+// Operator T1d = EOM::GetVSEOM_ladder_single(T1,0);
+// Operator nop=T1*0.0;
+// nop.SetHermitian();
+// Commutator::comm110ss(T1d,T2,nop);
+// Commutator::comm220ss(T1d,T2,nop);
+// 
+// return(nop.ZeroBody/2.);
+
+ 
   return GetVSEOM_Overlap_single(T1, T2);
 }
 
@@ -1448,8 +1457,9 @@ double EOM::Norm3Multiref(Operator &t1, Operator &t2, Operator &haml)
 /// Single-reference action: [Haml, chi], then apply ladder (herm=0).
 Operator EOM::HtcSingle(Operator &haml, Operator &chi)
 {
+ 
   Operator ht_plus = Commutator::Commutator(haml, chi);
-  return GetVSEOM_ladder_single(ht_plus, 0);
+  return GetVSEOM_ladder_single(ht_plus, 1);
 }
 
 /// Multiref action: [Haml, chi], then apply ladder (herm=1) and project.
@@ -1930,11 +1940,11 @@ EOM::RunResult EOM::Run(int max_iter, int state_want)
 // ---------------------------------------------------------------------------
 EOM::RunResult EOM::RunSR(int max_iter, int state_want)
 {
-  force_decouple(Hs);
+//force_decouple(Hs);
 
   UnitTest unt(*modelspace);
   Operator h_rand = unt.RandomOp(*modelspace, J2, parity, itz, 2, 1);
-  Operator chi    = GetVSEOM_ladder_single(h_rand, 0);
+  Operator chi    = GetVSEOM_ladder_single(h_rand, 1); 
 
   double nm = NormSingle(chi, chi);
   if (nm <= 0.0)
