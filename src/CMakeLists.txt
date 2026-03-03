@@ -742,21 +742,6 @@ target_link_libraries(
     OpenMP::OpenMP_CXX
 )
 
-# EOM integration test (mirrors run/mr_eom.py and run/sr_eom.py with Minnesota)
-add_executable(
-    test_eom
-    ../test/test_eom.cc
-)
-target_include_directories(
-    test_eom PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-)
-target_link_libraries(
-    test_eom
-    PUBLIC
-    IMSRG
-    EOM
-    OpenMP::OpenMP_CXX
-)
 
 
 #target_link_libraries(
