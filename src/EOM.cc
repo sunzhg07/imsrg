@@ -1119,9 +1119,7 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
     Orbit &oi = H.modelspace->GetOrbit(i);
     for (auto &a : VectorUnion(H.modelspace->valence, H.modelspace->qspace)) {
       Orbit &oa = H.modelspace->GetOrbit(a);
-      Hod.OneBody(a, i) = H.OneBody(a, i);
-      int phase_ia = H.modelspace->phase((oa.j2 - oi.j2) / 2);
-      Hod.OneBody(i, a) = H.OneBody(a, i) * phase_ia * herm_phase;
+      Hod.SetOneBody(a,i,H.OneBody(a, i));
     }
   }
 
@@ -1153,14 +1151,15 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
         }
       }
 
+    // in a <J1|O^{LM}|J2> block, we have pphh and hhpp, hhpp-> pphh in conjugate channel->hhpp
       for (auto &ibra : tbc_bra.GetKetIndex_cc()) {
         for (auto &iket :
              VectorUnion(tbc_ket.GetKetIndex_qq(), tbc_ket.GetKetIndex_vv(),
                          tbc_ket.GetKetIndex_qv())) {
-          Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket,
-                                H2(ibra, iket)*herm_phase);
+          Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket)*herm_phase*hZ);
         }
       }
+
     }
   }
 
@@ -1253,9 +1252,7 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
     Orbit &oi = H.modelspace->GetOrbit(i);
     for (auto &a : VectorUnion(H.modelspace->valence, H.modelspace->qspace)) {
       Orbit &oa = H.modelspace->GetOrbit(a);
-      Hod.OneBody(a, i) = H.OneBody(a, i);
-      int phase_ia = H.modelspace->phase((oa.j2 - oi.j2) / 2);
-      Hod.OneBody(i, a) = H.OneBody(a, i) * phase_ia * herm_phase;
+      Hod.SetOneBody(a,i,H.OneBody(a, i));
     }
   }
 
@@ -1316,8 +1313,7 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
 
   for (auto &i : H.modelspace->valence) {
     for (auto &a : H.modelspace->qspace) {
-      Hod.OneBody(a, i) = H.OneBody(a, i);
-      Hod.OneBody(i, a) = H.OneBody(a, i) * herm_phase;
+      Hod.SetOneBody(a,i,H.OneBody(a, i));
     }
   }
 
@@ -1406,10 +1402,10 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
 /// Thin wrapper around GetVSEOM_Overlap_single.
 double EOM::NormSingle(Operator &T1, Operator &T2)
 {
- if(T1.IsReduced()){
+ if(T1.IsReduced()){// for tensors, the wave function operator is reduced
  return GetVSEOM_Overlap_single(T1, T2);
  }
- else{
+ else{// scaler is not reduced, then we use commutator
  Operator T1d = EOM::GetVSEOM_ladder_single(T1,0);
  Operator nop=T1*0.0;
  nop.SetHermitian();
