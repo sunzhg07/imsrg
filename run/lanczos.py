@@ -12,6 +12,10 @@ gm=Generator()
 
 
 def norm_single(eom, T1, T2):
+    T1d=eom.GetVSEOM_ladder_single(T1,0)
+    nop=T1*0.
+    nop=cm.Commutator(T1d,T2)
+    return(nop.ZeroBody/2)
     return(eom.GetVSEOM_Overlap_single(T1,T2))
 
 def norm_multiref(eom, T1, T2):

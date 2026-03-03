@@ -1158,7 +1158,7 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
              VectorUnion(tbc_ket.GetKetIndex_qq(), tbc_ket.GetKetIndex_vv(),
                          tbc_ket.GetKetIndex_qv())) {
           Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket,
-                                H2(ibra, iket) * hZ * herm_phase);
+                                H2(ibra, iket)*herm_phase);
         }
       }
     }
@@ -1406,16 +1406,18 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
 /// Thin wrapper around GetVSEOM_Overlap_single.
 double EOM::NormSingle(Operator &T1, Operator &T2)
 {
-// Operator T1d = EOM::GetVSEOM_ladder_single(T1,0);
-// Operator nop=T1*0.0;
-// nop.SetHermitian();
-// Commutator::comm110ss(T1d,T2,nop);
-// Commutator::comm220ss(T1d,T2,nop);
-// 
-// return(nop.ZeroBody/2.);
+ if(T1.IsReduced()){
+ return GetVSEOM_Overlap_single(T1, T2);
+ }
+ else{
+ Operator T1d = EOM::GetVSEOM_ladder_single(T1,0);
+ Operator nop=T1*0.0;
+ nop.SetHermitian();
+ Commutator::comm110ss(T1d,T2,nop);
+ Commutator::comm220ss(T1d,T2,nop);
+ return(nop.ZeroBody/2.);}
 
  
-  return GetVSEOM_Overlap_single(T1, T2);
 }
 
 /// <T1|T2> using the multiref metric:
@@ -1944,7 +1946,8 @@ EOM::RunResult EOM::RunSR(int max_iter, int state_want)
 
   UnitTest unt(*modelspace);
   Operator h_rand = unt.RandomOp(*modelspace, J2, parity, itz, 2, 1);
-  Operator chi    = GetVSEOM_ladder_single(h_rand, 1); 
+  Operator h2_rand = unt.RandomOp(*modelspace, J2, parity, itz, 2, 1);
+  Operator chi    = GetVSEOM_ladder_single(h2_rand, 1); 
 
   double nm = NormSingle(chi, chi);
   if (nm <= 0.0)
