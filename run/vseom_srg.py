@@ -5,8 +5,8 @@ from lanczos import *
 
 
 
-emax =2         # maximum number of oscillator quanta in the model space
-ref = 'He4'     # reference used for normal ordering
+emax =3         # maximum number of oscillator quanta in the model space
+ref = 'C12'     # reference used for normal ordering
 val = 'p-shell' # valence space
 
 core_generator = 'atan'   # definition of generator eta for decoupling the core (could also use 'white')
@@ -21,7 +21,7 @@ smax_valence = 100   # limit of s for second stage of decoupling
 #f3e1,f3e2,f3e3 = 12,24,12
 #LECs = 'srg0800'
 
-f2b='input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz'
+f2b='input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gza'
 f2e1,f2e2,f2l = 14,28,14
 f3b='input/NO2B_ThBME_EM1.8_2.0_3NFJmax15_IS_hw16_ms18_36_18.stream.bin'
 f3e1,f3e2,f3e3 = 18,36,18

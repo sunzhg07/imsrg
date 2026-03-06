@@ -14,7 +14,7 @@ using PhysConst::SQRT2;
 
 // we have two constructor for the EOM, w/o the rdm for multi-reference and
 // single reference
-EOM::EOM(Operator &Hs, Operator &rdm, int J2, int parity, int itz)
+EOM::EOM(Operator &Hs, Operator &rdm, int J2,  int itz,int parity)
     : modelspace(Hs.modelspace), Hs(Hs), rdm(rdm), J2(J2), parity(parity),
       itz(itz), is_multiref(true) {
   eom_dims = 0;
@@ -25,7 +25,7 @@ EOM::EOM(Operator &Hs, Operator &rdm, int J2, int parity, int itz)
   pphh_dim = 0;
 };
 
-EOM::EOM(Operator &Hs, const std::string &tdm_file, int J2, int parity, int itz)
+EOM::EOM(Operator &Hs, const std::string &tdm_file, int J2,  int itz,int parity )
     : modelspace(Hs.modelspace), Hs(Hs), rdm(*Hs.modelspace), J2(J2), parity(parity),
       itz(itz), is_multiref(true) {
   eom_dims = 0;
@@ -37,7 +37,7 @@ EOM::EOM(Operator &Hs, const std::string &tdm_file, int J2, int parity, int itz)
   rdm = ReadTdm(tdm_file);
 };
 
-EOM::EOM(Operator &Hs, int J2, int parity, int itz)
+EOM::EOM(Operator &Hs, int J2,  int itz,int parity)
     : modelspace(Hs.modelspace), Hs(Hs), J2(J2), parity(parity),
       itz(itz), is_multiref(false) {};
 
@@ -1543,6 +1543,22 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
     else
       w = w - ai * lanczos_vector[j];
 
+    // Full double-pass reorthogonalization against ALL previous Lanczos vectors.
+    // The three-term recurrence only subtracts j and j-1, but in finite-precision
+    // arithmetic orthogonality to earlier vectors drifts away.  Once any converged
+    // Ritz value has lost orthogonality the corresponding eigenvalue is reintroduced
+    // as a "ghost" — a duplicate copy in the spectrum.  Two passes of Classical
+    // Gram-Schmidt eliminate this completely at O(j) extra inner-product evaluations
+    // per step.
+    for (int pass = 0; pass < 2; ++pass)
+    {
+      for (int i = 0; i <= j; ++i)
+      {
+        double cij = NormSingle(w, lanczos_vector[i]);
+        w = w - cij * lanczos_vector[i];
+      }
+    }
+
     double nm = NormSingle(w, w);
     bj = std::sqrt(nm);
 
@@ -1595,9 +1611,12 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
   // Final eigensolution only when convergence was not already reached during
   // the iteration — avoids spurious low eigenvalues from extra basis vectors
   // added after the converged subspace.
+  // Bug fix: use size()-1 not size(): the last pushed vector (w/bj) is the
+  // boundary vector whose diagonal element a_{j+1} was never computed, so
+  // including it would add a spurious zero row/col to the Lanczos matrix.
   if (!converged)
   {
-    int dim = std::min((int)lanczos_vector.size(), max_iter);
+    int dim = std::min((int)lanczos_vector.size() - 1, max_iter);
     arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
     arma::vec eigval_f;
     arma::mat eigvec_f;

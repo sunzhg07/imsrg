@@ -56,7 +56,7 @@ if f3b != 'none':
    particle_rank = 3
 
 ### Create an instance of the Operator class, representing the Hamiltonian
-H = Operator(ms,rank_j, parity, rank_Tz, particle_rank)
+H = Operator(ms,rank_j,  rank_Tz, particle_rank, particle_rank)
 
 ### Either generate the matrix elements of the Minnesota potential, or read in matrix elements from file
 if LECs == 'Minnesota':
@@ -101,11 +101,11 @@ imsrgsolver.Solve()
 Hs = imsrgsolver.GetH_s()
 
 # ---------------------------------------------------------------
-rank_j, parity, rank_Tz = 0,1,0
+rank_j, parity, rank_Tz = 0,0,0
 
 
-eom = EOM(Hs, rank_j, parity, rank_Tz)
-res = eom.Run(40, 3)
+eom = EOM(Hs, rank_j, rank_Tz,parity)
+res = eom.Run(80, 3)
 ## ---------------------------------------------------------------
 #print(f'\n  [SR EOM]  ZeroBody(eref) = {res.eref:.6f} MeV')
 #for k, e in enumerate(res.arnoldi.energies):

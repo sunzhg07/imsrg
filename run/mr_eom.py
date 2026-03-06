@@ -138,7 +138,7 @@ tdm_op = read_tdm('he8_pshell_e3_em1290_gs.dat', ms2)
 
 ## ---------------------------------------------------------------
 eom = EOM(Hs, read_tdm('he8_pshell_e3_em1290_gs.dat', ms2), 0, 0, 0)
-res = eom.Run(60, 4)
+res = eom.Run(26, 4)
 ## ---------------------------------------------------------------
 #print(f'\n  [he6.ref]  E_ref = {res.eref:.6f} MeV')
 #for k, e in enumerate(res.arnoldi.energies):

@@ -90,6 +90,10 @@ def lanczos_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_th
     norm_e_old=-1000
     norm_e_new=-1000
 
+    # Initialize e and v so they are always defined after the loop
+    e = np.zeros(state_want)
+    v = np.zeros([state_want, state_want])
+    bj = 0.0
 
     for j in range(max_iter):
 
@@ -102,6 +106,16 @@ def lanczos_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_th
         else:
             w=w-ai*lanczos_vector[j]
 
+        # Full double-pass reorthogonalization against ALL previous Lanczos vectors.
+        # The three-term recurrence only removes j and j-1 components; in floating-point
+        # arithmetic orthogonality to earlier vectors drifts, causing converged eigenvalues
+        # to re-appear as ghost duplicates.  Two CGS passes eliminate this at O(j) extra
+        # inner-product evaluations per step.
+        for _pass in range(2):
+            for i in range(j+1):
+                cij = norm_func(eom, lanczos_vector[i], w)
+                w = w - cij * lanczos_vector[i]
+
         nm=norm_func(eom, w,w)
         bj = np.sqrt(nm)
         w1=w/bj
@@ -111,26 +125,36 @@ def lanczos_proc( hv_func, norm_func,haml, vi,max_iter,state_want,ms,eom,norm_th
 
         if bj < 0.01 :
             print('bj is small')
-            break
+            if bj < 1e-10:
+                break
         lanczos_vector.append(w/bj)
+        # Bug fix: use hall[0:j+1, 0:j+1] (not hall[0:j, 0:j]) so the
+        # diagonal element a_j and the off-diagonals b_{j-1} are included.
+        # Bug fix: use eigh (real symmetric) instead of eig (general complex).
         if(j > state_want and j%4 == 0):
-            e,v = np.linalg.eig(hall[0:j,0:j])
-            e=np.sort(e)
+            e,v = np.linalg.eigh(hall[0:j+1,0:j+1])  # eigh returns sorted real eigenvalues
             print("Energy on ", j , ' th iteration: ', e[0:state_want] )
             norm_e_new=0.0
-            for k in range(state_want):
+            for k in range(min(state_want, len(e))):
                 norm_e_new += e[k]*e[k]
             if(abs(norm_e_new-norm_e_old) < 0.01):
                 print('energy converge')
                 break
             norm_e_old=norm_e_new
 
-    print(hall)
+    # Final diagonalization on the full accumulated subspace if not done in the loop
+    dim = min(len(lanczos_vector) - 1, max_iter)
+    if dim > 0:
+        e_f, v_f = np.linalg.eigh(hall[0:dim, 0:dim])
+        e = e_f
+        v = v_f
+
+    print(hall[:dim,:dim])
     print('Lanczos converged with ', j, ' step')
-    for k in range(state_want):
+    for k in range(min(state_want, len(e))):
         print('E(',k,')= ', e[k])
     print('Lanczos converged with ', j, ' step')
-    return(e[0:state_want], v[0:state_want,:],lanczos_vector)
+    return(e[0:state_want], v,lanczos_vector)
 
 
 
