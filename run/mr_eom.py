@@ -111,7 +111,7 @@ Hs.SetModelSpace(ms2)
 Hs.DoNormalOrdering()
 
 
-#tdm_op = read_tdm('he8_pshell_e3_em1290_gs.dat', ms2)
+tdm_op = read_tdm('he8_pshell_e3_em1290_gs.dat', ms2)
 #
 #rank_j, parity, rank_Tz, particle_rank, herm = 0, 0, 0, 2, 1
 #unt = UnitTest(ms2)
@@ -131,14 +131,14 @@ Hs.DoNormalOrdering()
 #print('norm comm: ', nm)
 #nm=eom.ComputeNorm(chi_a,chi_b)
 #print('norm matmul: ', nm)
-#
+
 #eom.ProjectOprator(chi_a)
 #eom.ProjectOprator(chi_b)
 
 
 ## ---------------------------------------------------------------
 eom = EOM(Hs, read_tdm('he8_pshell_e3_em1290_gs.dat', ms2), 0, 0, 0)
-res = eom.Run(60, 10)
+res = eom.Run(60, 4)
 ## ---------------------------------------------------------------
 #print(f'\n  [he6.ref]  E_ref = {res.eref:.6f} MeV')
 #for k, e in enumerate(res.arnoldi.energies):

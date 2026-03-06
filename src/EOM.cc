@@ -840,14 +840,14 @@ void EOM::SqrtMat(arma::mat& Amat, size_t n)
     double s_max = (s.n_elem > 0) ? arma::max(s) : 0.0;
 
     // If the entire block is zero, the projector is zero.
-    if (s_max < 1e-10) {
+    if (s_max < 1e-4) {
         Amat.zeros(n, n);
         return;
     }
 
     // Use a relative threshold to cleanly separate range from null space.
     // Vectors with s_i < 1e-6 * s_max are floating-point noise, not in the range.
-    arma::uvec range_idx = arma::find(s >= 1e-6 * s_max);
+    arma::uvec range_idx = arma::find(s >= 1e-3 * s_max);
 
     Amat.zeros(n, n);
     if (range_idx.n_elem > 0) {
@@ -1105,11 +1105,11 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
   int herm_phase = 1;
   Operator Hod = 0.0 * H;
 
-  if (herm == 0) {
+  if (herm == 1) {
     Hod.SetHermitian();
     herm_phase = 1;
   }
-  if (herm == 1) {
+  if (herm == -1) {
     Hod.SetAntiHermitian();
     herm_phase = -1;
   }
@@ -1168,12 +1168,20 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
 
 double EOM::GetVSEOM_Overlap_single(Operator &H1, Operator &H2) {
   double ovlp = 0;
+  int hZ = H2.IsHermitian() ? +1 : -1;
+  hZ=1.;
   // One-body contribution: ph and vq blocks
   for (auto &i : H1.modelspace->holes) {
+    Orbit &oi = H1.modelspace->GetOrbit(i);
     for (auto &a : VectorUnion(H1.modelspace->valence, H1.modelspace->qspace)) {
-      ovlp += H1.OneBody(a, i) * H2.OneBody(a, i);
+    Orbit &oa = H1.modelspace->GetOrbit(a);
+      //double phase_flip= AngMom::phase((oa.j2-oi.j2)/2.)*hZ;
+      double phase_flip= AngMom::phase((oa.j2-oi.j2)/2.);
+      //ovlp += phase_flip*H1.OneBody(a, i) * H2.OneBody(a, i)/(2.*H1.rank_J+1.);
+      ovlp += H1.OneBody(a, i) * H2.OneBody(a, i)/(2.*H1.rank_J+1.);
     }
   }
+  std::cout<< "onebody norm: "<< ovlp<< std::endl;
 
   for (auto &iter : H1.TwoBody.MatEl) {
     size_t ch_bra = iter.first[0];
@@ -1194,7 +1202,9 @@ double EOM::GetVSEOM_Overlap_single(Operator &H1, Operator &H2) {
         for (auto &ibra :
              VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
                          tbc_bra.GetKetIndex_qv())) {
-          ovlp += Hmat1(ibra, iket) * Hmat2(ibra, iket);
+        double phase_flip= AngMom::phase(tbc_ket.J-tbc_bra.J)*hZ;
+          //ovlp += phase_flip*Hmat1(ibra, iket) * Hmat2(ibra, iket)/(2.*H1.rank_J+1);
+          ovlp += Hmat1(ibra, iket) * Hmat2(ibra, iket)/(2.*H1.rank_J+1);
         }
       }
     }
@@ -1209,7 +1219,9 @@ double EOM::GetVSEOM_Overlap_single(Operator &H1, Operator &H2) {
         for (auto &ibra :
              VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
                          tbc_bra.GetKetIndex_qv())) {
-          ovlp += Hmat1(ibra, iket) * Hmat2(ibra, iket);
+        double phase_flip= AngMom::phase(tbc_ket.J-tbc_bra.J)*hZ;
+          //ovlp += phase_flip*Hmat1(ibra, iket) * Hmat2(ibra, iket)/(2.*H1.rank_J+1);
+          ovlp += Hmat1(ibra, iket) * Hmat2(ibra, iket)/(2.*H1.rank_J+1);
         }
       }
 
@@ -1220,11 +1232,15 @@ double EOM::GetVSEOM_Overlap_single(Operator &H1, Operator &H2) {
              tbc_bra.GetKetIndex_cc()) // cc means core-core ('holes' refer to
                                        // the reference state)
         {
-          ovlp += Hmat1(ibra, iket) * Hmat2(ibra, iket);
+            // both H1 and H2 times (iph(j1-j2))*hZ
+          double phase_flip= AngMom::phase(tbc_ket.J-tbc_bra.J)*hZ;
+          //ovlp += phase_flip*Hmat1(ibra, iket) * Hmat2(ibra, iket)/(2.*H1.rank_J+1);
+          ovlp += Hmat1(ibra, iket) * Hmat2(ibra, iket)/(2.*H1.rank_J+1);
         }
       }
     }
   }
+  //return ovlp*AngMom::phase(H1.rank_J)*hZ;
   return ovlp;
 }
 
@@ -1237,11 +1253,11 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
 
   int herm_phase = -1;
 
-  if (herm == 0) {
+  if (herm == 1) {
     Hod.SetHermitian();
     herm_phase = 1;
   }
-  if (herm == 1) {
+  if (herm == -1) {
     Hod.SetAntiHermitian();
     herm_phase = -1;
   }
@@ -1403,10 +1419,11 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
 double EOM::NormSingle(Operator &T1, Operator &T2)
 {
  if(T1.IsReduced()){// for tensors, the wave function operator is reduced
+
  return GetVSEOM_Overlap_single(T1, T2);
  }
  else{// scaler is not reduced, then we use commutator
- Operator T1d = EOM::GetVSEOM_ladder_single(T1,0);
+ Operator T1d = EOM::GetVSEOM_ladder_single(T1,1);
  Operator nop=T1*0.0;
  nop.SetHermitian();
  Commutator::comm110ss(T1d,T2,nop);
@@ -1422,9 +1439,10 @@ double EOM::NormSingle(Operator &T1, Operator &T2)
 ///   result = GetVSEOM_Overlap_multiref(nop) / 2
 double EOM::NormMultiref(Operator &T1, Operator &T2)
 {
-  Operator T1d = GetVSEOM_ladder_multiref(T1, 0);
-  Operator nop = Commutator::Commutator(T1d, T2);
+  Operator T1d = GetVSEOM_ladder_multiref(T1, 1);
+  Operator nop = T1*0.;
   nop.SetHermitian();
+  nop = Commutator::Commutator(T1d, T2);
   return GetVSEOM_Overlap_multiref(nop) / 2.0;
 }
 
@@ -1457,14 +1475,14 @@ Operator EOM::HtcSingle(Operator &haml, Operator &chi)
 {
  
   Operator ht_plus = Commutator::Commutator(haml, chi);
-  return GetVSEOM_ladder_single(ht_plus, 1);
+  return GetVSEOM_ladder_single(ht_plus, -1);
 }
 
 /// Multiref action: [Haml, chi], then apply ladder (herm=1) and project.
 Operator EOM::HtcMultiref(Operator &haml, Operator &chi)
 {
   Operator ht_minus = Commutator::Commutator(haml, chi);
-  Operator heom = GetVSEOM_ladder_multiref(ht_minus, 1);
+  Operator heom = GetVSEOM_ladder_multiref(ht_minus, -1);
   ProjectOprator(heom);
   return heom;
 }
@@ -1604,8 +1622,8 @@ EOM::ArnoldiResult
 EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
 {
   const double tol      = 1e-8;
-  const double bj_tol   = 1e-10;
-  const double null_tol = 1e-6;
+  const double bj_tol   = 1e-4;
+  const double null_tol = 1e-4;
   const int    min_iter = state_want + 1;
 
   std::vector<Operator> lanczos_vector;
@@ -1663,6 +1681,7 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
 
     double bj        = NormMultiref(w, w);
     double bj_kernel = ComputeNorm(w, w);
+    std::cout<< bj<<" "<< bj_kernel<<" kernels "<<std::endl;
 
     // null-space breakdown: w exhausted the physical subspace
     if (std::abs(bj_kernel) < null_tol * cn0)
@@ -1941,9 +1960,8 @@ EOM::RunResult EOM::RunSR(int max_iter, int state_want)
 //force_decouple(Hs);
 
   UnitTest unt(*modelspace);
-  Operator h_rand = unt.RandomOp(*modelspace, J2, parity, itz, 2, 1);
-  Operator h2_rand = unt.RandomOp(*modelspace, J2, parity, itz, 2, 1);
-  Operator chi    = GetVSEOM_ladder_single(h2_rand, 1); 
+  Operator h_rand = unt.RandomOp(*modelspace, J2, itz,parity, 2, 1);
+  Operator chi    = GetVSEOM_ladder_single(h_rand, -1); 
 
   double nm = NormSingle(chi, chi);
   if (nm <= 0.0)
@@ -1989,7 +2007,7 @@ EOM::RunResult EOM::RunMR(int max_iter, int state_want)
   // --- (3) Random projected initial vector ---
   UnitTest unt(*modelspace);
   Operator h_rand = unt.RandomOp(*modelspace, 0, 0, 0, 2, 1); // now we can only deal with scaler
-  Operator chi_b  = GetVSEOM_ladder_multiref(h_rand, 1);
+  Operator chi_b  = GetVSEOM_ladder_multiref(h_rand, -1);
   ProjectOprator(chi_b);
 
   // --- (4) Solve ---

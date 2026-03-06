@@ -101,10 +101,12 @@ imsrgsolver.Solve()
 Hs = imsrgsolver.GetH_s()
 
 # ---------------------------------------------------------------
-rank_j, parity, rank_Tz = 0,0,0
+rank_j, parity, rank_Tz = 0,1,0
+
+
 eom = EOM(Hs, rank_j, parity, rank_Tz)
-res = eom.Run(40, 6)
-# ---------------------------------------------------------------
-print(f'\n  [SR EOM]  ZeroBody(eref) = {res.eref:.6f} MeV')
-for k, e in enumerate(res.arnoldi.energies):
-    print(f'    E({k}): excitation={e:.4f}  absolute={e+res.eref:.4f} MeV')
+res = eom.Run(40, 3)
+## ---------------------------------------------------------------
+#print(f'\n  [SR EOM]  ZeroBody(eref) = {res.eref:.6f} MeV')
+#for k, e in enumerate(res.arnoldi.energies):
+#    print(f'    E({k}): excitation={e:.4f}  absolute={e+res.eref:.4f} MeV')
