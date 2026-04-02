@@ -86,6 +86,7 @@ class ReadWrite
 
 //   void WriteValence3body( ThreeBodyMEpn& threeBME, std::string filename );
    void WriteValence3body( ThreeBodyME& threeBME, std::string filename );
+   void ReadValence3body(  ThreeBodyME& threeBME, std::string filename );
 
    void ReadBareTBME_Jason( std::string filename, Operator& Hbare);
    void ReadTensorOperator_Nathan( std::string filename1b, std::string filename2b, Operator& op);

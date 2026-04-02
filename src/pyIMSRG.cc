@@ -300,6 +300,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("UndoNormalOrderingCore", &Operator::UndoNormalOrderingCore)
       .def("DoNormalOrdering", &Operator::UndoNormalOrdering)
       .def("SetModelSpace", &Operator::SetModelSpace)
+      .def("GetModelSpace", &Operator::GetModelSpace, py::return_value_policy::reference)
       .def("Truncate", &Operator::Truncate)
       .def("DoIsospinAveraging", &Operator::DoIsospinAveraging)
       .def("Norm", &Operator::Norm)
@@ -572,8 +573,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
           py::arg("Jab_in"), py::arg("j0"), py::arg("Jde_in"), py::arg("j1"),
           py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"),
           py::arg("f"))
-      .def("SetME_pn_ch", &ThreeBodyME::SetME_pn_ch) // Hopefully not a bad idea
-                                                     // to expose this...
+      .def("SetME_pn_ch", &ThreeBodyME::SetME_pn_ch)
+      .def("GetME_pn_ch", &ThreeBodyME::GetME_pn_ch)
       .def("GetME_pn_no2b", &ThreeBodyME::GetME_pn_no2b)
       .def("RecouplingCoefficient", &ThreeBodyME::RecouplingCoefficient)
       .def("TransformToPN", &ThreeBodyME::TransformToPN)
@@ -671,6 +672,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("WriteDaggerOperator", &ReadWrite::WriteDaggerOperator)
       .def("ReadJacobi3NFiles", &ReadWrite::ReadJacobi3NFiles)
       .def("WriteValence3body", &ReadWrite::WriteValence3body)
+      .def("ReadValence3body",  &ReadWrite::ReadValence3body)
       .def("SetScratchDir", &ReadWrite::SetScratchDir)
       .def("GetScratchDir", &ReadWrite::GetScratchDir)
       .def("CopyFile", &ReadWrite::CopyFile, py::arg("filein"),
@@ -1186,6 +1188,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
       // constructors
       .def(py::init<Operator &, Operator &, int, int, int>(),
            py::arg("Hs"), py::arg("rdm"), py::arg("J2"), py::arg("parity"), py::arg("itz"))
+      .def(py::init<Operator &, const std::string &, int, int, int>(),
+           py::arg("Hs"), py::arg("tdm_file"), py::arg("J2"), py::arg("parity"), py::arg("itz"))
       .def(py::init<Operator &, int, int, int>(),
            py::arg("Hs"), py::arg("J2"), py::arg("parity"), py::arg("itz"))
       // high-level entry point: init + solve in one call
@@ -1208,7 +1212,10 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("GetVSEOM_ladder_single",    &EOM::GetVSEOM_ladder_single,
            py::arg("H"), py::arg("herm"))
       .def("GetVSEOM_ladder_multiref",  &EOM::GetVSEOM_ladder_multiref,
-           py::arg("H"), py::arg("herm"));
+           py::arg("H"), py::arg("herm"))
+      .def("WriteTdm", &EOM::WriteTdm,
+           py::arg("op"), py::arg("filename"))
+      .def_readonly("rdm", &EOM::rdm);
 
   py::class_<RPA>(m, "RPA")
       .def(py::init<Operator &>())

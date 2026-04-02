@@ -14,7 +14,7 @@ using PhysConst::SQRT2;
 
 // we have two constructor for the EOM, w/o the rdm for multi-reference and
 // single reference
-EOM::EOM(Operator &Hs, Operator &rdm, int J2,  int itz,int parity)
+EOM::EOM(Operator &Hs, Operator &rdm, int J2,  int parity, int itz)
     : modelspace(Hs.modelspace), Hs(Hs), rdm(rdm), J2(J2), parity(parity),
       itz(itz), is_multiref(true) {
   eom_dims = 0;
@@ -23,10 +23,12 @@ EOM::EOM(Operator &Hs, Operator &rdm, int J2,  int itz,int parity)
   ppvv_dim = 0;
   pphv_dim = 0;
   pphh_dim = 0;
+  rdm_ms = this->rdm.modelspace;
+  BuildOrbMap();
 };
 
-EOM::EOM(Operator &Hs, const std::string &tdm_file, int J2,  int itz,int parity )
-    : modelspace(Hs.modelspace), Hs(Hs), rdm(*Hs.modelspace), J2(J2), parity(parity),
+EOM::EOM(Operator &Hs, const std::string &tdm_file, int J2,  int parity, int itz)
+    : modelspace(Hs.modelspace), Hs(Hs), J2(J2), parity(parity),
       itz(itz), is_multiref(true) {
   eom_dims = 0;
   qv_dim = 0;
@@ -35,11 +37,104 @@ EOM::EOM(Operator &Hs, const std::string &tdm_file, int J2,  int itz,int parity 
   pphv_dim = 0;
   pphh_dim = 0;
   rdm = ReadTdm(tdm_file);
+  BuildOrbMap();
 };
 
-EOM::EOM(Operator &Hs, int J2,  int itz,int parity)
+EOM::EOM(Operator &Hs, int J2,  int parity, int itz)
     : modelspace(Hs.modelspace), Hs(Hs), J2(J2), parity(parity),
-      itz(itz), is_multiref(false) {};
+      itz(itz), is_multiref(false) {
+  rdm_ms = modelspace;
+  BuildOrbMap();
+};
+
+void EOM::BuildOrbMap() {
+  size_t norbits = modelspace->norbits;
+  hs_to_rdm_orb.assign(norbits, -1);
+  for (size_t i = 0; i < norbits; ++i) {
+    Orbit &oi = modelspace->GetOrbit(i);
+    size_t idx = rdm_ms->GetOrbitIndex(oi.n, oi.l, oi.j2, oi.tz2);
+    if ((int)idx != ModelSpace::NOT_AN_ORBIT)
+      hs_to_rdm_orb[i] = (int)idx;
+  }
+}
+
+double EOM::RdmOB(size_t i_hs, size_t j_hs) const {
+  // Only valence orbits in Hs have a corresponding rdm entry
+  if (modelspace->GetOrbit(i_hs).cvq != 1) return 0.0;
+  if (modelspace->GetOrbit(j_hs).cvq != 1) return 0.0;
+  int i_rdm = (i_hs < hs_to_rdm_orb.size()) ? hs_to_rdm_orb[i_hs] : -1;
+  int j_rdm = (j_hs < hs_to_rdm_orb.size()) ? hs_to_rdm_orb[j_hs] : -1;
+  if (i_rdm < 0 || j_rdm < 0) return 0.0;
+  return rdm.OneBody(i_rdm, j_rdm);
+}
+
+double EOM::RdmTB_J(double J, size_t a_hs, size_t b_hs, size_t c_hs, size_t d_hs) const {
+  // Only valence orbits in Hs have a corresponding rdm entry
+  if (modelspace->GetOrbit(a_hs).cvq != 1) return 0.0;
+  if (modelspace->GetOrbit(b_hs).cvq != 1) return 0.0;
+  if (modelspace->GetOrbit(c_hs).cvq != 1) return 0.0;
+  if (modelspace->GetOrbit(d_hs).cvq != 1) return 0.0;
+  int a = (a_hs < hs_to_rdm_orb.size()) ? hs_to_rdm_orb[a_hs] : -1;
+  int b = (b_hs < hs_to_rdm_orb.size()) ? hs_to_rdm_orb[b_hs] : -1;
+  int c = (c_hs < hs_to_rdm_orb.size()) ? hs_to_rdm_orb[c_hs] : -1;
+  int d = (d_hs < hs_to_rdm_orb.size()) ? hs_to_rdm_orb[d_hs] : -1;
+  if (a < 0 || b < 0 || c < 0 || d < 0) return 0.0;
+  // Guard: check that the channel J actually exists in rdm_modelspace before
+  // calling GetTBME_J_norm.  GetTwoBodyChannelIndex is a pure formula (no
+  // bounds check), so passing a J that is larger than any channel in the
+  // (small) rdm modelspace would cause an out-of-bounds access inside
+  // GetTBME_norm -> segfault.
+  {
+    Orbit &oa = rdm_ms->GetOrbit(a), &ob = rdm_ms->GetOrbit(b);
+    Orbit &oc = rdm_ms->GetOrbit(c), &od = rdm_ms->GetOrbit(d);
+    int parity_bra = (oa.l + ob.l) % 2;
+    int parity_ket = (oc.l + od.l) % 2;
+    int Tz_bra = (oa.tz2 + ob.tz2) / 2;
+    int Tz_ket = (oc.tz2 + od.tz2) / 2;
+    int Ji = (int)J;
+    // Keep as size_t: casting to int breaks the comparison when
+    // GetTwoBodyChannelIndex returns a large wrapping value for
+    // an invalid (J, parity, Tz) combination in the small rdm modelspace.
+    size_t ch_bra = rdm_ms->GetTwoBodyChannelIndex(Ji, parity_bra, Tz_bra);
+    size_t ch_ket = rdm_ms->GetTwoBodyChannelIndex(Ji, parity_ket, Tz_ket);
+    size_t nch    = rdm_ms->GetNumberTwoBodyChannels();
+    if (ch_bra >= nch || ch_ket >= nch) return 0.0;
+  }
+  return rdm.TwoBody.GetTBME_J_norm((int)J, (int)J, a, b, c, d);
+}
+
+double EOM::RdmThreeBody_J(int Jab, size_t a_hs, size_t b_hs, size_t c_hs,
+                           int Jed, size_t d_hs, size_t e_hs, size_t f_hs, int twoJ) const {
+  // All six orbits must exist in the rdm model space.
+  for (size_t idx : {a_hs, b_hs, c_hs, d_hs, e_hs, f_hs}) {
+    if (modelspace->GetOrbit(idx).cvq != 1) return 0.0;
+  }
+
+  // Translate Hs orbit indices to rdm model-space orbit indices.
+  auto map = [&](size_t hs_idx) -> int {
+    return (hs_idx < hs_to_rdm_orb.size()) ? hs_to_rdm_orb[hs_idx] : -1;
+  };
+  int a = map(a_hs), b = map(b_hs), c = map(c_hs);
+  int d = map(d_hs), e = map(e_hs), f = map(f_hs);
+  if (a < 0 || b < 0 || c < 0 || d < 0 || e < 0 || f < 0) return 0.0;
+
+  // Guard: verify the 3-body channel (twoJ, parity, twoTz) exists in rdm_ms.
+  {
+    Orbit& oa = rdm_ms->GetOrbit(a); Orbit& ob = rdm_ms->GetOrbit(b); Orbit& oc = rdm_ms->GetOrbit(c);
+    Orbit& od = rdm_ms->GetOrbit(d); Orbit& oe = rdm_ms->GetOrbit(e); Orbit& of_ = rdm_ms->GetOrbit(f);
+    int par_bra  = (oa.l + ob.l + oc.l) % 2;
+    int twoTz_bra = oa.tz2 + ob.tz2 + oc.tz2;
+    int par_ket  = (od.l + oe.l + of_.l) % 2;
+    int twoTz_ket = od.tz2 + oe.tz2 + of_.tz2;
+    size_t ch_bra = rdm_ms->GetThreeBodyChannelIndex(twoJ, par_bra,  twoTz_bra);
+    size_t ch_ket = rdm_ms->GetThreeBodyChannelIndex(twoJ, par_ket,  twoTz_ket);
+    size_t nch    = rdm_ms->GetNumberThreeBodyChannels();
+    if (ch_bra >= nch || ch_ket >= nch) return 0.0;
+  }
+
+  // GetME_pn handles SortOrbits + recoupling internally.
+  return rdm.ThreeBody.GetME_pn(Jab, Jed, twoJ, a, b, c, d, e, f);
+}
 
 ///  In case we want to construct the A matrix for a single channel
 ///  and it's more convenient to specify J,parity,Tz than the channel index.
@@ -177,7 +272,7 @@ void EOM::ConstructNormMatrix() {
         if (cf_bra[0] != cf_ket[0])
           continue;
         Orbit &obra = modelspace->GetOrbit(cf_bra[1]);
-        Nkernel(i, j) += rdm.OneBody(cf_bra[1], cf_ket[1]) * sqrt(obra.j2 + 1.);
+        Nkernel(i, j) += RdmOB(cf_bra[1], cf_ket[1]) * sqrt(obra.j2 + 1.);
       }
     }
   }
@@ -195,7 +290,7 @@ void EOM::ConstructNormMatrix() {
         }
         if (cf_bra[1] != cf_ket[1])
           continue;
-        Nkernel(i, j) -= rdm.OneBody(cf_ket[0], cf_bra[0]) * sqrt(obra.j2 + 1.);
+        Nkernel(i, j) -= RdmOB(cf_ket[0], cf_bra[0]) * sqrt(obra.j2 + 1.);
       }
     }
   }
@@ -213,8 +308,10 @@ void EOM::ConstructNormMatrix() {
         if (cf_bra[0] != cf_ket[0])
           continue; 
         TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
+        Ket &kbra = tbc_bra.GetKet(cf_bra[1]);
+        Ket &kket = tbc_bra.GetKet(cf_ket[1]);
         double val =
-            rdm.GetTwoBody(cf_bra[2], cf_ket[2], cf_bra[1], cf_ket[1]) *
+            RdmTB_J(tbc_bra.J, kbra.p, kbra.q, kket.p, kket.q) *
             sqrt(2 * tbc_bra.J + 1.);
         Nkernel(i, j) += val;
       }
@@ -257,7 +354,7 @@ void EOM::ConstructNormMatrix() {
         double j1 = tbc_bra.J;
 
         Nkernel(i, j) +=
-            rdm.OneBody(c1, c2) * (2 * tbc_bra.J + 1.) / sqrt(oc1.j2 + 1.);
+            RdmOB(c1, c2) * (2 * tbc_bra.J + 1.) / sqrt(oc1.j2 + 1.);
         // if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<" " << Nkernel(i,j) << std::endl;
 
         // if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<"
@@ -380,7 +477,7 @@ void EOM::ConstructNormMatrix() {
           continue;
 
         double val2 =
-            rdm.TwoBody.GetTBME_J_norm(tbc_bra.J, tbc_bra.J, a, b, c, d) *
+            RdmTB_J(tbc_bra.J, a, b, c, d) *
             sqrt(2 * tbc_bra.J + 1.);
         Nkernel(i, j) += val2;
       }
@@ -423,20 +520,20 @@ void EOM::ConstructNormMatrix() {
       // std::cout<<" start "<< std::endl;
       double norm_fact = norm_fact1 * norm_fact2;
       if (b == d) {
-        Nkernel(i, j) -= norm_fact * rdm.OneBody(c, a) * (2 * tbc_bra.J + 1.) /
+        Nkernel(i, j) -= norm_fact * RdmOB(c, a) * (2 * tbc_bra.J + 1.) /
                          sqrt(oc.j2 + 1.);
       }
 
       if (b != a && ob.cvq == 1 && a == d) {
-        Nkernel(i, j) -= norm_fact * rdm.OneBody(c, b) * (2 * tbc_bra.J + 1.) *
+        Nkernel(i, j) -= norm_fact * RdmOB(c, b) * (2 * tbc_bra.J + 1.) *
                          dbra1.Phase(tbc_bra.J) / sqrt(oc.j2 + 1.);
       }
       if (c != d && od.cvq == 1 && b == c) {
-        Nkernel(i, j) -= norm_fact * rdm.OneBody(d, a) * (2 * tbc_bra.J + 1.) *
+        Nkernel(i, j) -= norm_fact * RdmOB(d, a) * (2 * tbc_bra.J + 1.) *
                          dbra2.Phase(tbc_ket.J) / sqrt(od.j2 + 1.);
       }
       if (b != a && c != d && od.cvq == 1 && ob.cvq == 1 && a == c) {
-        Nkernel(i, j) -= norm_fact * rdm.OneBody(d, b) * (2 * tbc_bra.J + 1.) *
+        Nkernel(i, j) -= norm_fact * RdmOB(d, b) * (2 * tbc_bra.J + 1.) *
                          dbra2.Phase(tbc_ket.J) * dbra1.Phase(tbc_bra.J) /
                          sqrt(od.j2 + 1.);
       }
@@ -477,16 +574,16 @@ void EOM::ConstructNormMatrix() {
           continue;
 
         if (c1 == b) {
-          Nkernel(i, j) += norm_fact * dbra1.Phase(j1) * rdm.OneBody(a, d) *
+          Nkernel(i, j) += norm_fact * dbra1.Phase(j1) * RdmOB(a, d) *
                            (2 * j1 + 1.) / sqrt(oa.j2 + 1.);
-          Nkernel(j, i) += norm_fact * dbra1.Phase(j1) * rdm.OneBody(a, d) *
+          Nkernel(j, i) += norm_fact * dbra1.Phase(j1) * RdmOB(a, d) *
                            (2 * j1 + 1.) / sqrt(oa.j2 + 1.);
         }
         if (c1 == a && a != b) {
           Nkernel(i, j) +=
-              norm_fact * rdm.OneBody(b, d) * (2 * j1 + 1.) / sqrt(ob.j2 + 1.);
+              norm_fact * RdmOB(b, d) * (2 * j1 + 1.) / sqrt(ob.j2 + 1.);
           Nkernel(j, i) +=
-              norm_fact * rdm.OneBody(b, d) * (2 * j1 + 1.) / sqrt(ob.j2 + 1.);
+              norm_fact * RdmOB(b, d) * (2 * j1 + 1.) / sqrt(ob.j2 + 1.);
         }
       }
     }
@@ -523,7 +620,7 @@ void EOM::ConstructNormMatrix() {
           if (c1 == d)
             norm_fact = sqrt(2.);
           double val2 =
-              rdm.TwoBody.GetTBME_J_norm(tbc_bra.J, tbc_bra.J, a, b, c1, d) *
+              RdmTB_J(tbc_bra.J, a, b, c1, d) *
               sqrt(j1 * 2. + 1.);
           Nkernel(i, j) -= val2 * norm_fact;
           Nkernel(j, i) -= val2 * norm_fact;
@@ -562,7 +659,7 @@ void EOM::ConstructNormMatrix() {
           if (a == b1)
             norm_fact = sqrt(2);
           double val2 =
-              rdm.TwoBody.GetTBME_J_norm(tbc_bra.J, tbc_bra.J, a, b1, c, d) *
+              RdmTB_J(tbc_bra.J, a, b1, c, d) *
               sqrt(2 * j1 + 1.);
           Nkernel(i, j) += val2 * norm_fact;
           Nkernel(j, i) += val2 * norm_fact;
@@ -602,7 +699,7 @@ double EOM::Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
     double val1 = (2. * j1 + 1.) * (2. * j2 + 1.) *
                   AngMom::NineJ(j1, of.j2 * 0.5, oa.j2 * 0.5, oe.j2 * 0.5, j2,
                                 ob.j2 * 0.5, oc.j2 * 0.5, od.j2 * 0.5, jtot);
-    double val2 = rdm.TwoBody.GetTBME_J_norm(jtot, jtot, a, b, c, d) *
+    double val2 = RdmTB_J((double)jtot, a, b, c, d) *
                   sqrt(2 * jtot + 1.);
     val += norm_fact * val1 * val2 *
            (pow(-1, oa.j2 * 0.5 + ob.j2 * 0.5 + oc.j2 * 0.5 + od.j2 * 0.5));
@@ -1375,7 +1472,7 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
   for (auto &i : H.modelspace->valence) {
     Orbit &oi = H.modelspace->GetOrbit(i);
     for (auto &j : H.modelspace->valence) {
-      ovlp1 += H.OneBody(i, j) * rdm.OneBody(i, j) * sqrt((oi.j2 + 1));
+      ovlp1 += H.OneBody(i, j) * RdmOB(i, j) * sqrt((oi.j2 + 1));
     }
   }
 
@@ -1385,7 +1482,6 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
     TwoBodyChannel &tbc_bra = H.modelspace->GetTwoBodyChannel(ch_bra);
     TwoBodyChannel &tbc_ket = H.modelspace->GetTwoBodyChannel(ch_ket);
     arma::mat &H2 = iter.second;
-    arma::mat &r2 = rdm.TwoBody.GetMatrix(ch_bra, ch_ket);
 
     for (auto &iket : tbc_ket.GetKetIndex_vv())
     {
@@ -1401,7 +1497,9 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
         if (dket.p == dket.q)
           norm_fact *= sqrt(2.);
 
-        ovlp2 += H2(ibra, iket) * r2(ibra, iket) * sqrt(2 * tbc_bra.J + 1.);
+        ovlp2 += H2(ibra, iket) *
+                 RdmTB_J(tbc_bra.J, dbra.p, dbra.q, dket.p, dket.q) *
+                 sqrt(2 * tbc_bra.J + 1.);
       }
     }
   }
@@ -1822,10 +1920,6 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
 /// Read a transition density matrix file and populate a scalar 2-body Operator.
 Operator EOM::ReadTdm(const std::string &tdm_file)
 {
-  // Create a scalar 2-body operator (Jrank=0, Trank=0, parity=0, particle_rank=2)
-  Operator ops(*modelspace, 0, 0, 0, 2);
-  ops *= 0.0;
-
   std::ifstream infile(tdm_file);
   if (!infile)
     throw std::runtime_error("ReadTdm: cannot open file " + tdm_file);
@@ -1853,19 +1947,48 @@ Operator EOM::ReadTdm(const std::string &tdm_file)
       int norb;
       ss2 >> norb;
 
-      // ob_idx[obs] = {orbit_index, l, tz2}
+      // Pre-scan orbit lines to determine emax BEFORE AddOrbit,
+      // because orbits_3body_space_ is populated during AddOrbit
+      // only when 2n+l <= emax_3body_, which defaults to 0.
       struct OrbEntry { int idx, l, tz2; };
-      std::vector<OrbEntry> ob_idx(norb);
-
+      struct RawOrb { int n, l, j2, tz2; };
+      std::vector<RawOrb> raw_orbits(norb);
+      int emax = 0;
+      int lidx_save = lidx;
       for (int obs = 0; obs < norb; ++obs)
       {
         std::istringstream sl(lines[lidx++]);
-        int dummy, nn, ll, jj, tt;
-        sl >> dummy >> nn >> ll >> jj >> tt;
-        ob_idx[obs].idx = (int)modelspace->GetOrbitIndex(nn, ll, jj, tt);
-        ob_idx[obs].l   = ll;
-        ob_idx[obs].tz2 = tt;
+        int dummy;
+        sl >> dummy >> raw_orbits[obs].n >> raw_orbits[obs].l
+                    >> raw_orbits[obs].j2 >> raw_orbits[obs].tz2;
+        emax = std::max(emax, 2 * raw_orbits[obs].n + raw_orbits[obs].l);
       }
+      (void)lidx_save;
+
+      // Use default then set emax_3body_ via SetEmax3Body BEFORE AddOrbit,
+      // because AddOrbit checks 2n+l <= emax_3body_ to populate orbits_3body_space_.
+      rdm_modelspace = ModelSpace();
+      rdm_modelspace.SetEmax(emax);          // sets SixJCache and Emax correctly
+      rdm_modelspace.SetEmax3Body(emax);     // allow all orbits into orbits_3body_space_
+      rdm_modelspace.SetE3max(3 * emax);   // allow all (p,q,r) ket triples in Setup3bKets
+
+      std::vector<OrbEntry> ob_idx(norb);
+      for (int obs = 0; obs < norb; ++obs)
+      {
+        rdm_modelspace.AddOrbit(raw_orbits[obs].n, raw_orbits[obs].l,
+                                raw_orbits[obs].j2, raw_orbits[obs].tz2, 0.0, 1);
+        ob_idx[obs] = {obs, raw_orbits[obs].l, raw_orbits[obs].tz2};
+      }
+      rdm_modelspace.FindEFermi();
+      rdm_modelspace.SetupKets();
+      rdm_modelspace.Setup3bKets();   // must be called separately after SetupKets()
+      rdm_ms = &rdm_modelspace;
+
+      Operator ops(*rdm_ms, 0, 0, 0, 3);
+
+      ops.ThreeBody.SetMode("pn");
+      std::cout << "hello" << std::endl;
+      ops *= 0.0;
 
       // --- one-body density matrix elements ---
       {
@@ -1922,6 +2045,14 @@ Operator EOM::ReadTdm(const std::string &tdm_file)
       }
 
       // --- three-body density matrix elements ---
+      // Format per line (1-based orbit indices, 2*Jab, 2*Jde, 2*Jtot):
+      //   label  a b c  d e f  2Jab 2Jde 2Jtot  value
+      // Fortran must write (a,b,c) with a<=b<=c and (d,e,f) with d<=e<=f
+      // using 1-based indices that match the orbit order in the file header.
+      // The C++ canonical order for a ket (p,q,r,Jpq) requires p<=q<=r.
+      // Since orbits are added to rdm_modelspace in file order,
+      // 1-based index k maps to rdm orbit index k-1, so a<=b<=c (1-based)
+      // is equivalent to (a-1)<=(b-1)<=(c-1) which is p<=q<=r canonical.
       {
         std::istringstream sn(lines[lidx++]);
         int n_3btd;
@@ -1933,25 +2064,181 @@ Operator EOM::ReadTdm(const std::string &tdm_file)
           std::string w;
           while (sl2 >> w) tok.push_back(w);
 
-          int aa = ob_idx[std::stoi(tok[1]) - 1].idx;
-          int bb = ob_idx[std::stoi(tok[2]) - 1].idx;
-          int cc = ob_idx[std::stoi(tok[3]) - 1].idx;
-          int ee = ob_idx[std::stoi(tok[4]) - 1].idx;
-          int ff = ob_idx[std::stoi(tok[5]) - 1].idx;
-          int kk = ob_idx[std::stoi(tok[6]) - 1].idx;
+          // orbit indices in rdm_modelspace (0-based)
+          int aa = ob_idx[std::stoi(tok[1]) - 1].idx;  // bra p
+          int bb = ob_idx[std::stoi(tok[2]) - 1].idx;  // bra q
+          int cc = ob_idx[std::stoi(tok[3]) - 1].idx;  // bra r
+          int dd = ob_idx[std::stoi(tok[4]) - 1].idx;  // ket p
+          int ee = ob_idx[std::stoi(tok[5]) - 1].idx;  // ket q
+          int ff = ob_idx[std::stoi(tok[6]) - 1].idx;  // ket r
 
-          int jab  = std::stoi(tok[7]) / 2;
-          int jef  = std::stoi(tok[8]) / 2;
-          int jtot = std::stoi(tok[9]);
+          int two_jab = std::stoi(tok[7]);  // 2*Jab (must be even → integer Jab)
+          int two_jde = std::stoi(tok[8]);  // 2*Jde
+          int two_tot = std::stoi(tok[9]);  // 2*Jtot
+
+          int jab = two_jab / 2;  // integer Jab (coupling of bra p,q pair)
+          int jde = two_jde / 2;  // integer Jde (coupling of ket p,q pair)
 
           double rd = std::stod(tok.back()) / factor;
-          ops.ThreeBody.SetME_pn(jab, jef, jtot, aa, bb, cc, ee, ff, kk, (ThreeBME_type)rd);
+
+          // Identify channels by (2*Jtot, parity, twoTz)
+          Orbit& oa  = rdm_ms->GetOrbit(aa);
+          Orbit& ob_ = rdm_ms->GetOrbit(bb);
+          Orbit& oc  = rdm_ms->GetOrbit(cc);
+          Orbit& od  = rdm_ms->GetOrbit(dd);
+          Orbit& oe  = rdm_ms->GetOrbit(ee);
+          Orbit& of_ = rdm_ms->GetOrbit(ff);
+
+          int par_bra  = (oa.l + ob_.l + oc.l) % 2;
+          int twoTz_bra = oa.tz2 + ob_.tz2 + oc.tz2;
+          int par_ket  = (od.l + oe.l + of_.l) % 2;
+          int twoTz_ket = od.tz2 + oe.tz2 + of_.tz2;
+
+          size_t ch_bra = rdm_ms->GetThreeBodyChannelIndex(two_tot, par_bra, twoTz_bra);
+          size_t ch_ket = rdm_ms->GetThreeBodyChannelIndex(two_tot, par_ket, twoTz_ket);
+
+          // Skip if channel not present in this model space
+          if (ch_bra == (size_t)-1 || ch_ket == (size_t)-1) continue;
+
+          ThreeBodyChannel& TBC_bra = rdm_ms->GetThreeBodyChannel(ch_bra);
+          ThreeBodyChannel& TBC_ket = rdm_ms->GetThreeBodyChannel(ch_ket);
+
+          // Direct lookup: (p,q,r,Jpq) must be in canonical order p<=q<=r
+          size_t local_ibra = TBC_bra.GetLocalIndex(aa, bb, cc, jab);
+          size_t local_iket = TBC_ket.GetLocalIndex(dd, ee, ff, jde);
+
+          // SetME_pn_ch directly sets the storage element — no recoupling
+          ops.ThreeBody.SetME_pn_ch(ch_bra, ch_ket, local_ibra, local_iket,
+                                    (ThreeBME_type)rd);
         }
       }
+      return ops;
     } // norb scope
   } // jtotal / factor scope
+  return Operator(); // unreachable
+}
 
-  return ops;
+// ============================================================
+//  WriteTdm
+//  Write op in the exact format ReadTdm reads:
+//    line 0  : jtotal (always 0.0 for scalar density)
+//    line 1  : norb
+//    norb lines: idx n l j2 tz2
+//    line    : n_obtd
+//    n_obtd lines: OBTD a+1 b+1 value*sqrt(2J+1)
+//    line    : n_tbtd
+//    n_tbtd lines: TBTD a+1 b+1 c+1 d+1 J*2 J*2 value*sqrt(2J+1)
+//    line    : n_3btd
+//    n_3btd lines: TRBTD a+1 b+1 c+1 d+1 e+1 f+1 2Jab 2Jde 2Jtot value*sqrt(2J+1)
+//  3-body elements are written in native channel/ket memory order (ch_bra<=ch_ket,
+//  ibra<=iket when ch_bra==ch_ket).
+// ============================================================
+void EOM::WriteTdm(const Operator &op, const std::string &filename) const
+{
+  ModelSpace *ms = op.modelspace;
+  std::ofstream out(filename);
+  if (!out) throw std::runtime_error("WriteTdm: cannot open " + filename);
+
+  // jtotal = 0 for a scalar density operator
+  const double jtotal = 0.0;
+  const double factor = std::sqrt(2.0 * jtotal + 1.0); // = 1
+  out << std::fixed << std::setprecision(1) << jtotal << "\n";
+
+  // --- orbits ---
+  int norb = ms->GetNumberOrbits();
+  out << norb << "\n";
+  for (int i = 0; i < norb; ++i)
+  {
+    Orbit &oi = ms->GetOrbit(i);
+    out << (i + 1) << " " << oi.n << " " << oi.l << " " << oi.j2 << " " << oi.tz2 << "\n";
+  }
+
+  // --- 1-body ---
+  // count non-zero elements first
+  std::vector<std::tuple<int,int,double>> ob_lines;
+  for (int a = 0; a < norb; ++a)
+    for (int b = 0; b < norb; ++b)
+    {
+      double v = op.OneBody(a, b);
+      if (v != 0.0) ob_lines.emplace_back(a, b, v);
+    }
+  out << ob_lines.size() << "\n";
+  for (auto &[a, b, v] : ob_lines)
+    out << "OBTD " << (a + 1) << " " << (b + 1) << " " << std::setprecision(10) << v * factor << "\n";
+
+  // --- 2-body ---
+  std::vector<std::tuple<int,int,int,int,int,double>> tb_lines;
+  int nch2 = ms->GetNumberTwoBodyChannels();
+  for (int ch = 0; ch < nch2; ++ch)
+  {
+    TwoBodyChannel &tbc = ms->GetTwoBodyChannel(ch);
+    int J2  = tbc.J;
+    int nk  = tbc.GetNumberKets();
+    for (int ib = 0; ib < nk; ++ib)
+    {
+      Ket &kb = tbc.GetKet(ib);
+      for (int ik = ib; ik < nk; ++ik)
+      {
+        Ket &kk = tbc.GetKet(ik);
+        double v = op.TwoBody.GetTBME_norm(ch, ib, ik);
+        if (v != 0.0)
+          tb_lines.emplace_back(kb.p, kb.q, kk.p, kk.q, J2, v);
+      }
+    }
+  }
+  out << tb_lines.size() << "\n";
+  for (auto &[a, b, c, d, J2, v] : tb_lines)
+    out << "TBTD " << (a+1) << " " << (b+1) << " " << (c+1) << " " << (d+1)
+        << " " << (J2*2) << " " << (J2*2)
+        << " " << std::setprecision(10) << v * factor << "\n";
+
+  // --- 3-body: iterate in native memory order ---
+  size_t nch3 = ms->GetNumberThreeBodyChannels();
+  std::vector<std::tuple<int,int,int,int, int,int,int,int, int, double>> lines3b;
+
+  for (size_t ch_bra = 0; ch_bra < nch3; ++ch_bra)
+  {
+    ThreeBodyChannel &TBC_bra = ms->GetThreeBodyChannel(ch_bra);
+    size_t nk_bra = TBC_bra.GetNumber3bKets();
+    for (size_t ch_ket = ch_bra; ch_ket < nch3; ++ch_ket)
+    {
+      ThreeBodyChannel &TBC_ket = ms->GetThreeBodyChannel(ch_ket);
+      size_t nk_ket = TBC_ket.GetNumber3bKets();
+
+      // Check this channel pair is actually stored
+      auto &ch_start = op.ThreeBody.Get_ch_start();
+      if (ch_start.find({ch_bra, ch_ket}) == ch_start.end()) continue;
+
+      int twoJ_bra = TBC_bra.twoJ;
+      int twoJ_ket = TBC_ket.twoJ;
+      // For a scalar operator ch_bra == ch_ket always (same twoJ, par, Tz)
+
+      for (size_t ibra = 0; ibra < nk_bra; ++ibra)
+      {
+        Ket3 &kb = TBC_bra.GetKet(ibra);
+        size_t iket_start = (ch_bra == ch_ket) ? ibra : 0;
+        for (size_t iket = iket_start; iket < nk_ket; ++iket)
+        {
+          Ket3 &kk = TBC_ket.GetKet(iket);
+          double v = op.ThreeBody.GetME_pn_ch(ch_bra, ch_ket, ibra, iket);
+          if (v == 0.0) continue;
+          lines3b.emplace_back(
+            (int)kb.p, (int)kb.q, (int)kb.r, kb.Jpq * 2,
+            (int)kk.p, (int)kk.q, (int)kk.r, kk.Jpq * 2,
+            twoJ_bra,   // bra==ket channel so same twoJ
+            v * factor);
+        }
+      }
+    }
+  }
+
+  out << lines3b.size() << "\n";
+  for (auto &[a,b,c,jab2, d,e,f,jde2, twoJ, v] : lines3b)
+    out << "TRBTD "
+        << (a+1) << " " << (b+1) << " " << (c+1) << " "
+        << (d+1) << " " << (e+1) << " " << (f+1) << " "
+        << jab2 << " " << jde2 << " " << twoJ << " "
+        << std::setprecision(10) << v << "\n";
 }
 
 // ============================================================
@@ -2019,7 +2306,7 @@ EOM::RunResult EOM::RunMR(int max_iter, int state_want)
 
   // --- (2) Reference energy = <Hs> in the valence space ---
   double eref = GetVSEOM_Overlap_multiref(Hs);
-  std::cout << "  E_ref (valence) = " << eref
+  std::cout << "  E_ref (valence) = " << eref-Hs.ZeroBody
             << "   ZeroBody = " << Hs.ZeroBody
             << "   E_ref total = " << eref << " MeV" << std::endl;
 

@@ -41,6 +41,9 @@ public:
   bool is_multiref = false;
 
   // The following are used for the multi-reference EOM only
+  ModelSpace rdm_modelspace; ///< Owned modelspace for rdm when built from a tdm_file
+  ModelSpace *rdm_ms = nullptr; ///< Points to rdm_modelspace (file) or modelspace (Hs)
+  std::vector<int> hs_to_rdm_orb; ///< Map: Hs orbit index -> rdm orbit index (-1 if absent)
   Operator rdm;
   arma::sp_mat Nkernel;
   arma::sp_mat Prj_kernel;
@@ -125,6 +128,22 @@ public:
   ///   next line : n_3btd
   ///   n_3btd lines : "_ a b c d e f jab jef jtot ... rd"  (3-body density matrix elements)
   Operator ReadTdm(const std::string &tdm_file);
+
+  /// Write the rdm operator to a file in the exact format ReadTdm reads,
+  /// iterating over 3-body channels and kets in native memory order.
+  void WriteTdm(const Operator &op, const std::string &filename) const;
+
+  /// Build hs_to_rdm_orb map from modelspace -> rdm_ms (must be called after rdm_ms is set).
+  void BuildOrbMap();
+  /// 1-body rdm element: translates Hs orbit indices to rdm indices, returns 0 if absent.
+  double RdmOB(size_t i_hs, size_t j_hs) const;
+  /// 2-body rdm element via J + Hs orbit indices, returns 0 if any orbit absent in rdm.
+  double RdmTB_J(double J, size_t a_hs, size_t b_hs, size_t c_hs, size_t d_hs) const;
+  /// 3-body rdm element <(ab)^Jab c ; J | rho3 | (de)^Jed f ; J> via Hs orbit indices.
+  /// Jab, Jed are integer (not 2*J), twoJ = 2*J_total.
+  /// Returns 0 if any orbit is absent in the rdm model space.
+  double RdmThreeBody_J(int Jab, size_t a_hs, size_t b_hs, size_t c_hs,
+                        int Jed, size_t d_hs, size_t e_hs, size_t f_hs, int twoJ) const;
 
   /// Convenience result bundle returned by Run().
   struct RunResult {

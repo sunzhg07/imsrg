@@ -5077,6 +5077,62 @@ void ReadWrite::WriteValence3body( ThreeBodyME& threeBME, std::string filename )
 }
 
 
+void ReadWrite::ReadValence3body( ThreeBodyME& threeBME, std::string filename )
+{
+   std::ifstream intfile(filename);
+   if (!intfile.is_open())
+   {
+      std::cout << "ERROR in ReadValence3body: Could not open " << filename << std::endl;
+      return;
+   }
+
+   ModelSpace* modelspace = threeBME.GetModelSpace();
+   std::map<int,int> nushell2orb;  // 1-based file index -> imsrg orbit index
+
+   std::string line;
+   while ( std::getline(intfile, line) )
+   {
+      if (line.empty()) continue;
+
+      if (line[0] == '!')
+      {
+         // Orbit mapping lines have format:  "!  <idx>   n l j2/2 tz2/2"
+         // Other comment lines will fail to parse idx as int and be skipped.
+         std::istringstream ss( line.substr(1) );
+         int idx;
+         if ( !(ss >> idx) ) continue;
+         int n, l;
+         std::string j2str, tz2str;
+         if ( !(ss >> n >> l >> j2str >> tz2str) ) continue;
+         if ( j2str.find('/') == std::string::npos ) continue;
+         if ( tz2str.find('/') == std::string::npos ) continue;
+         int j2  = std::stoi( j2str.substr(0, j2str.find('/')) );
+         int tz2 = std::stoi( tz2str.substr(0, tz2str.find('/')) );
+         int imsrg_idx = (int)modelspace->GetOrbitIndex(n, l, j2, tz2);
+         nushell2orb[idx] = imsrg_idx;
+      }
+      else
+      {
+         // Data line: a b c d e f Jab Jde twoJ V
+         std::istringstream ss(line);
+         int a_nush, b_nush, c_nush, d_nush, e_nush, f_nush;
+         int Jab, Jde, twoJ;
+         double V;
+         if ( !(ss >> a_nush >> b_nush >> c_nush >> d_nush >> e_nush >> f_nush
+                    >> Jab >> Jde >> twoJ >> V) ) continue;
+         int a = nushell2orb.at(a_nush);
+         int b = nushell2orb.at(b_nush);
+         int c = nushell2orb.at(c_nush);
+         int d = nushell2orb.at(d_nush);
+         int e = nushell2orb.at(e_nush);
+         int f = nushell2orb.at(f_nush);
+         threeBME.SetME_pn(Jab, Jde, twoJ, a, b, c, d, e, f, V);
+      }
+   }
+   std::cout << "ReadValence3body done: " << nushell2orb.size() << " orbits mapped from " << filename << std::endl;
+}
+
+
 
 void ReadWrite::ReadTwoBodyEngel(std::string filename, Operator& Op)
 {
