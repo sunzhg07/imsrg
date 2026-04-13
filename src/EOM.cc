@@ -629,6 +629,42 @@ void EOM::ConstructNormMatrix() {
     }
   }
 
+
+  // C1 threebody diagram
+   
+  if (ppvv_dim != 0) {
+
+    for (index_t i = ppvv_start; i <= ppvv_end; i++) {
+      std::array<index_t, 4> &cf_bra = eom_confs.at(i);
+      TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
+      Ket &dbra1 = tbc_bra.GetKet(cf_bra[0]);
+      Ket &dket1 = tbc_bra.GetKet(cf_bra[1]);
+      size_t a1 = dbra1.p;
+      size_t b1 = dbra1.q; 
+      size_t c1 = dket1.p;
+      size_t d1 = dket1.q;
+      Orbit &ob1 = modelspace->GetOrbit(b1);
+
+      for (index_t j = ppvv_start; j <= ppvv_end; j++) {
+        std::array<index_t, 4> &cf_ket = eom_confs.at(j);
+        TwoBodyChannel &tbc_ket = modelspace->GetTwoBodyChannel(cf_ket[2]);
+      Ket &dbra1 = tbc_ket.GetKet(cf_ket[0]);
+      Ket &dket1 = tbc_ket.GetKet(cf_ket[1]);
+      size_t a2 = dbra1.p;
+      size_t b2 = dbra1.q; 
+      size_t c2 = dket1.p;
+      size_t d2 = dket1.q;
+      Orbit &ob2 = modelspace->GetOrbit(b2);
+      if(b1==b2 && ob1.cvq==1 && ob2.cvq==1){ // both valence not contributing to norm.
+      double val = ThreeBody_Diagram(c1, d1, a2, a1, d2,c2, b1, tbc_bra.J, tbc_ket.J);
+        Nkernel(i, j) += val;
+    }
+        
+      }
+    }
+  }
+
+
   // c2
   if (ppvv_dim != 0 && qv_dim != 0) {
 
@@ -666,8 +702,45 @@ void EOM::ConstructNormMatrix() {
         }
       }
     }
+
+
+
   }
 }
+
+
+double EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
+                          size_t f, size_t g, double j0, double j2) {
+  double val = 0.;
+  Orbit &oa = modelspace->GetOrbit(a);
+  Orbit &ob = modelspace->GetOrbit(b);
+  Orbit &oc = modelspace->GetOrbit(c);
+  Orbit &od = modelspace->GetOrbit(d);
+  Orbit &oe = modelspace->GetOrbit(e);
+  Orbit &of = modelspace->GetOrbit(f);
+  Orbit &og = modelspace->GetOrbit(g);
+
+  size_t jmin = std::max(abs(j0 * 2 - oc.j2), abs(j2 * 2 - od.j2));
+  size_t jmax = std::min(abs(j0 * 2 + oc.j2), abs(j2 * 2 + od.j2));
+
+  size_t j1_min = abs(od.j2 - oe.j2)/2;
+  size_t j1_max = abs(od.j2 + oe.j2)/2;
+  double phase_factor=pow(-1, oc.j2*0.5 + oe.j2 * 0.5 + of.j2 * 0.5+og.j2*0.5);
+  for (auto jtot = jmin; jtot <= jmax; jtot += 2) {
+    for (auto j1 = j1_min; j1 <= j1_max; j1 += 1) {
+    double val1 = sqrt((2. * j0 + 1.) * (2. * j1 + 1.)) * (2*j2+1.) *
+          AngMom::SixJ(od.j2 * 0.5, og.j2 * 0.5, j0, oc.j2 * 0.5, jtot * 0.5, j2)*
+          AngMom::SixJ(od.j2 * 0.5, oe.j2 * 0.5, j1, of.j2 * 0.5, jtot * 0.5, j2);
+
+      double val2 = RdmThreeBody_J(j0, a, b, c, j1, d, e, f, jtot);
+       val += val1 * val2 * phase_factor;
+  }
+  }
+ 
+
+  return (val);
+}
+
 
 double EOM::Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
                          size_t f, double j1, double j2) {
