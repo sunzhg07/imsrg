@@ -576,6 +576,13 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("SetME_pn_ch", &ThreeBodyME::SetME_pn_ch)
       .def("GetME_pn_ch", &ThreeBodyME::GetME_pn_ch)
       .def("GetME_pn_no2b", &ThreeBodyME::GetME_pn_no2b)
+      .def("Get_ch_start_keys", [](const ThreeBodyME &self) {
+          // Return list of (ch_bra, ch_ket) pairs that are actually stored
+          std::vector<std::pair<size_t,size_t>> keys;
+          for (auto &kv : self.Get_ch_start())
+              keys.emplace_back(kv.first.ch_bra, kv.first.ch_ket);
+          return keys;
+      })
       .def("RecouplingCoefficient", &ThreeBodyME::RecouplingCoefficient)
       .def("TransformToPN", &ThreeBodyME::TransformToPN)
       .def("SwitchToPN_and_discard", &ThreeBodyME::SwitchToPN_and_discard)
@@ -1215,7 +1222,37 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("H"), py::arg("herm"))
       .def("WriteTdm", &EOM::WriteTdm,
            py::arg("op"), py::arg("filename"))
-      .def_readonly("rdm", &EOM::rdm);
+      .def_readonly("ppvv_start", &EOM::ppvv_start)
+      .def_readonly("ppvv_end",   &EOM::ppvv_end)
+      .def_readonly("ppvv_dim",   &EOM::ppvv_dim)
+      .def_readonly("pphv_start", &EOM::pphv_start)
+      .def_readonly("pphv_end",   &EOM::pphv_end)
+      .def_readonly("pphv_dim",   &EOM::pphv_dim)
+      .def_readonly("pphh_start", &EOM::pphh_start)
+      .def_readonly("pphh_end",   &EOM::pphh_end)
+      .def_readonly("eom_dims",   &EOM::eom_dims)
+      .def_property_readonly("eom_confs", [](const EOM &self) {
+            std::vector<std::array<size_t,4>> out;
+            for (auto &c : self.eom_confs)
+              out.push_back({(size_t)c[0], (size_t)c[1], (size_t)c[2], (size_t)c[3]});
+            return out;
+          })
+      .def("ThreeBody_Diagram", &EOM::ThreeBody_Diagram,
+           py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"),
+           py::arg("f"), py::arg("g"), py::arg("j0"), py::arg("j2"))
+      .def("RdmThreeBody_J", &EOM::RdmThreeBody_J,
+           py::arg("Jab"), py::arg("a"), py::arg("b"), py::arg("c"),
+           py::arg("Jde"), py::arg("d"), py::arg("e"), py::arg("f"),
+           py::arg("twoJ"))
+      .def_readonly("rdm", &EOM::rdm)
+      .def("PrintConfigs", &EOM::PrintConfigs)
+      .def_property_readonly("Nkernel", [](const EOM &self) {
+          // Convert arma::sp_mat to dense numpy array
+          arma::mat dense = arma::mat(self.Nkernel);
+          return py::array_t<double>(
+              {(py::ssize_t)dense.n_rows, (py::ssize_t)dense.n_cols},
+              dense.memptr());
+      });
 
   py::class_<RPA>(m, "RPA")
       .def(py::init<Operator &>())

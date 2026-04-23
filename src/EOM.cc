@@ -212,6 +212,21 @@ void EOM::ConstructConfigs() {
 
   std::cout << "dimension EOM ppvv: " << ppvv_start << " " << ppvv_end
             << std::endl;
+  for (index_t i = ppvv_start; i < ppvv_start + ppvv_dim; i++) {
+    auto &c = eom_confs.at(i);
+    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(c[2]);
+    Ket &kbra = tbc.GetKet(c[0]);
+    int cvq_p = modelspace->GetOrbit(kbra.p).cvq;
+    int cvq_q = modelspace->GetOrbit(kbra.q).cvq;
+    // vpvv: bra ket has one valence (1) and one particle (2)
+    if ((cvq_p == 2 && cvq_q == 1) || (cvq_p == 1 && cvq_q == 2)) {
+      Ket &kket = tbc.GetKet(c[1]);
+      std::cout << "vpvv " << i
+                << " " << kbra.p << " " << kbra.q
+                << " " << kket.p << " " << kket.q
+                << " " << c[2] << std::endl;
+    }
+  }
 
   pphv_start = eom_confs.size();
   pphv_end = 0;
@@ -231,6 +246,21 @@ void EOM::ConstructConfigs() {
     pphv_end = pphv_start + pphv_dim - 1;
   std::cout << "dimension EOM pphv: " << pphv_start << " " << pphv_end
             << std::endl;
+  for (index_t i = pphv_start; i < pphv_start + pphv_dim; i++) {
+    auto &c = eom_confs.at(i);
+    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(c[2]);
+    Ket &kbra = tbc.GetKet(c[0]);
+    int cvq_p = modelspace->GetOrbit(kbra.p).cvq;
+    int cvq_q = modelspace->GetOrbit(kbra.q).cvq;
+    // vvhv: bra ket has two valence (1,1)
+    if (cvq_p == 1 && cvq_q == 1) {
+      Ket &kket = tbc.GetKet(c[1]);
+      std::cout << "vvhv " << i
+                << " " << kbra.p << " " << kbra.q
+                << " " << kket.p << " " << kket.q
+                << " " << c[2] << std::endl;
+    }
+  }
 
   pphh_start = eom_confs.size();
   pphh_end = 0;
@@ -720,26 +750,184 @@ double EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
   Orbit &of = modelspace->GetOrbit(f);
   Orbit &og = modelspace->GetOrbit(g);
 
-  size_t jmin = std::max(abs(j0 * 2 - oc.j2), abs(j2 * 2 - od.j2));
-  size_t jmax = std::min(abs(j0 * 2 + oc.j2), abs(j2 * 2 + od.j2));
+
 
   size_t j1_min = abs(od.j2 - oe.j2)/2;
   size_t j1_max = abs(od.j2 + oe.j2)/2;
-  double phase_factor=pow(-1, oc.j2*0.5 + oe.j2 * 0.5 + of.j2 * 0.5+og.j2*0.5);
-  for (auto jtot = jmin; jtot <= jmax; jtot += 2) {
-    for (auto j1 = j1_min; j1 <= j1_max; j1 += 1) {
-    double val1 = sqrt((2. * j0 + 1.) * (2. * j1 + 1.)) * (2*j2+1.) *
-          AngMom::SixJ(od.j2 * 0.5, og.j2 * 0.5, j0, oc.j2 * 0.5, jtot * 0.5, j2)*
-          AngMom::SixJ(od.j2 * 0.5, oe.j2 * 0.5, j1, of.j2 * 0.5, jtot * 0.5, j2);
 
-      double val2 = RdmThreeBody_J(j0, a, b, c, j1, d, e, f, jtot);
-       val += val1 * val2 * phase_factor;
+  size_t j0_min = abs(oa.j2 - ob.j2)/2;
+  size_t j0_max = abs(oa.j2 + ob.j2)/2;
+
+  // j_abc range (bra side: couple j_ab in [j0_min,j0_max] with j_c), in 2j units
+  int jabc_max_2j = 2 * (int)j0_max + oc.j2;
+  int jabc_min_2j;
+  if (oc.j2 >= 2 * (int)j0_min && oc.j2 <= 2 * (int)j0_max)
+    jabc_min_2j = 0;
+  else if (oc.j2 < 2 * (int)j0_min)
+    jabc_min_2j = 2 * (int)j0_min - oc.j2;
+  else
+    jabc_min_2j = oc.j2 - 2 * (int)j0_max;
+
+  // j_def range (ket side: couple j_de in [j1_min,j1_max] with j_f), in 2j units
+  int jdef_max_2j = 2 * (int)j1_max + of.j2;
+  int jdef_min_2j;
+  if (of.j2 >= 2 * (int)j1_min && of.j2 <= 2 * (int)j1_max)
+    jdef_min_2j = 0;
+  else if (of.j2 < 2 * (int)j1_min)
+    jdef_min_2j = 2 * (int)j1_min - of.j2;
+  else
+    jdef_min_2j = of.j2 - 2 * (int)j1_max;
+
+  size_t jmin = (size_t)std::max(jabc_min_2j, jdef_min_2j);
+  size_t jmax = (size_t)std::min(jabc_max_2j, jdef_max_2j);
+
+  size_t j1_len = (j1_max >= j1_min) ? (j1_max - j1_min + 1) : 0;
+  size_t j0_len = (j0_max >= j0_min) ? (j0_max - j0_min + 1) : 0;
+  arma::mat j1_array(j0_len, j1_len, arma::fill::zeros);  // rows: bra j0_min:j0_max, cols: ket j1_min:j1_max
+ 
+    double norm_fact = 1.;
+  if (a == b)
+    norm_fact *= sqrt(2.);
+  if (g == d)
+    norm_fact *= sqrt(2.);
+
+  if (c == g)
+    norm_fact *= sqrt(2.);
+  if (e == f)
+    norm_fact *= sqrt(2.);
+
+  double phase_factor=pow(-1, oc.j2*0.5 + oe.j2 * 0.5 + of.j2 * 0.5+og.j2*0.5);
+  phase_factor*=pow(-1,oc.j2*0.5 + og.j2*0.5 - j0);
+  std::cout << "range of J: " << jmin << " " << jmax << " " << j1_min << " " << j1_max << std::endl;
+  for (auto jtot = jmin; jtot <= jmax; jtot += 2) {
+    // we loop over all jtotal;
+    // fill j1_array with val1 for each j1
+    size_t j0_new = j0_min - j0;
+
+    for (size_t k = 0; k < j1_len; k++) {
+      size_t j1 = j1_min + k;
+      j1_array(j0_new, k) = sqrt((2. * j0 + 1.) * (2. * j1 + 1.)) * (2*j2+1.) *
+            AngMom::SixJ(od.j2 * 0.5, og.j2 * 0.5, j0, oc.j2 * 0.5, jtot * 0.5, j2)*
+            AngMom::SixJ(od.j2 * 0.5, oe.j2 * 0.5, j1, of.j2 * 0.5, jtot * 0.5, j2)*phase_factor*norm_fact*2.;
+    }
+
+    // std::cout << j1_array.row(0) << std::endl;
+    // std::cout << j1_array.row(1) << std::endl;
+
+ // here we test, whether the recoupling go back;
+
+  //  for (size_t k = 0; k < j1_len; k++) {
+  //         size_t j1 = j1_min + k;
+  //           arma:: vec dterm = arma::vec(j0_len, arma::fill::zeros);
+  //         for (size_t m = 0; m < j1_len; m++) {
+  //           size_t j3 = j1_min + m;
+  //           double phase_df = sqrt((2.*j1+1.)*(2.*j3+1.));
+  //           double angmom_df = AngMom::SixJ(od.j2*0.5, oe.j2*0.5, j1, of.j2*0.5, jtot*0.5, j3);
+  //           dterm += j1_array.col(m) * phase_df * angmom_df;
+  //         }
+  //         std::cout << k<< " coupled back "  << dterm << std::endl;  
+  //       }
+
+
+
+
+
+  // here we do bra side permutations, 1-Pac-Pbc;
+
+    // make a copy of j1_array_bak=j1_array;
+    arma::mat j1_array_bak = j1_array;
+    // j1_array=0
+    j1_array.zeros();
+
+
+
+    if (b == c || a == c) {
+      // Pbc
+      if (b == c) {
+        for (size_t k = 0; k < j0_len; k++) {
+          size_t j0x = j0_min + k;
+          size_t k0 = j0 - j0_min;
+           double phase_bc = -pow(-1, ob.j2*0.5 + oc.j2*0.5 + j0x + j0)*sqrt((2.*j0x+1.)*(2.*j0+1.));
+           double angmom_bc = AngMom::SixJ(ob.j2*0.5, oa.j2*0.5, j0x, oc.j2*0.5, jtot*0.5, j0);
+          j1_array.row(k) += j1_array_bak.row(k0) * phase_bc * angmom_bc;
+        }
+      }
+      // Pac
+      if (a == c) {
+        for (size_t k = 0; k < j0_len; k++) {
+          size_t j0x = j0_min + k;
+          size_t k0 = j0 - j0_min;
+           double phase_ac =sqrt((2.*j0x+1.)*(2.*j0+1.));
+           double angmom_ac = AngMom::SixJ(oa.j2*0.5, ob.j2*0.5, j0x, oc.j2*0.5, jtot*0.5, j0);
+          j1_array.row(k) += j1_array_bak.row(k0) * phase_ac * angmom_ac;
+        }
+      }
+    }
+
+    // j1_array_bak = j1_array_bak - j1_array  (reuse bak for ket-side input)
+    j1_array_bak += j1_array;
+    j1_array.zeros();
+   
+    // ket-side permutations
+    // identity term
+   // for (size_t k = 0; k < j1_len; k++) j1_array[k] += j1_array_bak[k];
+    // Pde: for each j1, j1_array[k] += (-1)^(jd+je-j1) * j1_array_bak[k]
+    if(d==e || d==f){
+
+      if(d==e){
+    for (size_t k = 0; k < j1_len; k++) {
+      size_t j1 = j1_min + k;
+      double phase_de = -pow(-1, od.j2*0.5 + oe.j2*0.5 - (double)j1);
+      j1_array.col(k) += j1_array_bak.col(k) * phase_de;
+    }
   }
+
+
+
+        if (d == f) {
+        for (size_t k = 0; k < j1_len; k++) {
+          size_t j1 = j1_min + k;
+          for (size_t m = 0; m < j1_len; m++) {
+            size_t j3 = j1_min + m;
+            double phase_df = sqrt((2.*j1+1.)*(2.*j3+1.));
+            double angmom_df = AngMom::SixJ(od.j2*0.5, oe.j2*0.5, j1, of.j2*0.5, jtot*0.5, j3);
+            j1_array.col(k) += j1_array_bak.col(m) * phase_df * angmom_df;
+          }
+        }
+      }
+
+
+    }
+
+//    std::cout<< jtot <<" "<<j1_array[0]<< " " <<j1_array[1]<<" "<<j1_array[2]<<std::endl;
+
+      j1_array_bak += j1_array;
+    // j1_array=0
+     j1_array=j1_array_bak;
+
+    std::cout << "jtot=" << jtot << " j1_array (rows=j0_min:" << j0_min << "-" << j0_max
+              << ", cols=j1_min:" << j1_min << "-" << j1_max << "):" << std::endl;
+    for (size_t r = 0; r < j0_len; r++) {
+      std::cout << "  j0=" << (j0_min+r) << ":";
+      for (size_t c = 0; c < j1_len; c++)
+        std::cout << " " << j1_array(r, c);
+      std::cout << std::endl;
+    }
+
+    // accumulate val: sum over j1 of j1_array[k] * RdmThreeBody_J(...)
+    // for (size_t k = 0; k < j1_len; k++) {
+    //   size_t j1 = j1_min + k;
+    //   double val2 = RdmThreeBody_J(j0, a, b, c, j1, d, e, f, jtot);
+    //   val += j1_array[k] * val2 * phase_factor;
+    // }
   }
  
 
   return (val);
 }
+
+
+
 
 
 double EOM::Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
@@ -780,10 +968,34 @@ double EOM::Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
   return (val);
 }
 void EOM::PrintConfigs() {
-  for (std::array<index_t, 4> &cfs : eom_confs) {
-    std::cout << cfs[0] << " " << cfs[1] << " " << cfs[2] << " " << cfs[3]
-              << std::endl;
-  }
+  // 1-body types: c[0]=a, c[1]=b (orbit indices directly)
+  auto print_1b = [&](const std::string &label, index_t start, index_t dim) {
+    if (dim == 0) return;
+    for (index_t i = 0; i < dim; i++) {
+      auto &cfs = eom_confs.at(start + i);
+      std::cout << label << " " << (start + i)
+                << " " << cfs[0] << " " << cfs[1] << std::endl;
+    }
+  };
+  // 2-body types: c[0]=ibra, c[1]=iket, c[2]=ich -> unpack to a,b,c,d
+  auto print_2b = [&](const std::string &label, index_t start, index_t dim) {
+    if (dim == 0) return;
+    for (index_t i = 0; i < dim; i++) {
+      auto &cfs = eom_confs.at(start + i);
+      TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(cfs[2]);
+      Ket &kbra = tbc.GetKet(cfs[0]);
+      Ket &kket = tbc.GetKet(cfs[1]);
+      std::cout << label << " " << (start + i)
+                << " " << kbra.p << " " << kbra.q
+                << " " << kket.p << " " << kket.q
+                << " " << cfs[2] << std::endl;
+    }
+  };
+  print_1b("qv",   qv_start,   qv_dim);
+  print_1b("ph",   ph_start,   ph_dim);
+  print_2b("ppvv", ppvv_start, ppvv_dim);
+  print_2b("pphv", pphv_start, pphv_dim);
+  print_2b("pphh", pphh_start, pphh_dim);
 }
 
 void EOM::ConstructProjectMatrix() {
@@ -2236,8 +2448,8 @@ void EOM::WriteTdm(const Operator &op, const std::string &filename) const
       if (v != 0.0) ob_lines.emplace_back(a, b, v);
     }
   out << ob_lines.size() << "\n";
-  for (auto &[a, b, v] : ob_lines)
-    out << "OBTD " << (a + 1) << " " << (b + 1) << " " << std::setprecision(10) << v * factor << "\n";
+  for (auto &t : ob_lines)
+    out << "OBTD " << (std::get<0>(t) + 1) << " " << (std::get<1>(t) + 1) << " " << std::setprecision(10) << std::get<2>(t) * factor << "\n";
 
   // --- 2-body ---
   std::vector<std::tuple<int,int,int,int,int,double>> tb_lines;
@@ -2260,10 +2472,10 @@ void EOM::WriteTdm(const Operator &op, const std::string &filename) const
     }
   }
   out << tb_lines.size() << "\n";
-  for (auto &[a, b, c, d, J2, v] : tb_lines)
-    out << "TBTD " << (a+1) << " " << (b+1) << " " << (c+1) << " " << (d+1)
-        << " " << (J2*2) << " " << (J2*2)
-        << " " << std::setprecision(10) << v * factor << "\n";
+  for (auto &t : tb_lines)
+    out << "TBTD " << (std::get<0>(t)+1) << " " << (std::get<1>(t)+1) << " " << (std::get<2>(t)+1) << " " << (std::get<3>(t)+1)
+        << " " << (std::get<4>(t)*2) << " " << (std::get<4>(t)*2)
+        << " " << std::setprecision(10) << std::get<5>(t) * factor << "\n";
 
   // --- 3-body: iterate in native memory order ---
   size_t nch3 = ms->GetNumberThreeBodyChannels();
@@ -2306,12 +2518,13 @@ void EOM::WriteTdm(const Operator &op, const std::string &filename) const
   }
 
   out << lines3b.size() << "\n";
-  for (auto &[a,b,c,jab2, d,e,f,jde2, twoJ, v] : lines3b)
+  for (auto &t : lines3b)
     out << "TRBTD "
-        << (a+1) << " " << (b+1) << " " << (c+1) << " "
-        << (d+1) << " " << (e+1) << " " << (f+1) << " "
-        << jab2 << " " << jde2 << " " << twoJ << " "
-        << std::setprecision(10) << v << "\n";
+        << (std::get<0>(t)+1) << " " << (std::get<1>(t)+1) << " " << (std::get<2>(t)+1) << " "
+        << (std::get<3>(t)) << " "
+        << (std::get<4>(t)+1) << " " << (std::get<5>(t)+1) << " " << (std::get<6>(t)+1) << " "
+        << (std::get<7>(t)) << " " << (std::get<8>(t)) << " "
+        << std::setprecision(10) << std::get<9>(t) << "\n";
 }
 
 // ============================================================
