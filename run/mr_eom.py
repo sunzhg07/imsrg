@@ -149,100 +149,55 @@ with open("cfs") as f:
         )
         configs.append((typ, idx, c0, c1, c2, c3))
 
-# for typ, idx, c0, c1, c2, c3 in configs[0]:
+configs2 = []
+with open("cfs2") as f:
+    for line in f:
+        parts = line.split()
+        if len(parts) < 7:
+            continue
+        typ, idx, c0, c1, c2, c3, c4 = (
+            parts[0],
+            int(parts[1]),
+            int(parts[2]),
+            int(parts[3]),
+            int(parts[4]),
+            int(parts[5]),
+            int(parts[6]),
+        )
+        configs2.append((typ, idx, c0, c1, c2, c3, c4))
 
-# typ, idx, c0, c1, c2, c3 = configs[0]
-typ, idx, c0, c1, c2, c3 = configs[1]
-print(c0, c1, c2)
-Z_test = Operator(ms, rank_j, rank_Tz, parity, 2)
+
+
+Z_test = Operator(ms, rank_j, rank_Tz, parity, 3)
 Z_test.SetHermitian()
 Z_test.ThreeBody.SetMode("pn")
+
 X_test = 0.0 * Hs
 X_test.SetHermitian()
-typ, idx, c0, c1, c2, c3 = configs[2]
-X_test.TwoBody.SetTBME_chij(c2, c2, c0, c1, 1.0)
-print(X_test.Norm())
+
 Y_test = 0.0 * Hs
 Y_test.SetAntiHermitian()
-typ, idx, c0, c1, c2, c3 = configs[3]
-Y_test.TwoBody.SetTBME_chij(c2, c2, c0, c1, 1.0)
 
-Commutator.comm223ss(Y_test, X_test, Z_test)
-norm_z = Z_test.Norm()
-print(norm_z)
-# val_3b = Z_test.ThreeBody.GetME_pn(0, 2, 3, 2, 2, 2, 2, 2, 2)
-# val_3b = Z_test.ThreeBody.GetME_pn(0, 2, 3, 2, 2, 2, 2, 2, 2)
-# print(f"Z_test 3b ME (a=2,b=2,Jab=0,c=2,d=2,e=2,Jde=2,f=2,2J=3) = {val_3b:.8f}")
+for i, cfsi in enumerate(configs):
+    for j, cfsj in enumerate(configs):
+        if i>j:
+            continue
+        stx, idx, d,g1,a,b, j0=configs2[i]
+        stx, idx, c,g2,f,e, j2=configs2[j]
+        if(g1!=g2):
+            continue
+        print(i,j,'exist')
+        typ_i, idx_i, c0_i, c1_i, c2_i, c3_i = cfsi
+        typ_j, idx_j, c0_j, c1_j, c2_j, c3_j = cfsj
+        X_test=0.0*X_test
+        Y_test=0.0*Y_test
+        Z_test=0.0*Z_test
+        X_test.TwoBody.SetTBME_chij(c2_i, c2_i, c0_i, c1_i, 1.0)
+        Y_test.TwoBody.SetTBME_chij(c2_j, c2_j, c0_j, c1_j, 1.0)
+        Commutator.comm223ss(X_test, Y_test, Z_test)
 
-
-# Print all non-zero 3b matrix elements in Z_test
-for ch_bra, ch_ket in Z_test.ThreeBody.Get_ch_start_keys():
-    tbc_bra = ms.GetThreeBodyChannel(ch_bra)
-    tbc_ket = ms.GetThreeBodyChannel(ch_ket)
-    nk_bra = tbc_bra.GetNumber3bKets()
-    nk_ket = tbc_ket.GetNumber3bKets()
-    for ibra in range(nk_bra):
-        kb = tbc_bra.GetKet(ibra)
-        iket_start = ibra if ch_bra == ch_ket else 0
-        for iket in range(iket_start, nk_ket):
-            v = Z_test.ThreeBody.GetME_pn_ch(ch_bra, ch_ket, ibra, iket)
-            if abs(v) > 1e-10:
-                kk = tbc_ket.GetKet(iket)
-                print(
-                    f"  3b nonzero: ch_bra={ch_bra}(2J={tbc_bra.twoJ}) ch_ket={ch_ket}(2J={tbc_ket.twoJ})"
-                    f" ibra={ibra}({kb.p},{kb.q},{kb.r},Jpq={kb.Jpq}) iket={iket}({kk.p},{kk.q},{kk.r},Jpq={kk.Jpq}) val={v:.8f}"
-                )
-
-# Check diagonal (Jpq=0,Jpq=0) and cross (Jpq=0,Jpq=2) elements explicitly
-for ch_bra, ch_ket in Z_test.ThreeBody.Get_ch_start_keys():
-    tbc_bra = ms.GetThreeBodyChannel(ch_bra)
-    tbc_ket = ms.GetThreeBodyChannel(ch_ket)
-    if ch_bra != ch_ket:
-        continue
-    for ibra in range(tbc_bra.GetNumber3bKets()):
-        kb = tbc_bra.GetKet(ibra)
-        for iket in range(ibra, tbc_ket.GetNumber3bKets()):
-            kk = tbc_ket.GetKet(iket)
-            if not (kb.p == kk.p == 2 and kb.q == kk.q == 2 and kb.r == kk.r == 2):
-                continue
-            v = Z_test.ThreeBody.GetME_pn_ch(ch_bra, ch_ket, ibra, iket)
-            print(
-                f"  diag check: ibra={ibra}(Jpq={kb.Jpq}) iket={iket}(Jpq={kk.Jpq}) val={v:.8f}"
-            )
-
-# old signature: (a, b, c, d, e, f, g, j0, j2)
-# val = eom.ThreeBody_Diagram(a, b, c, d, e, f, g, j0, j2)
-
-val = eom.ThreeBody_Diagram(2, 2, 4, 4, 4, 4, 18, 0, 0)
-# ThreeBME_type GetME_pn(int Jab_in, int Jde_in, int twoJ, int a, int b, int c, int d, int e, int f)
-val_pn = Z_test.ThreeBody.GetME_pn(0, 1, 3, 4, 4, 2, 2, 4, 4)
-print(f"Z_test(4,4,2,2,4,4, jpq_bra=1, jpq_ket=1, jtot=3) = {val_pn:.8f}")
-val_pn = Z_test.ThreeBody.GetME_pn(0, 2, 3, 4, 4, 2, 2, 4, 4)
-print(f"Z_test(4,4,2,2,4,4, jpq_bra=1, jpq_ket=1, jtot=3) = {val_pn:.8f}")
-# val = eom.ThreeBody_Diagram(2,2,2,2,2,2,16, 0, 0)
-# Compute ThreeBody_Diagram for all (i,j) pairs of ppvv configs
-# For each config: c[0]=ibra -> (a=ket.p, b=ket.q), c[1]=iket -> (c=ket.p, d=ket.q), c[2]=ch
-# ms2 = Hs.GetModelSpace()
-# for typ_j, idx_j, c0_j, c1_j, c2_j, c3_j in configs:
-#     if typ_j != "ppvv" or typ != "ppvv":
-#         continue
-#     tbc_bra = ms2.GetTwoBodyChannel(c2)
-#     tbc_ket = ms2.GetTwoBodyChannel(c2_j)
-#     ket_bra_pp = tbc_bra.GetKet(c0)  # ibra of bra config
-#     ket_bra_vv = tbc_bra.GetKet(c1)  # iket of bra config
-#     ket_ket_pp = tbc_ket.GetKet(c0_j)  # ibra of ket config
-#     ket_ket_vv = tbc_ket.GetKet(c1_j)  # iket of ket config
-#     a1, b1 = ket_bra_pp.p, ket_bra_pp.q
-#     c_orb1, d1 = ket_bra_vv.p, ket_bra_vv.q
-#     a2, b2 = ket_ket_pp.p, ket_ket_pp.q
-#     c_orb2, d2 = ket_ket_vv.p, ket_ket_vv.q
-#     # only when b1==b2 and both valence (matches C++ condition)
-#     ob1 = ms2.GetOrbit(b1)
-#     ob2 = ms2.GetOrbit(b2)
-#     if b1 == b2 and ob1.cvq == 1 and ob2.cvq == 1:
-#         J_bra = tbc_bra.J
-#         J_ket = tbc_ket.J
-#         val = eom.ThreeBody_Diagram(c_orb1, d1, a2, a1, d2, c_orb2, b1, J_bra, J_ket)
-#         print(f"ThreeBody_Diagram ({typ} idx={idx}, {typ_j} idx={idx_j}): {val:.8f}")
-
-# print(f"{typ} idx={idx} c=({c0},{c1},{c2},{c3}) -> Z.Norm={norm_z:.8f}")
+        result = eom.ThreeBody_Diagram(a,b,c,d,e,f,g1,j0,j2)
+        for jab, jde, jtot, diag_val in result:
+            z_val = Z_test.ThreeBody.GetME_pn(jab, jde, jtot, a, b, c, d, e, f)
+            ratio = diag_val / z_val if abs(z_val) > 1e-14 else float('nan')
+            print(f"  {a} {b} {c} {d} {e} {f} {g1}  j0={jab} j1={jde} jtot={jtot}  diagram={diag_val:.8f}  Z_test={z_val:.8f}  ratio={ratio:.6f}")

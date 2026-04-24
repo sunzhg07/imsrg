@@ -221,10 +221,10 @@ void EOM::ConstructConfigs() {
     // vpvv: bra ket has one valence (1) and one particle (2)
     if ((cvq_p == 2 && cvq_q == 1) || (cvq_p == 1 && cvq_q == 2)) {
       Ket &kket = tbc.GetKet(c[1]);
-      std::cout << "vpvv " << i
+      std::cout << "vpvvhere " << i
                 << " " << kbra.p << " " << kbra.q
                 << " " << kket.p << " " << kket.q
-                << " " << c[2] << std::endl;
+                << " " << tbc.J << std::endl;
     }
   }
 
@@ -686,7 +686,8 @@ void EOM::ConstructNormMatrix() {
       size_t d2 = dket1.q;
       Orbit &ob2 = modelspace->GetOrbit(b2);
       if(b1==b2 && ob1.cvq==1 && ob2.cvq==1){ // both valence not contributing to norm.
-      double val = ThreeBody_Diagram(c1, d1, a2, a1, d2,c2, b1, tbc_bra.J, tbc_ket.J);
+      double val=0;
+      //double val = ThreeBody_Diagram(c1, d1, a2, a1, d2,c2, b1, tbc_bra.J, tbc_ket.J);
         Nkernel(i, j) += val;
     }
         
@@ -739,9 +740,10 @@ void EOM::ConstructNormMatrix() {
 }
 
 
-double EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
+std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
                           size_t f, size_t g, double j0, double j2) {
   double val = 0.;
+  std::vector<std::tuple<size_t,size_t,size_t,double>> result;
   Orbit &oa = modelspace->GetOrbit(a);
   Orbit &ob = modelspace->GetOrbit(b);
   Orbit &oc = modelspace->GetOrbit(c);
@@ -758,28 +760,28 @@ double EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
   size_t j0_min = abs(oa.j2 - ob.j2)/2;
   size_t j0_max = abs(oa.j2 + ob.j2)/2;
 
-  // j_abc range (bra side: couple j_ab in [j0_min,j0_max] with j_c), in 2j units
-  int jabc_max_2j = 2 * (int)j0_max + oc.j2;
-  int jabc_min_2j;
-  if (oc.j2 >= 2 * (int)j0_min && oc.j2 <= 2 * (int)j0_max)
-    jabc_min_2j = 0;
-  else if (oc.j2 < 2 * (int)j0_min)
-    jabc_min_2j = 2 * (int)j0_min - oc.j2;
-  else
-    jabc_min_2j = oc.j2 - 2 * (int)j0_max;
+  int jabc_max_2j, jabc_min_2j, jdef_max_2j, jdef_min_2j;
 
-  // j_def range (ket side: couple j_de in [j1_min,j1_max] with j_f), in 2j units
-  int jdef_max_2j = 2 * (int)j1_max + of.j2;
-  int jdef_min_2j;
-  if (of.j2 >= 2 * (int)j1_min && of.j2 <= 2 * (int)j1_max)
-    jdef_min_2j = 0;
-  else if (of.j2 < 2 * (int)j1_min)
-    jdef_min_2j = 2 * (int)j1_min - of.j2;
-  else
-    jdef_min_2j = of.j2 - 2 * (int)j1_max;
+  // j_abc: three half-integer spins a, b, c
+  {
+    int largest = std::max({oa.j2, ob.j2, oc.j2});
+    int sum_others = oa.j2 + ob.j2 + oc.j2 - largest;
+    jabc_max_2j = oa.j2 + ob.j2 + oc.j2;
+    jabc_min_2j = (largest > sum_others) ? (largest - sum_others) : 1;
+  }
 
-  size_t jmin = (size_t)std::max(jabc_min_2j, jdef_min_2j);
-  size_t jmax = (size_t)std::min(jabc_max_2j, jdef_max_2j);
+  // j_def: three half-integer spins d, e, f
+  {
+    int largest = std::max({od.j2, oe.j2, of.j2});
+    int sum_others = od.j2 + oe.j2 + of.j2 - largest;
+    jdef_max_2j = od.j2 + oe.j2 + of.j2;
+    jdef_min_2j = (largest > sum_others) ? (largest - sum_others) : 1;
+  }
+
+  int jmin_2j = std::max(jabc_min_2j, jdef_min_2j);
+  int jmax_2j = std::min(jabc_max_2j, jdef_max_2j);
+  size_t jmin = (jmin_2j > 0) ? (size_t)jmin_2j : 1;
+  size_t jmax = (jmax_2j >= jmin_2j) ? (size_t)jmax_2j : 0;
 
   size_t j1_len = (j1_max >= j1_min) ? (j1_max - j1_min + 1) : 0;
   size_t j0_len = (j0_max >= j0_min) ? (j0_max - j0_min + 1) : 0;
@@ -796,23 +798,24 @@ double EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
   if (e == f)
     norm_fact *= sqrt(2.);
 
-  double phase_factor=pow(-1, oc.j2*0.5 + oe.j2 * 0.5 + of.j2 * 0.5+og.j2*0.5);
-  phase_factor*=pow(-1,oc.j2*0.5 + og.j2*0.5 - j0);
-  std::cout << "range of J: " << jmin << " " << jmax << " " << j1_min << " " << j1_max << std::endl;
+
+ 
+  // std::cout << "range of J: " << jmin << " " << jmax << " " << j1_min << " " << j1_max << std::endl;
   for (auto jtot = jmin; jtot <= jmax; jtot += 2) {
     // we loop over all jtotal;
     // fill j1_array with val1 for each j1
+    j1_array.zeros();
     size_t j0_new = j0_min - j0;
 
     for (size_t k = 0; k < j1_len; k++) {
       size_t j1 = j1_min + k;
       j1_array(j0_new, k) = sqrt((2. * j0 + 1.) * (2. * j1 + 1.)) * (2*j2+1.) *
             AngMom::SixJ(od.j2 * 0.5, og.j2 * 0.5, j0, oc.j2 * 0.5, jtot * 0.5, j2)*
-            AngMom::SixJ(od.j2 * 0.5, oe.j2 * 0.5, j1, of.j2 * 0.5, jtot * 0.5, j2)*phase_factor*norm_fact*2.;
+            AngMom::SixJ(od.j2 * 0.5, oe.j2 * 0.5, j1, of.j2 * 0.5, jtot * 0.5, j2)*norm_fact;
     }
 
-    // std::cout << j1_array.row(0) << std::endl;
-    // std::cout << j1_array.row(1) << std::endl;
+     //std::cout << j1_array.row(0) << std::endl;
+     //std::cout << j1_array.row(1) << std::endl;
 
  // here we test, whether the recoupling go back;
 
@@ -905,13 +908,21 @@ double EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
     // j1_array=0
      j1_array=j1_array_bak;
 
-    std::cout << "jtot=" << jtot << " j1_array (rows=j0_min:" << j0_min << "-" << j0_max
-              << ", cols=j1_min:" << j1_min << "-" << j1_max << "):" << std::endl;
+     //std::cout<< jtot << j1_array.row(0) << std::endl;
+    //  std::cout<< jtot << j1_array.row(1) << std::endl;
+    //  std::cout<< jtot << j1_array.row(2) << std::endl;
+
+    //std::cout << "jtot=" << jtot << " j1_array (rows=j0_min:" << j0_min << "-" << j0_max
+    //          << ", cols=j1_min:" << j1_min << "-" << j1_max << "):" << std::endl;
     for (size_t r = 0; r < j0_len; r++) {
-      std::cout << "  j0=" << (j0_min+r) << ":";
-      for (size_t c = 0; c < j1_len; c++)
-        std::cout << " " << j1_array(r, c);
-      std::cout << std::endl;
+      //std::cout << "  j0=" << (j0_min+r) << ":";
+      for (size_t c = 0; c < j1_len; c++) {
+        //std::cout << " " << j1_array(r, c);
+        double v = j1_array(r, c);
+        if (std::abs(v) > 1e-14)
+          result.emplace_back(j0_min+r, j1_min+c, (size_t)jtot, v);
+      }
+      //std::cout << std::endl;
     }
 
     // accumulate val: sum over j1 of j1_array[k] * RdmThreeBody_J(...)
@@ -923,7 +934,7 @@ double EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
   }
  
 
-  return (val);
+  return result;
 }
 
 

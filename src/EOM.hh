@@ -24,6 +24,7 @@
 #include "ModelSpace.hh"
 #include "Operator.hh"
 #include <string>
+#include <tuple>
 #include <vector>
 
 class EOM {
@@ -78,7 +79,7 @@ public:
   void ConstructProjectMatrix();
   double Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
                       size_t f, double j1, double j2);
-  double ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
+  std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
                            size_t f, size_t g, double j0, double j2);
   arma::vec GetEnergies();
   void SqrtMat(arma::mat &Amat, size_t n);
