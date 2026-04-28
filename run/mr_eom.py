@@ -167,7 +167,6 @@ with open("cfs2") as f:
         configs2.append((typ, idx, c0, c1, c2, c3, c4))
 
 
-
 Z_test = Operator(ms, rank_j, rank_Tz, parity, 3)
 Z_test.SetHermitian()
 Z_test.ThreeBody.SetMode("pn")
@@ -178,26 +177,58 @@ X_test.SetHermitian()
 Y_test = 0.0 * Hs
 Y_test.SetAntiHermitian()
 
-for i, cfsi in enumerate(configs):
-    for j, cfsj in enumerate(configs):
-        if i>j:
-            continue
-        stx, idx, d,g1,a,b, j0=configs2[i]
-        stx, idx, c,g2,f,e, j2=configs2[j]
-        if(g1!=g2):
-            continue
-        print(i,j,'exist')
-        typ_i, idx_i, c0_i, c1_i, c2_i, c3_i = cfsi
-        typ_j, idx_j, c0_j, c1_j, c2_j, c3_j = cfsj
-        X_test=0.0*X_test
-        Y_test=0.0*Y_test
-        Z_test=0.0*Z_test
-        X_test.TwoBody.SetTBME_chij(c2_i, c2_i, c0_i, c1_i, 1.0)
-        Y_test.TwoBody.SetTBME_chij(c2_j, c2_j, c0_j, c1_j, 1.0)
-        Commutator.comm223ss(X_test, Y_test, Z_test)
+# for i, cfsi in enumerate(configs):
+#    for j, cfsj in enumerate(configs):
+#        if i>j:
+#            continue
+#        stx, idx, d,g1,a,b, j0=configs2[i]
+#        stx, idx, c,g2,f,e, j2=configs2[j]
+#        if(g1!=g2):
+#            continue
+#        print(i,j,'exist')
+#        typ_i, idx_i, c0_i, c1_i, c2_i, c3_i = cfsi
+#        typ_j, idx_j, c0_j, c1_j, c2_j, c3_j = cfsj
+#
+#        X_test=0.0*X_test
+#        Y_test=0.0*Y_test
+#        Z_test=0.0*Z_test
+#
+#        X_test.TwoBody.SetTBME_chij(c2_i, c2_i, c0_i, c1_i, 1.0)
+#        Y_test.TwoBody.SetTBME_chij(c2_j, c2_j, c0_j, c1_j, 1.0)
+#
+#        Commutator.comm223ss(X_test, Y_test, Z_test)
+#
+#        result = eom.ThreeBody_Diagram(a,b,c,d,e,f,g1,j0,j2)
+#
+#        for jab, jde, jtot, diag_val in result:
+#            z_val = Z_test.ThreeBody.GetME_pn(jab, jde, jtot, a, b, c, d, e, f)
+#            ratio = diag_val / z_val if abs(z_val) > 1e-14 else float('nan')
+#            print(f"  {a} {b} {c} {d} {e} {f} {g1}  j0={jab} j1={jde} jtot={jtot}  diagram={diag_val:.8f}  Z_test={z_val:.8f}  ratio={ratio:.6f}")
 
-        result = eom.ThreeBody_Diagram(a,b,c,d,e,f,g1,j0,j2)
-        for jab, jde, jtot, diag_val in result:
-            z_val = Z_test.ThreeBody.GetME_pn(jab, jde, jtot, a, b, c, d, e, f)
-            ratio = diag_val / z_val if abs(z_val) > 1e-14 else float('nan')
-            print(f"  {a} {b} {c} {d} {e} {f} {g1}  j0={jab} j1={jde} jtot={jtot}  diagram={diag_val:.8f}  Z_test={z_val:.8f}  ratio={ratio:.6f}")
+
+if 1 == 1:
+    i = 0
+    j = 6
+    cfsi = configs[i]
+    cfsj = configs[j]
+    stx, idx, d, g1, a, b, j0 = configs2[i]
+    stx, idx, c, g2, f, e, j2 = configs2[j]
+    print(i, j, "exist")
+    typ_i, idx_i, c0_i, c1_i, c2_i, c3_i = cfsi
+    typ_j, idx_j, c0_j, c1_j, c2_j, c3_j = cfsj
+    X_test = 0.0 * X_test
+    Y_test = 0.0 * Y_test
+    Z_test = 0.0 * Z_test
+    X_test.TwoBody.SetTBME_chij(c2_i, c2_i, c0_i, c1_i, 1.0)
+    Y_test.TwoBody.SetTBME_chij(c2_j, c2_j, c0_j, c1_j, 1.0)
+    Commutator.comm223ss(X_test, Y_test, Z_test)
+    print(f"  Z_test.ThreeBodyNorm() = {Z_test.ThreeBodyNorm():.12f}")
+
+    result = eom.ThreeBody_Diagram(a, b, c, d, e, f, g1, j0, j2)
+
+    for jab, jde, jtot, diag_val in result:
+        z_val = Z_test.ThreeBody.GetME_pn(jab, jde, jtot, a, b, c, d, e, f)
+        ratio = diag_val / z_val if abs(z_val) > 1e-14 else float("nan")
+        print(
+            f"  {a} {b} {c} {d} {e} {f} {g1}  j0={jab} j1={jde} jtot={jtot}  diagram={diag_val:.8f}  Z_test={z_val:.8f}  ratio={ratio:.6f}"
+        )

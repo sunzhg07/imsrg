@@ -79,8 +79,41 @@ public:
   void ConstructProjectMatrix();
   double Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
                       size_t f, double j1, double j2);
+  std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram_Internal(size_t a, size_t b, size_t c,
+                           size_t d, size_t e, size_t f, size_t g, double j0,
+                           double j2, bool include_exchange_term);
   std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
                            size_t f, size_t g, double j0, double j2);
+  std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram_DirectOnly(size_t a, size_t b, size_t c,
+                           size_t d, size_t e, size_t f, size_t g, double j0,
+                           double j2);
+  double ThreeBody_Diagram_RDM_Contract(size_t a, size_t b, size_t c,
+                                        size_t d, size_t e, size_t f,
+                                        size_t g, double j0, double j2);
+  double ThreeBody_Diagram_RDM_Contract_DirectOnly(size_t a, size_t b, size_t c,
+                                                   size_t d, size_t e, size_t f,
+                                                   size_t g, double j0, double j2);
+
+  // Compute the comm223ss diagram for a fixed 3B bra (i,j,k) and ket (l,m,n) with
+  // total angular momentum twoJ, using the bra/ket ordering exactly as provided
+  // by the caller rather than requiring any canonical a<=b<=c or d<=e<=f sorting.
+  // Comparison against the full comm223ss result should be done through GetME_pn,
+  // which applies the built-in recoupling for arbitrary external ordering.
+  // Sparse seed operators are:
+  //   X^{jab}_{sa sb, sf sg} = 1  (all other X elements zero)
+  //   Y^{jde}_{sg sc, sd se} = 1  (all other Y elements zero)
+  // where sg is the shared intermediate orbit.
+  // Returns an arma::mat of size (nJ1 x nJ2) where row r <-> J1 = J1min_out + r
+  // and col c <-> J2 = J2min_out + c.
+  // herm_X, herm_Y = +1 (hermitian) or -1 (antihermitian).
+  arma::mat threebody_diagram_comm(
+      size_t i, size_t j, size_t k,
+      size_t l, size_t m, size_t n,
+      int twoJ,
+      size_t sa, size_t sb, size_t sf, size_t sg, int jab,
+      size_t sc, size_t sd, size_t se, int jde,
+      int herm_X, int herm_Y,
+      int &J1min_out, int &J2min_out);
   arma::vec GetEnergies();
   void SqrtMat(arma::mat &Amat, size_t n);
   void ProjectOprator(Operator &Qin);

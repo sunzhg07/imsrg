@@ -3,6 +3,7 @@
 #include "ModelSpace.hh"
 #include "PhysicalConstants.hh"
 #include "AngMom.hh"
+#include <iostream>
 
 
 /// Straightforward implementation of J-coupled commutator expressions
@@ -1507,6 +1508,14 @@ namespace ReferenceImplementations
         double jm = 0.5 * om.j2;
         double jn = 0.5 * on.j2;
         int J2 = ket.Jpq;
+        bool debug_case = (i == 2 && j == 2 && k == 2 && l == 2 && m == 2 && n == 2);
+        if (debug_case)
+        {
+          std::cout << "[comm223ss:start] J1=" << J1 << " J2=" << J2 << " twoJ=" << twoJ
+                    << " bra=(" << i << "," << j << "," << k << ") ket=(" << l << "," << m << "," << n << ")"
+                    << " ch3bra=" << ch3bra << " ch3ket=" << ch3ket
+                    << " ibra=" << ibra << " iket=" << iket << "\n";
+        }
 
         double zijklmn = 0;
         /// BEGIN THE SLOW BIT...
@@ -1538,6 +1547,13 @@ namespace ReferenceImplementations
 
             double rec_ijk = Z3.RecouplingCoefficient(perm_ijk, ji, jj, jk, J1p, J1, twoJ);
             rec_ijk *= Z3.PermutationPhase(perm_ijk); // do we get a fermionic minus sign?
+            if (debug_case)
+            {
+              std::cout << "[comm223ss:perm_ijk] perm=" << static_cast<int>(perm_ijk)
+                        << " I=(" << I1 << "," << I2 << "," << I3 << ")"
+                        << " J1p_range=[" << J1p_min << "," << J1p_max << "]"
+                        << " J1p=" << J1p << " rec_ijk=" << rec_ijk << "\n";
+            }
 
             for (auto perm_lmn : index_perms)
             {
@@ -1561,6 +1577,17 @@ namespace ReferenceImplementations
               {
                 int dTz_126a = (o1.tz2 + o2.tz2 - o6.tz2 - tz2a) / 2;
                 int dTz_3a45 = (o3.tz2 + tz2a - o4.tz2 - o5.tz2) / 2;
+                if (debug_case)
+                {
+                  std::cout << "[comm223ss:tz] perm_lmn=" << static_cast<int>(perm_lmn)
+                            << " I=(" << I4 << "," << I5 << "," << I6 << ")"
+                            << " J2p_range=[" << J2p_min << "," << J2p_max << "]"
+                            << " tz2a=" << tz2a
+                            << " dTz_126a=" << dTz_126a << " dTz_3a45=" << dTz_3a45
+                            << " pass126=" << (std::abs(dTz_126a) == X.GetTRank() || std::abs(dTz_126a) == Y.GetTRank())
+                            << " pass345=" << (std::abs(dTz_3a45) == X.GetTRank() || std::abs(dTz_3a45) == Y.GetTRank())
+                            << "\n";
+                }
                 if (std::abs(dTz_126a) != X.GetTRank() and std::abs(dTz_126a) != Y.GetTRank())
                   continue;
                 if (std::abs(dTz_3a45) != X.GetTRank() and std::abs(dTz_3a45) != Y.GetTRank())
@@ -1571,9 +1598,19 @@ namespace ReferenceImplementations
 
                   double rec_lmn = Z3.RecouplingCoefficient(perm_lmn, jl, jm, jn, J2p, J2, twoJ);
                   rec_lmn *= Z3.PermutationPhase(perm_lmn); // do we get a fermionic minus sign?
+                  if (debug_case)
+                  {
+                    std::cout << "[comm223ss:perm_lmn] perm=" << static_cast<int>(perm_lmn)
+                              << " J2p=" << J2p << " rec_lmn=" << rec_lmn << "\n";
+                  }
 
                   int j2a_min = std::max(std::abs(o6.j2 - 2 * J1p), std::abs(o3.j2 - 2 * J2p));
                   int j2a_max = std::min(o6.j2 + 2 * J1p, o3.j2 + 2 * J2p);
+                  if (debug_case)
+                  {
+                    std::cout << "[comm223ss:j2a_range] J1p=" << J1p << " J2p=" << J2p
+                              << " j2a_min=" << j2a_min << " j2a_max=" << j2a_max << "\n";
+                  }
 
                   for (int j2a = j2a_min; j2a <= j2a_max; j2a += 2)
                   {
@@ -1593,6 +1630,12 @@ namespace ReferenceImplementations
                     for (size_t a : Z.modelspace->all_orbits)
                     {
                       Orbit &oa = Z.modelspace->GetOrbit(a);
+                      if (debug_case)
+                      {
+                        std::cout << "[comm223ss:orbit] a=" << a
+                                  << " oa.j2=" << oa.j2 << " oa.tz2=" << oa.tz2
+                                  << " want_j2a=" << j2a << " want_tz2a=" << tz2a << "\n";
+                      }
                       if (oa.j2 != j2a)
                         continue;
                       if (oa.tz2 != tz2a)
@@ -1602,7 +1645,15 @@ namespace ReferenceImplementations
                       double x_3a45 = X2.GetTBME_J(J2p, J2p, I3, a, I4, I5);
                       double y_3a45 = Y2.GetTBME_J(J2p, J2p, I3, a, I4, I5);
 
-                      zijklmn += rec_ijk * rec_lmn * sixj * sqrt((2 * J1p + 1) * (2 * J2p + 1)) * (x_126a * y_3a45 - y_126a * x_3a45);
+                      double contrib = rec_ijk * rec_lmn * sixj * sqrt((2 * J1p + 1) * (2 * J2p + 1)) * (x_126a * y_3a45 - y_126a * x_3a45);
+                      if (debug_case)
+                        std::cout << "[comm223ss:tbme] J1=" << J1 << " J2=" << J2 << " pijk=" << (int)perm_ijk << " plmn=" << (int)perm_lmn
+                                  << " I1=" << I1 << " I2=" << I2 << " I3=" << I3 << " I4=" << I4 << " I5=" << I5 << " I6=" << I6
+                                  << " J1p=" << J1p << " J2p=" << J2p << " a=" << a << " ja=" << j2a
+                                  << " rec_ijk=" << rec_ijk << " rec_lmn=" << rec_lmn << " sixj=" << sixj
+                                  << " x126a=" << x_126a << " y126a=" << y_126a << " x3a45=" << x_3a45 << " y3a45=" << y_3a45
+                                  << " contrib=" << contrib << "\n";
+                      zijklmn += contrib;
 
                     } // for a
                   } // for j2a
@@ -1613,6 +1664,10 @@ namespace ReferenceImplementations
         } // for perm_ijk
 
         Z3.AddToME_pn_ch(ch3bra, ch3ket, ibra, iket, zijklmn); // this needs to be modified for beta decay
+        if (debug_case)
+        {
+          std::cout << "[comm223ss:end] J1=" << J1 << " J2=" << J2 << " zijklmn=" << zijklmn << "\n";
+        }
       } // for iket
     } // for ch3
 

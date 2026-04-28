@@ -1240,6 +1240,49 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("ThreeBody_Diagram", &EOM::ThreeBody_Diagram,
            py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"),
            py::arg("f"), py::arg("g"), py::arg("j0"), py::arg("j2"))
+      .def("ThreeBody_Diagram_DirectOnly", &EOM::ThreeBody_Diagram_DirectOnly,
+           py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"),
+           py::arg("f"), py::arg("g"), py::arg("j0"), py::arg("j2"))
+      .def("ThreeBody_Diagram_RDM_Contract", &EOM::ThreeBody_Diagram_RDM_Contract,
+           py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"),
+           py::arg("f"), py::arg("g"), py::arg("j0"), py::arg("j2"))
+      .def("ThreeBody_Diagram_RDM_Contract_DirectOnly", &EOM::ThreeBody_Diagram_RDM_Contract_DirectOnly,
+           py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"),
+           py::arg("f"), py::arg("g"), py::arg("j0"), py::arg("j2"))
+      .def("threebody_diagram_comm",
+           [](EOM &self,
+              size_t i, size_t j, size_t k,
+              size_t l, size_t m, size_t n,
+              int twoJ,
+              size_t sa, size_t sb, size_t sf, size_t sg, int jab,
+              size_t sc, size_t sd, size_t se, int jde,
+              int herm_X, int herm_Y) -> py::tuple
+           {
+             int J1min = 0, J2min = 0;
+             arma::mat result = self.threebody_diagram_comm(
+                 i, j, k, l, m, n, twoJ,
+                 sa, sb, sf, sg, jab,
+                 sc, sd, se, jde,
+                 herm_X, herm_Y,
+                 J1min, J2min);
+                               py::array_t<double> arr(
+                                         {(py::ssize_t)result.n_rows, (py::ssize_t)result.n_cols});
+                               auto view = arr.mutable_unchecked<2>();
+                               for (size_t row = 0; row < result.n_rows; ++row)
+                               {
+                                    for (size_t col = 0; col < result.n_cols; ++col)
+                                    {
+                                         view(row, col) = result(row, col);
+                                    }
+                               }
+             return py::make_tuple(arr, J1min, J2min);
+           },
+           py::arg("i"), py::arg("j"), py::arg("k"),
+           py::arg("l"), py::arg("m"), py::arg("n"),
+           py::arg("twoJ"),
+           py::arg("sa"), py::arg("sb"), py::arg("sf"), py::arg("sg"), py::arg("jab"),
+           py::arg("sc"), py::arg("sd"), py::arg("se"), py::arg("jde"),
+           py::arg("herm_X")=1, py::arg("herm_Y")=1)
       .def("RdmThreeBody_J", &EOM::RdmThreeBody_J,
            py::arg("Jab"), py::arg("a"), py::arg("b"), py::arg("c"),
            py::arg("Jde"), py::arg("d"), py::arg("e"), py::arg("f"),
