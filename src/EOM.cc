@@ -921,13 +921,22 @@ std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_Entr
   int ket_twoJ_max = 2 * jde_seed + od.j2;
 
   // Loop over the observable three-body couplings first, then sum the internal recouplings.
-  for (int twoJ = std::max(bra_twoJ_min, ket_twoJ_min);
-       twoJ <= std::min(bra_twoJ_max, ket_twoJ_max);
-       ++twoJ) {
+  int twoJ_min = std::max(bra_twoJ_min, ket_twoJ_min);
+  int twoJ_max = std::min(bra_twoJ_max, ket_twoJ_max);
+  if ((twoJ_min % 2) != (oa.j2 % 2))
+    ++twoJ_min;
+
+  for (int twoJ = twoJ_min;
+       twoJ <= twoJ_max;
+       twoJ += 2) {
     // Both external three-body states must exist before any internal sum can contribute.
-    if (modelspace->GetThreeBodyChannelIndex(twoJ, (oa.l + ob.l + oc.l) % 2, oa.tz2 + ob.tz2 + oc.tz2) < 0)
+    size_t bra_channel = modelspace->GetThreeBodyChannelIndex(
+        twoJ, (oa.l + ob.l + oc.l) % 2, oa.tz2 + ob.tz2 + oc.tz2);
+    if (bra_channel >= modelspace->GetNumberThreeBodyChannels())
       continue;
-    if (modelspace->GetThreeBodyChannelIndex(twoJ, (od.l + oe.l + of.l) % 2, od.tz2 + oe.tz2 + of.tz2) < 0)
+    size_t ket_channel = modelspace->GetThreeBodyChannelIndex(
+        twoJ, (od.l + oe.l + of.l) % 2, od.tz2 + oe.tz2 + of.tz2);
+    if (ket_channel >= modelspace->GetNumberThreeBodyChannels())
       continue;
 
     int Jab_min = std::max(std::abs(oa.j2 - ob.j2), std::abs(twoJ - oc.j2)) / 2;
@@ -1041,17 +1050,11 @@ std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_Entr
                       // Each X/Y access is only a direct-seed or transpose-seed match.
                       double x_126a = single_seed_tbme(a, b, d, g, jab_seed, jab_seed, 1,
                                                        ch12, ch6a, I1, I2, I6, orb_a);
-                      double y_126a = single_seed_tbme(c, g, e, f, jde_seed, jde_seed, -1,
-                                                       ch12, ch6a, I1, I2, I6, orb_a);
-                      double x_3a45 = single_seed_tbme(a, b, d, g, jab_seed, jab_seed, 1,
-                                                       ch3a, ch45, I3, orb_a, I4, I5);
                       double y_3a45 = single_seed_tbme(c, g, e, f, jde_seed, jde_seed, -1,
                                                        ch3a, ch45, I3, orb_a, I4, I5);
 
-                       double direct_term = x_126a * y_3a45;
-                       double exchange_term = y_126a * x_3a45;
                       value += prefactor * sixj * phase_6a * phase_3a
-                         * (direct_term - exchange_term);
+                         * (x_126a * y_3a45);
                     }
                   }
                 }
@@ -1062,6 +1065,134 @@ std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_Entr
 
         if (std::abs(value) > 1e-14)
           result.emplace_back(size_t(Jab), size_t(Jde), size_t(twoJ), value);
+      }
+    }
+  }
+
+  return result;
+}
+
+std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_Entries_Legacy723d79ea(size_t a, size_t b, size_t c, size_t d, size_t e,
+                          size_t f, size_t g, double j0, double j2) {
+  double val = 0.;
+  std::vector<std::tuple<size_t,size_t,size_t,double>> result;
+  Orbit &oa = modelspace->GetOrbit(a);
+  Orbit &ob = modelspace->GetOrbit(b);
+  Orbit &oc = modelspace->GetOrbit(c);
+  Orbit &od = modelspace->GetOrbit(d);
+  Orbit &oe = modelspace->GetOrbit(e);
+  Orbit &of = modelspace->GetOrbit(f);
+  Orbit &og = modelspace->GetOrbit(g);
+
+  size_t j1_min = abs(od.j2 - oe.j2)/2;
+  size_t j1_max = abs(od.j2 + oe.j2)/2;
+
+  size_t j0_min = abs(oa.j2 - ob.j2)/2;
+  size_t j0_max = abs(oa.j2 + ob.j2)/2;
+
+  int jabc_max_2j, jabc_min_2j, jdef_max_2j, jdef_min_2j;
+
+  {
+    int largest = std::max({oa.j2, ob.j2, oc.j2});
+    int sum_others = oa.j2 + ob.j2 + oc.j2 - largest;
+    jabc_max_2j = oa.j2 + ob.j2 + oc.j2;
+    jabc_min_2j = (largest > sum_others) ? (largest - sum_others) : 1;
+  }
+
+  {
+    int largest = std::max({od.j2, oe.j2, of.j2});
+    int sum_others = od.j2 + oe.j2 + of.j2 - largest;
+    jdef_max_2j = od.j2 + oe.j2 + of.j2;
+    jdef_min_2j = (largest > sum_others) ? (largest - sum_others) : 1;
+  }
+
+  int jmin_2j = std::max(jabc_min_2j, jdef_min_2j);
+  int jmax_2j = std::min(jabc_max_2j, jdef_max_2j);
+  size_t jmin = (jmin_2j > 0) ? static_cast<size_t>(jmin_2j) : 1;
+  size_t jmax = (jmax_2j >= jmin_2j) ? static_cast<size_t>(jmax_2j) : 0;
+
+  size_t j1_len = (j1_max >= j1_min) ? (j1_max - j1_min + 1) : 0;
+  size_t j0_len = (j0_max >= j0_min) ? (j0_max - j0_min + 1) : 0;
+  arma::mat j1_array(j0_len, j1_len, arma::fill::zeros);
+
+  double norm_fact = 1.;
+  if (a == b)
+    norm_fact *= sqrt(2.);
+  if (g == d)
+    norm_fact *= sqrt(2.);
+  if (c == g)
+    norm_fact *= sqrt(2.);
+  if (e == f)
+    norm_fact *= sqrt(2.);
+
+  for (auto jtot = jmin; jtot <= jmax; jtot += 2) {
+    j1_array.zeros();
+    size_t j0_new = j0 - j0_min;
+
+    for (size_t k = 0; k < j1_len; k++) {
+      size_t j1 = j1_min + k;
+      j1_array(j0_new, k) = sqrt((2. * j0 + 1.) * (2. * j1 + 1.)) * (2 * j2 + 1.) *
+            AngMom::SixJ(od.j2 * 0.5, og.j2 * 0.5, j0, oc.j2 * 0.5, jtot * 0.5, j2) *
+            AngMom::SixJ(od.j2 * 0.5, oe.j2 * 0.5, j1, of.j2 * 0.5, jtot * 0.5, j2) * norm_fact;
+    }
+
+    arma::mat j1_array_bak = j1_array;
+    j1_array.zeros();
+
+    if (b == c || a == c) {
+      if (b == c) {
+        for (size_t k = 0; k < j0_len; k++) {
+          size_t j0x = j0_min + k;
+          size_t k0 = j0 - j0_min;
+          double phase_bc = -pow(-1, ob.j2 * 0.5 + oc.j2 * 0.5 + j0x + j0) * sqrt((2. * j0x + 1.) * (2. * j0 + 1.));
+          double angmom_bc = AngMom::SixJ(ob.j2 * 0.5, oa.j2 * 0.5, j0x, oc.j2 * 0.5, jtot * 0.5, j0);
+          j1_array.row(k) += j1_array_bak.row(k0) * phase_bc * angmom_bc;
+        }
+      }
+      if (a == c) {
+        for (size_t k = 0; k < j0_len; k++) {
+          size_t j0x = j0_min + k;
+          size_t k0 = j0 - j0_min;
+          double phase_ac = sqrt((2. * j0x + 1.) * (2. * j0 + 1.));
+          double angmom_ac = AngMom::SixJ(oa.j2 * 0.5, ob.j2 * 0.5, j0x, oc.j2 * 0.5, jtot * 0.5, j0);
+          j1_array.row(k) += j1_array_bak.row(k0) * phase_ac * angmom_ac;
+        }
+      }
+    }
+
+    j1_array_bak += j1_array;
+    j1_array.zeros();
+
+    if (d == e || d == f) {
+      if (d == e) {
+        for (size_t k = 0; k < j1_len; k++) {
+          size_t j1 = j1_min + k;
+          double phase_de = -pow(-1, od.j2 * 0.5 + oe.j2 * 0.5 - static_cast<double>(j1));
+          j1_array.col(k) += j1_array_bak.col(k) * phase_de;
+        }
+      }
+
+      if (d == f) {
+        for (size_t k = 0; k < j1_len; k++) {
+          size_t j1 = j1_min + k;
+          for (size_t m = 0; m < j1_len; m++) {
+            size_t j3 = j1_min + m;
+            double phase_df = sqrt((2. * j1 + 1.) * (2. * j3 + 1.));
+            double angmom_df = AngMom::SixJ(od.j2 * 0.5, oe.j2 * 0.5, j1, of.j2 * 0.5, jtot * 0.5, j3);
+            j1_array.col(k) += j1_array_bak.col(m) * phase_df * angmom_df;
+          }
+        }
+      }
+    }
+
+    j1_array_bak += j1_array;
+    j1_array = j1_array_bak;
+
+    for (size_t r = 0; r < j0_len; r++) {
+      for (size_t c1 = 0; c1 < j1_len; c1++) {
+        double v = j1_array(r, c1);
+        if (std::abs(v) > 1e-14)
+          result.emplace_back(j0_min + r, j1_min + c1, static_cast<size_t>(jtot), v);
       }
     }
   }
@@ -1104,7 +1235,14 @@ double EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c,
                               size_t d, size_t e, size_t f,
                               size_t g, double j0, double j2)
 {
-  return ThreeBody_Diagram_Internal(a, b, c, d, e, f, g, j0, j2);
+  std::array<size_t, 3> bra = {a, b, c};
+  std::array<size_t, 3> ket = {d, e, f};
+  std::sort(bra.begin(), bra.end());
+  std::sort(ket.begin(), ket.end());
+
+  double convention_factor = (bra == ket) ? 2.0 : 1.0;
+    return convention_factor
+      * ThreeBody_Diagram_Internal(a, b, c, d, e, f, g, j0, j2);
 }
 
 

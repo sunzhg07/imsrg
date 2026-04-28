@@ -79,11 +79,18 @@ public:
   void ConstructProjectMatrix();
   double Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
                       size_t f, double j1, double j2);
-  // Debug/inspection helper: return the uncoupled 3-body diagram entries before RDM contraction.
+  // Debug/inspection helper: return the direct-term 3-body diagram entries before
+  // RDM contraction. The public scalar API applies the same direct-only convention.
   std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram_Entries(size_t a, size_t b, size_t c,
                            size_t d, size_t e, size_t f, size_t g, double j0,
                            double j2);
-  // Main API: compute the full diagram and immediately contract it with the 3-body RDM.
+  // Debug helper: exact legacy entry builder from commit 723d79ea, kept only
+  // for side-by-side comparison against the current handwritten implementation.
+  std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram_Entries_Legacy723d79ea(size_t a, size_t b, size_t c,
+                           size_t d, size_t e, size_t f, size_t g, double j0,
+                           double j2);
+  // Main API: compute the direct term, apply the local half/full convention,
+  // and contract it with the 3-body RDM.
   double ThreeBody_Diagram(size_t a, size_t b, size_t c,
                            size_t d, size_t e, size_t f,
                            size_t g, double j0, double j2);

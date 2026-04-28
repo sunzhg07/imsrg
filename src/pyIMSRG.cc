@@ -1243,6 +1243,9 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("ThreeBody_Diagram_Entries", &EOM::ThreeBody_Diagram_Entries,
            py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"),
            py::arg("f"), py::arg("g"), py::arg("j0"), py::arg("j2"))
+      .def("ThreeBody_Diagram_Entries_Legacy723d79ea", &EOM::ThreeBody_Diagram_Entries_Legacy723d79ea,
+           py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"),
+           py::arg("f"), py::arg("g"), py::arg("j0"), py::arg("j2"))
       .def("threebody_diagram_comm",
            [](EOM &self,
               size_t i, size_t j, size_t k,
