@@ -84,37 +84,12 @@ public:
   std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram_Entries(size_t a, size_t b, size_t c,
                            size_t d, size_t e, size_t f, size_t g, double j0,
                            double j2);
-  // Debug helper: exact legacy entry builder from commit 723d79ea, kept only
-  // for side-by-side comparison against the current handwritten implementation.
-  std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram_Entries_Legacy723d79ea(size_t a, size_t b, size_t c,
-                           size_t d, size_t e, size_t f, size_t g, double j0,
-                           double j2);
   // Main API: compute the direct term, apply the local half/full convention,
   // and contract it with the 3-body RDM.
   double ThreeBody_Diagram(size_t a, size_t b, size_t c,
                            size_t d, size_t e, size_t f,
                            size_t g, double j0, double j2);
 
-  // Compute the comm223ss diagram for a fixed 3B bra (i,j,k) and ket (l,m,n) with
-  // total angular momentum twoJ, using the bra/ket ordering exactly as provided
-  // by the caller rather than requiring any canonical a<=b<=c or d<=e<=f sorting.
-  // Comparison against the full comm223ss result should be done through GetME_pn,
-  // which applies the built-in recoupling for arbitrary external ordering.
-  // Sparse seed operators are:
-  //   X^{jab}_{sa sb, sf sg} = 1  (all other X elements zero)
-  //   Y^{jde}_{sg sc, sd se} = 1  (all other Y elements zero)
-  // where sg is the shared intermediate orbit.
-  // Returns an arma::mat of size (nJ1 x nJ2) where row r <-> J1 = J1min_out + r
-  // and col c <-> J2 = J2min_out + c.
-  // herm_X, herm_Y = +1 (hermitian) or -1 (antihermitian).
-  arma::mat threebody_diagram_comm(
-      size_t i, size_t j, size_t k,
-      size_t l, size_t m, size_t n,
-      int twoJ,
-      size_t sa, size_t sb, size_t sf, size_t sg, int jab,
-      size_t sc, size_t sd, size_t se, int jde,
-      int herm_X, int herm_Y,
-      int &J1min_out, int &J2min_out);
   arma::vec GetEnergies();
   void SqrtMat(arma::mat &Amat, size_t n);
   void ProjectOprator(Operator &Qin);
@@ -206,12 +181,9 @@ public:
   RunResult Run(int max_iter = 200, int state_want = 6);
 
 private:
-  std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram_Entries_Internal(size_t a, size_t b, size_t c,
-                           size_t d, size_t e, size_t f, size_t g, double j0,
-                           double j2);
-  double ThreeBody_Diagram_Internal(size_t a, size_t b, size_t c,
-                                    size_t d, size_t e, size_t f,
-                                    size_t g, double j0, double j2);
+  double ThreeBody_Diagram_Entries_Internal(size_t a, size_t b, size_t c,
+                                            size_t d, size_t e, size_t f,
+                                            size_t g, double j0, double j2);
   RunResult RunSR(int max_iter, int state_want);  ///< called by Run() when !is_multiref
   RunResult RunMR(int max_iter, int state_want);  ///< called by Run() when  is_multiref
 };
