@@ -198,7 +198,7 @@ Y_test.SetAntiHermitian()
 #
 #        Commutator.comm223ss(X_test, Y_test, Z_test)
 #
-#        result = eom.ThreeBody_Diagram(a,b,c,d,e,f,g1,j0,j2)
+#        result = eom.ThreeBody_Diagram_Entries(a,b,c,d,e,f,g1,j0,j2)
 #
 #        for jab, jde, jtot, diag_val in result:
 #            z_val = Z_test.ThreeBody.GetME_pn(jab, jde, jtot, a, b, c, d, e, f)
@@ -224,7 +224,7 @@ if 1 == 1:
     Commutator.comm223ss(X_test, Y_test, Z_test)
     print(f"  Z_test.ThreeBodyNorm() = {Z_test.ThreeBodyNorm():.12f}")
 
-    result = eom.ThreeBody_Diagram(a, b, c, d, e, f, g1, j0, j2)
+    result = eom.ThreeBody_Diagram_Entries(a, b, c, d, e, f, g1, j0, j2)
 
     for jab, jde, jtot, diag_val in result:
         z_val = Z_test.ThreeBody.GetME_pn(jab, jde, jtot, a, b, c, d, e, f)

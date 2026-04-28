@@ -748,8 +748,8 @@ void EOM::ConstructNormMatrix() {
 }
 
 
-std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_Internal(size_t a, size_t b, size_t c, size_t d, size_t e,
-                          size_t f, size_t g, double j0, double j2, bool include_exchange_term) {
+std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_Entries_Internal(size_t a, size_t b, size_t c, size_t d, size_t e,
+                          size_t f, size_t g, double j0, double j2) {
   std::vector<std::tuple<size_t,size_t,size_t,double>> result;
 
   using Permutation = ThreeBodyStorage::Permutation;
@@ -1048,8 +1048,8 @@ std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_Inte
                       double y_3a45 = single_seed_tbme(c, g, e, f, jde_seed, jde_seed, -1,
                                                        ch3a, ch45, I3, orb_a, I4, I5);
 
-                      double direct_term = x_126a * y_3a45;
-                      double exchange_term = include_exchange_term ? y_126a * x_3a45 : 0.0;
+                       double direct_term = x_126a * y_3a45;
+                       double exchange_term = y_126a * x_3a45;
                       value += prefactor * sixj * phase_6a * phase_3a
                          * (direct_term - exchange_term);
                     }
@@ -1069,25 +1069,20 @@ std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_Inte
   return result;
 }
 
-std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
+std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_Entries(size_t a, size_t b, size_t c, size_t d, size_t e,
                           size_t f, size_t g, double j0, double j2) {
-  return ThreeBody_Diagram_Internal(a, b, c, d, e, f, g, j0, j2, true);
+  return ThreeBody_Diagram_Entries_Internal(a, b, c, d, e, f, g, j0, j2);
 }
 
-std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_DirectOnly(size_t a, size_t b, size_t c,
-                          size_t d, size_t e, size_t f, size_t g, double j0, double j2) {
-  return ThreeBody_Diagram_Internal(a, b, c, d, e, f, g, j0, j2, false);
-}
-
-double EOM::ThreeBody_Diagram_RDM_Contract(size_t a, size_t b, size_t c,
-                                           size_t d, size_t e, size_t f,
-                                           size_t g, double j0, double j2)
+double EOM::ThreeBody_Diagram_Internal(size_t a, size_t b, size_t c,
+                                       size_t d, size_t e, size_t f,
+                                       size_t g, double j0, double j2)
 {
   if (!rdm.ThreeBody.IsAllocated())
     return 0.0;
 
   double value = 0.0;
-  for (const auto &entry : ThreeBody_Diagram(a, b, c, d, e, f, g, j0, j2)) {
+  for (const auto &entry : ThreeBody_Diagram_Entries_Internal(a, b, c, d, e, f, g, j0, j2)) {
     size_t Jab = std::get<0>(entry);
     size_t Jde = std::get<1>(entry);
     size_t twoJ = std::get<2>(entry);
@@ -1105,30 +1100,11 @@ double EOM::ThreeBody_Diagram_RDM_Contract(size_t a, size_t b, size_t c,
   return value;
 }
 
-double EOM::ThreeBody_Diagram_RDM_Contract_DirectOnly(size_t a, size_t b, size_t c,
-                                                      size_t d, size_t e, size_t f,
-                                                      size_t g, double j0, double j2)
+double EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c,
+                              size_t d, size_t e, size_t f,
+                              size_t g, double j0, double j2)
 {
-  if (!rdm.ThreeBody.IsAllocated())
-    return 0.0;
-
-  double value = 0.0;
-  for (const auto &entry : ThreeBody_Diagram_DirectOnly(a, b, c, d, e, f, g, j0, j2)) {
-    size_t Jab = std::get<0>(entry);
-    size_t Jde = std::get<1>(entry);
-    size_t twoJ = std::get<2>(entry);
-    double zme = std::get<3>(entry);
-
-    double rdm_me = RdmThreeBody_J(static_cast<int>(Jab), a, b, c,
-                                   static_cast<int>(Jde), d, e, f,
-                                   static_cast<int>(twoJ));
-    if (std::abs(rdm_me) < 1e-14)
-      continue;
-
-    value += std::sqrt(double(twoJ) + 1.0) * zme * rdm_me;
-  }
-
-  return value;
+  return ThreeBody_Diagram_Internal(a, b, c, d, e, f, g, j0, j2);
 }
 
 

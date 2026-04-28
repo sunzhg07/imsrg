@@ -79,20 +79,14 @@ public:
   void ConstructProjectMatrix();
   double Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
                       size_t f, double j1, double j2);
-  std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram_Internal(size_t a, size_t b, size_t c,
-                           size_t d, size_t e, size_t f, size_t g, double j0,
-                           double j2, bool include_exchange_term);
-  std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
-                           size_t f, size_t g, double j0, double j2);
-  std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram_DirectOnly(size_t a, size_t b, size_t c,
+  // Debug/inspection helper: return the uncoupled 3-body diagram entries before RDM contraction.
+  std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram_Entries(size_t a, size_t b, size_t c,
                            size_t d, size_t e, size_t f, size_t g, double j0,
                            double j2);
-  double ThreeBody_Diagram_RDM_Contract(size_t a, size_t b, size_t c,
-                                        size_t d, size_t e, size_t f,
-                                        size_t g, double j0, double j2);
-  double ThreeBody_Diagram_RDM_Contract_DirectOnly(size_t a, size_t b, size_t c,
-                                                   size_t d, size_t e, size_t f,
-                                                   size_t g, double j0, double j2);
+  // Main API: compute the full diagram and immediately contract it with the 3-body RDM.
+  double ThreeBody_Diagram(size_t a, size_t b, size_t c,
+                           size_t d, size_t e, size_t f,
+                           size_t g, double j0, double j2);
 
   // Compute the comm223ss diagram for a fixed 3B bra (i,j,k) and ket (l,m,n) with
   // total angular momentum twoJ, using the bra/ket ordering exactly as provided
@@ -205,6 +199,12 @@ public:
   RunResult Run(int max_iter = 200, int state_want = 6);
 
 private:
+  std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram_Entries_Internal(size_t a, size_t b, size_t c,
+                           size_t d, size_t e, size_t f, size_t g, double j0,
+                           double j2);
+  double ThreeBody_Diagram_Internal(size_t a, size_t b, size_t c,
+                                    size_t d, size_t e, size_t f,
+                                    size_t g, double j0, double j2);
   RunResult RunSR(int max_iter, int state_want);  ///< called by Run() when !is_multiref
   RunResult RunMR(int max_iter, int state_want);  ///< called by Run() when  is_multiref
 };

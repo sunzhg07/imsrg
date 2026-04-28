@@ -1240,13 +1240,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("ThreeBody_Diagram", &EOM::ThreeBody_Diagram,
            py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"),
            py::arg("f"), py::arg("g"), py::arg("j0"), py::arg("j2"))
-      .def("ThreeBody_Diagram_DirectOnly", &EOM::ThreeBody_Diagram_DirectOnly,
-           py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"),
-           py::arg("f"), py::arg("g"), py::arg("j0"), py::arg("j2"))
-      .def("ThreeBody_Diagram_RDM_Contract", &EOM::ThreeBody_Diagram_RDM_Contract,
-           py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"),
-           py::arg("f"), py::arg("g"), py::arg("j0"), py::arg("j2"))
-      .def("ThreeBody_Diagram_RDM_Contract_DirectOnly", &EOM::ThreeBody_Diagram_RDM_Contract_DirectOnly,
+      .def("ThreeBody_Diagram_Entries", &EOM::ThreeBody_Diagram_Entries,
            py::arg("a"), py::arg("b"), py::arg("c"), py::arg("d"), py::arg("e"),
            py::arg("f"), py::arg("g"), py::arg("j0"), py::arg("j2"))
       .def("threebody_diagram_comm",
