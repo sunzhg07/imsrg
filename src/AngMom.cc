@@ -1,7 +1,6 @@
 
 #include "AngMom.hh"
 #include <cmath>
-//#include <gsl/gsl_sf_gamma.h>
 #include <gsl/gsl_sf_coupling.h>
 #include <iostream>
 
@@ -9,6 +8,9 @@
 /// Namespace for angular momentum coupling functions
 namespace AngMom
 {
+   double mosh_beta_1 = atan(1.0);  // pi/4
+   double mosh_beta_2 = atan(sqrt(2.0));
+   double mosh_beta_half = atan(sqrt(0.5));
 
  /// returns \f$ (-1)^x \f$
  int phase(int x)
@@ -76,6 +78,28 @@ namespace AngMom
    if (round(2*(j1+j2))<round(2*j3)) return false;
    if (std::abs(round(2*(j1-j2)))>round(2*j3)) return false;
    return true;
+ }
+
+
+ // Get minimum value of J that satisfies triangle condition for all pairs provided
+ int Jmin( std::vector< std::array<int,2>> jpairs)
+ {
+     int jmin = 0;
+     for (auto p : jpairs )
+     {
+        jmin = std::max( jmin, std::abs(p[0]-p[1]) );
+     }
+     return jmin;
+ }
+ // Get minimum value of J that satisfies triangle condition for all pairs provided
+ int Jmax( std::vector< std::array<int,2>> jpairs)
+ {
+     int jmax = 1000;
+     for (auto p : jpairs )
+     {
+        jmax = std::min( jmax, p[0]+p[1]);
+     }
+     return jmax;
  }
 
  /// Wigner 3j symbol
@@ -288,8 +312,8 @@ double TalmiB(int n, int l, int nn, int ll, int p)
 //                // more energy conservation
                 if ( (2*na+la+2*nb+lb+2*nc+lc) != (2*Ncm+Lcm + 2*N1+L1 + 2*N2+L2) ) continue;
 
-                double mosh1 = AngMom::Moshinsky(curlyN,curlyL, N1,L1, na,la, nb,lb, Lab, MOSH_BETA_1);
-                double mosh2 = AngMom::Moshinsky(Ncm,Lcm, N2,L2, curlyN,curlyL, nc,lc, Lambda, MOSH_BETA_2);
+                double mosh1 = AngMom::Moshinsky(curlyN,curlyL, N1,L1, na,la, nb,lb, Lab, AngMom::mosh_beta_1);
+                double mosh2 = AngMom::Moshinsky(Ncm,Lcm, N2,L2, curlyN,curlyL, nc,lc, Lambda, AngMom::mosh_beta_2);
                 double ninej1 = AngMom::NineJ( la,lb,Lab, sa,sb,S1, ja,jb,Jab );
                 double ninej2 = AngMom::NineJ( Lab,lc,L, S1,sc,S12, Jab,jc,0.5*twoJ) ;
                 double ninej3 = AngMom::NineJ( L1,L2,L12, S1,S2,S12, J1,0.5*twoJ2,0.5*twoJ12 );
@@ -430,8 +454,8 @@ double TalmiB(int n, int l, int nn, int ll, int p)
               int moshphase1 = AngMom::phase( curlyL+L1+Lab + 0*(curlyL+L1 - lb-la)/2 );  // converting phase conventions
               int moshphase2 = AngMom::phase( Lcm+L2+Lambda + 0*(Lcm+L2 - curlyL-lc)/2 ); // converting phase conventions (comment at the beginning of the function)
               tmosh += sixjLambda * sixjCurly * phase( Lambda) * moshphase1 * moshphase2
-                       * Moshinsky( curlyN,curlyL,  N1,L1,      na,la,     nb,lb,     Lab,  MOSH_BETA_1)
-                       * Moshinsky(    Ncm,Lcm,     N2,L2,  curlyN,curlyL, nc,lc,  Lambda,  MOSH_BETA_2);
+                       * Moshinsky( curlyN,curlyL,  N1,L1,      na,la,     nb,lb,     Lab,  AngMom::mosh_beta_1)
+                       * Moshinsky(    Ncm,Lcm,     N2,L2,  curlyN,curlyL, nc,lc,  Lambda,  AngMom::mosh_beta_2);
 
             }
           }

@@ -82,6 +82,7 @@ class ThreeBodyStorage
   int ISOSPIN_BLOCK_DIMENSION=5;
 
   bool is_allocated=false;
+  bool is_reduced=false;
 
   std::unordered_map<ThreeBodyStorageChannel,size_t, ThreeBodyStorageChannelHash> ch_start; // map {ch_bra,ch_ket} => index in the array storage array
   std::vector<size_t> ch_dim;
@@ -165,6 +166,7 @@ class ThreeBodyStorage
 //  virtual int CountAllocations() const =0;
   virtual int CountAllocations() const {NotImplemented(__func__); return 0;};
   bool IsAllocated() const {return is_allocated;};
+  bool IsReduced() const {return is_reduced;};
   void SetHerm(int h) { herm = h; };
   void SetEmax(int e) { emax = e; };
   void SetE3max(int e) { E3max = e; };

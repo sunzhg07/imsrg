@@ -356,6 +356,10 @@ class ModelSpace
 
    SixJCache_112112 six_j_cache_2b_;
 
+//   int upperLimit_j2a_6j;
+//   int upperLimit_j2b_6j;
+//   int upperLimit_j2c_6j;
+//   int upperLimit_j2d_6j;
    static std::unordered_map<uint64_t,double> SixJList;
    static std::unordered_map<uint64_t,double> NineJList;
    static std::unordered_map<uint64_t,double> MoshList;
@@ -404,6 +408,7 @@ class ModelSpace
    std::vector<index_t> String2Index( std::vector<std::string> vs );
    std::string Index2String(index_t ind);
    void Get0hwSpace(int Aref, int Zref, std::set<std::array<int,4>>& core_list, std::set<std::array<int,4>>& valence_list);
+   void GetjjSpace(int Aref, int Zref, std::set<std::array<int,4>>& core_list, std::set<std::array<int,4>>& valence_list);
 //   void Get0hwSpace(int Aref, int Zref, std::set<index_t>& core_list, std::set<index_t>& valence_list);
    void ParseCommaSeparatedValenceSpace(std::string valence, std::set<std::array<int,4>>& core_list, std::set<std::array<int,4>>& valence_list);
 //   void ParseCommaSeparatedValenceSpace(std::string valence, std::set<index_t>& core_list, std::set<index_t>& valence_list);
@@ -496,7 +501,8 @@ class ModelSpace
    double GetdE3max(){return dE3max;};
    double GetOccNat3Cut(){return occnat3cut;}; // setting this to zero or less makes no cut, setting to 0.25 cuts out everything
    void SetEFermi(double ef){e_fermi[-1]=ef; e_fermi[+1]=ef;};
-   std::map<int,double> GetEFermi(){ return e_fermi ;};
+//   std::map<int,double> GetEFermi(){ return e_fermi ;};
+   std::map<int,double> GetEFermi();
    void SetEFermi(double ef_proton, double ef_neutron){e_fermi[-1] = ef_proton; e_fermi[1]=ef_neutron;};
 
    double GetCachedSixJ(
@@ -535,6 +541,7 @@ class ModelSpace
    void SixJUnHash(uint64_t key, uint64_t& j1, uint64_t& j2, uint64_t& j3, uint64_t& J1, uint64_t& J2, uint64_t& J3);
 
    uint64_t NineJHash(double j1, double j2, double J12, double j3, double j4, double J34, double J13, double J24, double J);
+   void NineJUnHash(uint64_t key, uint64_t& j1, uint64_t& j2, uint64_t& J12, uint64_t& j3, uint64_t& j4, uint64_t& J34, uint64_t& J13, uint64_t& J24, uint64_t& J);
 
 
    uint64_t MoshinskyHash(uint64_t N,uint64_t Lam,uint64_t n,uint64_t lam,uint64_t n1,uint64_t l1,uint64_t n2,uint64_t l2,uint64_t L);

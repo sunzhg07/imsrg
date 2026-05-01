@@ -315,6 +315,11 @@ ThreeBodyStorage::ME_type ThreeBodyStorage_no2b<StoreType>::GetME_iso_no2b(int a
 {
 
   ThreeBodyStorage::ME_type vout = 0;
+  if ( IsReduced() )
+  {
+     std::cout << __FILE__ << " " << __func__ << "  Eeek. Can't use no2b with a reduced operator. Dying now." << std::endl;
+     std::exit(EXIT_FAILURE);
+  }
 //  if ( (a==b) and (Tab+J2)%2==0 ) return vout;
 //  if ( (d==e) and (Tde+J2)%2==0 ) return vout;
 
@@ -442,6 +447,7 @@ template<class StoreType>
 void ThreeBodyStorage_no2b<StoreType>::Deallocate() 
 {
     std::map<int, std::vector<StoreType>>().swap( MatEl);
+    is_allocated = false;
 }
 
 template<class StoreType>
@@ -595,11 +601,13 @@ void ThreeBodyStorage_no2b<StoreType>::ReadFile( std::vector<std::string>& Strin
    }
  
  
+   size_t LINESIZE=496; // for reading the header line.
    size_t n_elem_to_read = CountME(Emax_file, E2max_file, E3max_file, Lmax_file, file_Orbits); // number of elements we want
  
    if ( filemode == "bin" ) // binary. check how big the file is.
    {
      infile = std::ifstream(FileName, std::ios::binary);
+
      infile.seekg(0,infile.end);
      size_t n_elem_in_file = infile.tellg();
      infile.seekg(0, infile.beg);
@@ -610,14 +618,26 @@ void ThreeBodyStorage_no2b<StoreType>::ReadFile( std::vector<std::string>& Strin
    else if ( filemode == "gz")  // a gzipped me3j file
    {
      infile = std::ifstream(FileName, std::ios_base::in | std::ios_base::binary);
+
      zipstream.push(boost::iostreams::gzip_decompressor());
      zipstream.push(infile);
+     // skip the first line
+     char line[LINESIZE];
+     zipstream.getline(line,LINESIZE);
    }
    else if (filemode == "me3j" ) // a plain-text me3j file
    {
      infile = std::ifstream(FileName);
+     // skip the first line
+     char line[LINESIZE];
+     infile.getline(line,LINESIZE);
    }
  
+   if ( not infile.good())
+   {
+      std::cout << "Uh Oh. Trouble reading 3N file " << FileName << "  " << __func__ << " in " << __FILE__ << " line " << __LINE__ << "   dying." << std::endl;
+      std::exit(EXIT_FAILURE);
+   }
  
    size_t buffer_size = std::min( MAX_READ,  n_elem_to_read);
  

@@ -52,6 +52,8 @@ class IMSRGProfiler
   void PrintAll();
   size_t MaxMemUsage();
   void Clear();
+  double GetTimer(std::string);
+  int GetCounter(std::string);
 };
 
 #endif

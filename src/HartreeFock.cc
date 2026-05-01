@@ -311,13 +311,13 @@ void HartreeFock::SetUpMonopoleV3Keys()
             {
               Orbit& oc = modelspace->GetOrbit(c);
               int ec = 2*oc.n + oc.l;
-              if ( ea+ec+ei > Hbare.E3max ) continue;
+              if ( ea+ec+ei > modelspace->GetE3max() ) continue;
               for (uint64_t d : Hbare.OneBodyChannels.at({oc.l,oc.j2,oc.tz2}) )
               {
                 Orbit& od = modelspace->GetOrbit(d);
                 int ed = 2*od.n + od.l;
 
-                if ( eb+ed+ej > Hbare.E3max ) continue;
+                if ( eb+ed+ej > modelspace->GetE3max() ) continue;
                 if ( (oi.l+oa.l+ob.l+oj.l+oc.l+od.l)%2 >0) continue;
                 uint64_t key = Vmon3Hash(a,c,i,b,d,j);
                 Vmon3_keys.push_back( key );
@@ -1126,11 +1126,11 @@ Operator HartreeFock::GetNormalOrderedH(int particle_rank)
          for ( auto a : modelspace->all_orbits )
          {
            Orbit & oa = modelspace->GetOrbit(a);
-           if ( 2*oa.n+oa.l+e2bra > Hbare.GetE3max() ) continue;
+           if ( 2*oa.n+oa.l+e2bra > modelspace->GetE3max() ) continue;
            for (int b : Hbare.OneBodyChannels.at({oa.l,oa.j2,oa.tz2}))
            {
              Orbit & ob = modelspace->GetOrbit(b);
-             if ( 2*ob.n+ob.l+e2ket > Hbare.GetE3max() ) continue;
+             if ( 2*ob.n+ob.l+e2ket > modelspace->GetE3max() ) continue;
              if ( std::abs(rho(a,b)) < 1e-8 ) continue; // Turns out this helps a bit (factor of 5 speed up in tests)
              V3NO(i,j) += rho(a,b) * Hbare.ThreeBody.GetME_pn_no2b(bra.p,bra.q,a, ket.p,ket.q,b, J);
            }

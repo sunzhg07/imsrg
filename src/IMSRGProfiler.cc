@@ -135,3 +135,33 @@ void IMSRGProfiler::Clear()
   start_time = omp_get_wtime();
 }
 
+
+
+double IMSRGProfiler::GetTimer(std::string key)
+{
+  auto result = timer.find(key);
+  if (result != timer.end() )
+  {
+     return result->second;
+  }
+  else
+  {
+    std::cout << __func__ << "  key " << key << " not found." << std::endl;
+  }
+  return 0;
+}
+int IMSRGProfiler::GetCounter(std::string key)
+{
+  auto result = counter.find(key);
+  if (result != counter.end() )
+  {
+     return result->second;
+  }
+  else
+  {
+    std::cout << __func__ << "  key " << key << " not found." << std::endl;
+  }
+  return 0;
+}
+
+

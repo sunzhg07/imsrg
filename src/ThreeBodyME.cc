@@ -76,21 +76,18 @@ ThreeBodyME::ThreeBodyME(const ThreeBodyME& Tbme)
 
  ThreeBodyME& ThreeBodyME::operator*=(const double rhs)
  {
-//   (*threebody_storage) *= rhs;
    threebody_storage->Multiply(rhs);
    return *this;
  }
 
  ThreeBodyME& ThreeBodyME::operator+=(const ThreeBodyME& rhs)
  {
-//   (*threebody_storage) += (*(rhs.threebody_storage));
    if ( IsAllocated() and rhs.IsAllocated() )
    {
       threebody_storage->Add(*rhs.threebody_storage);
    }
    else if ( rhs.IsAllocated() )
    {
-//     *threebody_storage = *rhs.threebody_storage;
      threebody_storage = rhs.threebody_storage->Clone();
    }
    return *this;
@@ -104,7 +101,7 @@ ThreeBodyME::ThreeBodyME(const ThreeBodyME& Tbme)
    }
    else if ( rhs.IsAllocated() )
    {
-     *threebody_storage = *rhs.threebody_storage;
+     threebody_storage = rhs.threebody_storage->Clone();
      threebody_storage->Multiply(-1);
    }
    return *this;
@@ -384,6 +381,7 @@ void ThreeBodyME::SetMode(std::string mode)
   {
     std::cout << " WARNING: I don't know 3N mode " << mode << " .  Continuing with what we had before which is " << threebody_storage->GetStorageMode() << std::endl;
   }
+  threebody_storage->SetHerm( this->herm );
   threebody_storage->Allocate();
 //  storage_mode = pn;
   IMSRGProfiler::timer[__func__] += omp_get_wtime() - t_start;

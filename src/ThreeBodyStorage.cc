@@ -18,15 +18,15 @@ ThreeBodyStorage::ThreeBodyStorage(ModelSpace* ms, int e3max)
 ThreeBodyStorage::ThreeBodyStorage( const ThreeBodyStorage& TBS_in )
 : modelspace(TBS_in.modelspace), emax(TBS_in.emax), E2max(TBS_in.E2max), E3max(TBS_in.E3max), lmax(TBS_in.lmax), herm(TBS_in.herm), 
  rank_J(TBS_in.rank_J), rank_T(TBS_in.rank_T), parity(TBS_in.parity), ISOSPIN_BLOCK_DIMENSION(TBS_in.ISOSPIN_BLOCK_DIMENSION),
- is_allocated(TBS_in.is_allocated), ch_start(TBS_in.ch_start), ch_dim(TBS_in.ch_dim)
+ is_allocated(TBS_in.is_allocated), is_reduced(TBS_in.is_reduced), ch_start(TBS_in.ch_start), ch_dim(TBS_in.ch_dim)
 {}
 
 ThreeBodyStorage::ThreeBodyStorage(ModelSpace* ms, int rJ, int rT, int p)
- : modelspace(ms),  emax(ms->GetEMax3Body()), E2max(ms->GetE2max()), E3max(ms->GetE3max()), lmax(ms->GetLmax()), rank_J(rJ), rank_T(rT), parity(p)
+ : modelspace(ms),  emax(ms->GetEMax3Body()), E2max(ms->GetE2max()), E3max(ms->GetE3max()), lmax(ms->GetLmax()), rank_J(rJ), rank_T(rT), parity(p), is_reduced(not(rJ==0 and rT==0 and p==0))
 {}
 
 ThreeBodyStorage::ThreeBodyStorage(ModelSpace* ms, int e3max , int rJ, int rT, int p)
- : modelspace(ms), emax(ms->GetEMax3Body()), E2max(ms->GetE2max()), E3max(e3max), lmax(ms->GetLmax()), rank_J(rJ), rank_T(rT), parity(p)
+ : modelspace(ms), emax(ms->GetEMax3Body()), E2max(ms->GetE2max()), E3max(e3max), lmax(ms->GetLmax()), rank_J(rJ), rank_T(rT), parity(p), is_reduced(not(rJ==0 and rT==0 and p==0))
 {}
 
 
@@ -293,7 +293,7 @@ std::vector<ThreeBodyStorage::ME_type> ThreeBodyStorage::GetME_pn_TwoOps(int Jab
   std::vector<size_t> iket;
   size_t ch_bra = GetKetIndex_withRecoupling( Jab, twoJ, a,b,c, ibra, recouple_bra );
   size_t ch_ket = GetKetIndex_withRecoupling( Jde, twoJ, d,e,f, iket, recouple_ket );
-  if ( ch_bra != ch_ket) return me_out;
+  // if ( ch_bra != ch_ket) return me_out;  // remove this and let it also works for tensor  B.C.
   //TODO: Should we also throw an exception if twoJ is even?
 
   for ( size_t i=0; i<ibra.size(); i++)
@@ -317,7 +317,7 @@ ThreeBodyStorage::ME_type ThreeBodyStorage::GetME_iso_no2b(int a, int b, int c, 
    int twoJmin = std::abs( 2*J2b - oc.j2 );
    int twoJmax = 2*J2b + oc.j2; 
    ME_type me_no2b = 0;
-   if ( rank_J==0 and rank_T==0 and parity==0)
+   if ( not IsReduced() )
    {
      for (int twoJ=twoJmin; twoJ<=twoJmax; twoJ+=2)
      {
@@ -328,7 +328,7 @@ ThreeBodyStorage::ME_type ThreeBodyStorage::GetME_iso_no2b(int a, int b, int c, 
    {
      for (int twoJ=twoJmin; twoJ<=twoJmax; twoJ+=2)
      {
-       me_no2b += GetME_iso(J2b,J2b,twoJ, Tab,Tde,twoT,twoT, a,b,c,d,e,f) * sqrt(twoJ+1.);
+       me_no2b += GetME_iso(J2b,J2b,twoJ, Tab,Tde,twoT,twoT, a,b,c,d,e,f) * sqrt((2*J2b+1)/(twoJ+1.));
      }
    }
    return me_no2b;
@@ -345,7 +345,7 @@ ThreeBodyStorage::ME_type ThreeBodyStorage::GetME_pn_no2b(int a, int b, int c, i
    int twoJmax = 2*J2b + oc.j2; 
    ME_type me_no2b = 0;
 
-   if ( rank_J==0 and rank_T==0 and parity==0)
+   if ( not IsReduced() )
    {
      for (int twoJ=twoJmin; twoJ<=twoJmax; twoJ+=2)
      {
@@ -356,7 +356,7 @@ ThreeBodyStorage::ME_type ThreeBodyStorage::GetME_pn_no2b(int a, int b, int c, i
    {
      for (int twoJ=twoJmin; twoJ<=twoJmax; twoJ+=2)
      {
-       me_no2b += GetME_pn(J2b,J2b,twoJ, a,b,c,d,e,f) * sqrt(twoJ+1.);
+       me_no2b += GetME_pn(J2b,J2b,twoJ, a,b,c,d,e,f) * sqrt(2*J2b+1 / (twoJ+1.));
      }
    }
    return me_no2b;

@@ -146,10 +146,10 @@ void HFMBPT::DiagonalizeRho()
 {
   for (auto& it : Hbare.OneBodyChannels)
   {
-//    arma::uvec orbvec(it.second);
+    //    arma::uvec orbvec(it.second);
     arma::uvec orbvec(std::vector<index_t>(it.second.begin(),it.second.end()));
-//    arma::uvec orbvec_d = arma::sort(orbvec, "descend");
-//    arma::uvec orbvec_d = sort(orbvec, "descend");
+    //    arma::uvec orbvec_d = arma::sort(orbvec, "descend");
+    //    arma::uvec orbvec_d = sort(orbvec, "descend");
     arma::mat rho_ch = rho.submat(orbvec, orbvec);
     arma::mat vec;
     arma::vec eig;
@@ -162,21 +162,21 @@ void HFMBPT::DiagonalizeRho()
       rho_ch.print();
       exit(0);
     }
-//    Occ(orbvec_d) = eig; // assigning with descending indexes produces NAT orbits ordered by descending occupation.
-//    C_HF2NAT.submat(orbvec, orbvec_d) = vec; // NAT orbits ordered by descending occupation
+    //    Occ(orbvec_d) = eig; // assigning with descending indexes produces NAT orbits ordered by descending occupation.
+    //    C_HF2NAT.submat(orbvec, orbvec_d) = vec; // NAT orbits ordered by descending occupation
 
     Occ(orbvec) = arma::reverse(eig); // reverse so NAT orbits ordered by descending occupation.
     C_HF2NAT.submat(orbvec, orbvec) = arma::reverse(vec, 1); // "1" means reverse elements in each row
-//    std::cout << "1-body channel ";
-//    for ( auto x : it.first ) std::cout << x << " ";
-//    std::cout << "  : " << std::endl << Occ(orbvec) << std::endl;
-//    std::cout << " C submat: " << std::endl << C_HF2NAT.submat(orbvec, orbvec ) << std::endl;
+    //    std::cout << "1-body channel ";
+    //    for ( auto x : it.first ) std::cout << x << " ";
+    //    std::cout << "  : " << std::endl << Occ(orbvec) << std::endl;
+    //    std::cout << " C submat: " << std::endl << C_HF2NAT.submat(orbvec, orbvec ) << std::endl;
   }
  // Choose ordering and phases so that C_HF2NAT looks as close to the identity as possible
  // NB: Rather than C_HF2NAT being close to the identity, we really want the orbits for a given (l,j,tz) ordered
  // according to decreasing occupation, so that a later emax_imsrg truncation is reasonable. -SRS Jan 2021.
-//  ReorderHFMBPTCoefficients();
-//  std::cout << " line " << __LINE__ << "   Occ = " << std::endl << Occ << std::endl;
+ //  ReorderHFMBPTCoefficients();
+ //  std::cout << " line " << __LINE__ << "   Occ = " << std::endl << Occ << std::endl;
 }
 
 //*********************************************************************
@@ -339,7 +339,7 @@ Operator HFMBPT::GetNormalOrderedHNAT(int particle_rank)
   HNO.ZeroBody = EHF;
   HNO.OneBody = C_HO2NAT.t() * F * C_HO2NAT;
 
-  int nchan = HartreeFock::modelspace->GetNumberTwoBodyChannels();
+  int nchan = modelspace->GetNumberTwoBodyChannels();
 
 
 
@@ -374,12 +374,12 @@ Operator HFMBPT::GetNormalOrderedHNAT(int particle_rank)
           for ( auto a : modelspace->all_orbits )
           {
             Orbit & oa = modelspace->GetOrbit(a);
-            if ( 2*oa.n+oa.l+e2bra > Hbare.GetE3max() ) continue;
+            if ( 2*oa.n+oa.l+e2bra > modelspace->GetE3max() ) continue;
             for (int b : Hbare.OneBodyChannels.at({oa.l,oa.j2,oa.tz2}))
             {
               if ( std::abs(rho(a,b)) < 1e-8 ) continue; // Turns out this helps a bit (factor of 5 speed up in tests)
-              Orbit & ob = HartreeFock::modelspace->GetOrbit(b);
-              if ( 2*ob.n+ob.l+e2ket > Hbare.GetE3max() ) continue;
+              Orbit & ob = modelspace->GetOrbit(b);
+              if ( 2*ob.n+ob.l+e2ket > modelspace->GetE3max() ) continue;
 //              V3NO(i,j) += rho(a,b) * GetVNO2B(bra.p, bra.q, a, ket.p, ket.q, b, J);
               V3NO(i,j) += rho(a,b) * Hbare.ThreeBody.GetME_pn_no2b(bra.p,bra.q,a,ket.p,ket.q,b,J);
             }

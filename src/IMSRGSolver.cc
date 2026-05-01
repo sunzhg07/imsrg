@@ -1,4 +1,3 @@
-
 #include "IMSRGSolver.hh"
 #include "Commutator.hh"
 #include "BCH.hh"
@@ -37,7 +36,7 @@ IMSRGSolver::IMSRGSolver(Operator &H_in)
 {
   Eta.Erase();
   Eta.SetAntiHermitian();
-//  Eta.ThreeBody.SetMode("pn");  // DONT DO THIS, it allocates a 3N structure even if you don't want it.
+  //  Eta.ThreeBody.SetMode("pn");  // DONT DO THIS, it allocates a 3N structure even if you don't want it.
   Omega.emplace_back(Eta);
 }
 
@@ -103,11 +102,12 @@ void IMSRGSolver::GatherOmega()
   {
     auto &last = Omega.back();
     Omega.emplace_back(last);
+    Omega.back().Erase(); // SRS: in this case the hunter should be zero. Fixes bug found by Matthias Heinz July 2024.
   }
   // the last omega in the list is the hunter. the one just preceeding it is the gatherer.
   auto &hunter = Omega.back();
   auto &gatherer = Omega[Omega.size() - 2];
-  if (hunter.Norm() > 1e-6)
+  if (hunter.Norm() > 1e-12) // SRS: changed this from 1e-6 to 1e-12. No reason for it to be so big.
   {
     gatherer = BCH::BCH_Product(hunter, gatherer);
   }
@@ -225,6 +225,11 @@ void IMSRGSolver::Solve()
   }
   else
     std::cout << "IMSRGSolver: I don't know method " << method << std::endl;
+
+  if (hunter_gatherer)
+  {
+    GatherOmega();
+  }
 }
 
 void IMSRGSolver::UpdateEta()
@@ -238,7 +243,7 @@ void IMSRGSolver::Solve_magnus_euler()
   istep = 0;
 
   generator.Update(FlowingOps[0], Eta);
-
+  // Eta.PrintTwoBody();
   // SRS noticed this on June 12 2024. If these two parameters are equal, and especially if we're using the hunter-gatherer mode, then we become sensitive to
   // numerical precision when deciding if we should split omega, leading to machine-dependent behavior.
   if ( std::abs( omega_norm_max - norm_domega)<1e-6 )
@@ -506,10 +511,6 @@ void IMSRGSolver::Solve_magnus_modified_euler()
 void IMSRGSolver::Solve_flow_RK4()
 {
   istep = 0;
-
-  //   if ( generator.GetType() == "rspace" ) { generator.modelspace = (Eta.modelspace); generator.SetRegulatorLength(800005.0); };
-
-  //   generator.Update(&FlowingOps[0],&Eta);
   generator.Update(FlowingOps[0], Eta);
 
   if (generator.GetType() == "shell-model-atan")
@@ -545,7 +546,6 @@ void IMSRGSolver::Solve_flow_RK4()
     std::vector<Operator> K4(nops);
     std::vector<Operator> Ktmp(nops);
 
-    //      Operator& Hs = FlowingOps[0];   // this is not used explicitly
     for (int i = 0; i < nops; i++)
     {
       if (i == 0)
@@ -960,6 +960,12 @@ Operator IMSRGSolver::Transform_Partial(Operator &OpIn, int n)
   if (OpOut.GetParticleRank() == 1)
     OpOut.SetParticleRank(2);
 
+//  if (Commutator::use_imsrg3 and not OpIn.ThreeBody.Is_PN_Mode() )
+//  {
+//    OpIn.ThreeBody.SetMode("pn");
+//    OpOut.ThreeBody.SetMode("pn");
+//  }
+
   //  if ((rw != NULL) and rw->GetScratchDir() != "")
   if (scratchdir != "")
   {
@@ -994,6 +1000,11 @@ Operator IMSRGSolver::Transform_Partial(Operator &OpIn, int n)
     //     std::cout << " norm of op = " << OpOut.Norm() << std::endl;
     //     std::cout << " op zero body = " << OpOut.ZeroBody << std::endl;
     //    OpOut = OpOut.BCH_Transform( Omega[i] );
+//    if (Commutator::use_imsrg3 and not Omega[i].ThreeBody.Is_PN_Mode() )
+//    {
+//       
+//       Omega[i].ThreeBody.SetMode("pn");
+//    }
     OpOut = BCH::BCH_Transform(OpOut, Omega[i]);
     //     if (OpIn.GetJRank()>0)cout << "done" << endl;
   }
@@ -1148,6 +1159,9 @@ double IMSRGSolver::CalculatePerturbativeTriples()
   BCH::SetBCHSkipiEq1(true);
   Operator Htilde = Transform(*H_0);
   BCH::SetBCHSkipiEq1(false);
+//  // We double all the commutators beyond the first, because they account for [O,[O,H]_3]_3 diagrams which we would otherwise miss
+//  Dont do this for now.
+//  Htilde.TwoBody  += 0.5*Commutator::Commutator(omega,*H_0).TwoBody ;
 
   // We double the first commutator account for [O,[O,H]_3]_3 diagrams which produce identical Wod and which we would otherwise miss
   // Leave this off for now.

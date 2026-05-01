@@ -609,6 +609,7 @@ template<class StoreType>
 void ThreeBodyStorage_mono<StoreType>::Deallocate() 
 {
     std::map<int, std::vector<StoreType>>().swap( MatEl);
+    is_allocated = false;
 }
 
 template<class StoreType>

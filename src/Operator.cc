@@ -68,7 +68,7 @@ Operator::Operator(ModelSpace &ms, int Jrank, int Trank, int p, int part_rank) :
                                                                                  //    TwoBody(&ms,Jrank,Trank,p),  ThreeBody(&ms,Jrank,Trank,p), ThreeLeg(&ms),
                                                                                  TwoBody(), ThreeBody(&ms, Jrank, Trank, p), ThreeLeg(&ms),
                                                                                  rank_J(Jrank), rank_T(Trank), parity(p), particle_rank(part_rank), legs(2 * part_rank),
-                                                                                 E3max(ms.GetE3max()),
+                                                                                 //E3max(ms.GetE3max()),
                                                                                  hermitian(true), antihermitian(false),
                                                                                  nChannels(ms.GetNumberTwoBodyChannels()), Q_space_orbit(-1),
                                                                                  is_reduced(Jrank > 0 or Trank > 0 or p > 0) // by default, Hamiltonian-like operators are not reduced, all others are reduced.
@@ -86,7 +86,7 @@ Operator::Operator(ModelSpace &ms) : modelspace(&ms), ZeroBody(0), OneBody(ms.Ge
                                      TwoBody(&ms), ThreeBody(&ms), ThreeLeg(&ms),
                                      //    TwoBody(&ms),  ThreeBody(&ms), ThreeLeg(&ms), ThreeBodyNO2B(),
                                      rank_J(0), rank_T(0), parity(0), particle_rank(2), legs(4),
-                                     E3max(ms.GetE3max()),
+                                     //E3max(ms.GetE3max()),
                                      hermitian(true), antihermitian(false),
                                      nChannels(ms.GetNumberTwoBodyChannels()), Q_space_orbit(-1),
                                      is_reduced(false)
@@ -100,7 +100,7 @@ Operator::Operator(const Operator &op)
       OneBody(op.OneBody), TwoBody(op.TwoBody), ThreeBody(op.ThreeBody), ThreeLeg(op.ThreeLeg),
       //  OneBody(op.OneBody), TwoBody(op.TwoBody) ,ThreeBody(op.ThreeBody), ThreeLeg(op.ThreeLeg), ThreeBodyNO2B(op.ThreeBodyNO2B),
       rank_J(op.rank_J), rank_T(op.rank_T), parity(op.parity), particle_rank(op.particle_rank), legs(op.legs),
-      E2max(op.E2max), E3max(op.E3max),
+//      E2max(op.E2max), E3max(op.E3max),
       hermitian(op.hermitian), antihermitian(op.antihermitian),
       nChannels(op.nChannels), OneBodyChannels(op.OneBodyChannels), Q_space_orbit(op.Q_space_orbit),
       OneBodyChannels_vec(op.OneBodyChannels_vec),
@@ -114,7 +114,7 @@ Operator::Operator(Operator &&op)
       OneBody(std::move(op.OneBody)), TwoBody(std::move(op.TwoBody)), ThreeBody(std::move(op.ThreeBody)), ThreeLeg(std::move(op.ThreeLeg)),
       //  ThreeBodyNO2B(std::move(op.ThreeBodyNO2B)),
       rank_J(op.rank_J), rank_T(op.rank_T), parity(op.parity), particle_rank(op.particle_rank), legs(op.legs),
-      E2max(op.E2max), E3max(op.E3max),
+//      E2max(op.E2max), E3max(op.E3max),
       hermitian(op.hermitian), antihermitian(op.antihermitian),
       nChannels(op.nChannels), OneBodyChannels(op.OneBodyChannels), Q_space_orbit(op.Q_space_orbit),
       OneBodyChannels_vec(op.OneBodyChannels_vec),
@@ -175,14 +175,15 @@ Operator Operator::operator/(const double rhs) const
 // Add operators
 Operator &Operator::operator+=(const Operator &rhs)
 {
+  int rank_lhs = this->GetParticleRank();
+  int rank_rhs = rhs.GetParticleRank();
+  int maxrank = std::max( rank_lhs, rank_rhs );
   ZeroBody += rhs.ZeroBody;
   OneBody += rhs.OneBody;
-  if (rhs.GetParticleRank() > 1)
-    TwoBody += rhs.TwoBody;
-  if (rhs.GetParticleRank() > 2)
-    ThreeBody += rhs.ThreeBody;
-  //   if (rhs.GetParticleRank() >2 )
-  //     ThreeBodyNO2B += rhs.ThreeBodyNO2B;
+  TwoBody += rhs.TwoBody;
+  ThreeBody += rhs.ThreeBody;
+  if ( maxrank > rank_lhs ) this->SetParticleRank(maxrank);
+
   if (rhs.GetNumberLegs() % 2 == 1)
     ThreeLeg += rhs.ThreeLeg;
   return *this;
@@ -210,14 +211,14 @@ Operator Operator::operator+(const double &rhs) const
 // Subtract operators
 Operator &Operator::operator-=(const Operator &rhs)
 {
+  int rank_lhs = this->GetParticleRank();
+  int rank_rhs = rhs.GetParticleRank();
+  int maxrank = std::max( rank_lhs, rank_rhs );
   ZeroBody -= rhs.ZeroBody;
   OneBody -= rhs.OneBody;
-  if (rhs.GetParticleRank() > 1)
-    TwoBody -= rhs.TwoBody;
-  if (rhs.GetParticleRank() > 2)
-    ThreeBody -= rhs.ThreeBody;
-  //   if (rhs.GetParticleRank() > 2)
-  //     ThreeBodyNO2B -= rhs.ThreeBodyNO2B;
+  TwoBody -= rhs.TwoBody;
+  ThreeBody -= rhs.ThreeBody;
+  if ( maxrank > rank_lhs ) this->SetParticleRank(maxrank);
   if (rhs.GetNumberLegs() % 2 == 1)
     ThreeLeg -= rhs.ThreeLeg;
   return *this;
@@ -346,8 +347,8 @@ void Operator::WriteBinary(std::ofstream &ofs)
   ofs.write((char *)&parity, sizeof(parity));
   ofs.write((char *)&particle_rank, sizeof(particle_rank));
   ofs.write((char *)&legs, sizeof(legs));
-  ofs.write((char *)&E2max, sizeof(E2max));
-  ofs.write((char *)&E3max, sizeof(E3max));
+//  ofs.write((char *)&E2max, sizeof(E2max));
+//  ofs.write((char *)&E3max, sizeof(E3max));
   ofs.write((char *)&hermitian, sizeof(hermitian));
   ofs.write((char *)&antihermitian, sizeof(antihermitian));
   ofs.write((char *)&nChannels, sizeof(nChannels));
@@ -370,8 +371,8 @@ void Operator::ReadBinary(std::ifstream &ifs)
   ifs.read((char *)&parity, sizeof(parity));
   ifs.read((char *)&particle_rank, sizeof(particle_rank));
   ifs.read((char *)&legs, sizeof(legs));
-  ifs.read((char *)&E2max, sizeof(E2max));
-  ifs.read((char *)&E3max, sizeof(E3max));
+//  ifs.read((char *)&E2max, sizeof(E2max));
+//  ifs.read((char *)&E3max, sizeof(E3max));
   ifs.read((char *)&hermitian, sizeof(hermitian));
   ifs.read((char *)&antihermitian, sizeof(antihermitian));
   ifs.read((char *)&nChannels, sizeof(nChannels));
@@ -391,9 +392,10 @@ void Operator::ReadBinary(std::ifstream &ifs)
 
 Operator Operator::DoNormalOrdering() const
 {
-  if (legs % 2 > 0)
+  // if (legs % 2 > 0)
+  if ( not this->IsNumberConserving() )
     return DoNormalOrderingDagger(+1, modelspace->holes);
-  if (legs > 5)
+  if ( this->GetParticleRank() >= 3 )
     return DoNormalOrdering3(+1, modelspace->holes);
   else
     return DoNormalOrdering2(+1, modelspace->holes);
@@ -401,18 +403,24 @@ Operator Operator::DoNormalOrdering() const
 
 Operator Operator::UndoNormalOrdering() const
 {
-  std::cout << " IN " << __func__ << "   legs = " << legs << std::endl;
-  if (legs % 2 > 0)
+//  std::cout << " IN " << __func__ << "   legs = " << legs << std::endl;
+  if ( not this->IsNumberConserving() )
     return DoNormalOrderingDagger(-1, modelspace->holes);
-  //    return UndoNormalOrderingDagger();
-  else if (legs < 5)
-    return DoNormalOrdering2(-1, modelspace->holes);
-  //    return UndoNormalOrdering2();
-  else
-  {
+  if ( this->GetParticleRank() >=3)
     return DoNormalOrdering3(-1, modelspace->holes);
-    //    return UndoNormalOrdering3();
-  }
+  else
+    return DoNormalOrdering2(-1, modelspace->holes);
+}
+
+Operator Operator::UndoNormalOrderingCore() const
+{
+  //  std::cout << " IN " << __func__ << "   legs = " << legs << std::endl;
+  if (not this->IsNumberConserving())
+    return DoNormalOrderingDagger(-1, modelspace->core);
+  if (this->GetParticleRank() >= 3)
+    return DoNormalOrdering3(-1, modelspace->core);
+  else
+    return DoNormalOrdering2(-1, modelspace->core);
 }
 
 // Operator Operator::UndoNormalOrdering2() const
@@ -431,10 +439,11 @@ Operator Operator::UndoNormalOrdering() const
 
 Operator Operator::DoNormalOrderingCore() const
 {
-  std::cout << " IN " << __func__ << "   legs = " << legs << std::endl;
-  if (legs % 2 > 0)
+//  std::cout << " IN " << __func__ << "   legs = " << legs << std::endl;
+//  if (legs % 2 > 0)
+  if ( not this->IsNumberConserving() )
     return DoNormalOrderingDagger(+1, modelspace->core);
-  if (legs > 5)
+  if ( this->GetParticleRank() >= 3 )
     return DoNormalOrdering3(+1, modelspace->core);
   else
     return DoNormalOrdering2(+1, modelspace->core);
@@ -452,6 +461,7 @@ Operator Operator::DoNormalOrderingFilledValence() const
       return DoNormalOrdering2(+1, modelspace->valence);
 }
 
+
 //*************************************************************
 ///  Normal ordering of a 2body operator
 ///  set up for scalar or tensor operators, but
@@ -460,14 +470,10 @@ Operator Operator::DoNormalOrderingFilledValence() const
 // Operator Operator::DoNormalOrdering2(int sign) const
 Operator Operator::DoNormalOrdering2(int sign, std::set<index_t> occupied) const
 {
-  //   for ( auto o : occupied ) std::cout << o << " ";
-  //   std::cout << std::endl;
-
   Operator opNO(*this);
   bool scalar = (opNO.rank_J == 0 and opNO.rank_T == 0 and opNO.parity == 0);
   if (scalar)
   {
-    //     for (auto& k : modelspace->holes) // loop over hole orbits
     for (auto &k : occupied) // loop over hole orbits
     {
       Orbit &ok = modelspace->GetOrbit(k);
@@ -491,6 +497,8 @@ Operator Operator::DoNormalOrdering2(int sign, std::set<index_t> occupied) const
     }
   }
   //   std::cout << "OneBody contribution: " << opNO.ZeroBody << std::endl;
+  int herm = IsHermitian()? +1 : -1;
+  if (IsNonHermitian()) herm =0;
 
   index_t norbits = modelspace->GetNumberOrbits();
   if (TwoBody.Norm() > 1e-7)
@@ -523,45 +531,40 @@ Operator Operator::DoNormalOrdering2(int sign, std::set<index_t> occupied) const
           for (auto &h : occupied) // C++11 syntax
           {
             Orbit &oh = modelspace->GetOrbit(h);
-            if (opNO.rank_J == 0)
+            // if (opNO.rank_J == 0)
+            if (not opNO.IsReduced())
             {
-              opNO.OneBody(a, b) += hatfactor / (2 * ja + 1.0) * sign * oh.occ * TwoBody.GetTBME(ch_bra, ch_ket, a, h, b, h);
+              opNO.OneBody(a,b) += hatfactor / (2 * ja + 1.0) * sign * oh.occ * TwoBody.GetTBME(ch_bra, ch_ket, a, h, b, h);
+              if ( herm !=0 )
+              {
+                opNO.OneBody(b,a) = herm * opNO.OneBody(a,b);
+              }
             }
             else
             {
               double jh = oh.j2 * 0.5;
-              if ((ja + jh < J_bra) or (abs(ja - jh) > J_bra) or (jb + jh < J_ket) or (abs(jb - jh) > J_ket))
-                continue;
-              if ((oa.l + oh.l + tbc_bra.parity) % 2 > 0)
-                continue;
-              if ((ob.l + oh.l + tbc_ket.parity) % 2 > 0)
-                continue;
-              if ((oa.tz2 + oh.tz2) != tbc_bra.Tz * 2)
-                continue;
-              if ((ob.tz2 + oh.tz2) != tbc_ket.Tz * 2)
-                continue;
+//              if ((ja + jh < J_bra) or (abs(ja - jh) > J_bra) or (jb + jh < J_ket) or (abs(jb - jh) > J_ket))
+              if (not AngMom::Triangle( ja,jh,J_bra) )    continue;
+              if (not AngMom::Triangle( jb,jh,J_ket) )    continue;
+              if ((oa.l + oh.l + tbc_bra.parity) % 2 > 0) continue;
+              if ((ob.l + oh.l + tbc_ket.parity) % 2 > 0) continue;
+              if ((oa.tz2 + oh.tz2) != tbc_bra.Tz * 2)    continue;
+              if ((ob.tz2 + oh.tz2) != tbc_ket.Tz * 2)    continue;
               double ME = hatfactor * sign * oh.occ * modelspace->phase(ja + jh - J_ket - opNO.rank_J) * modelspace->GetSixJ(J_bra, J_ket, opNO.rank_J, jb, ja, jh) * TwoBody.GetTBME(ch_bra, ch_ket, a, h, b, h);
-              if (a > b)
+              if ( a==b and J_bra != J_ket)
               {
-                int herm = IsHermitian() ? 1 : -1;
-                opNO.OneBody(b, a) += herm * modelspace->phase(ja - jb) * ME;
+                    ME *=2; // To account for both combinations < ah Jbra||Op|| bh Jket> and <ab Jket||Op|| bh Jbra>.  (Bug found by Antoine Belley, May 2025).
               }
-              else
-              {
-                opNO.OneBody(a, b) += ME;
-              }
+              opNO.OneBody(a,b) += ME;
+              
+              opNO.OneBody(b,a) = herm * modelspace->phase(ja - jb) * opNO.OneBody(a,b);
+              
             }
           }
         }
       }
     } // loop over channels
-    //     std::cout << "------------------------------------------" << std::endl;
   }
-
-  if (hermitian)
-    opNO.Symmetrize();
-  if (antihermitian)
-    opNO.AntiSymmetrize();
 
   return opNO;
 }
@@ -586,9 +589,14 @@ Operator Operator::DoNormalOrdering3(int sign, std::set<index_t> occupied) const
     std::cout << " Uh oh. Trying to call " << __func__ << "  on an operator with rank_J = " << rank_J << "   you should probably implement that first..." << std::endl;
     std::exit(EXIT_FAILURE);
   }
+  int herm = IsHermitian() ? +1 : -1;
+  if (IsNonHermitian()) herm = 0;
   //    double vread = ThreeBody.GetME_pn(0,0,3,10,10,3,11,11,3);
   //    std::cout << " IN " << __func__ << "   vread =  " << vread << std::endl;
   Operator opNO3 = Operator(*modelspace, rank_J, rank_T, parity, 2);
+  opNO3.is_reduced = this->is_reduced;
+  opNO3.hermitian = this->hermitian;
+  opNO3.antihermitian = this->antihermitian;
   std::vector<int> ch_bra_list, ch_ket_list;
   //   std::vector<arma::mat *> mat_ptr_list;
   for (auto &itmat : opNO3.TwoBody.MatEl)
@@ -598,18 +606,14 @@ Operator Operator::DoNormalOrdering3(int sign, std::set<index_t> occupied) const
   }
   int niter = ch_bra_list.size();
   //   for ( auto& itmat : opNO3.TwoBody.MatEl )
-#pragma omp parallel for schedule(dynamic, 1)
+//#pragma omp parallel for schedule(dynamic, 1)
   for (int iter = 0; iter < niter; iter++)
   {
     int ch_bra = ch_bra_list[iter];
     int ch_ket = ch_ket_list[iter];
-    //      auto& Gamma = *(mat_ptr_list[iter]);
     auto &Gamma = opNO3.TwoBody.GetMatrix(ch_bra, ch_ket);
-    //      int ch_bra = itmat.first[0]; // assume ch_bra = ch_ket for 3body...
-    //      int ch_ket = itmat.first[1]; // assume ch_bra = ch_ket for 3body...
     TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(ch_bra);
     TwoBodyChannel &tbc_ket = modelspace->GetTwoBodyChannel(ch_ket);
-    //      auto& Gamma =  itmat->second;
     for (size_t ibra = 0; ibra < tbc_bra.GetNumberKets(); ++ibra)
     {
       Ket &bra = tbc_bra.GetKet(ibra);
@@ -617,7 +621,7 @@ Operator Operator::DoNormalOrdering3(int sign, std::set<index_t> occupied) const
       int j = bra.q;
       Orbit &oi = modelspace->GetOrbit(i);
       Orbit &oj = modelspace->GetOrbit(j);
-      size_t iket_min = ch_bra == ch_ket ? ibra : 0;
+      size_t iket_min = (ch_bra == ch_ket) ? ibra : 0;
       for (size_t iket = iket_min; iket < tbc_ket.GetNumberKets(); ++iket)
       {
         Ket &ket = tbc_ket.GetKet(iket);
@@ -625,41 +629,30 @@ Operator Operator::DoNormalOrdering3(int sign, std::set<index_t> occupied) const
         int l = ket.q;
         Orbit &ok = modelspace->GetOrbit(k);
         Orbit &ol = modelspace->GetOrbit(l);
-        //            for (auto& a : modelspace->holes)
+        double Gamma_ijkl = 0;
         for (auto &a : occupied)
         {
           Orbit &oa = modelspace->GetOrbit(a);
-          if ((2 * (oi.n + oj.n + oa.n) + oi.l + oj.l + oa.l) > E3max)
+          if ((2 * (oi.n + oj.n + oa.n) + oi.l + oj.l + oa.l) > modelspace->GetE3max() )
             continue;
-          if ((2 * (ok.n + ol.n + oa.n) + ok.l + ol.l + oa.l) > E3max)
+          if ((2 * (ok.n + ol.n + oa.n) + ok.l + ol.l + oa.l) > modelspace->GetE3max() )
             continue;
 
-          //               int kmin2 = abs(2*tbc_bra.J-oa.j2);
-          //               int kmax2 = 2*tbc_bra.J+oa.j2;
-          //               for (int K2=kmin2; K2<=kmax2; K2+=2)
-          //               {
-          //                  Gamma(ibra,iket) += (K2+1) * sign*oa.occ * ThreeBody.GetME_pn(tbc_bra.J,tbc_ket.J,K2,i,j,a,k,l,a); // This is unnormalized.
-          //                   std::cout << " accessing 3bme   "<< tbc_bra.J << " " << tbc_ket.J << " " << K2 << "    " << i << " " << j << " " << a << "  " << k << " "  << l << " " << a << "       " << ThreeBody.GetME_pn(tbc_bra.J,tbc_ket.J,K2,i,j,a,k,l,a) << "  ->  " << Gamma(ibra,iket) << std::endl;
-          //                                                   }
-
-          Gamma(ibra, iket) += sign * oa.occ * ThreeBody.GetME_pn_no2b(i, j, a, k, l, a, tbc_bra.J);
+          Gamma_ijkl += sign * oa.occ * ThreeBody.GetME_pn_no2b(i, j, a, k, l, a, tbc_bra.J);
         }
-        Gamma(ibra, iket) /= (2 * tbc_bra.J + 1) * sqrt((1 + bra.delta_pq()) * (1 + ket.delta_pq()));
-        if (opNO3.GetTRank() != 0 or opNO3.GetParity() != 0)
-        {
-          Gamma(ibra, iket) *= sqrt(2 * tbc_bra.J + 1); // reduced matrix element
-        }
+        Gamma_ijkl /= (2 * tbc_bra.J + 1) * sqrt((1 + bra.delta_pq()) * (1 + ket.delta_pq()));
+        Gamma(ibra,iket) = Gamma_ijkl;
+        if ( ch_bra==ch_ket )
+           Gamma(iket,ibra) = herm * Gamma_ijkl;
       }
     }
   }
-  opNO3.Symmetrize();
+//  opNO3.Symmetrize();
   Operator opNO2 = opNO3.DoNormalOrdering2(sign, occupied);
   opNO2.ScaleZeroBody(1. / 3.);
   opNO2.ScaleOneBody(1. / 2.);
-  //   std::cout << "IN " << __func__ << "  line " << __LINE__ << "   norms of NO 3b pieces are " << opNO2.ZeroBody << "   " << opNO2.OneBodyNorm() << "   " << opNO2.TwoBodyNorm() << "  and thie original 3b norm was  " << ThreeBody.Norm() << "  which produced a no2b with norm " << opNO3.TwoBodyNorm() << std::endl;
-  //   std::cout << " opNO2 has storage mode " << opNO2.ThreeBody.GetStorageMode() << "  and this has storage mode " << ThreeBody.GetStorageMode() << "  and opNO3 has " << opNO3.ThreeBody.GetStorageMode() << std::endl;
-  //   std::cout << "Are they allocated? " << opNO2.ThreeBody.IsAllocated() << "  " << ThreeBody.IsAllocated() << "  " << opNO3.ThreeBody.IsAllocated() << std::endl;
   std::cout << __func__ << "  contributed " << opNO2.ZeroBody << "  to the zero body part" << std::endl;
+  std::cout << " Parent operator is reduced? " << IsReduced() << "  opNO2 is reduced? " << opNO2.IsReduced() << "   is opNO3 reduced? " << opNO3.IsReduced() << std::endl;
   // Also normal order the 1 and 2 body pieces
   opNO2 += DoNormalOrdering2(sign, occupied);
   opNO2.ThreeBody.SetMode("pn");
@@ -727,6 +720,7 @@ Operator Operator::Truncate(ModelSpace &ms_new)
   OpNew.ZeroBody = ZeroBody;
   OpNew.hermitian = hermitian;
   OpNew.antihermitian = antihermitian;
+  OpNew.is_reduced = is_reduced; // Bug fix suggested by Antoine
   size_t norb = ms_new.GetNumberOrbits();
   arma::uvec old_orbs(norb);
   for (size_t i = 0; i < norb; i++)
@@ -827,8 +821,10 @@ Operator Operator::Truncate(ModelSpace &ms_new)
 
 Operator Operator::DoIsospinAveraging() const
 {
-   Operator OpIso = 0*(*this);
-   OpIso.ZeroBody = this->ZeroBody;
+   Operator OpIso(*this);
+//   Operator OpIso = this->UndoNormalOrdering();
+//   OpIso.ZeroBody = this->ZeroBody;
+//   OpIso = OpIso.UndoNormalOrdering();
 
    for (auto p : modelspace->proton_orbits )
    {
@@ -838,7 +834,7 @@ Operator Operator::DoIsospinAveraging() const
       {
          Orbit& opp = modelspace->GetOrbit(pp);
          int nn = modelspace->GetOrbitIndex( opp.n, opp.l, opp.j2, -opp.tz2 );
-         double vavg = (this->OneBody(p,pp) + this->OneBody(n,nn) )/2;
+         double vavg = (OpIso.OneBody(p,pp) + OpIso.OneBody(n,nn) )/2;
          OpIso.OneBody(p,pp) = vavg;
          OpIso.OneBody(n,nn) = vavg;
       }
@@ -873,12 +869,18 @@ Operator Operator::DoIsospinAveraging() const
            if ( ket.op->tz2==1 )  std::swap(cp,cn);
            if ( ket.oq->tz2==1 )  std::swap(dp,dn);
 //           double Vpppp = this->TwoBody.GetTBME(ch,ch,ibra,iket);
-           double Vpppp = this->TwoBody.GetTBME_J(tbc.J,tbc.J, ap,bp,cp,dp);
-           double Vnnnn = this->TwoBody.GetTBME_J(tbc.J,tbc.J, an,bn,cn,dn);
-           double Vpnpn = this->TwoBody.GetTBME_J(tbc.J,tbc.J, ap,bn,cp,dn);
-           double Vpnnp = this->TwoBody.GetTBME_J(tbc.J,tbc.J, ap,bn,cn,dp);
-           double Vnpnp = this->TwoBody.GetTBME_J(tbc.J,tbc.J, an,bp,cn,dp);
-           double Vnppn = this->TwoBody.GetTBME_J(tbc.J,tbc.J, an,bp,cp,dn);
+//           double Vpppp = this->TwoBody.GetTBME_J(tbc.J,tbc.J, ap,bp,cp,dp);
+//           double Vnnnn = this->TwoBody.GetTBME_J(tbc.J,tbc.J, an,bn,cn,dn);
+//           double Vpnpn = this->TwoBody.GetTBME_J(tbc.J,tbc.J, ap,bn,cp,dn);
+//           double Vpnnp = this->TwoBody.GetTBME_J(tbc.J,tbc.J, ap,bn,cn,dp);
+//           double Vnpnp = this->TwoBody.GetTBME_J(tbc.J,tbc.J, an,bp,cn,dp);
+//           double Vnppn = this->TwoBody.GetTBME_J(tbc.J,tbc.J, an,bp,cp,dn);
+           double Vpppp = OpIso.TwoBody.GetTBME_J(tbc.J,tbc.J, ap,bp,cp,dp);
+           double Vnnnn = OpIso.TwoBody.GetTBME_J(tbc.J,tbc.J, an,bn,cn,dn);
+           double Vpnpn = OpIso.TwoBody.GetTBME_J(tbc.J,tbc.J, ap,bn,cp,dn);
+           double Vpnnp = OpIso.TwoBody.GetTBME_J(tbc.J,tbc.J, ap,bn,cn,dp);
+           double Vnpnp = OpIso.TwoBody.GetTBME_J(tbc.J,tbc.J, an,bp,cn,dp);
+           double Vnppn = OpIso.TwoBody.GetTBME_J(tbc.J,tbc.J, an,bp,cp,dn);
            double VT1 = ( Vpppp + Vnnnn + 0.5*(Vpnpn + Vnpnp + Vpnnp + Vnppn) ) / 3;
            double VT0 = 0.5*(Vpnpn + Vnpnp - Vpnnp - Vnppn);
          
@@ -919,9 +921,10 @@ void Operator::Erase()
   EraseOneBody();
   TwoBody.Erase();
   //  if (particle_rank >=3)
-  if (legs >= 6)
+//  if (legs >= 6)
     ThreeBody.Erase();
-  if ((legs % 2) > 0)
+//  if ((legs % 2) > 0)
+//  if (not this->IsNumberConserving() )
     ThreeLeg.Erase();
 }
 
@@ -969,13 +972,35 @@ void Operator::SetNonHermitian()
   TwoBody.SetNonHermitian();
 }
 
+
+// As the code is currently set up, operators have an instance of ThreeBodyME
+// even if particle_rank < 3. In that case it should be unallocated. However,
+// it is possible to call Op.ThreeBody.SetMode("pn") or Op.ThreeBody.Allocate()
+// and this action does not modify the particle_rank property of the owning Operator instance.
+// This can lead to confusing results if the Operator thinks it is particle_rank=2, but it has
+// a fully allocated ThreeBodyME. If that happens, we throw an error here so that the code can be fixed.
+int Operator::GetParticleRank() const
+{
+   if ( this->IsNumberConserving()
+        and ( (TwoBody.IsAllocated() and particle_rank < 2 )
+           or (ThreeBody.IsAllocated() and particle_rank < 3 ) ) )
+   {
+      std::cout << __FILE__ << " " << __func__ << " :  Something's wrong. particle_rank = " << particle_rank
+                << "   but 2b allocated = " << TwoBody.IsAllocated() << "  and 3b allocated = " << ThreeBody.IsAllocated()
+                << "   dying... " << std::endl;
+      std::exit(EXIT_FAILURE);
+   }
+   return particle_rank;
+}
+
 void Operator::SetNumberLegs(int l)
 {
   int old_legs = legs;
   legs = l;
   if (l == old_legs)
     return;
-  if (legs % 2 == 0)
+//  if (legs % 2 == 0)
+  if (this->IsNumberConserving() )
   {
     if (old_legs < 4)
       TwoBody = TwoBodyME(modelspace, rank_J, rank_T, parity);
@@ -985,6 +1010,10 @@ void Operator::SetNumberLegs(int l)
     //    if (legs>5 and (not ThreeBody.is_allocated)) ThreeBody.Allocate();
     if (legs > 5 and (not ThreeBody.IsAllocated()))
       ThreeBody.Allocate();
+    if ( legs<5 and old_legs>5)
+    {
+       ThreeBody.Deallocate();
+    }
     particle_rank = l / 2;
   }
   else
@@ -997,82 +1026,73 @@ void Operator::SetNumberLegs(int l)
   }
 }
 
+
+//  Wigner-Eckart theorem convention:
+//  < J M | Ojm | J' M'> = (-1)*(2*j) <J'M' jm | JM> / sqrt(2J+1) <J||Oj||J'>
+//
+//  If j!=0 we have no business making the operator not-reduced, since we don't specify m.
+//  Assuming j=0, J=J', then
+//  <JM| O00 | JM> = 1/sqrt(2J+1) <J||O||J>.
+//  Given an operator expressed in terms of reduced matrix elements, we can make it not reduced
+// by dividing my sqrt(2J+1). To make it reduced, we multiply by sqrt(2J+1).
+//
 void Operator::MakeReduced()
 {
   if (is_reduced)
   {
-    std::cout << "Calling MakeReduced(), but this operator is already reduced." << std::endl;
+    std::cout << "Calling MakeReduced(), but this operator is already reduced. Doing nothing." << std::endl;
+    return;
   }
   if (rank_J > 0)
   {
     std::cout << "Trying to reduce an operator with J rank = " << rank_J << ". Not good!!!" << std::endl;
     return;
   }
-  for (size_t a = 0; a < modelspace->GetNumberOrbits(); ++a)
-  {
-    Orbit &oa = modelspace->GetOrbit(a);
-    for (size_t b : OneBodyChannels.at({oa.l, oa.j2, oa.tz2}))
-    {
-      //      if (b<a) continue;
-      OneBody(a, b) *= sqrt(oa.j2 + 1);
-      //      OneBody(b,a) *= sqrt(oa.j2+1);
-    }
-  }
-  for (auto &itmat : TwoBody.MatEl)
-  {
-    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(itmat.first[0]);
-    itmat.second *= sqrt(2 * tbc.J + 1);
-  }
-
-  if (particle_rank > 2)
-  {
-    for (auto &it : ThreeBody.Get_ch_start())
-    {
-      size_t ThCH_bra = it.first.ch_bra;
-      size_t ThCH_ket = it.first.ch_ket;
-      ThreeBodyChannel &Tbc_bra = modelspace->GetThreeBodyChannel(ThCH_bra);
-      ThreeBodyChannel &Tbc_ket = modelspace->GetThreeBodyChannel(ThCH_ket);
-      size_t nbras3 = Tbc_bra.GetNumberKets();
-      for (size_t ibra = 0; ibra < nbras3; ibra++)
-      {
-        size_t nket3 = Tbc_bra.GetNumberKets();
-        for (size_t iket = ibra; iket < nket3; iket++)
-        {
-          double ME3b = ThreeBody.GetME_pn_ch(ThCH_bra, ThCH_ket, ibra, iket);
-          ThreeBody.SetME_pn_ch(ThCH_bra, ThCH_ket, ibra, iket, ME3b * sqrt(Tbc_bra.twoJ + 1) );
-        }
-      }
-    }
-  }
+  ApplyWignerEckartJFactor( true ); // true means multiply by sqrt(2J+1)
 
   is_reduced = true;
 }
+
+
 
 void Operator::MakeNotReduced()
 {
   if (not is_reduced)
   {
-    std::cout << "Calling MakeNotReduced(), but this operator is already not reduced." << std::endl;
+    std::cout << "Calling MakeNotReduced(), but this operator is already not reduced. Doing nothing." << std::endl;
+    return;
   }
   if (rank_J > 0)
   {
     std::cout << "Trying to un-reduce an operator with J rank = " << rank_J << ". Not good!!!" << std::endl;
     return;
   }
+  ApplyWignerEckartJFactor( false ); // false means divide rather than multiply by sqrt(2J+1).
+
+  is_reduced = false;
+}
+
+
+// Multiply or divide by sqrt(2J+1) to convert between reduced/non-reduced matrix elements
+void Operator::ApplyWignerEckartJFactor( bool multiply )
+{
   for (size_t a = 0; a < modelspace->GetNumberOrbits(); ++a)
   {
     Orbit &oa = modelspace->GetOrbit(a);
+    double WE_factor = multiply ? sqrt(oa.j2+1) : 1.0/sqrt(oa.j2+1);
     for (size_t b : OneBodyChannels.at({oa.l, oa.j2, oa.tz2}))
     {
       //      if (b<a) continue;
-      OneBody(a, b) /= sqrt(oa.j2 + 1);
-      //      OneBody(b,a) = OneBody(a,b);
+         OneBody(a, b) *= WE_factor;
+      //      OneBody(b,a) *= sqrt(oa.j2+1);
     }
   }
   for (auto &itmat : TwoBody.MatEl)
   {
     TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(itmat.first[0]);
-    itmat.second /= sqrt(2 * tbc.J + 1);
+    double WE_factor = multiply ? sqrt(2 * tbc.J + 1)  : 1.0 / sqrt(2 * tbc.J + 1);
+    itmat.second *= WE_factor;
+//    itmat.second *= sqrt(2 * tbc.J + 1);
   }
 
   if (particle_rank > 2)
@@ -1083,46 +1103,25 @@ void Operator::MakeNotReduced()
       size_t ThCH_ket = it.first.ch_ket;
       ThreeBodyChannel &Tbc_bra = modelspace->GetThreeBodyChannel(ThCH_bra);
       ThreeBodyChannel &Tbc_ket = modelspace->GetThreeBodyChannel(ThCH_ket);
+      double WE_factor = multiply ? sqrt(Tbc_bra.twoJ + 1) : 1.0/sqrt(Tbc_bra.twoJ + 1) ;
       size_t nbras3 = Tbc_bra.GetNumberKets();
       for (size_t ibra = 0; ibra < nbras3; ibra++)
       {
-        size_t nket3 = Tbc_bra.GetNumberKets();
-        for (size_t iket = ibra; iket < nket3; iket++)
+        size_t nket3 = Tbc_ket.GetNumberKets();
+        size_t iket_min = (ThCH_bra==ThCH_ket) ? ibra : 0;
+        for (size_t iket = iket_min; iket < nket3; iket++)
         {
-          double ME3b = ThreeBody.GetME_pn_ch(ThCH_bra, ThCH_ket, ibra, iket);
-          ThreeBody.SetME_pn_ch(ThCH_bra, ThCH_ket, ibra, iket, ME3b / sqrt(Tbc_bra.twoJ + 1) );
+          double ME3b = WE_factor *  ThreeBody.GetME_pn_ch(ThCH_bra, ThCH_ket, ibra, iket);
+          ThreeBody.SetME_pn_ch(ThCH_bra, ThCH_ket, ibra, iket, ME3b );
         }
       }
     }
   }
-
-  is_reduced = false;
 }
 
-//// this routine then multiplies the TBME <ab|Op|cd> by coeff if a==b, and again if c==d
-// void Operator::ChangeNormalization( double coeff )
-//{
-//   for (auto& it_mat : TwoBody.MatEl )
-//   {
-//     int ch_bra = it_mat.first[0];
-//     int ch_ket = it_mat.first[1];
-//     TwoBodyChannel& tbc_bra = modelspace->GetTwoBodyChannel(ch_bra);
-//     TwoBodyChannel& tbc_ket = modelspace->GetTwoBodyChannel(ch_ket);
-//     int nbras = tbc_bra.GetNumberKets();
-//     int nkets = tbc_ket.GetNumberKets();
-//     for (int ibra=0; ibra<nbras; ++ibra)
-//     {
-//       Ket& bra = tbc_bra.GetKet(ibra);
-//       if ( bra.p == bra.q ) it_mat.second.row(ibra) *= coeff;
-//     }
-//     for (int iket=0; iket<nkets; ++iket)
-//     {
-//       Ket& ket = tbc_ket.GetKet(iket);
-//       if ( ket.p == ket.q ) it_mat.second.col(iket) *= coeff;
-//     }
-//   }
-//
-// }
+
+
+
 
 void Operator::ScaleZeroBody(double x)
 {
@@ -1139,13 +1138,7 @@ void Operator::ScaleTwoBody(double x)
   TwoBody.Scale(x);
 }
 
-// This is unused
-// void Operator::Eye()
-//{
-//   ZeroBody = 1;
-//   OneBody.eye();
-//   TwoBody.Eye();
-//}
+
 
 /// Calculate the second-order perturbation theory correction to the energy
 /// \f[
@@ -1609,13 +1602,15 @@ double Operator::MP1_Eval(Operator &H)
 /// \f[ \|X_{(1)}\|^2 = \sum\limits_{ij} X_{ij}^2 \f]
 double Operator::Norm() const
 {
-  if (legs % 2 == 0)
+//  if (legs % 2 == 0)
+  if  (this->IsNumberConserving() )
   {
     double n1 = OneBodyNorm();
     double n2 = TwoBody.Norm();
-    double n3 = 0.;
-    if (legs > 5)
-      n3 = ThreeBody.Norm();
+    double n3 = ThreeBody.Norm();
+//    double n3 = 0.;
+//    if (legs > 5)
+//      n3 = ThreeBody.Norm();
     //      return sqrt(n1*n1+n2*n2);
     return sqrt(n1 * n1 + n2 * n2 + n3 * n3);
   }

@@ -61,8 +61,8 @@ class Operator
   int particle_rank; ///< Maximum particle rank. Should be 2 or 3.
   int legs; ///< The maximum number of particle legs in a diagrammatic representation, e.g. a 2-body operator has 4 legs.
 
-  int E2max; ///< For two-body matrix elements, \f$ e_i + e_j \leq \f$ E2max
-  int E3max; ///< For three-body matrix elements, \f$ e_i + e_j + e_k \leq \f$ E3max
+//  int E2max; ///< For two-body matrix elements, \f$ e_i + e_j \leq \f$ E2max   I BELIEVE THESE ARE DEPRECATED
+//  int E3max; ///< For three-body matrix elements, \f$ e_i + e_j + e_k \leq \f$ E3max    I BELIEVE THESE ARE DEPRECATED
 
   bool hermitian;
   bool antihermitian;
@@ -118,8 +118,8 @@ class Operator
   double GetTwoBody(size_t ch_bra, size_t ch_ket, size_t i, size_t j);
   void   SetTwoBody(int J1, int p1, int T1, int J2, int p2, int T2, int i, int j, int k, int l, double v);
 
-  void SetE3max(int e){E3max = e;};
-  int  GetE3max(){return E3max;};
+//  void SetE3max(int e){E3max = e;};
+//  int  GetE3max(){return E3max;};
 
   // Other setter-getters
 //  ModelSpace * GetModelSpace();
@@ -139,7 +139,7 @@ class Operator
   bool IsHermitian()const {return hermitian;};
   bool IsAntiHermitian()const {return antihermitian;};
   bool IsNonHermitian()const {return not (hermitian or antihermitian);};
-  int GetParticleRank()const {return particle_rank;};
+  int GetParticleRank()const ;
   int GetJRank()const {return rank_J;};
   int GetTRank()const {return rank_T;};
   int GetParity()const {return parity;};
@@ -152,10 +152,13 @@ class Operator
 
   void MakeReduced();
   void MakeNotReduced();
+  void ApplyWignerEckartJFactor( bool multiply );// if argument is false, then we divide by sqrt(2J+1)
   bool IsReduced()const { return is_reduced;};
   void ChangeNormalization(double coeff);
   void MakeNormalized();
   void MakeUnNormalized();
+
+  bool IsNumberConserving()const { return legs%2 == 0;}; // TODO: in principle, we could have a 2-leg number-changing operator like a+a+. Then we'd need to rethink this.
 
 
   void ScaleZeroBody(double x);
@@ -177,17 +180,18 @@ class Operator
   Operator DoNormalOrdering3(int sign, std::set<index_t> occupied) const; ///< Returns the normal ordered three-body operator
   Operator DoNormalOrderingCore() const; ///< Normal order with respect to core
   Operator DoNormalOrderingFilledValence() const; ///< Normal order with respect to a filled valence space
-//  Operator DoNormalOrdering2(int sign=+1) const; ///< Returns the normal ordered two-body operator
-//  Operator DoNormalOrdering3(int sign=+1) const; ///< Returns the normal ordered three-body operator
+  //  Operator DoNormalOrdering2(int sign=+1) const; ///< Returns the normal ordered two-body operator
+  //  Operator DoNormalOrdering3(int sign=+1) const; ///< Returns the normal ordered three-body operator
   Operator DoNormalOrderingDagger(int sign, std::set<index_t> occupied) const; ///< Returns the normal ordered dagger operator
   Operator UndoNormalOrdering() const; ///< Returns the operator normal-ordered wrt the vacuum
-//  Operator UndoNormalOrdering2() const; ///< Returns the operator normal-ordered wrt the vacuum
-//  Operator UndoNormalOrdering2() const;  ///< Returns the operator normal-ordered wrt the vacuum
-//  Operator UndoNormalOrdering3() const;  ///< Returns the operator normal-ordered wrt the vacuum
-//  Operator UndoNormalOrdering2() const {return this->DoNormalOrdering2(-1);}; ///< Returns the operator normal-ordered wrt the vacuum
-//  Operator UndoNormalOrdering3() const {return this->DoNormalOrdering3(-1);}; ///< Returns the operator normal-ordered wrt the vacuum
-//  Operator UndoNormalOrderingDagger() const; ///< Returns the operator normal-ordered wrt the vacuum
-//  Operator UndoNormalOrderingDagger() const {return this->DoNormalOrderingDagger(-1);}; ///< Returns the operator normal-ordered wrt the vacuum
+  Operator UndoNormalOrderingCore() const; ///< Returns the operator normal-ordered wrt the vacuum
+  //  Operator UndoNormalOrdering2() const; ///< Returns the operator normal-ordered wrt the vacuum
+  //  Operator UndoNormalOrdering2() const;  ///< Returns the operator normal-ordered wrt the vacuum
+  //  Operator UndoNormalOrdering3() const;  ///< Returns the operator normal-ordered wrt the vacuum
+  //  Operator UndoNormalOrdering2() const {return this->DoNormalOrdering2(-1);}; ///< Returns the operator normal-ordered wrt the vacuum
+  //  Operator UndoNormalOrdering3() const {return this->DoNormalOrdering3(-1);}; ///< Returns the operator normal-ordered wrt the vacuum
+  //  Operator UndoNormalOrderingDagger() const; ///< Returns the operator normal-ordered wrt the vacuum
+  //  Operator UndoNormalOrderingDagger() const {return this->DoNormalOrderingDagger(-1);}; ///< Returns the operator normal-ordered wrt the vacuum
 
   Operator Truncate(ModelSpace& ms_new); ///< Returns the operator trunacted to the new model space
 

@@ -80,6 +80,7 @@ namespace imsrg_util
           std::istringstream( opnamesplit[1] ) >> Rms ;
           theop =  ISDipoleOp(modelspace,3,1,Rms) ;
       }
+      else if (opname == "E0")            theop =  E0Op(modelspace) ;
       else if (opname == "E1")            theop =  ElectricMultipoleOp(modelspace,1) ;
       else if (opname == "E2")            theop =  ElectricMultipoleOp(modelspace,2) ;
       else if (opname == "E3")            theop =  ElectricMultipoleOp(modelspace,3) ;
@@ -123,6 +124,8 @@ namespace imsrg_util
       else if (opname == "VBareDelta")    theop =  BareDelta( modelspace );
       else if (opname == "OccRef")        theop =  NumberOpRef( modelspace );
       else if (opname == "LdotS")         theop =  LdotS_Op( modelspace);
+      else if (opname == "DGT")           theop = M0nu::DGT_Op(modelspace);
+      else if (opname == "Anapole")       theop = AnapoleMoment(modelspace);
       else if (opnamesplit[0] =="VGaus")
       {
          double sigma = 1.0;
@@ -131,6 +134,15 @@ namespace imsrg_util
            std::istringstream( opnamesplit[1] ) >> sigma;
          }
          theop =  GaussianPotential(modelspace,sigma);
+      }
+      else if (opnamesplit[0] =="VGausCSB")
+      {
+         double sigma = 1.0;
+         if ( opnamesplit.size() > 1 ) 
+         {
+           std::istringstream( opnamesplit[1] ) >> sigma;
+         }
+         theop =  GaussianCSBPotential(modelspace,sigma);
       }
       else if (opnamesplit[0] =="VSDI")
       {
@@ -316,20 +328,153 @@ namespace imsrg_util
       }
       else if (opnamesplit[0] == "M0nu") // Neutrinoless Double Beta Decay Operators   format e.g.  M0nu_GT_7.72_none or M0nu_F_12.6_AV18
       {
-        double Eclosure;
+        
         std::string M0nuopname = opnamesplit[1];
-        std::istringstream(opnamesplit[2]) >> Eclosure;
-        std::string src = opnamesplit[3];
-        std::map<std::string, Operator (*)(ModelSpace&, double, std::string) > M0nuop = {
-              {"GT", &M0nu::GamowTeller},
-              {"F",  &M0nu::Fermi},
-              {"T",  &M0nu::Tensor},
-             };
-        if ( M0nuop.find(M0nuopname) != M0nuop.end() )
+        std::map<std::string, Operator (*)(ModelSpace&, double, std::string, std::function<double(double)>)> OPList{
+            {"GT", &M0nu::GamowTeller},
+            {"F", &M0nu::Fermi},
+            {"T", &M0nu::Tensor}};
+
+        if (M0nuopname != "C")
         {
-        theop =  M0nuop[M0nuopname](modelspace,Eclosure,src);
+          double Eclosure;
+          std::istringstream(opnamesplit[2]) >> Eclosure;
+          std::string src = opnamesplit[3];
+          if (opnamesplit.size() == 4)
+          {
+            std::map<std::string, std::function<double(double)>> FormFactorList{
+                {"GT",M0nu::GTFormFactor},
+                {"F", M0nu::FermiFormFactor},
+                {"T", M0nu::TensorFormFactor}
+            };
+            theop = OPList[M0nuopname](modelspace, Eclosure, src, FormFactorList[M0nuopname]);
+          }
+          else if (opnamesplit.size() == 5)
+          { 
+            std::string formfactor = opnamesplit[4];
+            if (M0nuopname == "GT")
+            {
+              if (formfactor == "AA")
+              {
+                theop = M0nu::GamowTeller(modelspace, Eclosure, src, M0nu::hGT_AA);
+              }
+              else if (formfactor == "AP")
+              {
+                theop = M0nu::GamowTeller(modelspace, Eclosure, src, M0nu::hGT_AP);
+              }
+              else if (formfactor == "PP")
+              {
+                theop = M0nu::GamowTeller(modelspace, Eclosure, src, M0nu::hGT_PP);
+              }
+              else if (formfactor == "MM")
+              {
+                theop = M0nu::GamowTeller(modelspace, Eclosure, src, M0nu::hGT_MM);
+              }
+            }
+            else if (M0nuopname == "T")
+            {
+              if (formfactor == "AA")
+              {
+                theop = M0nu::Tensor(modelspace, Eclosure, src, M0nu::hT_AA);
+              }
+              else if (formfactor == "AP")
+              {
+                theop = M0nu::Tensor(modelspace, Eclosure, src, M0nu::hT_AP);
+              }
+              else if (formfactor == "PP")
+              {
+                theop = M0nu::Tensor(modelspace, Eclosure, src, M0nu::hT_PP);
+              }
+              else if (formfactor == "MM")
+              {
+                theop = M0nu::Tensor(modelspace, Eclosure, src, M0nu::hT_MM);
+              }
+            }
+          }
+        }
+        else
+        {
+          double regulator_cutoff;
+          std::istringstream(opnamesplit[2]) >> regulator_cutoff;
+          int regulator_power;
+          std::istringstream(opnamesplit[3]) >> regulator_power;
+          theop = M0nu::Contact(modelspace, regulator_cutoff, regulator_power);
+        }
+        
+      }
+      else if (opnamesplit[0] == "M0nuHeavy") // Neutrinoless Double Beta Decay Operators   format e.g.  M0nu_GT_7.72_none or M0nu_F_12.6_AV18
+      {
+        std::string M0nuopname = opnamesplit[1];
+        std::string src = opnamesplit[2];
+        std::string formfactor = opnamesplit[3];
+        if (M0nuopname == "GT")
+        {
+          if (formfactor == "AA")
+          {
+            theop = M0nu::GamowTellerHeavy(modelspace, src, M0nu::hGT_AA);
+          }
+          else if (formfactor == "AP")
+          {
+            theop = M0nu::GamowTellerHeavy(modelspace, src, M0nu::hGT_AP);
+          }
+          else if (formfactor == "PP")
+          {
+            theop = M0nu::GamowTellerHeavy(modelspace, src, M0nu::hGT_PP);
+          }
+        }
+        else if (M0nuopname == "F")
+        {
+          theop = M0nu::FermiHeavy(modelspace, src, M0nu::hF_VV);
+        }
+        else if (M0nuopname == "T")
+        {
+
+          if (formfactor == "AP")
+          {
+            theop = M0nu::TensorHeavy(modelspace, src, M0nu::hT_AP);
+          }
+          else if (formfactor == "PP")
+          {
+            theop = M0nu::TensorHeavy(modelspace, src, M0nu::hT_PP);
+          }
         }
       }
+      else if (opnamesplit[0] == "M0nuIntegrand") // Neutrinoless Double Beta Decay Operators   format e.g.  M0nu_GT_7.72_none or M0nu_F_12.6_AV18
+      {
+        std::string M0nuopname = opnamesplit[1];
+        std::map<std::string, Operator (*)(ModelSpace &, double, std::string, std::function<double(double)>, int, int)> OPList{
+            {"GT", &M0nu::GamowTeller_integrand},
+            {"F", &M0nu::Fermi_integrand},
+            {"T", &M0nu::Tensor_integrand}};
+        if (M0nuopname != "C")
+        {
+          double Eclosure;
+          int p;
+          int pp;
+          std::istringstream(opnamesplit[2]) >> Eclosure;
+          std::string src = opnamesplit[3];
+          std::istringstream(opnamesplit[4]) >> p;
+          std::istringstream(opnamesplit[5]) >> pp;
+          std::map<std::string, std::function<double(double)>> FormFactorList{
+              {"GT", M0nu::GTFormFactor},
+              {"F", M0nu::FermiFormFactor},
+              {"T", M0nu::TensorFormFactor}};
+          theop = OPList[M0nuopname](modelspace, Eclosure, src, FormFactorList[M0nuopname], p, pp); 
+        }
+        else
+        {
+          double regulator_cutoff;
+          std::istringstream(opnamesplit[2]) >> regulator_cutoff;
+          int regulator_power;
+          std::istringstream(opnamesplit[3]) >> regulator_power;
+          int p;
+          int pp;
+          std::istringstream(opnamesplit[4]) >> p;
+          std::istringstream(opnamesplit[5]) >> pp;
+          theop = M0nu::Contact_integrand(modelspace, regulator_cutoff, regulator_power, p, pp);
+        }
+      }
+
       else if (opnamesplit[0] == "VWS")
       {
          double V0,R0,a0;
@@ -343,6 +488,12 @@ namespace imsrg_util
          double hw_trap;
          std::istringstream( opnamesplit[1] ) >> hw_trap;
          theop = HOtrap_Op( modelspace, hw_trap);
+      }
+      else if (opnamesplit[0] == "Schiff")
+      {
+        double R;
+        std::istringstream( opnamesplit[1]) >> R;
+        theop =  SchiffOp( modelspace,3,1,R);
       }
       else if (opnamesplit[0] == "VPT" )
       {
@@ -359,6 +510,26 @@ namespace imsrg_util
           return theop;
         }
         theop = TViolatingPotential_Op( modelspace, LECs );
+      }
+      else if (opnamesplit[0] == "M0nuR") // Radial dependance of GT part of M0nu
+      {
+        double Eclosure;
+        double r12;
+        std::istringstream(opnamesplit[1]) >> Eclosure;
+        std::istringstream(opnamesplit[2]) >> r12;
+        theop = M0nu::GamowTeller_R(modelspace, Eclosure, r12);
+      }
+      else if (opnamesplit[0] == "DGTR") //Radial depedance of DGT operator
+      {
+        double r12;
+        std::istringstream(opnamesplit[1]) >> r12;
+        theop = M0nu::DGT_R(modelspace, r12);
+      }
+      else if (opnamesplit[0] == "DGTRLocal") //Radial depedance of DGT operator with surface localization
+      {
+        double r12;
+        std::istringstream(opnamesplit[1]) >> r12;
+        theop = M0nu::DGT_R_SurfaceLocalization(modelspace, r12);
       }
       else //need to remove from the list
       {
@@ -1454,7 +1625,6 @@ Operator FormfactorAtQ(ModelSpace& modelspace, double q, std::string pn)
   return Fq;
 }
 
-
 Operator RpSpinOrbitCorrection(ModelSpace& modelspace)
 {
   Operator dr_so(modelspace,0,0,0,2);
@@ -1463,7 +1633,16 @@ Operator RpSpinOrbitCorrection(ModelSpace& modelspace)
   for (int i=0;i<norb;i++)
   {
     Orbit& oi = modelspace.GetOrbit(i);
-    double mu_i = oi.tz2<0 ? 1.79 : -1.91;
+    // mu_i  - Q_i -> mu_i - Q_i / 2 fixes error in Ong et al.
+    // where m_i is the magnetic moment of the nucleon
+    // (not the anomalous magnetic moment)
+    // and Q_i is the charge of the nucleon
+    // (
+    //   solution from M. Hoferichter,
+    //   also seen in Bertozzi et al., Phys. Lett. 41, 408 (1972)
+    // )
+    // published in Heinz et al. Phys. Rev. C 111, 034311 (2025)
+    double mu_i = oi.tz2<0 ? 2.79 - 0.5 : -1.91;
     int kappa = oi.j2 < 2*oi.l ? oi.l : -(oi.l+1);
     dr_so.OneBody(i,i) = -mu_i/M2*(kappa+1);
   }
@@ -1505,9 +1684,9 @@ Operator E0Op(ModelSpace& modelspace)
 
 
 
-//Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R)
+// Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R)
 // providing an index list allows us to select e.g. just protons or just neutrons
-//Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::vector<index_t> index_list)
+// Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::vector<index_t> index_list)
 Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<index_t> index_list)
 {
   Operator a_nu(modelspace,0,0,0,2);
@@ -1690,6 +1869,34 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
    return T2;
  }
 
+  /// Ananople moment operator -- added by A. B.
+  Operator AnapoleMoment(ModelSpace& modelspace)
+  {
+    Operator As(modelspace, 1, 0, 1, 2);
+    As.SetAntiHermitian();
+    double bL = pow(HBARC * HBARC / M_NUCLEON / modelspace.GetHbarOmega(), 0.5 * 1); // b^L where b=sqrt(hbar/mw)
+    int norbits = modelspace.GetNumberOrbits();
+    for (int i=0; i<norbits; ++i)
+    {
+      Orbit & oi = modelspace.GetOrbit(i);
+      double ji = 0.5 * oi.j2;
+      double magnetic_moment = oi.tz2 < 0 ? PROTON_SPIN_G/2 : NEUTRON_SPIN_G/2; // These are 5.586 and -3.826 for proton and neutron, respectively. Defined in PhysicalConstants.hh
+      for (int j: As.OneBodyChannels.at({oi.l, oi.j2, oi.tz2}))
+      {
+        if (j<i) continue;
+        Orbit& oj = modelspace.GetOrbit(j);
+        if (oi.tz2 != oj.tz2) continue;
+        double jj = 0.5 * oj.j2; 
+        double r2int = RadialIntegral(oi.n, oi.l, oj.n, oj.l, 1) * bL ;
+        double nineJ = AngMom::NineJ(oi.l, 0.5, ji, oj.l, 0.5, jj, 1, 1, 1);
+        double hatfactors = sqrt((2 * ji + 1) * (2 * jj + 1) * (2 * oi.l + 1) * (2 * oj.l + 1));
+        // Including the factor of sqrt(4pi/3) from the spherical harmonics
+        As.OneBody(i, j) = 3 * sqrt(2) * magnetic_moment * r2int * hatfactors * nineJ * AngMom::ThreeJ(oj.l, 1, oi.l, 0, 0, 0);
+        As.OneBody(j, i) = -  modelspace.phase((oi.j2-oj.j2)/2) * As.OneBody(i, j); // Operator is imagniary and therefore antisymmetric, reduced ME need a phase under hermitian conjugation
+      }
+    }
+    return As;
+  }
 
   /// Mutipole responses (except dipole) with units fm\f$ ^{rL}\f$ (see PRC97(2018)054306 ) --added by bhu
   Operator MultipoleResponseOp(ModelSpace& modelspace, int rL, int YL, int isospin)
@@ -1708,7 +1915,7 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
         double jj = 0.5*oj.j2;
         double r2int = RadialIntegral(oi.n,oi.l,oj.n,oj.l,rL) * bL ;
         EL.OneBody(i,j) = modelspace.phase(jj+YL-0.5) * sqrt( (2*ji+1)*(2*jj+1)*(2*YL+1)/4./3.1415926) * AngMom::ThreeJ(ji,jj,YL,0.5,-0.5,0) * r2int;
-	if( YL == 0 ) EL.OneBody(i,j) = EL.OneBody(i,j) * sqrt(4.*3.1415926);
+	      if( YL == 0 ) EL.OneBody(i,j) = EL.OneBody(i,j) * sqrt(4.*3.1415926);
         double fac = isospin ? oi.tz2 : 1.0;
         EL.OneBody(i,j) = EL.OneBody(i,j) * fac;
         EL.OneBody(j,i) = modelspace.phase((oi.j2-oj.j2)/2) * EL.OneBody(i,j);
@@ -1735,7 +1942,7 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
         double r2int = RadialIntegral(oi.n,oi.l,oj.n,oj.l,rL) * bL ;
         EL.OneBody(i,j) = modelspace.phase(jj+YL-0.5) * sqrt( (2*ji+1)*(2*jj+1)*(2*YL+1)/4./3.1415926) * AngMom::ThreeJ(ji,jj,YL,0.5,-0.5,0) * r2int;
         EL.OneBody(i,j) = EL.OneBody(i,j) * (0.5 - oi.tz2*0.5 - modelspace.GetTargetZ()*1.0/modelspace.GetTargetMass() );
-	EL.OneBody(j,i) = modelspace.phase((oi.j2-oj.j2)/2) * EL.OneBody(i,j);
+	      EL.OneBody(j,i) = modelspace.phase((oi.j2-oj.j2)/2) * EL.OneBody(i,j);
       }
     }
     return EL;
@@ -1761,7 +1968,7 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
         double r2intp = RadialIntegral(oi.n,oi.l,oj.n,oj.l,1) * bLp ;
         r2int = r2int - 5.0/3.0*r2intp*Rms*Rms ;
         EL.OneBody(i,j) = modelspace.phase(jj+YL-0.5) * sqrt( (2*ji+1)*(2*jj+1)*(2*YL+1)/4./3.1415926) * AngMom::ThreeJ(ji,jj,YL,0.5,-0.5,0) * r2int;
-	EL.OneBody(j,i) = modelspace.phase((oi.j2-oj.j2)/2) * EL.OneBody(i,j);
+	      EL.OneBody(j,i) = modelspace.phase((oi.j2-oj.j2)/2) * EL.OneBody(i,j);
       }
     }
     return EL;
@@ -1771,10 +1978,10 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
   /// Schiff Moment = Isoscalar dipole / 10 (where the sum is over proton orbits only)  with units e * fm^3  --added by DK. Ref. PHYSICAL REVIEW C 89, 014335 (2014)
   Operator SchiffOp(ModelSpace& modelspace, int rL, int YL, double Rms)
   {   
-    Operator EL(modelspace, YL,0,YL%2,2); 
+    Operator EL(modelspace, YL,0,YL%2,2);
     double bL = pow( HBARC*HBARC/M_NUCLEON/modelspace.GetHbarOmega(),0.5*rL); // b^L where b=sqrt(hbar/mw)
     double bLp = pow( HBARC*HBARC/M_NUCLEON/modelspace.GetHbarOmega(),0.5*1);
-    int norbits = modelspace.GetNumberOrbits();
+    // int norbits = modelspace.GetNumberOrbits();
     for (int i : modelspace.proton_orbits)
    // for (int i=0; i<norbits; ++i) //DK: modify for protons only
     {     
@@ -1788,7 +1995,7 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
         double r2int = RadialIntegral(oi.n,oi.l,oj.n,oj.l,rL) * bL ;
         double r2intp = RadialIntegral(oi.n,oi.l,oj.n,oj.l,1) * bLp ;
         r2int = r2int - 5.0/3.0*r2intp*Rms*Rms ;
-        EL.OneBody(i,j) = modelspace.phase(jj+YL-0.5) * sqrt( (2*ji+1)*(2*jj+1)*(2*YL+1)/4./3.1415926) * AngMom::ThreeJ(ji,jj,YL,0.5,-0.5,0) * r2int;
+        EL.OneBody(i,j) = modelspace.phase(jj+YL-0.5) * sqrt( (2*ji+1)*(2*jj+1)*(2*YL+1)/4./PI) * AngMom::ThreeJ(ji,jj,YL,0.5,-0.5,0) * r2int;
         EL.OneBody(j,i) = modelspace.phase((oi.j2-oj.j2)/2) * EL.OneBody(i,j);
       }
     }
@@ -2223,15 +2430,19 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
     Operator Fermi(modelspace,0,1,0,2);
     Fermi.SetHermitian();
     int norbits = modelspace.GetNumberOrbits();
-    for (int i=0; i<norbits; ++i)
+//    for (int i=0; i<norbits; ++i)
+    for ( auto i : modelspace.proton_orbits )
     {
       Orbit& oi = modelspace.GetOrbit(i);
-      for (int j : Fermi.OneBodyChannels[{oi.l,oi.j2,oi.tz2}] )
-      {
-        Orbit& oj = modelspace.GetOrbit(j);
-        if (oi.n!=oj.n or oi.tz2 == oj.tz2) continue;
-        Fermi.OneBody(i,j) = sqrt(oi.j2+1.0);  // Reduced matrix element
-      }
+      int j = modelspace.GetOrbitIndex( oi.n, oi.l, oi.j2, -oi.tz2);
+      Fermi.OneBody(i,j) = sqrt(oi.j2+1); // Reduced matrix element
+      Fermi.OneBody(j,i) = Fermi.OneBody(i,j); // Hermitian
+//      for (int j : Fermi.OneBodyChannels[{oi.l,oi.j2,oi.tz2}] )
+//      {
+//        Orbit& oj = modelspace.GetOrbit(j);
+//        if (oi.n!=oj.n or oi.tz2 == oj.tz2) continue;
+//        Fermi.OneBody(i,j) = sqrt(oi.j2+1.0);  // Reduced matrix element
+//      }
     }
     return Fermi;
   }
@@ -2837,45 +3048,45 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
  Operator TViolatingPotential_Op( ModelSpace& modelspace, std::vector<double> LECs )
  {
   //alpha0,alpha1,alpha2 are the inputs which are gg_0,2mpi/(8piMnucleon)
-   double alpha0 = LECs[0];
-   double alpha1 = LECs[1];
-   double alpha2 = LECs[2];
-   Operator VPT(modelspace, 0,0,1,2 ); // J=0, dTz=0, parity=odd, particle-rank=2
+  double alpha0 = LECs[0];
+  double alpha1 = LECs[1];
+  double alpha2 = LECs[2];
+  Operator VPT(modelspace, 0,0,1,2 ); // J=0, dTz=0, parity=odd, particle-rank=2
 
-   // Isospin factors converted to proton-neutron basis
-     // ATT'Tz = alpha0[4T-3]+2*alpha1*Tz + 2*alpha2*delta_T,1*[delta_|Tz|,1 -2delta_|Tz|,0
-     // BTT' = 2 alpha1 delta_T+T',1
-     // A111 = alpha0 + 2 alpha1 + 2 alpha2
-     // A110 = alpha0 - 4 alpha2
-     // A000 = -3 alpha0 -4 alpha2
-     // B10 = B01 = 2 alpha1
-     // |np> = (|1,0> + |0,0>)/sqrt(2),  |pn> = (|1,0> - |0,0>)/sqrt(2)
-     // Apppp = A111  = alpha0 + 2 alpha1 + 2 alpha2
-     // Annnn = A11-1 = alpha0 - 2 alpha1 + 2 alpha2
-     // Apnpn = Anpnp = 1/2 (A110 + A000) = -alpha0 - 4 alpha2
-     // Anppn = Apnnp = 1/2 (A110 - A000) = 2 alpha0
-     // Bnpnp = -Bpnpn = 1/2 (B10 + B01) = 2 alpha1
-     // Bnppn = -Bpnnp = 1/2(B01 - B10) = 0
-   double Apppp = alpha0 + 2*alpha1 + 2*alpha2;
-   double Annnn = alpha0 - 2*alpha1 + 2*alpha2;
-   double Apnpn = -alpha0 - 4*alpha2;
-   double Anpnp = Apnpn;
-   double Anppn = 2 * alpha0;
-   double Apnnp = Anppn;
-   double Bnpnp = 2 * alpha1;
-   double Bpnpn = -Bnpnp;
+  // Isospin factors converted to proton-neutron basis
+    // ATT'Tz = alpha0[4T-3]+2*alpha1*Tz + 2*alpha2*delta_T,1*[delta_|Tz|,1 -2delta_|Tz|,0
+    // BTT' = 2 alpha1 delta_T+T',1
+    // A111 = alpha0 + 2 alpha1 + 2 alpha2
+    // A110 = alpha0 - 4 alpha2
+    // A000 = -3 alpha0 -4 alpha2
+    // B10 = B01 = 2 alpha1
+    // |np> = (|1,0> + |0,0>)/sqrt(2),  |pn> = (|1,0> - |0,0>)/sqrt(2)
+    // Apppp = A111  = alpha0 + 2 alpha1 + 2 alpha2
+    // Annnn = A11-1 = alpha0 - 2 alpha1 + 2 alpha2
+    // Apnpn = Anpnp = 1/2 (A110 + A000) = -alpha0 - 4 alpha2
+    // Anppn = Apnnp = 1/2 (A110 - A000) = 2 alpha0
+    // Bnpnp = -Bpnpn = 1/2 (B10 + B01) = 2 alpha1
+    // Bnppn = -Bpnnp = 1/2(B01 - B10) = 0
+  double Apppp = alpha0 + 2*alpha1 + 2*alpha2;
+  double Annnn = alpha0 - 2*alpha1 + 2*alpha2;
+  double Apnpn = -alpha0 - 4*alpha2;
+  double Anpnp = Apnpn;
+  double Anppn = 2 * alpha0;
+  double Apnnp = Anppn;
+  double Bnpnp = 2 * alpha1;
+  double Bpnpn = -Bnpnp;
 
  //  auto isoA = [alpha0,alpha1,alpha2] (int T,int Tp,int Tz) { return alpha0*(4*T-3) + 2*alpha1*Tz + 2*alpha2*T*( 3*std::abs(Tz) - 2) * (T==Tp) ; } ;
-   auto isoA = [alpha0,alpha1,alpha2] (int T,int Tp,int Tz) { return (alpha0*(4*T-3) + 2*alpha1*Tz + 2*alpha2*(T==1)*((std::abs(Tz)==1) - 2*(Tz==0))) * (T==Tp) ; } ;
-   auto isoB = [alpha1] (int T,int Tp) { return 2*alpha1 * ((T+Tp)==1) ; };
+  auto isoA = [alpha0,alpha1,alpha2] (int T,int Tp,int Tz) { return (alpha0*(4*T-3) + 2*alpha1*Tz + 2*alpha2*(T==1)*((std::abs(Tz)==1) - 2*(Tz==0))) * (T==Tp) ; } ;
+  auto isoB = [alpha1] (int T,int Tp) { return 2*alpha1 * ((T+Tp)==1) ; };
 
-   double hw = modelspace.GetHbarOmega();
-   double bosc = HBARC/sqrt( hw * M_NUCLEON);
-   double mpi = (2*PhysConst::M_PION_CHARGED + PhysConst::M_PION_NEUTRAL)/3;
-   int emax = modelspace.Emax;
+  double hw = modelspace.GetHbarOmega();
+  double bosc = HBARC/sqrt( hw * M_NUCLEON);
+  double mpi = (2*PhysConst::M_PION_CHARGED + PhysConst::M_PION_NEUTRAL)/3;
+  int emax = modelspace.Emax;
 
    std::map< std::array<int,4>,double> IntegralLookup;
-   #pragma omp parallel for 
+   #pragma omp parallel for schedule(dynamic, 1)
    // Do the radial integral and cache it
    for (int n=0; n <= emax; n++)
    {
@@ -2912,12 +3123,9 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
      ch_ket_list.push_back(itmat.first[1]);
    }
    int nbraket = ch_bra_list.size();
-     #pragma omp parallel for 
-//   for (auto& itmat : VPT.TwoBody.MatEl )
+   #pragma omp parallel for schedule(dynamic, 1)
    for (int ibraket=0; ibraket<nbraket; ibraket++ )
    {
-//     int ch_bra = itmat.first[0];
-//     int ch_ket = itmat.first[1];
      int ch_bra = ch_bra_list[ibraket];
      int ch_ket = ch_ket_list[ibraket];
      TwoBodyChannel& tbc_bra = modelspace.GetTwoBodyChannel(ch_bra);
@@ -2960,8 +3168,8 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
          {
            for (int Sp=0; Sp<=1; Sp++)
            {
-
-
+             if (S+Sp==0)
+                continue;
              int Lmin = std::max( J-S, 0);
              int Lmax = J+S;
              int Lpmin = std::max( J-Sp, 0);
@@ -2969,16 +3177,16 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
              for (int L=Lmin; L<=Lmax; L++)
              {
                double ninej1 = AngMom::NineJ( la,sa,ja,  lb,sb,jb, L,S,J);
-//std::cout << "la=" << la << "sa=" << sa << "ja=" << ja << "lb=" << lb << "sb="<< sb << "jb=" << jb << "L=" << L << "S=" << S << "J=" << J << "ninej1 = " << ninej1 << std::endl;
+               //std::cout << "la=" << la << "sa=" << sa << "ja=" << ja << "lb=" << lb << "sb="<< sb << "jb=" << jb << "L=" << L << "S=" << S << "J=" << J << "ninej1 = " << ninej1 << std::endl;
                for (int Lp=Lpmin; Lp<=Lpmax; Lp++)
                {
                  if ( std::abs(L-Lp)>1 ) continue;
                  double sixj1 =  AngMom::SixJ( L, S, J, Sp, Lp, 1);
-//std::cout << "L=" << L << "S=" << S << "J=" << J << "Sp=" << Sp << "Lp=" << Lp << "sixj1 = " << sixj1 << std::endl;
-//std::cout << "sixj1 = " << sixj1 << std::endl;
+                 //std::cout << "L=" << L << "S=" << S << "J=" << J << "Sp=" << Sp << "Lp=" << Lp << "sixj1 = " << sixj1 << std::endl;
+                 //std::cout << "sixj1 = " << sixj1 << std::endl;
                  double ninej2 = AngMom::NineJ( lc,sc,jc, ld,sd,jd, Lp,Sp,J);
-//std::cout << "lc=" << lc << "sc=" << sc << "jc=" << jc << "ld=" << ld << "sd="<< sd << "jd=" << jd << "Lp=" << Lp << "Sp=" << Sp << "J=" << J << "ninej2 = " << ninej2 << std::endl;
-//std::cout << "ninej2 = " << ninej2 << std::endl;
+                 //std::cout << "lc=" << lc << "sc=" << sc << "jc=" << jc << "ld=" << ld << "sd="<< sd << "jd=" << jd << "Lp=" << Lp << "Sp=" << Sp << "J=" << J << "ninej2 = " << ninej2 << std::endl;
+                 //std::cout << "ninej2 = " << ninej2 << std::endl;
                  // Now sum over relative/CM coordinates
                  for (int Ncm=0; 2*Ncm<=std::min(ebra,eket); Ncm++ )
                  {
@@ -2999,41 +3207,41 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
                                double iso_to_pn_factor = 1;  // This account for converting an isospin expression to pn formalism
                                if (pn_case == "npnp") iso_to_pn_factor = 0.5;
                                if (pn_case == "pnpn") iso_to_pn_factor = 0.5 * AngMom::phase( T+Tp ) ;
-                               if (pn_case == "nppn") iso_to_pn_factor = 0.5 * AngMom::phase( T+1  ) ;
-                               if (pn_case == "pnnp") iso_to_pn_factor = 0.5 * AngMom::phase( Tp+1 ) ;
+                               if (pn_case == "nppn") iso_to_pn_factor = 0.5 * AngMom::phase( Tp+1  ) ;
+                               if (pn_case == "pnnp") iso_to_pn_factor = 0.5 * AngMom::phase( T+1 ) ;
                                
                                if ( (S+Sp)==1)           AplusB += iso_to_pn_factor * asymmfactor * isoA(T,Tp,Tz);
                                if ( (S==1) and (Sp==1) ) AplusB += iso_to_pn_factor * asymmfactor * isoB(T,Tp) * sqrt(2); //sqrt(2) missing here
-//std::cout << "asymmfactor = " << asymmfactor << std::endl; 
+                               //std::cout << "asymmfactor = " << asymmfactor << std::endl; 
                            }
                          }
-//                         if ((lprel + Sp)%2==0) continue; // factor [1 - (-1)^(lprel+Sp) ]
-//std::cout << "AplusB = " << AplusB << std::endl;
+                         //if ((lprel + Sp)%2==0) continue; // factor [1 - (-1)^(lprel+Sp) ]
+                         //std::cout << "AplusB = " << AplusB << std::endl;
                          double threej = AngMom::ThreeJ( lrel,lprel,1, 0,0,0);
-//std::cout << "threej = " << threej << std::endl;
-//std::cout << "lrel=" << lrel << "lprel=" << lprel << "threej=" << threej << std::endl;
+                         //std::cout << "threej = " << threej << std::endl;
+                         //std::cout << "lrel=" << lrel << "lprel=" << lprel << "threej=" << threej << std::endl;
                          double sixj2 = AngMom::SixJ( lrel,L,Lcm,  Lp,lprel,1);
-//std::cout << "sixj2 = " << sixj2 << std::endl;
-//std::cout << "lrel=" << lrel << "L=" << L << "Lcm=" << Lcm << "Lp=" << Lp << "lprel=" << lprel << "sixj2 = " << sixj2 << std::endl;
+                         //std::cout << "sixj2 = " << sixj2 << std::endl;
+                         //std::cout << "lrel=" << lrel << "L=" << L << "Lcm=" << Lcm << "Lp=" << Lp << "lprel=" << lprel << "sixj2 = " << sixj2 << std::endl;
                          double mosh1 = AngMom::Moshinsky(Ncm,Lcm,nrel,lrel,na,la,nb,lb,L);
-//std::cout << "mosh1 = " << mosh1 << std::endl;
-//std::cout << "Ncm=" << Ncm << "Lcm=" << Lcm << "nrel=" << nrel << "lrel=" << lrel << "na="<< na << "la=" << la << "nb=" << nb << "lb=" << lb << "L=" << L << "mosh1 = " << mosh1 << std::endl;
+                         //std::cout << "mosh1 = " << mosh1 << std::endl;
+                         //std::cout << "Ncm=" << Ncm << "Lcm=" << Lcm << "nrel=" << nrel << "lrel=" << lrel << "na="<< na << "la=" << la << "nb=" << nb << "lb=" << lb << "L=" << L << "mosh1 = " << mosh1 << std::endl;
                          double mosh2 = AngMom::Moshinsky(Ncm,Lcm,nprel,lprel,nc,lc,nd,ld,Lp);
-//std::cout << "mosh2 = " << mosh2 << std::endl;
-//std::cout << "Ncm=" << Ncm << "Lcm=" << Lcm << "nprel=" << nprel << "lprel=" << lprel << "nc="<< nc << "lc=" << lc << "nd=" << nd << "ld=" << ld << "Lp=" << Lp << "mosh2 = " << mosh2 << std::endl;
+                         //std::cout << "mosh2 = " << mosh2 << std::endl;
+                         //std::cout << "Ncm=" << Ncm << "Lcm=" << Lcm << "nprel=" << nprel << "lprel=" << lprel << "nc="<< nc << "lc=" << lc << "nd=" << nd << "ld=" << ld << "Lp=" << Lp << "mosh2 = " << mosh2 << std::endl;
                          double integral = IntegralLookup[{nrel,lrel,nprel,lprel}];
-//std::cout << "integral = " << integral << std::endl;
+                         //std::cout << "integral = " << integral << std::endl;
                          vpt += sqrt((2*S+1)*(2*Sp+1)) * AplusB * (2*L+1) * (2*Lp+1) * sixj1 * ninej1 * ninej2
                                * AngMom::phase(Lcm) * sqrt((2*lrel+1)*(2*lprel+1)) * threej * sixj2 * mosh1*mosh2 * integral; // *2 factor is from the integral, was already included bt Ragnar  
-//std::cout << "sixj1 = " << sixj1 << std::endl;
-//std::cout << "ninej1 = " << ninej1 << std::endl;
-//std::cout << "ninej2 = " << ninej2 << std::endl;
-//std::cout << "AplusB = " << AplusB << std::endl;
-//std::cout << "threej = " << threej << std::endl;
-//std::cout << "sixj2 = " << sixj2 << std::endl;
-//std::cout << "mosh1 = " << mosh1 << std::endl;
-//std::cout << "mosh2 = " << mosh2 << std::endl;
-//std::cout << "integral = " << integral << std::endl;
+                         //std::cout << "sixj1 = " << sixj1 << std::endl;
+                         //std::cout << "ninej1 = " << ninej1 << std::endl;
+                         //std::cout << "ninej2 = " << ninej2 << std::endl;
+                         //std::cout << "AplusB = " << AplusB << std::endl;
+                         //std::cout << "threej = " << threej << std::endl;
+                         //std::cout << "sixj2 = " << sixj2 << std::endl;
+                         //std::cout << "mosh1 = " << mosh1 << std::endl;
+                         //std::cout << "mosh2 = " << mosh2 << std::endl;
+                         //std::cout << "integral = " << integral << std::endl;
                       }//nprel
                      }//nrel
                    }//Lcm
@@ -3043,12 +3251,13 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
            }//Sp
          }//S
          vpt *= AngMom::phase(J) * 2*sqrt(3) * sqrt((2*ja+1)*(2*jb+1)*(2*jc+1)*(2*jd+1)) ;// * (2*J+1); //(2*J+1) should not be here?
+         vpt *= sqrt(2*J+1.); //Because the operator violates parity, the code expects the operator to be reduced
          if (bra.p==bra.q) vpt /= SQRT2;
          if (ket.p==ket.q) vpt /= SQRT2;
 
          //std::cout << "Setting  channels " << ch_bra << " " << ch_ket << " " << ibra << " " << iket << "  = " << vpt << std::endl;
 
-//         std::cout << "The Matrix: " << std::endl << VPT.TwoBody.GetMatrix(ch_bra,ch_ket) << std::endl;
+         //std::cout << "The Matrix: " << std::endl << VPT.TwoBody.GetMatrix(ch_bra,ch_ket) << std::endl;
          VPT.TwoBody.SetTBME(ch_bra,ch_ket,ibra,iket,vpt);
        }//iket
      }//ibra
@@ -4413,6 +4622,45 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
    return Vminnesota;
  }
 
+ // A gaussian potential with strength 1.0
+ // We just reuse the Minnesota potential code and set the singlet and triplet strengths to zero
+ Operator GaussianCSBPotential( ModelSpace& modelspace, double sigma )
+ {
+   double VR = 1.0 ;
+////   double VT = -178. ;
+//   double VT = -178. * 0.2; // scaled to make things not crazy for finite nuclei
+//   double VS = -91.85 ;
+   double kR = 1.0 / (2*sigma*sigma); // make things dimensionless
+//   double kR = 1.487 * oscillator_b2; // make things dimensionless
+//   double kT = 0.639 * oscillator_b2;
+//   double kS = 0.465 * oscillator_b2;
+   std::array<double,6> params = {VR,0.0,0.0, kR,1,1};
+   Operator Vminnesota(modelspace, 0,0,0,2);
+
+   int nchan = modelspace.GetNumberTwoBodyChannels();
+   modelspace.PreCalculateMoshinsky();
+//   #pragma omp parallel for schedule(dynamic,1) 
+   for (int ch=0; ch<nchan; ++ch)
+   {
+    TwoBodyChannel& tbc = modelspace.GetTwoBodyChannel(ch);
+    int J = tbc.J;
+    int nkets = tbc.GetNumberKets();
+    for (int ibra=0;ibra<nkets;++ibra)
+    {
+     Ket& bra = tbc.GetKet(ibra);
+     for (int iket=ibra;iket<nkets;iket++)
+     {
+       Ket& ket = tbc.GetKet(iket);
+//       double vminn = MinnesotaMatEl( modelspace, bra, ket, J);
+       double vminn = -tbc.Tz * MinnesotaMatEl( modelspace, bra, ket, J, params);
+       Vminnesota.TwoBody.SetTBME(ch,ibra,iket,vminn);
+       Vminnesota.TwoBody.SetTBME(ch,iket,ibra,vminn);
+     }
+    }
+   }
+   return Vminnesota;
+ }
+
 
  // A bare delta function of the relative coordinate (effectively regulated by the finite oscillator basis).
  // The delta is a 1D delta of the relative coordinate, as defined by Moshinsky: r = 1/sqrt(2) |r1-r2|.
@@ -5050,7 +5298,8 @@ Operator FourierBesselCoeff(ModelSpace& modelspace, int nu, double R, std::set<i
     double jk = modelspace->GetOrbit(k).j2 * 0.5;
     double jl = modelspace->GetOrbit(l).j2 * 0.5;
     arma::mat& OB = op1.OneBody;
-    if (Lambda==0) // scalar => no sixJs, tbmes are not reduced.
+//    if (Lambda==0) // scalar => no sixJs, tbmes are not reduced.
+    if (not op1.IsReduced() ) // scalar => no sixJs, tbmes are not reduced.
     {
        if (j==l)  embedded_tbme += OB(i,k);
        if (i==k)  embedded_tbme += OB(j,l);

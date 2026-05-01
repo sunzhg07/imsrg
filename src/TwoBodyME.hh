@@ -81,6 +81,7 @@ class TwoBodyME
   void SetHermitian();
   void SetAntiHermitian();
   void SetNonHermitian();
+  bool IsAllocated()const;
 
   arma::mat& GetMatrix(size_t chbra, size_t chket){return MatEl.at({chbra,chket});};
   arma::mat& GetMatrix(size_t ch){return GetMatrix(ch,ch);};
@@ -100,6 +101,7 @@ class TwoBodyME
   void   SetTBME(int ch_bra, int ch_ket, Ket &bra, Ket& ket, double tbme);
   void   AddToTBME(int ch_bra, int ch_ket, Ket &bra, Ket& ket, double tbme);
   double GetTBME_norm(int ch_bra, int ch_ket, int ibra, int iket) const;
+  double GetTBME(int ch_bra, int ch_ket, int ibra, int iket) const;
   void   SetTBME(int ch_bra, int ch_ket, int ibra, int iket, double tbme);
   void   AddToTBME(int ch_bra, int ch_ket, int ibra, int iket, double tbme);
   // This violates hermiticity in a single update by updating a matrix element, but not its conjugate.
@@ -116,6 +118,7 @@ class TwoBodyME
   void   AddToTBME_J(int j_bra, int j_ket, int a, int b, int c, int d, double tbme);
   double GetTBME_J_norm(int j_bra, int j_ket, int a, int b, int c, int d) const;
   void GetTBME_J_norm_twoOps(const TwoBodyME& OtherTBME, int j_bra, int j_ket, int a, int b, int c, int d, double& tbme_this, double& tbme_other) const;
+  void GetTBME_J_twoOps(const TwoBodyME& OtherTBME, int j_bra, int j_ket, int a, int b, int c, int d, double& tbme_this, double& tbme_other) const;
 
   // Scalar setters/getters for backwards compatibility
   double GetTBME(int ch, int a, int b, int c, int d) const;
@@ -161,7 +164,8 @@ class TwoBodyME
   void AntiSymmetrize();
   void Eye();
   void PrintAllMatrices() const;
-  void PrintMatrix(size_t chbra,size_t chket) const { MatEl.at({chbra,chket}).print();};
+  void PrintMatrix(size_t chbra,size_t chket) const;
+//  void PrintMatrix(size_t chbra,size_t chket) const {std::cout.precision(12); MatEl.at({chbra,chket}).raw_print();};
   int Dimension();
   int size();
 

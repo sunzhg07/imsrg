@@ -206,6 +206,7 @@ ThreeBodyStorage::ME_type ThreeBodyStorage_iso::GetME_iso(int Jab_in, int Jde_in
 //*******************************************************************
 ThreeBodyStorage::ME_type ThreeBodyStorage_iso::GetME_pn(int Jab_in, int Jde_in, int twoJ, int a, int b, int c, int d, int e, int f) const
 {
+   if (not is_allocated) return 0;
 
    if (a==b and a==c and modelspace->GetOrbit(a).j2<3) return 0;
    if (d==e and d==f and modelspace->GetOrbit(d).j2<3) return 0;
@@ -333,6 +334,7 @@ void ThreeBodyStorage_iso::Deallocate()
 {
    std::vector<ThreeBodyStorage_iso::isoME_type>().swap(MatEl);
    std::unordered_map<size_t, size_t>().swap( OrbitIndexHash  );
+   is_allocated = false;
 }
 
 size_t ThreeBodyStorage_iso::size() const
@@ -351,6 +353,11 @@ void ThreeBodyStorage_iso::WriteBinary(std::ofstream& f)
 
 void ThreeBodyStorage_iso::ReadBinary(std::ifstream& f)
 {
+   if ( not f.good())
+   {
+      std::cout << "Uh Oh. Trouble reading 3N file " <<  __func__ << " in " << __FILE__ << " line " << __LINE__ << "   dying." << std::endl;
+      std::exit(EXIT_FAILURE);
+   }
   f.read((char*)&E3max,sizeof(E3max));
   f.read((char*)&total_dimension,sizeof(total_dimension));
   Allocate();
@@ -412,6 +419,7 @@ void ThreeBodyStorage_iso::KeyUnhash(size_t& key, size_t& a, size_t& b, size_t& 
 //int ThreeBodyME::SortOrbits(int a_in, int b_in, int c_in, int& a, int& b, int& c) const
 ThreeBodyStorage::Permutation ThreeBodyStorage_iso::SortOrbits(int a_in, int b_in, int c_in, int& a, int& b, int& c) const
 {
+   
    a_in -= a_in%2;  // We make the indices even, because in isospin formalism we only use proton (even) orbits and so less sorting is needed
    b_in -= b_in%2;
    c_in -= c_in%2;

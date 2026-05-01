@@ -1,5 +1,4 @@
 #include <Python.h>
-
 #include "IMSRG.hh"
 #include <string>
 #include <sstream>
@@ -9,6 +8,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
+#include <pybind11/numpy.h>
 
 namespace py = pybind11;
 
@@ -61,6 +61,18 @@ PYBIND11_MODULE(pyIMSRG, m)
                { auto& x=self.GetKetIndex_hh(); std::vector<size_t> v(x.begin(),x.end()); return v; })
           .def("GetKetIndex_ph", [](TwoBodyChannel &self)
                { auto& x=self.GetKetIndex_ph(); std::vector<size_t> v(x.begin(),x.end()); return v; })
+          .def("GetKetIndex_cc", [](TwoBodyChannel &self)
+               { auto& x=self.GetKetIndex_cc(); std::vector<size_t> v(x.begin(),x.end()); return v; })
+          .def("GetKetIndex_vc", [](TwoBodyChannel &self)
+               { auto& x=self.GetKetIndex_vc(); std::vector<size_t> v(x.begin(),x.end()); return v; })
+          .def("GetKetIndex_qc", [](TwoBodyChannel &self)
+               { auto& x=self.GetKetIndex_qc(); std::vector<size_t> v(x.begin(),x.end()); return v; })
+          .def("GetKetIndex_vv", [](TwoBodyChannel &self)
+               { auto& x=self.GetKetIndex_vv(); std::vector<size_t> v(x.begin(),x.end()); return v; })
+          .def("GetKetIndex_qv", [](TwoBodyChannel &self)
+               { auto& x=self.GetKetIndex_qv(); std::vector<size_t> v(x.begin(),x.end()); return v; })
+          .def("GetKetIndex_qq", [](TwoBodyChannel &self)
+               { auto& x=self.GetKetIndex_qq(); std::vector<size_t> v(x.begin(),x.end()); return v; })
           .def_readwrite("J", &TwoBodyChannel::J)
           .def_readwrite("parity", &TwoBodyChannel::parity)
           .def_readwrite("Tz", &TwoBodyChannel::Tz);
@@ -121,9 +133,14 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("GetNumberKets", &ModelSpace::GetNumberKets)
           .def("GetNumberTwoBodyChannels", &ModelSpace::GetNumberTwoBodyChannels)
           .def("GetNumberThreeBodyChannels", &ModelSpace::GetNumberThreeBodyChannels)
+          .def("GetEmax",  &ModelSpace::GetEmax)
+          .def("GetE2max", &ModelSpace::GetE2max)
+          .def("GetE3max", &ModelSpace::GetE3max)
           //      .def("GetOrbit", &MS_GetOrbit)
           .def("GetOrbit", [](ModelSpace &self, int i)
                { return self.GetOrbit(i); })
+          .def("GetKet", [](ModelSpace &self, int i)
+               { return self.GetKet(i); })
           .def("GetTwoBodyChannelIndex", &ModelSpace::GetTwoBodyChannelIndex)
           .def("GetTwoBodyChannel", [](ModelSpace &self, int ch)
                { return self.GetTwoBodyChannel(ch); })
@@ -136,6 +153,8 @@ PYBIND11_MODULE(pyIMSRG, m)
                { self.SetReference(ref); })
           .def("SetReferenceStr", [](ModelSpace &self, std::string s)
                { self.SetReference(s); })
+          .def("SetReferenceOcc", [](ModelSpace &self, std::map<index_t,double> &ref)
+               { self.SetReference(ref); })
           .def("Init_occ_from_file", &ModelSpace::Init_occ_from_file)
           .def("InitSingleSpecies", &ModelSpace::InitSingleSpecies)
           .def(
@@ -152,6 +171,14 @@ PYBIND11_MODULE(pyIMSRG, m)
               py::arg("l"), py::arg("j2"), py::arg("tz2"))
           //      .def("GetOrbitIndex_fromString", &MS_GetOrbitIndex_Str)
           .def("PreCalculateSixJ", &ModelSpace::PreCalculateSixJ)
+          .def("PreCalculateNineJ", &ModelSpace::PreCalculateNineJ)
+          .def("PreCalculateMoshinsky",&ModelSpace::PreCalculateMoshinsky)
+          .def("GetMoshinsky",&ModelSpace::GetMoshinsky)
+          .def("GetSixJ",&ModelSpace::GetSixJ)
+          .def("GetNineJ",&ModelSpace::GetNineJ)
+          .def("NineJHash",&ModelSpace::NineJHash)
+//          .def("NineJUnHash",&ModelSpace::NineJUnHash)
+          .def("NineJUnHash",[](ModelSpace &self, uint64_t key){ uint64_t k1,k2,k3,k4,k5,k6,k7,k8,k9; self.NineJUnHash(key,k1,k2,k3,k4,k5,k6,k7,k8,k9); return py::make_tuple(k1,k2,k3,k4,k5,k6,k7,k8,k9);  }     )
           .def("SetScalarFirstPass", &ModelSpace::SetScalarFirstPass)
           .def("SetScalar3bFirstPass", &ModelSpace::SetScalar3bFirstPass)
           .def("ClearVectors", &ModelSpace::ClearVectors)
@@ -186,19 +213,22 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def_readwrite("OneBody", &Operator::OneBody)
           .def_readwrite("TwoBody", &Operator::TwoBody)
           .def_readwrite("ThreeBody", &Operator::ThreeBody)
-          .def("GetOneBody", &Operator::GetOneBody, py::arg("i"),py::arg("j"))
-          .def("SetOneBody", &Operator::SetOneBody, py::arg("i"),py::arg("j"),py::arg("MatEl") )
-          .def("GetTwoBody", &Operator::GetTwoBody, py::arg("ch_bra"),py::arg("ch_ket"),py::arg("ibra"),py::arg("iket"))
+          .def("GetOneBody", &Operator::GetOneBody, py::arg("i"), py::arg("j"))
+          .def("SetOneBody", &Operator::SetOneBody, py::arg("i"), py::arg("j"), py::arg("MatEl"))
+          .def("GetTwoBody", &Operator::GetTwoBody, py::arg("ch_bra"), py::arg("ch_ket"), py::arg("ibra"), py::arg("iket"))
           .def("SetTwoBody", &Operator::SetTwoBody)
           .def("GetTwoBodyDimension", &Operator::GetTwoBodyDimension)
           .def("ScaleOneBody", &Operator::ScaleOneBody)
           .def("ScaleTwoBody", &Operator::ScaleTwoBody)
           .def("EraseOneBody", &Operator::EraseOneBody)
           .def("EraseTwoBody", &Operator::EraseTwoBody)
+          .def("EraseThreeBody", &Operator::EraseThreeBody)
           .def("DoNormalOrdering", &Operator::DoNormalOrdering)
           .def("DoNormalOrderingCore", &Operator::DoNormalOrderingCore)
           .def("DoNormalOrderingFilledValence", &Operator::DoNormalOrderingFilledValence)
           .def("UndoNormalOrdering", &Operator::UndoNormalOrdering)
+          .def("UndoNormalOrderingCore", &Operator::UndoNormalOrderingCore)
+          .def("DoNormalOrdering", &Operator::UndoNormalOrdering)
           .def("SetModelSpace", &Operator::SetModelSpace)
           .def("Truncate", &Operator::Truncate)
           .def("DoIsospinAveraging", &Operator::DoIsospinAveraging)
@@ -211,6 +241,7 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("SetNonHermitian", &Operator::SetNonHermitian)
           .def("IsHermitian", &Operator::IsHermitian)
           .def("IsAntiHermitian", &Operator::IsAntiHermitian)
+          .def("IsReduced", &Operator::IsReduced)
           .def("PrintOneBody", &Operator::PrintOneBody)
           .def("PrintTwoBody", [](Operator &self)
                { self.PrintTwoBody(); })
@@ -229,8 +260,8 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("GetTRank", &Operator::GetTRank)
           .def("GetParity", &Operator::GetParity)
           .def("GetNumberLegs", &Operator::GetNumberLegs)
-          .def("GetE3max", &Operator::GetE3max)
-          .def("SetE3max", &Operator::SetE3max)
+//          .def("GetE3max", &Operator::GetE3max)
+//          .def("SetE3max", &Operator::SetE3max)
           .def("PrintTimes", &Operator::PrintTimes)
           .def("Size", &Operator::Size)
           .def("MakeNormalized", &Operator::MakeNormalized)
@@ -410,6 +441,9 @@ PYBIND11_MODULE(pyIMSRG, m)
           //      .def("PrintAll",&ThreeBodyME::PrintAll)
           .def("Erase", &ThreeBodyME::Erase)
           .def("SetMode", &ThreeBodyME::SetMode)
+          .def("IsAllocated",&ThreeBodyME::IsAllocated)
+          .def("IsHermitian",&ThreeBodyME::IsHermitian)
+          .def("Is_PN_Mode",&ThreeBodyME::Is_PN_Mode)
           .def("ReadFile", &ThreeBodyME::ReadFile, py::arg("string_inputs"), py::arg("int_inputs"))
           .def(py::self += ThreeBodyME(), py::is_operator())
           .def(py::self *= double())
@@ -429,10 +463,12 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("ReadBareTBME_Navratil", &ReadWrite::ReadBareTBME_Navratil)
           .def("ReadBareTBME_Darmstadt", &ReadWrite::ReadBareTBME_Darmstadt, py::arg("filename"), py::arg("H"), py::arg("e1max"), py::arg("e2max"), py::arg("lmax"))
           .def("Read_Darmstadt_3body", &ReadWrite::Read_Darmstadt_3body, py::arg("filename"), py::arg("H"), py::arg("e1max"), py::arg("e2max"), py::arg("e3max"))
+          .def("ReadOperator2b_Miyagi", &ReadWrite::ReadOperator2b_Miyagi, py::arg("filename"), py::arg("ms"))
 #ifndef NO_HDF5
           .def("Read3bodyHDF5", &ReadWrite::Read3bodyHDF5)
 #endif
           .def("Write_me2j", &ReadWrite::Write_me2j)
+          .def("Write_me2j_gz", &ReadWrite::Write_me2j_gz)
           .def("Write_me3j", &ReadWrite::Write_me3j)
           .def("WriteTBME_Navratil", &ReadWrite::WriteTBME_Navratil)
           .def("WriteNuShellX_sps", &ReadWrite::WriteNuShellX_sps, py::arg("op"), py::arg("filename"))
@@ -460,6 +496,11 @@ PYBIND11_MODULE(pyIMSRG, m)
               "ReadTokyo", [](ReadWrite &self, std::string s, Operator &op)
               { self.ReadTokyo(s, op); },
               py::arg("file_in"), py::arg("op"))
+          .def(
+              "ReadTensorTokyo", [](ReadWrite &self, std::string s, Operator &op)
+              { self.ReadTensorTokyo(s, op); },
+              py::arg("file_in"), py::arg("op"))
+          .def("ReadOperator2b_Miyagi", &ReadWrite::ReadOperator2b_Miyagi, py::arg("filename"), py::arg("modelspace") )
           .def("WriteOneBody_Oslo", &ReadWrite::WriteOneBody_Oslo)
           .def("WriteTwoBody_Oslo", &ReadWrite::WriteTwoBody_Oslo)
           .def("SetCoMCorr", &ReadWrite::SetCoMCorr)
@@ -474,6 +515,9 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("SetScratchDir", &ReadWrite::SetScratchDir)
           .def("GetScratchDir", &ReadWrite::GetScratchDir)
           .def("CopyFile", &ReadWrite::CopyFile, py::arg("filein"), py::arg("fileout"))
+          .def("ReadDarmstadt_2bodyRel", &ReadWrite::ReadDarmstadt_2bodyRel)
+          .def("ReadH2_2body", &ReadWrite::ReadH2_2body)
+          .def("Read2bCurrent_Navratil", &ReadWrite::Read2bCurrent_Navratil, py::arg("filename"),py::arg("Op"))
           //      .def("WriteOmega",&ReadWrite::WriteOmega, py::arg("basename"),py::arg("scratch_dir"),py::arg("nOmegas"))
           ;
 
@@ -563,11 +607,11 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("SetDenominatorPartitioning", &IMSRGSolver::SetDenominatorPartitioning) // Can be Epstein_Nesbet (default) or Moller_Plesset
           .def("GetSystemDimension", &IMSRGSolver::GetSystemDimension)
           // .def("GetOmega", &IMSRGSolver::GetOmega)
-          .def("GetOmega", py::overload_cast<int>(&IMSRGSolver::GetOmega),
+          .def("GetOmega", py::overload_cast<int>(&IMSRGSolver::GetOmega), py::arg("index"),
                "Get an Operator at a specific index")
           .def("GetOmega", py::overload_cast<>(&IMSRGSolver::GetOmega),
                "Get the entire deque of Operators")
-          .def("SetOmega", &IMSRGSolver::SetOmega)
+          .def("SetOmega", &IMSRGSolver::SetOmega, py::arg("index"), py::arg("Omega") )
           //      .def("GetH_s",&IMSRGSolver::GetH_s,return_value_policy<reference_existing_object>())
           .def("GetH_s", &IMSRGSolver::GetH_s)
           .def("SetH_s", &IMSRGSolver::SetH_s)
@@ -575,11 +619,11 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("SetMagnusAdaptive", &IMSRGSolver::SetMagnusAdaptive)
           .def("SetReadWrite", &IMSRGSolver::SetReadWrite)
           .def("SetHunterGatherer", &IMSRGSolver::SetHunterGatherer)
-//          .def("SetPerturbativeTriples", &IMSRGSolver::SetPerturbativeTriples)
-//          .def("GetPerturbativeTriples", &IMSRGSolver::GetPerturbativeTriples)
-//          .def("CalculatePerturbativeTriples", &IMSRGSolver::CalculatePerturbativeTriples)
+          //          .def("SetPerturbativeTriples", &IMSRGSolver::SetPerturbativeTriples)
+          //          .def("GetPerturbativeTriples", &IMSRGSolver::GetPerturbativeTriples)
+          //          .def("CalculatePerturbativeTriples", &IMSRGSolver::CalculatePerturbativeTriples)
           .def("CalculatePerturbativeTriples", py::overload_cast<>(&IMSRGSolver::CalculatePerturbativeTriples))
-          .def("CalculatePerturbativeTriples", py::overload_cast<Operator&>(&IMSRGSolver::CalculatePerturbativeTriples))
+          .def("CalculatePerturbativeTriples", py::overload_cast<Operator &>(&IMSRGSolver::CalculatePerturbativeTriples))
           .def("AddOperator", &IMSRGSolver::AddOperator)
           .def("GetOperator", &IMSRGSolver::GetOperator)
           .def("EstimateBCHError", &IMSRGSolver::EstimateBCHError)
@@ -593,18 +637,22 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def_readwrite("generator", &IMSRGSolver::generator)
           .def_readwrite("Eta", &IMSRGSolver::Eta)
           .def_readwrite("n_omega_written", &IMSRGSolver::n_omega_written) // I'm not sure I like just directly exposing this...
-          ;
+          .def("SetOnly1bEta", [](IMSRGSolver &self, bool tf)
+               { self.GetGenerator().SetOnly1bEta(tf); });
 
-   py::class_<IMSRGSolverPV,IMSRGSolver>(m,"IMSRGSolverPV")
-      .def(py::init<Operator&,Operator&,Operator&,Operator&>())
-      .def("Solve_RK4",&IMSRGSolverPV::Solve_flow_RK4_PV)
-      .def("GetH_s",&IMSRGSolverPV::GetH_s)
-      .def("GetVPT_s",&IMSRGSolverPV::GetVPT_s)
-      .def("GetSchiff_s",&IMSRGSolverPV::GetSchiff_s)
-      .def("GetSchiffpp_s",&IMSRGSolverPV::GetSchiffpp_s)
-      .def("SetGeneratorPV",&IMSRGSolverPV::SetGeneratorPV)
-   ;      
-
+      py::class_<IMSRGSolverPV, IMSRGSolver>(m, "IMSRGSolverPV")
+          .def(py::init<Operator &, Operator &>())
+          .def_readwrite("Etapv", &IMSRGSolverPV::Etapv)
+          .def("Solve_RK4", &IMSRGSolverPV::Solve_flow_RK4_PV)
+          .def("Solve_magnus_euler", &IMSRGSolverPV::Solve_magnus_euler_PV)
+          .def("AddOperatorPV", &IMSRGSolverPV::AddOperatorPV)
+          .def("GetOperatorPV", &IMSRGSolverPV::GetOperatorPV)
+          .def("GetVPT_s", &IMSRGSolverPV::GetVPT_s)
+          .def("SetGeneratorPV", &IMSRGSolverPV::SetGeneratorPV)
+          .def("SetOnly1bEta", [](IMSRGSolverPV &self, bool tf)
+               { self.GetGeneratorPV().SetOnly1bEta(tf); })
+          .def("Transform", [](IMSRGSolverPV &self, Operator &op, Operator &opPV)
+               { return self.Transform(op, opPV); });
 
       py::class_<Generator>(m, "Generator")
           .def(py::init<>())
@@ -615,11 +663,10 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("GetHod_SingleRef", &Generator::GetHod_SingleRef, py::arg("H"))
           .def("GetHod", &Generator::GetHod, py::arg("H"));
 
-    py::class_<GeneratorPV,Generator>(m,"GeneratorPV")
-        .def(py::init<>())
-        .def("SetType", &Generator::SetType, py::arg("gen_type"))
-        .def("Update", &GeneratorPV::Update, py::arg("H"), py::arg("V"), py::arg("Eta"), py::arg("Etapv"))
-         ;
+      py::class_<GeneratorPV, Generator>(m, "GeneratorPV")
+          .def(py::init<>())
+          .def("SetType", &Generator::SetType, py::arg("gen_type"))
+          .def("Update", &GeneratorPV::Update, py::arg("H"), py::arg("V"), py::arg("Eta"), py::arg("Etapv"));
 
 
 
@@ -629,7 +676,10 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("PrintCounters", &IMSRGProfiler::PrintCounters)
           .def("PrintAll", &IMSRGProfiler::PrintAll)
           .def("PrintMemory", &IMSRGProfiler::PrintMemory)
-          .def("Clear", &IMSRGProfiler::Clear);
+          .def("Clear", &IMSRGProfiler::Clear)
+          .def("GetTimer", &IMSRGProfiler::GetTimer)
+          .def("GetCounter", &IMSRGProfiler::GetCounter)
+       ;
 
       py::class_<Jacobi3BME>(m, "Jacobi3BME")
           .def(py::init<>())
@@ -644,7 +694,8 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("ComputeNAS_MatrixElements", &Jacobi3BME::ComputeNAS_MatrixElements)
           .def("GetLabMatEl", &Jacobi3BME::GetLabMatEl)
           .def("TestReadTcoeffNavratil", &Jacobi3BME::TestReadTcoeffNavratil)
-          .def("GetV3mon_all", &Jacobi3BME::GetV3mon_all);
+//          .def("GetV3mon_all", &Jacobi3BME::GetV3mon_all)
+      ;
 
       py::module Commutator = m.def_submodule("Commutator", "Commutator namespace");
        Commutator.def("Commutator", &Commutator::Commutator);
@@ -653,14 +704,13 @@ PYBIND11_MODULE(pyIMSRG, m)
        Commutator.def("SetUseIMSRG3", &Commutator::SetUseIMSRG3);
        Commutator.def("SetUseIMSRG3N7", &Commutator::SetUseIMSRG3N7);
        Commutator.def("SetUseIMSRG3N7_Tensor", &Commutator::SetUseIMSRG3N7_Tensor);
+       Commutator.def("SetUseIMSRG3_Tensor", &Commutator::SetUseIMSRG3_Tensor);
        Commutator.def("TurnOnTerm", &Commutator::TurnOnTerm);
        Commutator.def("TurnOffTerm", &Commutator::TurnOffTerm);
        Commutator.def("SetThreebodyThreshold", &Commutator::SetThreebodyThreshold);
        Commutator.def("SetVerbose", &Commutator::SetVerbose, py::arg("tf"));
        Commutator.def("SetSingleThread", &Commutator::SetSingleThread, py::arg("tf"));
        Commutator.def("PrintSettings", &Commutator::PrintSettings );
-
-
 
        // IMSRG(2) commutators
        Commutator.def("comm110ss", &Commutator::comm110ss);
@@ -690,6 +740,7 @@ PYBIND11_MODULE(pyIMSRG, m)
        // scalar-tensor commutators
        Commutator.def("comm111st", &Commutator::comm111st);
        Commutator.def("comm121st", &Commutator::comm121st);
+       Commutator.def("comm221st", &Commutator::comm221st);
        Commutator.def("comm122st", &Commutator::comm122st);
        Commutator.def("comm222_pp_hh_221st", &Commutator::comm222_pp_hh_221st);
        Commutator.def("comm222_phst", &Commutator::comm222_phst);
@@ -717,6 +768,12 @@ PYBIND11_MODULE(pyIMSRG, m)
        py::module FactorizedDoubleCommutator = Commutator.def_submodule("FactorizedDoubleCommutator", "FactorizedDoubleCommutator namespace");
         FactorizedDoubleCommutator.def("comm223_231",      &Commutator::FactorizedDoubleCommutator::comm223_231);
         FactorizedDoubleCommutator.def("comm223_232",      &Commutator::FactorizedDoubleCommutator::comm223_232);
+
+        FactorizedDoubleCommutator.def("comm223_231_chi2b",        &Commutator::FactorizedDoubleCommutator::comm223_231_chi2b);
+        FactorizedDoubleCommutator.def("comm223_231_chi1b",        &Commutator::FactorizedDoubleCommutator::comm223_231_chi1b);
+        FactorizedDoubleCommutator.def("comm223_232_chi2b",        &Commutator::FactorizedDoubleCommutator::comm223_232_chi2b);
+        FactorizedDoubleCommutator.def("comm223_232_chi1b",        &Commutator::FactorizedDoubleCommutator::comm223_232_chi1b);
+
 //        FactorizedDoubleCommutator.def("comm223_231_slow", &Commutator::FactorizedDoubleCommutator::comm223_231_slow);
 //        FactorizedDoubleCommutator.def("comm223_232_slow", &Commutator::FactorizedDoubleCommutator::comm223_232_slow);
 //        FactorizedDoubleCommutator.def("UseSlowVersion",   &Commutator::FactorizedDoubleCommutator::UseSlowVersion);
@@ -742,6 +799,8 @@ PYBIND11_MODULE(pyIMSRG, m)
        BCH.def("SetUseFactorizedCorrectionBCH_product", &BCH::SetUseFactorizedCorrectionBCH_product);
        BCH.def("SetUseFactorized_Correct_ZBTerm", &BCH::SetUseFactorized_Correct_ZBTerm);
        BCH.def("SetOnly2bOmega", &BCH::SetOnly2bOmega);
+       BCH.def("SetComm223_231", &BCH::SetComm223_231);
+       BCH.def("SetComm223_232", &BCH::SetComm223_232);
        BCH.def("Set_BCH_Transform_Threshold", &BCH::Set_BCH_Transform_Threshold);
        BCH.def("Set_BCH_Product_Threshold", &BCH::Set_BCH_Product_Threshold);
        BCH.def("SetBCHSkipiEq1", &BCH::SetBCHSkipiEq1);
@@ -756,11 +815,30 @@ PYBIND11_MODULE(pyIMSRG, m)
        ReferenceImplementations.def("comm221ss", &ReferenceImplementations::comm221ss);
        ReferenceImplementations.def("comm122ss", &ReferenceImplementations::comm122ss);
        ReferenceImplementations.def("comm222_pp_hh_221ss", &ReferenceImplementations::comm222_pp_hh_221ss);
+       ReferenceImplementations.def("comm222_pp_hhss", &ReferenceImplementations::comm222_pp_hhss);
        ReferenceImplementations.def("comm222_phss", &ReferenceImplementations::comm222_phss);
+
+       ReferenceImplementations.def("comm111st", &ReferenceImplementations::comm111st);
+       ReferenceImplementations.def("comm121st", &ReferenceImplementations::comm121st);
+       ReferenceImplementations.def("comm122st", &ReferenceImplementations::comm122st);
+       ReferenceImplementations.def("comm221st", &ReferenceImplementations::comm221st);
+       ReferenceImplementations.def("comm222_pp_hhst", &ReferenceImplementations::comm222_pp_hhst);
+       ReferenceImplementations.def("comm222_phst", &ReferenceImplementations::comm222_phst);
+
        //
+       ReferenceImplementations.def("comm331ss", &ReferenceImplementations::comm331ss);
        ReferenceImplementations.def("comm223ss", &ReferenceImplementations::comm223ss);
-       ReferenceImplementations.def("comm232ss", &ReferenceImplementations::comm232ss);
        ReferenceImplementations.def("comm231ss", &ReferenceImplementations::comm231ss);
+       ReferenceImplementations.def("comm232ss", &ReferenceImplementations::comm232ss);
+       ReferenceImplementations.def("comm133ss", &ReferenceImplementations::comm133ss);
+       ReferenceImplementations.def("comm132ss", &ReferenceImplementations::comm132ss);
+       ReferenceImplementations.def("comm332_ppph_hhhpss", &ReferenceImplementations::comm332_ppph_hhhpss);
+       ReferenceImplementations.def("comm332_pphhss", &ReferenceImplementations::comm332_pphhss);
+       ReferenceImplementations.def("comm233_pp_hhss", &ReferenceImplementations::comm233_pp_hhss); 
+       ReferenceImplementations.def("comm233_phss", &ReferenceImplementations::comm233_phss); 
+       ReferenceImplementations.def("comm333_ppp_hhhss", &ReferenceImplementations::comm333_ppp_hhhss); 
+       ReferenceImplementations.def("comm333_pph_hhpss", &ReferenceImplementations::comm333_pph_hhpss); 
+
        //
        ReferenceImplementations.def("diagram_CIa", &ReferenceImplementations::diagram_CIa);
        ReferenceImplementations.def("diagram_CIb", &ReferenceImplementations::diagram_CIb);
@@ -779,8 +857,6 @@ PYBIND11_MODULE(pyIMSRG, m)
        ReferenceImplementations.def("comm223_232_BruteForce", &ReferenceImplementations::comm223_232_BruteForce);
        ReferenceImplementations.def("comm223_231", &ReferenceImplementations::comm223_231);
        ReferenceImplementations.def("comm223_232", &ReferenceImplementations::comm223_232);
-       ReferenceImplementations.def("comm331ss", &ReferenceImplementations::comm331ss);
-       ReferenceImplementations.def("comm133ss", &ReferenceImplementations::comm133ss);
 
        ReferenceImplementations.def("comm331st", &ReferenceImplementations::comm331st);
        ReferenceImplementations.def("comm223st", &ReferenceImplementations::comm223st);
@@ -789,6 +865,11 @@ PYBIND11_MODULE(pyIMSRG, m)
        ReferenceImplementations.def("comm133st", &ReferenceImplementations::comm133st);
        ReferenceImplementations.def("comm132st", &ReferenceImplementations::comm132st);    
        ReferenceImplementations.def("comm332_ppph_hhhpst", &ReferenceImplementations::comm332_ppph_hhhpst);  
+       ReferenceImplementations.def("comm332_pphhst", &ReferenceImplementations::comm332_pphhst);  
+       ReferenceImplementations.def("comm233_pp_hhst", &ReferenceImplementations::comm233_pp_hhst);  
+       ReferenceImplementations.def("comm233_phst", &ReferenceImplementations::comm233_phst);  
+       ReferenceImplementations.def("comm333_ppp_hhhst", &ReferenceImplementations::comm333_ppp_hhhst);  
+       ReferenceImplementations.def("comm333_pph_hhpst", &ReferenceImplementations::comm333_pph_hhpst); 
 
 
       py::class_<RPA>(m, "RPA")
@@ -816,11 +897,14 @@ PYBIND11_MODULE(pyIMSRG, m)
           //      .def(py::init<>())
           .def(py::init<ModelSpace &>())
           .def("SetRandomSeed", &UnitTest::SetRandomSeed)
-          .def("RandomOp", &UnitTest::RandomOp, py::arg("modelspace"),py::arg("jrank"),py::arg("tz"),py::arg("parity"),py::arg("particle_rank"),py::arg("hermitian"))
+          .def("RandomOp", &UnitTest::RandomOp, py::arg("modelspace"), py::arg("jrank"), py::arg("tz"), py::arg("parity"), py::arg("particle_rank"), py::arg("hermitian"))
           .def("TestCommutators", &UnitTest::TestCommutators)
+//          .def("TestCommutators_Tensor", &UnitTest::TestCommutators_Tensor)
+          .def("TestCommutators_Tensor", &UnitTest::TestCommutators_Tensor, py::arg("X"),py::arg("Y") )
           .def("TestCommutators_IsospinChanging", &UnitTest::TestCommutators_IsospinChanging)
           .def("TestCommutators_ParityChanging", &UnitTest::TestCommutators_ParityChanging)
           .def("TestCommutators3", &UnitTest::TestCommutators3)
+          .def("TestNormalOrdering", &UnitTest::TestNormalOrdering)
           .def("TestDaggerCommutators", &UnitTest::TestDaggerCommutators)
           .def("TestDaggerCommutatorsAlln", &UnitTest::TestDaggerCommutatorsAlln)
           .def("Test3BodyAntisymmetry", &UnitTest::Test3BodyAntisymmetry)
@@ -839,6 +923,11 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("Test_comm222_phss", &UnitTest::Test_comm222_phss)
           .def("Test_comm222_pp_hh_221ss", &UnitTest::Test_comm222_pp_hh_221ss)
 
+          .def("Test_comm111st", &UnitTest::Test_comm111st)
+          .def("Test_comm121st", &UnitTest::Test_comm121st)
+          .def("Test_comm221st", &UnitTest::Test_comm221st)
+          .def("Test_comm122st", &UnitTest::Test_comm122st)
+          .def("Test_comm222_pp_hhst", &UnitTest::Test_comm222_pp_hhst)
           .def("Test_comm222_phst", &UnitTest::Test_comm222_phst)
           ///
           .def("Test_comm330ss", &UnitTest::Test_comm330ss)
@@ -889,6 +978,12 @@ PYBIND11_MODULE(pyIMSRG, m)
           .def("Mscheme_Test_comm133st", &UnitTest::Mscheme_Test_comm133st)
           .def("Mscheme_Test_comm132st", &UnitTest::Mscheme_Test_comm132st)
           .def("Mscheme_Test_comm332_ppph_hhhpst", &UnitTest::Mscheme_Test_comm332_ppph_hhhpst)
+          .def("Mscheme_Test_comm332_pphhst", &UnitTest::Mscheme_Test_comm332_pphhst)
+          .def("Mscheme_Test_comm233_pp_hhst", &UnitTest::Mscheme_Test_comm233_pp_hhst)
+          .def("Mscheme_Test_comm233_phst", &UnitTest::Mscheme_Test_comm233_phst)
+          .def("Mscheme_Test_comm233_phst", &UnitTest::Mscheme_Test_comm233_phst)
+          .def("Mscheme_Test_comm333_ppp_hhhst", &UnitTest::Mscheme_Test_comm333_ppp_hhhst)
+          .def("Mscheme_Test_comm333_pph_hhpst", &UnitTest::Mscheme_Test_comm333_pph_hhpst)
 
           .def("GetMschemeMatrixElement_1b", &UnitTest::GetMschemeMatrixElement_1b, py::arg("Op"), py::arg("a"), py::arg("ma"), py::arg("b"), py::arg("mb")) // Op, a,ma, b,mb...
           .def("GetMschemeMatrixElement_2b", &UnitTest::GetMschemeMatrixElement_2b)                                                                          // Op, a,ma, b,mb...
@@ -957,6 +1052,8 @@ PYBIND11_MODULE(pyIMSRG, m)
       m.def("FillFactorialLists", AngMom::FillFactorialLists);
       m.def("factorial", AngMom::factorial);
       m.def("double_fact", AngMom::double_fact);
+      m.def("AngMomJmin",AngMom::Jmin);
+      m.def("AngMomJmax",AngMom::Jmax);
 
       m.attr("HBARC") = py::float_(PhysConst::HBARC);
       m.attr("M_PROTON") = py::float_(PhysConst::M_PROTON);
