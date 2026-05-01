@@ -1,6 +1,6 @@
 
 #include "Commutator.hh"
-#include "Commutator232.hh"
+//#include "Commutator232.hh"
 #include "ModelSpace.hh"
 #include "Operator.hh"
 #include "TwoBodyME.hh"
@@ -195,6 +195,12 @@ namespace Commutator
   {
     imsrg3_valence_2b = tf;
   }
+
+  void SetPertTripNovvv(bool tf)
+  {
+    pert_trip_novvv = tf;
+  }
+
 
   void SetSingleThread(bool tf)
   {
@@ -688,17 +694,35 @@ namespace Commutator
     int pX = X.GetParity();
     int pY = Y.GetParity();
     int pZ = (pX + pY) % 2; // Added to make z.parity correct when calling only UnitTest and not through the CommutatorScalarScalar
-    if (X.GetParticleRank() < 2 or Y.GetParticleRank() < 2)
-      return;
-    if (Z.IsAntiHermitian())
+    if (    X.GetParticleRank() < 2 or Y.GetParticleRank() < 2 
+         or Z.IsAntiHermitian()
+         or  Z.GetJRank() > 0 or Z.GetTRank() > 0 or pZ != 0)
     {
-      return;
-    }
-    if (Z.GetJRank() > 0 or Z.GetTRank() > 0 or pZ != 0)
-    {
+      Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
       return;
     }
 
+//    for (int ch = 0; ch < Y.nChannels; ++ch)
+//    {
+//      TwoBodyChannel &tbc = Z.modelspace->GetTwoBodyChannel(ch);
+//      auto hh = tbc.GetKetIndex_hh();
+//      if (hh.size() == 0) continue;
+//      auto ph = tbc.GetKetIndex_ph();
+//      auto pp = tbc.GetKetIndex_pp();
+//      arma::uvec nbar_indices = arma::join_cols(hh, ph);
+//      nbar_indices = arma::join_cols(nbar_indices, pp);
+//      if (hh.size() == 0)
+//        continue;
+//      auto nn = tbc.Ket_occ_hh;
+//      arma::vec nbarnbar = arma::join_cols(tbc.Ket_unocc_hh, tbc.Ket_unocc_ph);
+//      auto &X2 = X.TwoBody.GetMatrix(ch).submat(hh, nbar_indices);
+//      arma::mat Y2 = Y.TwoBody.GetMatrix(ch).submat(nbar_indices, hh);
+//      Y2.head_rows(nbarnbar.size()).each_col() %= nbarnbar;
+//      Z.ZeroBody += 2 * (2 * tbc.J + 1) * arma::sum(arma::diagvec(X2 * Y2) % nn); // This could be made more efficient, but who cares?
+//    }
+
+
+    
     std::vector<size_t> ch_bra_list, ch_ket_list;
     auto ch_iter = X.TwoBody.MatEl;
     for (auto &iter : ch_iter)
@@ -707,6 +731,7 @@ namespace Commutator
       ch_ket_list.push_back(iter.first[1]);
     }
     int nch = ch_bra_list.size();
+#pragma omp parallel for schedule(dynamic) reduction(+:z0)
     for (int ich = 0; ich < nch; ++ich)
     {
       size_t ch_bra = ch_bra_list[ich];
@@ -767,6 +792,7 @@ namespace Commutator
       }
     }
     Z.ZeroBody += z0;
+    
     // std::cout<<"Z0="<< Z.ZeroBody <<std::endl;
     Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
     // std::cout << "End comm220ss " << std::endl;
@@ -907,14 +933,19 @@ namespace Commutator
     int hZ = Z.IsHermitian() ? 1 : -1;
 
 
-    TwoBodyME Mpp(Z.modelspace, Z.GetJRank(), Z.GetTRank(), Z.GetParity());
-    TwoBodyME Mhh(Z.modelspace, Z.GetJRank(), Z.GetTRank(), Z.GetParity());
+
+//    TwoBodyME Mpp(Z.modelspace, Z.GetJRank(), Z.GetTRank(), Z.GetParity());
+//    TwoBodyME Mhh(Z.modelspace, Z.GetJRank(), Z.GetTRank(), Z.GetParity());
+    TwoBodyME Mpp = 0*Z.TwoBody;
+    TwoBodyME Mhh = Mpp;
+
     ConstructScalarMpp_Mhh(X, Y, Z, Mpp, Mhh);
+
 
     int norbits = Z.modelspace->all_orbits.size();
     std::vector<index_t> allorb_vec(Z.modelspace->all_orbits.begin(), Z.modelspace->all_orbits.end());
-    //#pragma omp parallel for schedule(dynamic, 1)
     //   for (int i=0;i<norbits;++i)
+    #pragma omp parallel for schedule(dynamic, 1)
     for (int indexi = 0; indexi < norbits; ++indexi)
     {
       //      auto i = Z.modelspace->all_orbits[indexi];
@@ -935,8 +966,8 @@ namespace Commutator
           double nbarc = 1.0 - nc;
           int Jmin = std::max(std::abs(oc.j2 - oi.j2), std::abs(oc.j2 - oj.j2)) / 2;
           int Jmax = (oc.j2 + std::min(oi.j2, oj.j2)) / 2;
-          int parity_phase = hZ == 1 ? 1 : Z.modelspace->phase(oc.l);
-          // int parity_phase = 1;
+          //int parity_phase = hZ == 1 ? 1 : Z.modelspace->phase(oc.l);
+          int parity_phase = 1;
           if (std::abs(nc) > 1e-9)
           {
             for (int J = Jmin; J <= Jmax; J++)
@@ -959,6 +990,7 @@ namespace Commutator
         }
       } // for j
     }
+
     // Z.PrintOneBody();
     // std::cout<<"=========================="<<std::endl;
     X.profiler.timer[__func__] += omp_get_wtime() - t_start;
@@ -1440,6 +1472,7 @@ namespace Commutator
       } // for j
     } // for i
 
+//    Z.PrintOneBody();
     if (Commutator::verbose)
     {
        X.profiler.timer["_pphh One Body bit"] += omp_get_wtime() - t_internal;
