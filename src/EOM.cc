@@ -1809,7 +1809,9 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
       }
     }
   }
-  
+  std::cout << "one-body contribution to norm: " << ovlp1 << std::endl;
+  std::cout << "two-body contribution to norm: " << ovlp2 << std::endl;
+  std::cout << "three-body contribution to norm: " << ovlp3 << std::endl;
 
   return (ovlp + ovlp1 + ovlp2 + ovlp3);
 }
@@ -2294,7 +2296,7 @@ Operator EOM::ReadTdm(const std::string &tdm_file)
       Operator ops(*rdm_ms, 0, 0, 0, 3);
 
       ops.ThreeBody.SetMode("pn");
-      std::cout << "hello" << std::endl;
+      
       ops *= 0.0;
 
       // --- one-body density matrix elements ---
@@ -2394,6 +2396,9 @@ Operator EOM::ReadTdm(const std::string &tdm_file)
           int jde = two_jde / 2;  // integer Jde (coupling of ket p,q pair)
 
           double rd = std::stod(tok.back()) / factor;
+          // OSM TRBTD files already include an extra sqrt(2J+1) factor
+          // in the stored 3-body value, unlike the C++ writer.
+          rd /= std::sqrt(double(two_tot) + 1.0);
 
           // Identify channels by (2*Jtot, parity, twoTz)
           Orbit& oa  = rdm_ms->GetOrbit(aa);

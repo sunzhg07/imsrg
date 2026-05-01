@@ -406,7 +406,6 @@ target_link_libraries(
 )
 
 add_library(
-<<<<<<< HEAD
     EOM
     EOM.hh EOM.cc
 )
@@ -421,10 +420,7 @@ target_link_libraries(
     AngMom
 )
 add_library(
-    RPA
-=======
     RPA OBJECT
->>>>>>> upstream/devel
     RPA.hh RPA.cc
 )
 target_link_libraries(
@@ -480,31 +476,6 @@ target_link_libraries(
 add_library(
     IMSRG
     SHARED
-<<<<<<< HEAD
-#    INTERFACE
-    ReadWrite
-    ModelSpace
-    TwoBodyME
-    ThreeBodyME
-    Operator
-    HartreeFock
-    Commutator
-    IMSRGSolver
-    IMSRGSolverPV
-    Generator
-    GeneratorPV
-    imsrg_util
-    AngMom
-    IMSRGProfiler
-    Jacobi3BME
-    DarkMatterNREFT
-    HFMBPT
-    UnitTest
-    PhysicalConstants
-    RPA
-    EOM
-=======
->>>>>>> upstream/devel
 )
 target_link_libraries(
     IMSRG
