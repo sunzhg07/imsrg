@@ -149,7 +149,8 @@ double EOM::RdmThreeBody_J(int Jab, size_t a_hs, size_t b_hs, size_t c_hs,
 void EOM::ConstructConfigs() {
   // Generate configuration for fock space EOM
   // First ppvv
-
+  std::cout << "Constructing EOM configurations for J2=" << J2
+            << " parity=" << parity << " itz=" << itz << std::endl;
   // first we do one body
   qv_start = 0;
   qv_end = 0;
@@ -176,7 +177,7 @@ void EOM::ConstructConfigs() {
   }
   if (qv_dim > 0)
     qv_end = qv_start + qv_dim - 1;
-
+std::cout << "dimension EOM qv: " << qv_start << " " << qv_end << std::endl;
   ph_start = eom_confs.size();
   ph_end = 0;
   for (index_t i_orb = 0; i_orb < norbits; i_orb++) {
@@ -220,21 +221,21 @@ void EOM::ConstructConfigs() {
 
   std::cout << "dimension EOM ppvv: " << ppvv_start << " " << ppvv_end
             << std::endl;
-  for (index_t i = ppvv_start; i < ppvv_start + ppvv_dim; i++) {
-    auto &c = eom_confs.at(i);
-    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(c[2]);
-    Ket &kbra = tbc.GetKet(c[0]);
-    int cvq_p = modelspace->GetOrbit(kbra.p).cvq;
-    int cvq_q = modelspace->GetOrbit(kbra.q).cvq;
-    // vpvv: bra ket has one valence (1) and one particle (2)
-    if ((cvq_p == 2 && cvq_q == 1) || (cvq_p == 1 && cvq_q == 2)) {
-      Ket &kket = tbc.GetKet(c[1]);
-      std::cout << "vpvvhere " << i
-                << " " << kbra.p << " " << kbra.q
-                << " " << kket.p << " " << kket.q
-                << " " << tbc.J << std::endl;
-    }
-  }
+  // for (index_t i = ppvv_start; i < ppvv_start + ppvv_dim; i++) {
+  //   auto &c = eom_confs.at(i);
+  //   TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(c[2]);
+  //   Ket &kbra = tbc.GetKet(c[0]);
+  //   int cvq_p = modelspace->GetOrbit(kbra.p).cvq;
+  //   int cvq_q = modelspace->GetOrbit(kbra.q).cvq;
+  //   // vpvv: bra ket has one valence (1) and one particle (2)
+  //   if ((cvq_p == 2 && cvq_q == 1) || (cvq_p == 1 && cvq_q == 2)) {
+  //     Ket &kket = tbc.GetKet(c[1]);
+  //     std::cout << "vpvvhere " << i
+  //               << " " << kbra.p << " " << kbra.q
+  //               << " " << kket.p << " " << kket.q
+  //               << " " << tbc.J << std::endl;
+  //   }
+  // }
 
   pphv_start = eom_confs.size();
   pphv_end = 0;
@@ -254,21 +255,21 @@ void EOM::ConstructConfigs() {
     pphv_end = pphv_start + pphv_dim - 1;
   std::cout << "dimension EOM pphv: " << pphv_start << " " << pphv_end
             << std::endl;
-  for (index_t i = pphv_start; i < pphv_start + pphv_dim; i++) {
-    auto &c = eom_confs.at(i);
-    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(c[2]);
-    Ket &kbra = tbc.GetKet(c[0]);
-    int cvq_p = modelspace->GetOrbit(kbra.p).cvq;
-    int cvq_q = modelspace->GetOrbit(kbra.q).cvq;
-    // vvhv: bra ket has two valence (1,1)
-    if (cvq_p == 1 && cvq_q == 1) {
-      Ket &kket = tbc.GetKet(c[1]);
-      std::cout << "vvhv " << i
-                << " " << kbra.p << " " << kbra.q
-                << " " << kket.p << " " << kket.q
-                << " " << c[2] << std::endl;
-    }
-  }
+  // for (index_t i = pphv_start; i < pphv_start + pphv_dim; i++) {
+  //   auto &c = eom_confs.at(i);
+  //   TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(c[2]);
+  //   Ket &kbra = tbc.GetKet(c[0]);
+  //   int cvq_p = modelspace->GetOrbit(kbra.p).cvq;
+  //   int cvq_q = modelspace->GetOrbit(kbra.q).cvq;
+  //   // vvhv: bra ket has two valence (1,1)
+  //   if (cvq_p == 1 && cvq_q == 1) {
+  //     Ket &kket = tbc.GetKet(c[1]);
+  //     std::cout << "vvhv " << i
+  //               << " " << kbra.p << " " << kbra.q
+  //               << " " << kket.p << " " << kket.q
+  //               << " " << c[2] << std::endl;
+  //   }
+  // }
 
   pphh_start = eom_confs.size();
   pphh_end = 0;
@@ -290,7 +291,7 @@ void EOM::ConstructConfigs() {
   std::cout << "dimension EOM pphh: " << pphh_start << " " << pphh_end
             << std::endl;
 
-  std::cout << "dimension EOM all: " << eom_confs.size() << std::endl;
+  std::cout << "w: " << eom_confs.size() << std::endl;
 }
 
 arma::vec EOM::GetEnergies() { return Energies; }
@@ -1736,8 +1737,15 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
   double ovlp  = 0;
   double ovlp1 = 0;
   double ovlp2 = 0;
+  double ovlp3 = 0;
 
-  ovlp += H.ZeroBody;
+  auto dabc = [](const Ket3 &ket) -> double {
+    int d_ab = (ket.p == ket.q) ? 1 : 0;
+    int d_bc = (ket.q == ket.r) ? 1 : 0;
+    int d_ac = (ket.p == ket.r) ? 1 : 0;
+    int g_abc = 1 + d_ab + d_bc + d_ac + 2 * (d_ab * d_bc);
+    return std::sqrt(static_cast<double>(g_abc));
+  };
 
   for (auto &i : H.modelspace->valence) {
     Orbit &oi = H.modelspace->GetOrbit(i);
@@ -1760,21 +1768,50 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
 
       for (auto &ibra : tbc_bra.GetKetIndex_vv()) {
         Ket &dbra = tbc_bra.GetKet(ibra);
-
-        double norm_fact = 1.0;
-        if (dbra.p == dbra.q)
-          norm_fact *= sqrt(2.);
-        if (dket.p == dket.q)
-          norm_fact *= sqrt(2.);
+        if (tbc_bra.J != tbc_ket.J)
+          continue;
 
         ovlp2 += H2(ibra, iket) *
                  RdmTB_J(tbc_bra.J, dbra.p, dbra.q, dket.p, dket.q) *
-                 sqrt(2 * tbc_bra.J + 1.);
+                 std::sqrt(2.0 * tbc_bra.J + 1.0);
       }
     }
   }
 
-  return (ovlp + ovlp1 + ovlp2);
+  if (H.ThreeBody.IsAllocated() && rdm.ThreeBody.IsAllocated()) {
+    for (auto &it : H.ThreeBody.Get_ch_start()) {
+      size_t ch_bra = it.first.ch_bra;
+      size_t ch_ket = it.first.ch_ket;
+      ThreeBodyChannel &tbc_bra = H.modelspace->GetThreeBodyChannel(ch_bra);
+      ThreeBodyChannel &tbc_ket = H.modelspace->GetThreeBodyChannel(ch_ket);
+      int twoJ = tbc_bra.twoJ;
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+
+      for (size_t ibra = 0; ibra < nbras; ++ibra) {
+        Ket3 &bra = tbc_bra.GetKet(ibra);
+
+        for (size_t iket = 0; iket < nkets; ++iket) {
+          Ket3 &ket = tbc_ket.GetKet(iket);
+          double h3 = H.ThreeBody.GetME_pn_ch(ch_bra, ch_ket, ibra, iket);
+          if (std::abs(h3) < 1e-12)
+            continue;
+
+          double r3 = RdmThreeBody_J(bra.Jpq, bra.p, bra.q, bra.r,
+                                     ket.Jpq, ket.p, ket.q, ket.r, twoJ);
+          if (std::abs(r3) < 1e-12)
+            continue;
+
+          double norm_denom = dabc(bra) * dabc(ket);
+          ovlp3 += h3 * r3 * std::sqrt(double(twoJ) + 1.0)
+                   / (norm_denom * norm_denom);
+        }
+      }
+    }
+  }
+  
+
+  return (ovlp + ovlp1 + ovlp2 + ovlp3);
 }
 
 // ============================================================
@@ -2280,6 +2317,10 @@ Operator EOM::ReadTdm(const std::string &tdm_file)
       }
 
       // --- two-body density matrix elements ---
+      // Format per line:
+      //   label  a b c d  Jab Jcd  [ignored columns...]  value
+      // Orbit indices are 1-based in file order. Any trailing metadata columns
+      // between Jcd and the final value are ignored.
       {
         std::istringstream sn(lines[lidx++]);
         int n_tbtd;
@@ -2290,6 +2331,9 @@ Operator EOM::ReadTdm(const std::string &tdm_file)
           std::vector<std::string> tok;
           std::string w;
           while (sl2 >> w) tok.push_back(w);
+
+          if (tok.size() < 8)
+            throw std::runtime_error("ReadTdm: malformed TBTD line in " + tdm_file);
 
           int ia = std::stoi(tok[1]) - 1;
           int ib = std::stoi(tok[2]) - 1;
@@ -2305,7 +2349,7 @@ Operator EOM::ReadTdm(const std::string &tdm_file)
           int pij = (ob_idx[ia].l + ob_idx[ib].l) % 2;
           int tij = (ob_idx[ia].tz2 + ob_idx[ib].tz2) / 2;
 
-          int jkl = std::stoi(tok[5]);   // same column as jij in this format
+          int jkl = std::stoi(tok[6]);
           int pkl = (ob_idx[ic].l + ob_idx[id].l) % 2;
           int tkl = (ob_idx[ic].tz2 + ob_idx[id].tz2) / 2;
 
@@ -2397,7 +2441,8 @@ Operator EOM::ReadTdm(const std::string &tdm_file)
 //    line    : n_obtd
 //    n_obtd lines: OBTD a+1 b+1 value*sqrt(2J+1)
 //    line    : n_tbtd
-//    n_tbtd lines: TBTD a+1 b+1 c+1 d+1 J*2 J*2 value*sqrt(2J+1)
+//    n_tbtd lines: TBTD a+1 b+1 c+1 d+1 Jab Jcd value*sqrt(2J+1)
+//                  (ReadTdm also accepts extra ignored columns before value)
 //    line    : n_3btd
 //    n_3btd lines: TRBTD a+1 b+1 c+1 d+1 e+1 f+1 2Jab 2Jde 2Jtot value*sqrt(2J+1)
 //  3-body elements are written in native channel/ket memory order (ch_bra<=ch_ket,

@@ -5079,14 +5079,6 @@ namespace Commutator
         if (imsrg3_only_vvv and ((ol.cvq!=1) or (om.cvq!=1) or (on.cvq!=1) ))
           continue;
         int J2 = ket.Jpq;
-        bool debug_case = (i == 2 && j == 2 && k == 2 && l == 2 && m == 2 && n == 2);
-        if (debug_case)
-        {
-          std::cout << "[comm223ss_opt:start] J1=" << J1 << " J2=" << J2 << " twoJ=" << twoJ
-                    << " bra=(" << i << "," << j << "," << k << ") ket=(" << l << "," << m << "," << n << ")"
-                    << " ch3bra=" << ch3bra << " ch3ket=" << ch3ket
-                    << " ibra=" << ibra << " iket=" << iket << "\n";
-        }
 
         std::vector<std::array<size_t, 3>> lmn;
         std::vector<int> J2p_min;
@@ -5122,22 +5114,10 @@ namespace Commutator
             if (I1 == I2)
               rec_ijk *= PhysConst::SQRT2;
             int ch12 = Z.modelspace->GetTwoBodyChannelIndex(J1p, (o1.l + o2.l) % 2, (o1.tz2 + o2.tz2) / 2);
-            if (debug_case)
-            {
-              std::cout << "[comm223ss_opt:perm_ijk] perm=" << perm_ijk
-                        << " I=(" << I1 << "," << I2 << "," << I3 << ")"
-                        << " J1p_range=[" << j1pmin << "," << j1pmax << "]"
-                        << " J1p=" << J1p << " rec_ijk=" << rec_ijk
-                        << " ch12=" << ch12 << "\n";
-            }
 
             TwoBodyChannel &tbc12 = Z.modelspace->GetTwoBodyChannel(ch12);
             size_t nkets_12 = tbc12.GetNumberKets();
             size_t ind_12 = tbc12.GetLocalIndex(std::min(I1, I2), std::max(I1, I2));
-            if (debug_case)
-            {
-              std::cout << "[comm223ss_opt:ch12] ind_12=" << ind_12 << " nkets_12=" << nkets_12 << "\n";
-            }
             if (ind_12 > nkets_12)
               continue;
             double phase_12 = I1 > I2 ? -Z.modelspace->phase((o1.j2 + o2.j2 - 2 * J1p) / 2) : 1;
@@ -5165,16 +5145,6 @@ namespace Commutator
                   bool Y_126a_good = ((o1.l + o2.l + o6.l + parity_a) % 2 == Y.GetParity()) and (std::abs(dTz126a) == Y.GetTRank());
                   bool X_3a45_good = ((o4.l + o5.l + o3.l + parity_a) % 2 == X.GetParity()) and (std::abs(dTz3a45) == X.GetTRank());
                   bool Y_3a45_good = ((o4.l + o5.l + o3.l + parity_a) % 2 == Y.GetParity()) and (std::abs(dTz3a45) == Y.GetTRank());
-                  if (debug_case)
-                  {
-                    std::cout << "[comm223ss_opt:conds] perm_lmn=" << perm_lmn
-                              << " I=(" << I4 << "," << I5 << "," << I6 << ")"
-                              << " parity_a=" << parity_a << " tz2a=" << tz2a
-                              << " dTz126a=" << dTz126a << " dTz3a45=" << dTz3a45
-                              << " X126=" << X_126a_good << " Y126=" << Y_126a_good
-                              << " X345=" << X_3a45_good << " Y345=" << Y_3a45_good
-                              << "\n";
-                  }
 
                   if (not((X_126a_good and Y_3a45_good) or (Y_126a_good and X_3a45_good)))
                     continue;
@@ -5184,10 +5154,6 @@ namespace Commutator
                   int ch6a = Z.modelspace->GetTwoBodyChannelIndex(J1p, (o6.l + parity_a) % 2, (o6.tz2 + tz2a) / 2);
                   TwoBodyChannel &tbc6a = Z.modelspace->GetTwoBodyChannel(ch6a);
                   size_t nkets_6a = tbc6a.GetNumberKets();
-                  if (debug_case)
-                  {
-                    std::cout << "[comm223ss_opt:ch6a] ch6a=" << ch6a << " nkets_6a=" << nkets_6a << "\n";
-                  }
 
                   int j2pmin = J2;
                   int j2pmax = J2;
@@ -5204,12 +5170,6 @@ namespace Commutator
                     rec_lmn *= Z3.PermutationPhase(index_perms[perm_lmn]); // do we get a fermionic minus sign?
                     if (I4 == I5)
                       rec_lmn *= PhysConst::SQRT2;
-                    if (debug_case)
-                    {
-                      std::cout << "[comm223ss_opt:perm_lmn] perm=" << perm_lmn
-                                << " J2p_range=[" << j2pmin << "," << j2pmax << "]"
-                                << " J2p=" << J2p << " rec_lmn=" << rec_lmn << "\n";
-                    }
 
                     //                 int ch2 = Z.modelspace->GetTwoBodyChannelIndex(J2p, (o4.l+o5.l)%2, (o4.tz2+o5.tz2)/2 );
                     int ch45 = Z.modelspace->GetTwoBodyChannelIndex(J2p, (o4.l + o5.l) % 2, (o4.tz2 + o5.tz2) / 2);
@@ -5223,12 +5183,6 @@ namespace Commutator
                     size_t nkets_3a = tbc3a.GetNumberKets();
                     //                 size_t ind_45 = tbc2.GetLocalIndex(std::min(I4,I5),std::max(I4,I5));
                     size_t ind_45 = tbc45.GetLocalIndex(std::min(I4, I5), std::max(I4, I5));
-                    if (debug_case)
-                    {
-                      std::cout << "[comm223ss_opt:channels] ch45=" << ch45 << " ch3a=" << ch3a
-                                << " ind_45=" << ind_45 << " nkets_45=" << nkets_45
-                                << " nkets_3a=" << nkets_3a << "\n";
-                    }
                     //                 if (ind_45>nkets_2) continue;
                     if (ind_45 > nkets_45)
                       continue;
@@ -5241,13 +5195,6 @@ namespace Commutator
 
                     int j2a_min = std::max(std::abs(o6.j2 - 2 * J1p), std::abs(o3.j2 - 2 * J2p));
                     int j2a_max = std::min(o6.j2 + 2 * J1p, o3.j2 + 2 * J2p);
-                    if (debug_case)
-                    {
-                      std::cout << "[comm223ss_opt:j2a_range] J1p=" << J1p << " J2p=" << J2p
-                                << " j2a_min=" << j2a_min << " j2a_max=" << j2a_max
-                                << " phase12=" << phase_12 << " phase45=" << phase_45
-                                << " hat=" << hat_factor << "\n";
-                    }
 
                     for (auto &it_obc : Z.modelspace->OneBodyChannels)
                     {
@@ -5260,11 +5207,6 @@ namespace Commutator
                       if (it_obc.first[2] != tz2a)
                         continue;
                       double ja = 0.5 * j2a;
-                      if (debug_case)
-                      {
-                        std::cout << "[comm223ss_opt:onebody_channel] la=" << la << " j2a=" << j2a
-                                  << " tz2a=" << it_obc.first[2] << "\n";
-                      }
 
                       double sixj;
                       if (twoJ <= 2 * Z.modelspace->GetEmax() + 1)
@@ -5294,24 +5236,7 @@ namespace Commutator
                         double x_3a45 = X_3a45_good ? X.TwoBody.GetTBME_norm(ch3a, ch45, I3, a, I4, I5) : 0;
                         double y_3a45 = Y_3a45_good ? Y.TwoBody.GetTBME_norm(ch3a, ch45, I3, a, I4, I5) : 0;
 
-                        double contrib = prefactor * phase_6a * phase_3a * (x_126a * y_3a45 - y_126a * x_3a45);
-                        if (debug_case)
-                        {
-                          std::cout << "[comm223ss_opt:tbme] J1=" << J1 << " J2=" << J2
-                                    << " pijk=" << perm_ijk << " plmn=" << perm_lmn
-                                    << " I1=" << I1 << " I2=" << I2 << " I3=" << I3
-                                    << " I4=" << I4 << " I5=" << I5 << " I6=" << I6
-                                    << " J1p=" << J1p << " J2p=" << J2p << " a=" << a
-                                    << " rec_ijk=" << rec_ijk << " rec_lmn=" << rec_lmn
-                                    << " phase12=" << phase_12 << " phase45=" << phase_45
-                                    << " phase6a=" << phase_6a << " phase3a=" << phase_3a
-                                    << " sixj=" << sixj
-                                    << " x126a=" << x_126a << " y126a=" << y_126a
-                                    << " x3a45=" << x_3a45 << " y3a45=" << y_3a45
-                                    << " contrib=" << contrib << "\n";
-                        }
-
-                        zijklmn += contrib;
+                        zijklmn += prefactor * phase_6a * phase_3a * (x_126a * y_3a45 - y_126a * x_3a45);
 
 
                       } // for a
@@ -5353,10 +5278,6 @@ namespace Commutator
         else
         {
           Z3.AddToME_pn_ch(ch3bra, ch3ket, ibra, iket, zijklmn);
-        }
-        if (debug_case)
-        {
-          std::cout << "[comm223ss_opt:end] J1=" << J1 << " J2=" << J2 << " zijklmn=" << zijklmn << "\n";
         }
 
       } // for iket

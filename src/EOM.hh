@@ -136,7 +136,8 @@ public:
   ///   next line : n_obtd
   ///   n_obtd lines : "_ a b ... rd"  (1-body density matrix elements)
   ///   next line : n_tbtd
-  ///   n_tbtd lines : "_ a b c d J ... rd"  (2-body density matrix elements)
+  ///   n_tbtd lines : "_ a b c d Jab Jcd ... rd"  (2-body density matrix elements;
+  ///                  any columns between Jcd and rd are ignored)
   ///   next line : n_3btd
   ///   n_3btd lines : "_ a b c d e f jab jef jtot ... rd"  (3-body density matrix elements)
   Operator ReadTdm(const std::string &tdm_file);
