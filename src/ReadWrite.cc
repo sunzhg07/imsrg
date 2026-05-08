@@ -4210,7 +4210,7 @@ void ReadWrite::WriteOperatorHuman(Operator& op, std::string filename)
    }
 
 
-   opfile << "$ZeroBody:\t" << std::setprecision(10) << op.ZeroBody << std::endl;
+  opfile << "$ZeroBody:\t" << std::setprecision(17) << op.ZeroBody << std::endl;
 
    opfile << "$OneBody:\t" << std::endl;
    opfile << "$ i\tj\t<i|O|j>" << std::endl;
@@ -4300,8 +4300,8 @@ void ReadWrite::WriteOperator(Operator& op, std::string filename)
       int jmin = op.IsNonHermitian() ? 0 : i;
       for (int j=jmin;j<norb;++j)
       {
-         if (std::abs(op.OneBody(i,j)) > 0)
-            opfile << i << "\t" << j << "\t" << std::setprecision(10) << op.OneBody(i,j) << std::endl;
+        if (std::abs(op.OneBody(i,j)) > 0)
+          opfile << i << "\t" << j << "\t" << std::setprecision(17) << op.OneBody(i,j) << std::endl;
       }
    }
 
@@ -4320,9 +4320,9 @@ void ReadWrite::WriteOperator(Operator& op, std::string filename)
            double tbme = it.second(ibra,iket);
            if ( std::abs(tbme) > 1e-7 )
            {
-             opfile << std::setw(4) << chbra << " " << std::setw(4) << chket << "   "
-                  << std::setw(4) << ibra  << " " << std::setw(4) << iket  << "   "
-                  << std::setw(10) << std::setprecision(6) << tbme << std::endl;
+               opfile << std::setw(4) << chbra << " " << std::setw(4) << chket << "   "
+                 << std::setw(4) << ibra  << " " << std::setw(4) << iket  << "   "
+                 << std::setprecision(17) << tbme << std::endl;
            }
         }
       }

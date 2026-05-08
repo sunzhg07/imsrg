@@ -5,7 +5,7 @@ from pyIMSRG import *
 from lanczos import *
 
 emax = 3  # maximum number of oscillator quanta in the model space
-ref = "He8"  # reference used for normal ordering
+ref = "He4"  # reference used for normal ordering
 val = "p-shell"  # valence space
 
 core_generator = "atan"  # definition of generator eta for decoupling the core (could also use 'white')
@@ -36,8 +36,6 @@ LECs = "EM1820"
 ### name of file to write resulting shell model effective interaction.
 ### *.snt is the exension used with KSHELL
 valence_fname = "output/{}_{}_{}_e{}_hw{}.snt".format(val, ref, LECs, emax, hw)
-hbar_fname = "output/hbar_{}_{}_{}_e{}_hw{}.dat".format(val, ref, LECs, emax, hw)
-fci_fname = "output/fci_{}_{}_{}_e{}_hw{}.snt".format(val, ref, LECs, emax, hw)
 
 
 ##########################################################################
@@ -96,139 +94,210 @@ imsrgsolver.SetMethod(
 imsrgsolver.SetGenerator(core_generator)
 imsrgsolver.SetSmax(smax_core)
 
-stage = 2
-if stage == 1:
-    ### Do the first stage of integration to decouple the core
-    imsrgsolver.Solve()
+### Do the first stage of integration to decouple the core
+imsrgsolver.Solve()
 
-    ### Now set the generator for the second stage to decouple the valence space
-    imsrgsolver.SetGenerator(valence_generator)
-    imsrgsolver.SetSmax(smax_valence)
+### Now set the generator for the second stage to decouple the valence space
+imsrgsolver.SetGenerator(valence_generator)
+imsrgsolver.SetSmax(smax_valence)
 
-    imsrgsolver.Solve()
+imsrgsolver.Solve()
 
-    # Hs is the IMSRG-evolved Hamiltonian
-    # rw.WriteTokyo( HNO, valence_fname,'')
-    Hs = imsrgsolver.GetH_s()
-    Hs.UndoNormalOrdering()
-    ms2 = ModelSpace(emax, "He4", val)
-    Hs.SetModelSpace(ms2)
-    Hs.DoNormalOrdering()
+### Hs is the IMSRG-evolved Hamiltonian
+Hs = imsrgsolver.GetH_s()
+Hs.ZeroBody = 0.0
+rw.WriteTokyo(Hs, valence_fname, "")
 
-    rw.WriteOperator(Hs, hbar_fname)
-else:
-    ms2 = ModelSpace(emax, "He4", val)
-    Hs = Operator(ms2, rank_j, parity, rank_Tz, particle_rank)
-    Hs = 0.0 * Hs
-    rw.ReadOperator(Hs, hbar_fname)
+# tdm_op = read_tdm("he6.ref", ms)
 
 
-## ---------------------------------------------------------------
-eom = EOM(Hs, "he8.ref", 0, 0, 0)
+cm = Commutator
+
+
+# rank_j, parity, rank_Tz, particle_rank, herm= 0,0,0,2,1
+#
+#
+
+
+eom = EOM(Hs, "he8.ref", rank_j, parity, rank_Tz)
 eom.ConstructConfigs()
-eom.PrintConfigs()
 eom.ConstructNormMatrix()
 eom.ConstructProjectMatrix()
+nm = eom.GetVSEOM_Overlap_multiref(Hs)
+print(
+    "reference energy: ",
+    nm,
+    "vs [ -4.19234292  9.75174484 ] in nmax2 for he6_2",
+)
+##
+##
+##
+##
+eom.force_decouple(Hs)
 
-##########################################################################
-###  Loop over configs from cfs file, run comm223ss for each
-##########################################################################
-configs = []
-with open("cfs") as f:
-    for line in f:
-        parts = line.split()
-        if len(parts) < 6:
-            continue
-        typ, idx, c0, c1, c2, c3 = (
-            parts[0],
-            int(parts[1]),
-            int(parts[2]),
-            int(parts[3]),
-            int(parts[4]),
-            int(parts[5]),
-        )
-        configs.append((typ, idx, c0, c1, c2, c3))
+unt = UnitTest(ms)
+### set anti hermitian
+rank_j, parity, rank_Tz, particle_rank, herm = 0, 0, 0, 2, 1
 
-configs2 = []
-with open("cfs2") as f:
-    for line in f:
-        parts = line.split()
-        if len(parts) < 7:
-            continue
-        typ, idx, c0, c1, c2, c3, c4 = (
-            parts[0],
-            int(parts[1]),
-            int(parts[2]),
-            int(parts[3]),
-            int(parts[4]),
-            int(parts[5]),
-            int(parts[6]),
-        )
-        configs2.append((typ, idx, c0, c1, c2, c3, c4))
-
-
-Z_test = Operator(ms, rank_j, rank_Tz, parity, 3)
-Z_test.SetHermitian()
-Z_test.ThreeBody.SetMode("pn")
-
-X_test = 0.0 * Hs
-X_test.SetHermitian()
-
-Y_test = 0.0 * Hs
-Y_test.SetAntiHermitian()
-
-# for i, cfsi in enumerate(configs):
-#    for j, cfsj in enumerate(configs):
-#        if i>j:
-#            continue
-#        stx, idx, d,g1,a,b, j0=configs2[i]
-#        stx, idx, c,g2,f,e, j2=configs2[j]
-#        if(g1!=g2):
-#            continue
-#        print(i,j,'exist')
-#        typ_i, idx_i, c0_i, c1_i, c2_i, c3_i = cfsi
-#        typ_j, idx_j, c0_j, c1_j, c2_j, c3_j = cfsj
+h1 = unt.RandomOp(ms, rank_j, rank_Tz, parity, particle_rank, herm)
+h2 = unt.RandomOp(ms, rank_j, rank_Tz, parity, particle_rank, herm)
+##t3= unt.RandomOp( ms, rank_j,  rank_Tz, parity, 3,herm)
+##t3.ThreeBody.SetMode("pn")
 #
-#        X_test=0.0*X_test
-#        Y_test=0.0*Y_test
-#        Z_test=0.0*Z_test
+chi_a = eom.GetVSEOM_ladder_multiref(h1, 1)
+chi_b = eom.GetVSEOM_ladder_multiref(h2, 1)
+
+nm = norm_multiref(eom, chi_a, chi_b)
+print("original py ab: ", nm)
 #
-#        X_test.TwoBody.SetTBME_chij(c2_i, c2_i, c0_i, c1_i, 1.0)
-#        Y_test.TwoBody.SetTBME_chij(c2_j, c2_j, c0_j, c1_j, 1.0)
-#
-#        Commutator.comm223ss(X_test, Y_test, Z_test)
-#
-#        result = eom.ThreeBody_Diagram_Entries(a,b,c,d,e,f,g1,j0,j2)
-#
-#        for jab, jde, jtot, diag_val in result:
-#            z_val = Z_test.ThreeBody.GetME_pn(jab, jde, jtot, a, b, c, d, e, f)
-#            ratio = diag_val / z_val if abs(z_val) > 1e-14 else float('nan')
-#            print(f"  {a} {b} {c} {d} {e} {f} {g1}  j0={jab} j1={jde} jtot={jtot}  diagram={diag_val:.8f}  Z_test={z_val:.8f}  ratio={ratio:.6f}")
+# nm=norm_multiref(eom,chi_b,chi_a)
+# print('original py ba: ',nm)
+nm = eom.ComputeNorm(chi_a, chi_b)
+print("original c++ ab: ", nm)
 
 
-if 1 == 1:
-    i = 0
-    j = 6
-    cfsi = configs[i]
-    cfsj = configs[j]
-    stx, idx, d, g1, a, b, j0 = configs2[i]
-    stx, idx, c, g2, f, e, j2 = configs2[j]
-    print(i, j, "exist")
-    typ_i, idx_i, c0_i, c1_i, c2_i, c3_i = cfsi
-    typ_j, idx_j, c0_j, c1_j, c2_j, c3_j = cfsj
-    X_test = 0.0 * X_test
-    Y_test = 0.0 * Y_test
-    Z_test = 0.0 * Z_test
-    X_test.TwoBody.SetTBME_chij(c2_i, c2_i, c0_i, c1_i, 1.0)
-    Y_test.TwoBody.SetTBME_chij(c2_j, c2_j, c0_j, c1_j, 1.0)
-    Commutator.comm223ss(X_test, Y_test, Z_test)
-    print(f"  Z_test.ThreeBodyNorm() = {Z_test.ThreeBodyNorm():.12f}")
+print("enorm before: ", chi_a.Norm())
 
-    result = eom.ThreeBody_Diagram_Entries(a, b, c, d, e, f, g1, j0, j2)
+eom.ProjectOprator(chi_a)
+eom.ProjectOprator(chi_b)
+nm = eom.ComputeNorm(chi_a, chi_b)
+print("original c++ ab proj : ", nm)
+nm = norm_multiref(eom, chi_a, chi_b)
+print("python ab proj : ", nm)
 
-    for jab, jde, jtot, diag_val in result:
-        z_val = Z_test.ThreeBody.GetME_pn(jab, jde, jtot, a, b, c, d, e, f)
-        ratio = diag_val / z_val if abs(z_val) > 1e-14 else float("nan")
-        print(
-            f"  {a} {b} {c} {d} {e} {f} {g1}  j0={jab} j1={jde} jtot={jtot}  diagram={diag_val:.8f}  Z_test={z_val:.8f}  ratio={ratio:.6f}"
-        )
+print("enorm after: ", chi_a.Norm())
+
+
+# nm=eom.ComputeNorm(chi_b,chi_a)
+# print('original c++ ba: ', nm)
+#
+##
+# nm=eom.ComputeNorm(chi_a,chi_a)
+# print('original c++ aa: ', nm)
+# nm=eom.ComputeNorm(chi_a,chi_a)
+# print('original c++ aa: ', nm)
+#
+# chi_b=1.0*chi_a
+#
+# eom.ProjectOprator(chi_a)
+# chi_b=chi_b-chi_a
+#
+# nm=eom.ComputeNorm(chi_a,chi_a)
+# print('c++ after proj aa: ', nm)
+#
+# nm=eom.ComputeNorm(chi_b,chi_b)
+# print('c++ after proj 1-aa: ', nm)
+
+# print("vecryfy p*p=p")
+# eom.ProjectOprator(chi_a)
+# eom.ProjectOprator(chi_b)
+#
+# nm=eom.ComputeNorm(chi_a,chi_b)
+# print('c++ after proj: ', nm)
+# nm=norm_multiref(eom,chi_a,chi_b)
+# print('python after proj: ',nm)
+
+
+# eom.ProjectOprator(chi_b)
+#
+#
+hb = htc_multiref(eom, Hs, chi_b)
+hab = norm_multiref(eom, chi_a, hb)
+h3ab = norm3_multiref(eom, chi_a, chi_b, Hs, ms)
+print("hab: ", hab, "h3ab: ", h3ab)
+print("hab+h3ab: ", hab + h3ab)
+
+
+ha = htc_multiref(eom, Hs, chi_a)
+hba = norm_multiref(eom, chi_b, ha)
+h3ba = norm3_multiref(eom, chi_b, chi_a, Hs, ms)
+print("hba: ", hba, "h3ba: ", h3ba)
+print("hba+h3ba: ", hba + h3ba)
+
+
+ha = htc_multiref(eom, Hs, chi_a)
+haa = norm_multiref(eom, chi_a, ha)
+h3aa = norm3_multiref(eom, chi_a, chi_a, Hs, ms)
+print("haa: ", haa, "h3aa: ", h3aa)
+print("haa+h3aa: ", haa + h3aa)
+
+
+hb = htc_multiref(eom, Hs, chi_b)
+hbb = norm_multiref(eom, chi_b, hb)
+h3bb = norm3_multiref(eom, chi_b, chi_b, Hs, ms)
+print("hbb: ", hbb, "h3bb: ", h3bb)
+print("hbb+h3bb: ", hbb + h3bb)
+
+chi_c = chi_a + chi_b
+
+hc = htc_multiref(eom, Hs, chi_c)
+hcc = norm_multiref(eom, chi_c, hc)
+h3cc = norm3_multiref(eom, chi_c, chi_c, Hs, ms)
+print("hcc: ", hcc, "h3cc: ", h3cc)
+print("hcc+h3cc: ", hcc + h3cc)
+
+nm = dcom222312(eom, Hs, chi_a)
+print("haa: ", nm)
+
+nm = dcom222312(eom, Hs, chi_b)
+print("hbb: ", nm)
+nm = dcom222312(eom, Hs, chi_c)
+print("hcc: ", nm)
+## ---------------------------------------------------------------
+## Test: does projecting the Arnoldi vector break hermiticity?
+## Take chi_a (projected), compute w = H1*chi_a (raw, no prjop).
+## Then compare H[chi_a, w] vs H[chi_a, w_proj] where w_proj = P*w.
+## If projection breaks hermiticity, H[chi_a,w_proj] != H[w_proj,chi_a].
+## ---------------------------------------------------------------
+##print("\n--- hermiticity test: unprojected vs projected Arnoldi vector ---")
+##w_raw  = htc_multiref(eom, Hs, chi_a)          # H1*chi_a, no projection
+##w_proj = w_raw * 1.0
+##eom.ProjectOprator(w_proj)                       # P * (H1*chi_a)
+##nm=norm_multiref(eom, chi_a, w_raw)
+##print(nm)
+##nm=norm_multiref(eom, chi_a, w_proj)
+##print(nm)
+#
+## matrix elements with raw w
+##H_ab_raw = norm_multiref(eom, chi_a, w_raw) # + norm3_multiref(eom, chi_a, w_raw,  Hs, ms)
+##H_ba_raw = norm_multiref(eom, w_raw,  chi_a)# + norm3_multiref(eom, w_raw,  chi_a, Hs, ms)
+##print(f"  raw  w:  H[chi_a,w]={H_ab_raw:.8f}  H[w,chi_a]={H_ba_raw:.8f}  diff={H_ab_raw-H_ba_raw:.3e}")
+##
+### matrix elements with projected w
+##H_ab_prj = norm_multiref(eom, chi_a, w_proj) #+ norm3_multiref(eom, chi_a, w_proj, Hs, ms)
+##H_ba_prj = norm_multiref(eom, w_proj, chi_a) #+ norm3_multiref(eom, w_proj, chi_a, Hs, ms)
+##print(f"  proj w:  H[chi_a,w]={H_ab_prj:.8f}  H[w,chi_a]={H_ba_prj:.8f}  diff={H_ab_prj-H_ba_prj:.3e}")
+## ---------------------------------------------------------------
+#
+##n3a =norm3_multiref(eom, chi_a,chi_a,Hs,ms)
+##n3b =norm3_multiref(eom, chi_b,chi_b,Hs,ms)
+##n3ab =norm3_multiref(eom, chi_a+chi_b,chi_a+chi_b,Hs,ms)
+#
+##n3a , oprs = dcom222312(eom, Hs,chi_a)
+##n3b , oprs = dcom222312(eom, Hs,chi_b)
+##n3ab , oprs = dcom222312(eom, Hs,chi_a+chi_b)
+##
+##print("n3a: ",n3a )
+##print("n3b: ",n3b )
+##print("n3ab: ",n3ab )
+##
+##fab=(n3ab-n3a-n3b-hab+hba)/2
+##print("fab: ", fab)
+##
+##fba=(n3ab-n3a-n3b+hab-hba)/2
+##print("fba: ", fba)
+#
+#
+#
+# e,vs,v2=arnoldi_proc(
+#   htc_multiref,
+#   norm_multiref,
+#   Hs,
+#   chi_a,
+#   max_iter=60,
+#   state_want=6,
+#   ms=ms,
+#   eom=eom,
+#   norm_three=norm3_multiref,
+#   rdmat=tdm_op,
+#   prjop=eom.ProjectOprator)

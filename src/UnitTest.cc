@@ -33,8 +33,20 @@ Operator UnitTest::RandomOp(ModelSpace &modelspace, int jrank, int tz, int parit
     Rando.SetNonHermitian();
 
   random_seed++;
+  std::mt19937_64 one_body_generator(random_seed * 6364136223846793005ULL + 1ULL);
+  std::mt19937_64 two_body_generator(random_seed * 6364136223846793005ULL + 2ULL);
+  std::normal_distribution<double> normal_distribution(0.0, 1.0);
 
-  arma::arma_rng::set_seed(random_seed);
+  auto fill_with_normal = [&](arma::mat &matrix, std::mt19937_64 &generator)
+  {
+    for (arma::uword row = 0; row < matrix.n_rows; ++row)
+    {
+      for (arma::uword col = 0; col < matrix.n_cols; ++col)
+      {
+        matrix(row, col) = normal_distribution(generator);
+      }
+    }
+  };
 
   arma::mat symmetry_allowed = arma::zeros(arma::size(Rando.OneBody));
   for (auto i : modelspace.all_orbits)
@@ -50,7 +62,7 @@ Operator UnitTest::RandomOp(ModelSpace &modelspace, int jrank, int tz, int parit
       }
     }
   }
-  Rando.OneBody.randn();
+  fill_with_normal(Rando.OneBody, one_body_generator);
   Rando.OneBody += hermitian * Rando.OneBody.t();
   Rando.OneBody = Rando.OneBody % symmetry_allowed;
 
@@ -58,7 +70,7 @@ Operator UnitTest::RandomOp(ModelSpace &modelspace, int jrank, int tz, int parit
   {
     for (auto &itmat : Rando.TwoBody.MatEl)
     {
-      itmat.second.randn();
+      fill_with_normal(itmat.second, two_body_generator);
       if (itmat.first[0] == itmat.first[1])
       {
         itmat.second += hermitian * itmat.second.t();

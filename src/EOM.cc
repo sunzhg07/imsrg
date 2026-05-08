@@ -4,6 +4,7 @@
 #include "Commutator.hh"
 #include "IMSRG3Commutators.hh"
 #include "FactorizedDoubleCommutator.hh"
+#include "ReadWrite.hh"
 #include "UnitTest.hh"
 #include <cmath>
 #include <fstream>
@@ -291,10 +292,27 @@ std::cout << "dimension EOM qv: " << qv_start << " " << qv_end << std::endl;
   std::cout << "dimension EOM pphh: " << pphh_start << " " << pphh_end
             << std::endl;
 
-  std::cout << "w: " << eom_confs.size() << std::endl;
+  std::cout << "Total dimension of EOM: " << eom_confs.size() << std::endl;
 }
 
 arma::vec EOM::GetEnergies() { return Energies; }
+
+void EOM::ShowModel() {
+  std::cout << "Modelspace single-particle orbits:" << std::endl;
+  std::cout << "idx n l j t cvq" << std::endl;
+
+  for (size_t i = 0; i < modelspace->GetNumberOrbits(); ++i) {
+    Orbit &o = modelspace->GetOrbit(i);
+    double j = 0.5 * static_cast<double>(o.j2);
+    double t = 0.5 * static_cast<double>(o.tz2);
+    std::cout << i << " "
+              << o.n << " "
+              << o.l << " "
+              << j << " "
+              << t << " "
+              << o.cvq << std::endl;
+  }
+}
 
 void EOM::ConstructNormMatrix() {
 
@@ -394,10 +412,7 @@ void EOM::ConstructNormMatrix() {
 
         Nkernel(i, j) +=
             RdmOB(c1, c2) * (2 * tbc_bra.J + 1.) / sqrt(oc1.j2 + 1.);
-        // if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<" " << Nkernel(i,j) << std::endl;
-
-        // if(abs(Nkernel(i,j))>0.00000001)std::cout<< i<<" " <<j<<"
-        // "<<dbra.p<<dbra.q<<e1<<c1<<e2<<c2<<" " << Nkernel(i,j) << std::endl;
+       
       }
     }
   }
@@ -670,7 +685,7 @@ void EOM::ConstructNormMatrix() {
 
 
   // C1 threebody diagram
-   
+   std::cout<<"start three body norm "<<std::endl;
   if (ppvv_dim != 0) {
 
     for (index_t i = ppvv_start; i <= ppvv_end; i++) {
@@ -682,7 +697,7 @@ void EOM::ConstructNormMatrix() {
       size_t b1 = dbra1.q; 
       size_t c1 = dket1.p;
       size_t d1 = dket1.q;
-      Orbit &ob1 = modelspace->GetOrbit(b1);
+      Orbit &oa1 = modelspace->GetOrbit(a1);
 
       for (index_t j = ppvv_start; j <= ppvv_end; j++) {
         std::array<index_t, 4> &cf_ket = eom_confs.at(j);
@@ -693,11 +708,15 @@ void EOM::ConstructNormMatrix() {
       size_t b2 = dbra1.q; 
       size_t c2 = dket1.p;
       size_t d2 = dket1.q;
-      Orbit &ob2 = modelspace->GetOrbit(b2);
-      if(b1==b2 && ob1.cvq==1 && ob2.cvq==1){ // both valence not contributing to norm.
-      double val = ThreeBody_Diagram(c1, d1, a2, a1, d2, c2, b1,
+      Orbit &oa2 = modelspace->GetOrbit(a2);
+      
+      
+      if(b1==b2 && oa1.cvq==1 && oa2.cvq==1){ // both valence not contributing to norm.
+      // here we use ThreeBody_Diagram_Entries_Internal, to represent a contraction, instead of ThreeBody_Diagram that mimic comm223ss
+      double val = ThreeBody_Diagram_Entries_Internal(c1, d1, a2, a1, d2, c2, b1,
                                      tbc_bra.J, tbc_ket.J);
-        Nkernel(i, j) += val;
+       //Nkernel(i, j) += val;
+        //std::cout<<"Threebody: "<< a1<<" "<<b1<<" "<<c1<<" "<<d1<<" "<<a2<<" "<<b2<<" "<<c2<<" "<<d2<<" "<< tbc_bra.J<<" "<<tbc_ket.J<<" " <<val<<std::endl;
     }
         
       }
@@ -876,12 +895,23 @@ std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_Entr
   return result;
 }
 
+double EOM::Norm_abc(size_t p, size_t q, size_t r)
+{
+  int d_pq = (p == q) ? 1 : 0;
+  int d_qr = (q == r) ? 1 : 0;
+  int d_pr = (p == r) ? 1 : 0;
+  int g_pqr = 1 + d_pq + d_qr + d_pr + 2 * (d_pq * d_qr);
+  return std::sqrt(static_cast<double>(g_pqr));
+}
+
 double EOM::ThreeBody_Diagram_Entries_Internal(size_t a, size_t b, size_t c,
                                                size_t d, size_t e, size_t f,
                                                size_t g, double j0, double j2)
 {
   if (!rdm.ThreeBody.IsAllocated())
     return 0.0;
+
+  double norm_denom = Norm_abc(a, b, c) * Norm_abc(d, e, f);
 
   double value = 0.0;
   for (const auto &entry : ThreeBody_Diagram_Entries(a, b, c, d, e, f, g, j0, j2)) {
@@ -896,7 +926,8 @@ double EOM::ThreeBody_Diagram_Entries_Internal(size_t a, size_t b, size_t c,
     if (std::abs(rdm_me) < 1e-14)
       continue;
 
-    value += std::sqrt(double(twoJ) + 1.0) * zme * rdm_me;
+    value += std::sqrt(double(twoJ) + 1.0) * zme * rdm_me
+             / (norm_denom * norm_denom);
   }
 
   return value;
@@ -1208,7 +1239,7 @@ void EOM::SqrtMat(arma::mat& Amat, size_t n)
     double s_max = (s.n_elem > 0) ? arma::max(s) : 0.0;
 
     // If the entire block is zero, the projector is zero.
-    if (s_max < 1e-4) {
+    if (s_max < 1e-14) {
         Amat.zeros(n, n);
         return;
     }
@@ -1739,14 +1770,8 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
   double ovlp2 = 0;
   double ovlp3 = 0;
 
-  auto dabc = [](const Ket3 &ket) -> double {
-    int d_ab = (ket.p == ket.q) ? 1 : 0;
-    int d_bc = (ket.q == ket.r) ? 1 : 0;
-    int d_ac = (ket.p == ket.r) ? 1 : 0;
-    int g_abc = 1 + d_ab + d_bc + d_ac + 2 * (d_ab * d_bc);
-    return std::sqrt(static_cast<double>(g_abc));
-  };
-
+  ovlp += H.ZeroBody;
+  
   for (auto &i : H.modelspace->valence) {
     Orbit &oi = H.modelspace->GetOrbit(i);
     for (auto &j : H.modelspace->valence) {
@@ -1778,7 +1803,7 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
     }
   }
 
-  if (H.ThreeBody.IsAllocated() && rdm.ThreeBody.IsAllocated()) {
+  if (rdm.ThreeBody.IsAllocated()) {
     for (auto &it : H.ThreeBody.Get_ch_start()) {
       size_t ch_bra = it.first.ch_bra;
       size_t ch_ket = it.first.ch_ket;
@@ -1802,16 +1827,18 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
           if (std::abs(r3) < 1e-12)
             continue;
 
-          double norm_denom = dabc(bra) * dabc(ket);
-          ovlp3 += h3 * r3 * std::sqrt(double(twoJ) + 1.0)
-                   / (norm_denom * norm_denom);
+          double norm_denom = Norm_abc(bra.p, bra.q, bra.r)
+                            * Norm_abc(ket.p, ket.q, ket.r);
+        //  ovlp3 += h3 * r3 * std::sqrt(double(twoJ) + 1.0)
+        //          / (norm_denom * norm_denom);
         }
       }
     }
   }
-  std::cout << "one-body contribution to norm: " << ovlp1 << std::endl;
-  std::cout << "two-body contribution to norm: " << ovlp2 << std::endl;
-  std::cout << "three-body contribution to norm: " << ovlp3 << std::endl;
+  // std::cout << "zero-body contribution to norm: " << ovlp << std::endl;
+  // std::cout << "one-body contribution to norm: " << ovlp1 << std::endl;
+  // std::cout << "two-body contribution to norm: " << ovlp2 << std::endl;
+  // std::cout << "three-body contribution to norm: " << ovlp3 << std::endl;
 
   return (ovlp + ovlp1 + ovlp2 + ovlp3);
 }
@@ -1846,10 +1873,12 @@ double EOM::NormSingle(Operator &T1, Operator &T2)
 ///   result = GetVSEOM_Overlap_multiref(nop) / 2
 double EOM::NormMultiref(Operator &T1, Operator &T2)
 {
-  Operator T1d = GetVSEOM_ladder_multiref(T1, 1);
-  Operator nop = T1*0.;
-  nop.SetHermitian();
-  nop = Commutator::Commutator(T1d, T2);
+  std::cout << "Calculating norm with multireference metric.., commutator is called" << std::endl;
+  Operator T2d = GetVSEOM_ladder_multiref(T2, -1);
+  Operator nop = Commutator::Commutator(T1, T2d);
+  nop.SetParticleRank(3);
+  nop.ThreeBody.SetMode("pn");
+  Commutator::comm223ss(T1, T2d, nop);
   return GetVSEOM_Overlap_multiref(nop) / 2.0;
 }
 
@@ -1882,15 +1911,16 @@ Operator EOM::HtcSingle(Operator &haml, Operator &chi)
 {
  
   Operator ht_plus = Commutator::Commutator(haml, chi);
-  return GetVSEOM_ladder_single(ht_plus, -1);
+  return GetVSEOM_ladder_single(ht_plus, 1);
 }
 
 /// Multiref action: [Haml, chi], then apply ladder (herm=1) and project.
 Operator EOM::HtcMultiref(Operator &haml, Operator &chi)
 {
   Operator ht_minus = Commutator::Commutator(haml, chi);
-  Operator heom = GetVSEOM_ladder_multiref(ht_minus, -1);
-  ProjectOprator(heom);
+  Operator heom = GetVSEOM_ladder_multiref(ht_minus, 1);
+  if (arnoldi_use_projection)
+    ProjectOprator(heom);
   return heom;
 }
 
@@ -2044,6 +2074,34 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
 //  Translated from arnoldi_proc() in run/lanczos.py
 // ============================================================
 
+// ------------------------------------------------------------
+// ExpectationValue
+// ------------------------------------------------------------
+// Compute <Psi|H|Psi> / <Psi|Psi> using the same H = H1 + H2 split
+// that ArnoldiSolve uses internally:
+//
+//   H1 part : <Psi | H1 Psi>   via HtcMultiref + ComputeNorm
+//   H2 part : <Psi | H2 Psi>   via DcomMultiref(Hs, Psi).first
+//
+// Independent of the Krylov bookkeeping (no cached h1v, no hall
+// matrix involved), so it can be used as a variational consistency
+// check on any Ritz vector built from the Lanczos basis.  If the
+// Arnoldi-projected eigenvalue and this direct expectation drift
+// apart, the basis has lost orthogonality (or unphysical pieces are
+// leaking in), and the projected eigenvalues should not be trusted
+// past that step.
+double EOM::ExpectationValue(Operator &Psi)
+{
+  double nrm = ComputeNorm(Psi, Psi);
+  if (std::abs(nrm) < 1e-30) return 0.0;
+
+  Operator h1psi = HtcMultiref(Hs, Psi);
+  double h1exp   = ComputeNorm(Psi, h1psi);
+  double h2exp   = DcomMultiref(Hs, Psi).first;
+
+  return (h1exp + h2exp) / nrm;
+}
+
 EOM::ArnoldiResult
 EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
 {
@@ -2058,7 +2116,7 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
   arma::mat hall(max_iter, max_iter, arma::fill::zeros);
 
   // normalize initial vector
-  double nn = NormMultiref(vi, vi);
+  double nn = ComputeNorm(vi, vi);
   Operator v0 = vi / std::sqrt(nn);
   lanczos_vector.push_back(v0);
   h2_diag.push_back(DcomMultiref(Hs, v0).first);
@@ -2070,6 +2128,50 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
   bool      prev_e_valid = false;
   int       j_final      = 0;
 
+  // Helper: symmetric eigensolve of the leading principal submatrix of
+  // hall, with explicit symmetrization so eig_sym never sees the raw
+  // FP asymmetry that survives writing hall(i,j)=hall(j,i)=value.
+  auto eigensolve_sub = [&hall](int dim, arma::vec &ev, arma::mat &evec)
+  {
+    arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
+    sub = arma::symmatu(0.5 * (sub + sub.t()));
+    arma::eig_sym(ev, evec, sub);
+  };
+
+  auto report_expectation_check =
+      [this, &lanczos_vector](const arma::vec &ev, const arma::mat &evec,
+                              int dim, int nshow, const std::string &tag)
+  {
+    std::cout << tag << std::endl;
+    for (int k = 0; k < nshow; ++k)
+    {
+      Operator ritz = lanczos_vector[0] * 0.0;
+      for (int m = 0; m < dim; ++m)
+        ritz = ritz + evec(m, k) * lanczos_vector[m];
+
+      double expect = ExpectationValue(ritz);
+      std::cout << "  state " << k
+                << ": diag=" << ev(k)
+                << "  expect=" << expect
+                << "  delta=" << (expect - ev(k)) << std::endl;
+    }
+  };
+
+  auto write_ritz_vectors =
+      [&lanczos_vector](const arma::mat &evec, int dim, int nshow,
+                        const std::string &prefix)
+  {
+    ReadWrite rw;
+    for (int k = 0; k < nshow; ++k)
+    {
+      Operator ritz = lanczos_vector[0] * 0.0;
+      for (int m = 0; m < dim; ++m)
+        ritz = ritz + evec(m, k) * lanczos_vector[m];
+
+      rw.WriteOperator(ritz, prefix + std::to_string(k) + ".op");
+    }
+  };
+
   for (int j = 0; j < max_iter - 1; ++j)
   {
     j_final = j;
@@ -2078,46 +2180,62 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
     Operator h1v_j = HtcMultiref(Hs, lanczos_vector[j]);
     h1v_cache.push_back(h1v_j);
 
-    // fill row / column j of Hamiltonian matrix using polarization identity
+    // Fill row / column j of the projected Hamiltonian using the symmetric
+    // H1/H2 reconstruction built from one-sided H1 actions and H2 polarization.
     for (int i = 0; i <= j; ++i)
     {
-      double h1ij   = NormMultiref(lanczos_vector[i], h1v_j);
-      double h1ji   = NormMultiref(lanczos_vector[j], h1v_cache[i]);
-      double h1_sym = 0.5 * (h1ij + h1ji);
+      double h1_sym;
+      double h2_sym;
 
-      Operator v_sum  = lanczos_vector[i] + lanczos_vector[j];
-      double h2_cross = DcomMultiref(Hs, v_sum).first;
-      double h2_sym   = 0.5 * (h2_cross - h2_diag[i] - h2_diag[j]);
+      if (i == j)
+      {
+        // Use the cached direct H2 diagonal. Reconstructing the diagonal from
+        // the polarization identity is algebraically equivalent, but it is
+        // numerically less stable than the direct value from DcomMultiref.
+        h1_sym = ComputeNorm(lanczos_vector[j], h1v_j);
+        h2_sym = h2_diag[j];
+      }
+      else
+      {
+        double h1ij = ComputeNorm(lanczos_vector[i], h1v_j);
+        double h1ji = ComputeNorm(lanczos_vector[j], h1v_cache[i]);
+        h1_sym      = 0.5 * (h1ij + h1ji);
+
+        Operator v_sum  = lanczos_vector[i] + lanczos_vector[j];
+        double h2_cross = DcomMultiref(Hs, v_sum).first;
+        h2_sym          = 0.5 * (h2_cross - h2_diag[i] - h2_diag[j]);
+      }
 
       hall(i, j) = hall(j, i) = h1_sym + h2_sym;
     }
 
     // double-pass classical Gram-Schmidt orthogonalization
     Operator w = h1v_j * 1.0;
-    ProjectOprator(w);
+    if (arnoldi_use_projection)
+      ProjectOprator(w);
     for (int pass = 0; pass < 2; ++pass)
     {
       for (int i = 0; i <= j; ++i)
       {
-        double cij = NormMultiref(lanczos_vector[i], w);
+        double cij = ComputeNorm(lanczos_vector[i], w);
         w = w - cij * lanczos_vector[i];
       }
-      ProjectOprator(w);
+      if (arnoldi_use_projection)
+        ProjectOprator(w);
     }
 
-    double bj        = NormMultiref(w, w);
-    double bj_kernel = ComputeNorm(w, w);
-    std::cout<< bj<<" "<< bj_kernel<<" kernels "<<std::endl;
+    double bj        = ComputeNorm(w, w);
+    double bj_kernel = bj;
+    // double bj_kernel = ComputeNorm(w, w);
+    // std::cout<< bj<<" "<< bj_kernel<<" kernels "<<std::endl;
 
     // null-space breakdown: w exhausted the physical subspace
     if (std::abs(bj_kernel) < null_tol * cn0)
     {
       std::cout << "arnoldi: null vector (breakdown) at step " << j + 1
                 << " (ComputeNorm=" << bj_kernel << "), stopping." << std::endl;
-      int dim = j + 1;
-      arma::mat sub = hall.submat(0, 0, dim-1, dim-1);
       arma::vec ev; arma::mat evec;
-      arma::eig_sym(ev, evec, sub);
+      eigensolve_sub(j + 1, ev, evec);
       e  = ev.head(std::min(state_want, (int)ev.n_elem));
       vs = evec;
       break;
@@ -2127,10 +2245,8 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
     if (std::abs(bj) < bj_tol)
     {
       std::cout << "arnoldi: exact breakdown at step " << j + 1 << ", stopping." << std::endl;
-      int dim = j + 1;
-      arma::mat sub = hall.submat(0, 0, dim-1, dim-1);
       arma::vec ev; arma::mat evec;
-      arma::eig_sym(ev, evec, sub);
+      eigensolve_sub(j + 1, ev, evec);
       e  = ev.head(std::min(state_want, (int)ev.n_elem));
       vs = evec;
       break;
@@ -2141,10 +2257,8 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
     {
       std::cout << "arnoldi: bj=" << bj << " < 0 at step " << j + 1
                 << " (indefinite metric), stopping." << std::endl;
-      int dim = j + 1;
-      arma::mat sub = hall.submat(0, 0, dim-1, dim-1);
       arma::vec ev; arma::mat evec;
-      arma::eig_sym(ev, evec, sub);
+      eigensolve_sub(j + 1, ev, evec);
       e  = ev.head(std::min(state_want, (int)ev.n_elem));
       vs = evec;
       break;
@@ -2158,9 +2272,8 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
     // eigenvalue check / convergence
     if (j + 1 >= min_iter)
     {
-      arma::mat sub = hall.submat(0, 0, j, j);
       arma::vec eigval; arma::mat eigvec;
-      arma::eig_sym(eigval, eigvec, sub);
+      eigensolve_sub(j + 1, eigval, eigvec);
 
       e  = eigval.head(std::min(state_want, (int)eigval.n_elem));
       vs = eigvec;
@@ -2171,6 +2284,17 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
         for (int k = 0; k < (int)e.n_elem; ++k)
           std::cout << e(k) << " ";
         std::cout << std::endl;
+        report_expectation_check(eigval, eigvec, j + 1,
+                                 std::min(state_want, (int)eigval.n_elem),
+                                 "arnoldi expectation check:");
+        if (j + 1 == 100)
+        {
+          write_ritz_vectors(eigvec, j + 1,
+                             std::min(state_want, (int)eigval.n_elem),
+                             "output/arnoldi_step100_state");
+          std::cout << "wrote Ritz wavefunctions at step 100 to output/arnoldi_step100_state*.op"
+                    << std::endl;
+        }
       }
 
       if (prev_e_valid && prev_e.n_elem == e.n_elem)
@@ -2188,17 +2312,24 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
     }
   }
 
-  // Final eigensolution on the full accumulated subspace.
+  // Final eigensolution on the filled projected subspace only.
+  // A newly appended boundary vector does not have its own hall row/column
+  // until the next iteration, so using lanczos_vector.size() can add a
+  // spurious zero row/column and distort the final Ritz values.
   {
-    int nb_cur = (int)lanczos_vector.size();
-    arma::mat sub = hall.submat(0, 0, nb_cur - 1, nb_cur - 1);
+    int nb_cur = (int)h1v_cache.size();
+    if (nb_cur == 0)
+      nb_cur = std::min((int)lanczos_vector.size(), 1);
     arma::vec eigval_f; arma::mat eigvec_f;
-    arma::eig_sym(eigval_f, eigvec_f, sub);
+    eigensolve_sub(nb_cur, eigval_f, eigvec_f);
     e  = eigval_f.head(std::min(state_want, (int)eigval_f.n_elem));
     vs = eigvec_f;
   }
 
   std::cout << "Arnoldi finished with " << j_final + 1 << " steps" << std::endl;
+  report_expectation_check(e, vs, (int)vs.n_rows,
+                           std::min(state_want, (int)e.n_elem),
+                           "final arnoldi expectation check:");
   for (int k = 0; k < (int)e.n_elem; ++k)
     std::cout << "E(" << k << ") = " << e(k) << std::endl;
 
@@ -2217,7 +2348,333 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
   result.energies = e;
   result.eigvecs  = vs;
   result.ritz     = ritz_vecs;
-  result.hall     = hall.submat(0, 0, nb - 1, nb - 1);
+  int hall_dim = (int)h1v_cache.size();
+  if (hall_dim == 0)
+    hall_dim = std::min((int)lanczos_vector.size(), 1);
+  result.hall     = hall.submat(0, 0, hall_dim - 1, hall_dim - 1);
+  return result;
+}
+
+// ============================================================
+//  ArnoldiSolve_old
+//  Original implementation kept verbatim for benchmarking.
+//  Differences vs ArnoldiSolve:
+//    * No i==j short-circuit; the polarization formula is applied on
+//      the diagonal too (1/2 (<2v|H2|2v> - 2<v|H2|v>) = <v|H2|v>).
+//    * Plain arma::eig_sym (no explicit symmatu symmetrization).
+//    * No asymmetry diagnostic, no in-loop variational consistency print.
+//  Inner products use ComputeNorm (matching current ArnoldiSolve).
+//  In exact arithmetic ArnoldiSolve and ArnoldiSolve_old must produce the
+//  same hall matrix; compare result.hall to verify equivalence.
+// ============================================================
+EOM::ArnoldiResult
+EOM::ArnoldiSolve_old(Operator &vi, int max_iter, int state_want)
+{
+  const double tol      = 1e-8;
+  const double bj_tol   = 1e-4;
+  const double null_tol = 1e-4;
+  const int    min_iter = state_want + 1;
+
+  std::vector<Operator> lanczos_vector;
+  std::vector<Operator> h1v_cache;
+  std::vector<double>   h2_diag;
+  arma::mat hall(max_iter, max_iter, arma::fill::zeros);
+
+  // normalize initial vector
+  double nn = ComputeNorm(vi, vi);
+  Operator v0 = vi / std::sqrt(nn);
+  lanczos_vector.push_back(v0);
+  h2_diag.push_back(DcomMultiref(Hs, v0).first);
+  const double cn0 = ComputeNorm(v0, v0);
+
+  arma::vec e(state_want, arma::fill::zeros);
+  arma::mat vs(1, 1, arma::fill::zeros);
+  arma::vec prev_e;
+  bool      prev_e_valid = false;
+  int       j_final      = 0;
+
+  for (int j = 0; j < max_iter - 1; ++j)
+  {
+    j_final = j;
+
+    Operator h1v_j = HtcMultiref(Hs, lanczos_vector[j]);
+    h1v_cache.push_back(h1v_j);
+
+    // fill row / column j using full polarization identity (no diagonal shortcut)
+    for (int i = 0; i <= j; ++i)
+    {
+      double h1ij   = ComputeNorm(lanczos_vector[i], h1v_j);
+      double h1ji   = ComputeNorm(lanczos_vector[j], h1v_cache[i]);
+      double h1_sym = 0.5 * (h1ij + h1ji);
+
+      Operator v_sum  = lanczos_vector[i] + lanczos_vector[j];
+      double h2_cross = DcomMultiref(Hs, v_sum).first;
+      double h2_sym   = 0.5 * (h2_cross - h2_diag[i] - h2_diag[j]);
+
+      hall(i, j) = hall(j, i) = h1_sym + h2_sym;
+    }
+
+    // double-pass classical Gram-Schmidt orthogonalization
+    Operator w = h1v_j * 1.0;
+    ProjectOprator(w);
+    for (int pass = 0; pass < 2; ++pass)
+    {
+      for (int i = 0; i <= j; ++i)
+      {
+        double cij = ComputeNorm(lanczos_vector[i], w);
+        w = w - cij * lanczos_vector[i];
+      }
+      ProjectOprator(w);
+    }
+
+    double bj        = ComputeNorm(w, w);
+    double bj_kernel = bj;
+    //std::cout << bj << " " << bj_kernel << " kernels " << std::endl;
+
+    // null-space breakdown
+    if (std::abs(bj_kernel) < null_tol * cn0)
+    {
+      std::cout << "arnoldi_old: null vector (breakdown) at step " << j + 1
+                << " (ComputeNorm=" << bj_kernel << "), stopping." << std::endl;
+      int dim = j + 1;
+      arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
+      arma::vec ev; arma::mat evec;
+      arma::eig_sym(ev, evec, sub);
+      e  = ev.head(std::min(state_want, (int)ev.n_elem));
+      vs = evec;
+      break;
+    }
+
+    // exact breakdown
+    if (std::abs(bj) < bj_tol)
+    {
+      std::cout << "arnoldi_old: exact breakdown at step " << j + 1 << ", stopping." << std::endl;
+      int dim = j + 1;
+      arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
+      arma::vec ev; arma::mat evec;
+      arma::eig_sym(ev, evec, sub);
+      e  = ev.head(std::min(state_want, (int)ev.n_elem));
+      vs = evec;
+      break;
+    }
+
+    // negative norm
+    if (bj < 0.0)
+    {
+      std::cout << "arnoldi_old: bj=" << bj << " < 0 at step " << j + 1
+                << " (indefinite metric), stopping." << std::endl;
+      int dim = j + 1;
+      arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
+      arma::vec ev; arma::mat evec;
+      arma::eig_sym(ev, evec, sub);
+      e  = ev.head(std::min(state_want, (int)ev.n_elem));
+      vs = evec;
+      break;
+    }
+
+    // normal step
+    Operator new_vec = w / std::sqrt(bj);
+    lanczos_vector.push_back(new_vec);
+    h2_diag.push_back(DcomMultiref(Hs, new_vec).first);
+
+    // eigenvalue check / convergence
+    if (j + 1 >= min_iter)
+    {
+      arma::mat sub = hall.submat(0, 0, j, j);
+      arma::vec eigval; arma::mat eigvec;
+      arma::eig_sym(eigval, eigvec, sub);
+
+      e  = eigval.head(std::min(state_want, (int)eigval.n_elem));
+      vs = eigvec;
+
+      if ((j + 1) % 5 == 0)
+      {
+        std::cout << "arnoldi_old eigenvalues @ step " << j + 1 << ": ";
+        for (int k = 0; k < (int)e.n_elem; ++k)
+          std::cout << e(k) << " ";
+        std::cout << std::endl;
+      }
+
+      if (prev_e_valid && prev_e.n_elem == e.n_elem)
+      {
+        double delta = arma::max(arma::abs(e - prev_e));
+        double scale = std::max(1.0, arma::max(arma::abs(e)));
+        if (delta < tol || delta / scale < tol)
+        {
+          std::cout << "Arnoldi_old converged at step " << j + 1 << std::endl;
+          break;
+        }
+      }
+      prev_e       = e;
+      prev_e_valid = true;
+    }
+  }
+
+  // Final eigensolution on the filled projected subspace only.
+  {
+    int nb_cur = (int)h1v_cache.size();
+    if (nb_cur == 0)
+      nb_cur = std::min((int)lanczos_vector.size(), 1);
+    arma::mat sub = hall.submat(0, 0, nb_cur - 1, nb_cur - 1);
+    arma::vec eigval_f; arma::mat eigvec_f;
+    arma::eig_sym(eigval_f, eigvec_f, sub);
+    e  = eigval_f.head(std::min(state_want, (int)eigval_f.n_elem));
+    vs = eigvec_f;
+  }
+
+  std::cout << "Arnoldi_old finished with " << j_final + 1 << " steps" << std::endl;
+  for (int k = 0; k < (int)e.n_elem; ++k)
+    std::cout << "E(" << k << ") = " << e(k) << std::endl;
+
+  // Build Ritz vectors.
+  std::vector<Operator> ritz_vecs;
+  int nb = (int)lanczos_vector.size();
+  for (int k = 0; k < (int)e.n_elem; ++k)
+  {
+    Operator vec = lanczos_vector[0] * 0.0;
+    for (int m = 0; m < std::min(nb, (int)vs.n_rows); ++m)
+      vec = vec + (double)vs(m, k) * lanczos_vector[m];
+    ritz_vecs.push_back(vec);
+  }
+
+  ArnoldiResult result;
+  result.energies = e;
+  result.eigvecs  = vs;
+  result.ritz     = ritz_vecs;
+  int hall_dim = (int)h1v_cache.size();
+  if (hall_dim == 0)
+    hall_dim = std::min((int)lanczos_vector.size(), 1);
+  result.hall     = hall.submat(0, 0, hall_dim - 1, hall_dim - 1);
+  return result;
+}
+
+EOM::ArnoldiTraceDiffResult
+EOM::CompareArnoldiHallBuild(Operator &vi, int max_iter, double tol)
+{
+  ArnoldiTraceDiffResult result;
+  const double bj_tol   = 1e-4;
+  const double null_tol = 1e-4;
+
+  std::vector<Operator> lanczos_new;
+  std::vector<Operator> lanczos_old;
+  std::vector<Operator> h1v_cache_new;
+  std::vector<Operator> h1v_cache_old;
+  std::vector<double>   h2_diag_new;
+  std::vector<double>   h2_diag_old;
+
+  double nn = ComputeNorm(vi, vi);
+  Operator v0_new = vi / std::sqrt(nn);
+  Operator v0_old = vi / std::sqrt(nn);
+  lanczos_new.push_back(v0_new);
+  lanczos_old.push_back(v0_old);
+  h2_diag_new.push_back(DcomMultiref(Hs, v0_new).first);
+  h2_diag_old.push_back(DcomMultiref(Hs, v0_old).first);
+  const double cn0 = ComputeNorm(v0_new, v0_new);
+
+  for (int j = 0; j < max_iter - 1; ++j)
+  {
+    Operator h1v_new = HtcMultiref(Hs, lanczos_new[j]);
+    Operator h1v_old = HtcMultiref(Hs, lanczos_old[j]);
+    h1v_cache_new.push_back(h1v_new);
+    h1v_cache_old.push_back(h1v_old);
+
+    for (int i = 0; i <= j; ++i)
+    {
+      double h1ij_new   = ComputeNorm(lanczos_new[i], h1v_new);
+      double h1ji_new   = ComputeNorm(lanczos_new[j], h1v_cache_new[i]);
+      double h1_sym_new = 0.5 * (h1ij_new + h1ji_new);
+
+      double h2_cross_new;
+      double h2_sym_new;
+      if (i == j)
+      {
+        Operator v_sum_new = lanczos_new[j] + lanczos_new[j];
+        h2_cross_new = DcomMultiref(Hs, v_sum_new).first;
+        h2_sym_new   = 0.5 * (h2_cross_new - h2_diag_new[j] - h2_diag_new[j]);
+      }
+      else
+      {
+        Operator v_sum_new = lanczos_new[i] + lanczos_new[j];
+        h2_cross_new = DcomMultiref(Hs, v_sum_new).first;
+        h2_sym_new   = 0.5 * (h2_cross_new - h2_diag_new[i] - h2_diag_new[j]);
+      }
+
+      double h1ij_old   = ComputeNorm(lanczos_old[i], h1v_old);
+      double h1ji_old   = ComputeNorm(lanczos_old[j], h1v_cache_old[i]);
+      double h1_sym_old = 0.5 * (h1ij_old + h1ji_old);
+      Operator v_sum_old = lanczos_old[i] + lanczos_old[j];
+      double h2_cross_old = DcomMultiref(Hs, v_sum_old).first;
+      double h2_sym_old   = 0.5 * (h2_cross_old - h2_diag_old[i] - h2_diag_old[j]);
+
+      double hall_new = h1_sym_new + h2_sym_new;
+      double hall_old = h1_sym_old + h2_sym_old;
+      double abs_diff = std::abs(hall_new - hall_old);
+      double rel_diff = abs_diff / (std::abs(hall_old) + 1e-30);
+      result.max_abs_diff = std::max(result.max_abs_diff, abs_diff);
+      result.max_rel_diff = std::max(result.max_rel_diff, rel_diff);
+
+      if (abs_diff > tol)
+      {
+        result.found = true;
+        result.step = j;
+        result.i = i;
+        result.j = j;
+        result.hall_new = hall_new;
+        result.hall_old = hall_old;
+        result.delta_hall = hall_new - hall_old;
+        result.h1_sym_new = h1_sym_new;
+        result.h1_sym_old = h1_sym_old;
+        result.h2_cross_new = h2_cross_new;
+        result.h2_cross_old = h2_cross_old;
+        result.h2_sym_new = h2_sym_new;
+        result.h2_sym_old = h2_sym_old;
+        result.h2_diag_i_new = h2_diag_new[i];
+        result.h2_diag_j_new = h2_diag_new[j];
+        result.h2_diag_i_old = h2_diag_old[i];
+        result.h2_diag_j_old = h2_diag_old[j];
+        return result;
+      }
+    }
+
+    Operator w_new = h1v_new * 1.0;
+    Operator w_old = h1v_old * 1.0;
+    ProjectOprator(w_new);
+    ProjectOprator(w_old);
+    for (int pass = 0; pass < 2; ++pass)
+    {
+      for (int i = 0; i <= j; ++i)
+      {
+        double cij_new = ComputeNorm(lanczos_new[i], w_new);
+        double cij_old = ComputeNorm(lanczos_old[i], w_old);
+        w_new = w_new - cij_new * lanczos_new[i];
+        w_old = w_old - cij_old * lanczos_old[i];
+      }
+      ProjectOprator(w_new);
+      ProjectOprator(w_old);
+      
+    }
+
+    double bj_new = ComputeNorm(w_new, w_new);
+    double bj_old = ComputeNorm(w_old, w_old);
+    double bj_kernel_new = bj_new;
+    double bj_kernel_old = bj_old;
+
+    bool break_new = (std::abs(bj_kernel_new) < null_tol * cn0)
+                  || (std::abs(bj_new) < bj_tol) || (bj_new < 0.0);
+    bool break_old = (std::abs(bj_kernel_old) < null_tol * cn0)
+                  || (std::abs(bj_old) < bj_tol) || (bj_old < 0.0);
+
+    if (break_new || break_old)
+      break;
+
+    Operator new_vec_new = w_new / std::sqrt(bj_new);
+    Operator new_vec_old = w_old / std::sqrt(bj_old);
+    lanczos_new.push_back(new_vec_new);
+    lanczos_old.push_back(new_vec_old);
+    h2_diag_new.push_back(DcomMultiref(Hs, new_vec_new).first);
+    h2_diag_old.push_back(DcomMultiref(Hs, new_vec_old).first);
+  }
+
   return result;
 }
 
@@ -2588,7 +3045,7 @@ EOM::RunResult EOM::RunSR(int max_iter, int state_want)
 
   UnitTest unt(*modelspace);
   Operator h_rand = unt.RandomOp(*modelspace, J2, itz,parity, 2, 1);
-  Operator chi    = GetVSEOM_ladder_single(h_rand, -1); 
+  Operator chi    = GetVSEOM_ladder_single(h_rand, 1); 
 
   double nm = NormSingle(chi, chi);
   if (nm <= 0.0)
@@ -2620,6 +3077,7 @@ EOM::RunResult EOM::RunSR(int max_iter, int state_want)
 // ---------------------------------------------------------------------------
 EOM::RunResult EOM::RunMR(int max_iter, int state_want)
 {
+   force_decouple(Hs);
   // --- (1) Setup ---
   ConstructConfigs();
   ConstructNormMatrix();
@@ -2634,8 +3092,11 @@ EOM::RunResult EOM::RunMR(int max_iter, int state_want)
   // --- (3) Random projected initial vector ---
   UnitTest unt(*modelspace);
   Operator h_rand = unt.RandomOp(*modelspace, 0, 0, 0, 2, 1); // now we can only deal with scaler
-  Operator chi_b  = GetVSEOM_ladder_multiref(h_rand, -1);
+  Operator chi_b  = GetVSEOM_ladder_multiref(h_rand, 1);
   ProjectOprator(chi_b);
+  std::cout << "Initial vector norm before projection: " << NormMultiref(chi_b, chi_b) << std::endl;
+
+  
 
   // --- (4) Solve ---
   ArnoldiResult ar = ArnoldiSolve(chi_b, max_iter, state_want);

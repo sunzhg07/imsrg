@@ -60,6 +60,7 @@ public:
   index_t pphh_start, pphh_end, pphh_dim;
   size_t channel;
   index_t eom_dims = 0;
+  bool arnoldi_use_projection = true;
 
   // Methods
   EOM(Operator &Hs, Operator &rdm, int J2, int parity, int itz);
@@ -67,6 +68,7 @@ public:
   EOM(Operator &Hs, int J2, int parity, int itz);
 
   void force_decouple(Operator &H);
+  void SetArnoldiUseProjection(bool use_projection) { arnoldi_use_projection = use_projection; }
 
   double GetVSEOM_Overlap_single(Operator &H1, Operator &H2);
   double GetVSEOM_Overlap_multiref(Operator &H);
@@ -75,6 +77,7 @@ public:
 
   void ConstructConfigs();
   void PrintConfigs();
+  void ShowModel();
   void ConstructNormMatrix();
   void ConstructProjectMatrix();
   double Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
@@ -113,6 +116,12 @@ public:
   // --- double commutator diagonal (223_231 + 223_232 + 223_132) ---
   std::pair<double, Operator> DcomMultiref(Operator &haml, Operator &chi);
 
+  /// Direct expectation value <Psi|H|Psi> / <Psi|Psi> using the same
+  /// H = H1 + H2 split as ArnoldiSolve.  Independent of the Krylov
+  /// bookkeeping, so it can be used as a variational consistency check
+  /// against the projected eigenvalues coming out of `hall`.
+  double ExpectationValue(Operator &Psi);
+
   // --- eigensolvers ---
   // SR Lanczos (mirrors sr_eom.py lanczos_proc with htc_single/norm_single)
   std::pair<arma::vec, std::vector<Operator>>
@@ -125,8 +134,40 @@ public:
     arma::mat   hall;
   };
 
+  struct ArnoldiTraceDiffResult {
+    bool   found = false;
+    int    step = -1;
+    int    i = -1;
+    int    j = -1;
+    double hall_new = 0.0;
+    double hall_old = 0.0;
+    double delta_hall = 0.0;
+    double h1_sym_new = 0.0;
+    double h1_sym_old = 0.0;
+    double h2_cross_new = 0.0;
+    double h2_cross_old = 0.0;
+    double h2_sym_new = 0.0;
+    double h2_sym_old = 0.0;
+    double h2_diag_i_new = 0.0;
+    double h2_diag_j_new = 0.0;
+    double h2_diag_i_old = 0.0;
+    double h2_diag_j_old = 0.0;
+    double max_abs_diff = 0.0;
+    double max_rel_diff = 0.0;
+  };
+
   // MR Arnoldi (mirrors mr_eom.py arnoldi_proc with htc_multiref/norm_multiref/dcom)
   ArnoldiResult ArnoldiSolve(Operator &vi, int max_iter, int state_want);
+
+  // Original (pre-refactor) MR Arnoldi kept for benchmarking.  Same Krylov
+  // subspace and matrix elements as ArnoldiSolve, but uses NormMultiref for
+  // every inner product, the full polarization formula even on the diagonal
+  // (no h2_diag short-circuit), and a plain eig_sym (no symmatu pre-symm).
+  // Provided so the user can compare result.hall between the two methods.
+  ArnoldiResult ArnoldiSolve_old(Operator &vi, int max_iter, int state_want);
+
+  ArnoldiTraceDiffResult CompareArnoldiHallBuild(Operator &vi, int max_iter,
+                                                 double tol = 1e-10);
 
   /// Read a transition density matrix file and populate a scalar 2-body Operator.
   /// File format (mirrors the Python read_tdm in run/lanczos.py):
@@ -182,6 +223,7 @@ public:
   RunResult Run(int max_iter = 200, int state_want = 6);
 
 private:
+  static double Norm_abc(size_t p, size_t q, size_t r);
   double ThreeBody_Diagram_Entries_Internal(size_t a, size_t b, size_t c,
                                             size_t d, size_t e, size_t f,
                                             size_t g, double j0, double j2);

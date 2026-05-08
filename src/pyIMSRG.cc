@@ -175,6 +175,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
           .def("GetTargetMass", &ModelSpace::GetTargetMass)
           .def("GetTargetZ", &ModelSpace::GetTargetZ)
           .def("GetAref", &ModelSpace::GetAref)
+               .def("GetAcore", &ModelSpace::GetAcore)
           .def("GetZref", &ModelSpace::GetZref)
           .def("GetNumberOrbits", &ModelSpace::GetNumberOrbits)
           .def("GetNumberKets", &ModelSpace::GetNumberKets)
@@ -1159,7 +1160,48 @@ PYBIND11_MODULE(pyIMSRG, m) {
            [](const EOM::ArnoldiResult &r) {
              std::vector<double> v(r.energies.begin(), r.energies.end());
              return v;
-           });
+                          })
+               .def_property_readonly("eigvecs",
+                          [](const EOM::ArnoldiResult &r) {
+                               std::vector<std::vector<double>> out(
+                                         r.eigvecs.n_rows,
+                                         std::vector<double>(r.eigvecs.n_cols, 0.0));
+                               for (size_t i = 0; i < r.eigvecs.n_rows; ++i)
+                                    for (size_t j = 0; j < r.eigvecs.n_cols; ++j)
+                                         out[i][j] = r.eigvecs(i, j);
+                               return out;
+                          })
+               .def_property_readonly("hall",
+                          [](const EOM::ArnoldiResult &r) {
+                               std::vector<std::vector<double>> out(
+                                         r.hall.n_rows,
+                                         std::vector<double>(r.hall.n_cols, 0.0));
+                               for (size_t i = 0; i < r.hall.n_rows; ++i)
+                                    for (size_t j = 0; j < r.hall.n_cols; ++j)
+                                         out[i][j] = r.hall(i, j);
+                               return out;
+                          });
+
+     py::class_<EOM::ArnoldiTraceDiffResult>(m, "ArnoldiTraceDiffResult")
+               .def_readonly("found", &EOM::ArnoldiTraceDiffResult::found)
+               .def_readonly("step", &EOM::ArnoldiTraceDiffResult::step)
+               .def_readonly("i", &EOM::ArnoldiTraceDiffResult::i)
+               .def_readonly("j", &EOM::ArnoldiTraceDiffResult::j)
+               .def_readonly("hall_new", &EOM::ArnoldiTraceDiffResult::hall_new)
+               .def_readonly("hall_old", &EOM::ArnoldiTraceDiffResult::hall_old)
+               .def_readonly("delta_hall", &EOM::ArnoldiTraceDiffResult::delta_hall)
+               .def_readonly("h1_sym_new", &EOM::ArnoldiTraceDiffResult::h1_sym_new)
+               .def_readonly("h1_sym_old", &EOM::ArnoldiTraceDiffResult::h1_sym_old)
+               .def_readonly("h2_cross_new", &EOM::ArnoldiTraceDiffResult::h2_cross_new)
+               .def_readonly("h2_cross_old", &EOM::ArnoldiTraceDiffResult::h2_cross_old)
+               .def_readonly("h2_sym_new", &EOM::ArnoldiTraceDiffResult::h2_sym_new)
+               .def_readonly("h2_sym_old", &EOM::ArnoldiTraceDiffResult::h2_sym_old)
+               .def_readonly("h2_diag_i_new", &EOM::ArnoldiTraceDiffResult::h2_diag_i_new)
+               .def_readonly("h2_diag_j_new", &EOM::ArnoldiTraceDiffResult::h2_diag_j_new)
+               .def_readonly("h2_diag_i_old", &EOM::ArnoldiTraceDiffResult::h2_diag_i_old)
+               .def_readonly("h2_diag_j_old", &EOM::ArnoldiTraceDiffResult::h2_diag_j_old)
+               .def_readonly("max_abs_diff", &EOM::ArnoldiTraceDiffResult::max_abs_diff)
+               .def_readonly("max_rel_diff", &EOM::ArnoldiTraceDiffResult::max_rel_diff);
 
   // EOM::RunResult — returned by EOM.Run()
   py::class_<EOM::RunResult>(m, "RunResult")
@@ -1182,6 +1224,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("ConstructConfigs",       &EOM::ConstructConfigs)
       .def("ConstructNormMatrix",    &EOM::ConstructNormMatrix)
       .def("ConstructProjectMatrix", &EOM::ConstructProjectMatrix)
+      .def("SetArnoldiUseProjection", &EOM::SetArnoldiUseProjection,
+           py::arg("use_projection"))
       // operator-level building blocks used in Python EOM loops
       .def("force_decouple",            &EOM::force_decouple,
            py::arg("H"))
@@ -1191,10 +1235,26 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("H1"), py::arg("H2"))
       .def("GetVSEOM_Overlap_multiref", &EOM::GetVSEOM_Overlap_multiref,
            py::arg("H"))
+      .def("NormMultiref",             &EOM::NormMultiref,
+           py::arg("T1"), py::arg("T2"))
+      .def("HtcMultiref",              &EOM::HtcMultiref,
+           py::arg("haml"), py::arg("chi"))
+      .def("DcomMultiref",             &EOM::DcomMultiref,
+           py::arg("haml"), py::arg("chi"))
+      .def("ExpectationValue",         &EOM::ExpectationValue,
+           py::arg("Psi"))
+      .def("ArnoldiSolve",     &EOM::ArnoldiSolve,
+           py::arg("vi"), py::arg("max_iter"), py::arg("state_want"))
+      .def("ArnoldiSolve_old", &EOM::ArnoldiSolve_old,
+           py::arg("vi"), py::arg("max_iter"), py::arg("state_want"))
+      .def("CompareArnoldiHallBuild", &EOM::CompareArnoldiHallBuild,
+           py::arg("vi"), py::arg("max_iter"), py::arg("tol") = 1e-10)
       .def("GetVSEOM_ladder_single",    &EOM::GetVSEOM_ladder_single,
            py::arg("H"), py::arg("herm"))
       .def("GetVSEOM_ladder_multiref",  &EOM::GetVSEOM_ladder_multiref,
            py::arg("H"), py::arg("herm"))
+      .def("ReadTdm", &EOM::ReadTdm,
+           py::arg("tdm_file"))
       .def("WriteTdm", &EOM::WriteTdm,
            py::arg("op"), py::arg("filename"))
       .def_readonly("ppvv_start", &EOM::ppvv_start)
@@ -1222,6 +1282,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("Jab"), py::arg("a"), py::arg("b"), py::arg("c"),
            py::arg("Jde"), py::arg("d"), py::arg("e"), py::arg("f"),
            py::arg("twoJ"))
+      .def("ShowModel", &EOM::ShowModel)
       .def_readonly("rdm", &EOM::rdm)
       .def("PrintConfigs", &EOM::PrintConfigs)
       .def_property_readonly("Nkernel", [](const EOM &self) {
