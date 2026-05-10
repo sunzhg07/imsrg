@@ -54,6 +54,14 @@ def norm3_multiref(eom, t1, t2, haml, ms):
     cm.comm232ss(t1, t3, nop)
     cm.comm231ss(t1, t3, nop)
     cm.comm132ss(t1, t3, nop)
+
+    #nop.SetParticleRank(3)
+    #nop.ThreeBody.SetMode("pn")
+    #cm.comm233_pp_hhss(t1, t3, nop)
+    #cm.comm233_phss(t1, t3, nop)
+    #cm.comm133ss(t1, t3, nop)
+    #print("threebody norm: ", nop.Norm())
+
     rst = eom.GetVSEOM_Overlap_multiref(nop)
     return rst / 2
 
@@ -175,6 +183,108 @@ def lanczos_proc(
 
 
 def read_tdm(tdm_file, ms):
+
+    rank_j, parity, rank_Tz, particle_rank, herm = 0, 0, 0, 2, 1
+    ops = Operator(ms, rank_j, parity, rank_Tz, particle_rank)
+    ops *= 0.0
+
+    data = []
+    with open(tdm_file, "r") as f:
+        lines = f.readlines()
+    ## line 0 is the total J of the state
+    lidx = 0
+    line = lines[lidx]
+    values = line.strip().split()
+    jtotal = float(values[0])
+    print("state J: ", jtotal)
+    factor = np.sqrt(2 * jtotal + 1.0)
+
+    ## line 1 is the number of single particle orbits
+    lidx += 1
+    line = lines[lidx]
+    values = line.strip().split()
+    norb = int(values[0])
+
+    ob_idx = np.zeros([norb, 3], dtype=np.int64)
+    for obs in range(norb):
+        lidx += 1
+        line = lines[lidx]
+        values = line.strip().split()
+        nn = int(values[1])
+        ll = int(values[2])
+        jj = int(values[3])
+        tt = int(values[4])
+        ips = ms.GetOrbitIndex(nn, ll, jj, tt)
+        ob_idx[obs, 0] = ips
+        ob_idx[obs, 1] = ll
+        ob_idx[obs, 2] = tt
+    ## read in OBTD
+
+    lidx += 1
+    line = lines[lidx]
+    values = line.strip().split()
+    n_obrd = int(values[0])
+
+    for obs in range(n_obrd):
+        lidx += 1
+        line = lines[lidx]
+        values = line.strip().split()
+        aa = ob_idx[int(values[1]) - 1, 0]
+        bb = ob_idx[int(values[2]) - 1, 0]
+        rd = float(values[-1]) / factor
+        print(aa, bb, rd, values[-1])
+        ops.SetOneBody(aa, bb, rd)
+
+    lidx += 1
+    line = lines[lidx]
+    values = line.strip().split()
+    n_tbrd = int(values[0])
+
+    for obs in range(n_tbrd):
+        lidx += 1
+        line = lines[lidx]
+        values = line.strip().split()
+        aa = ob_idx[int(values[1]) - 1, 0]
+        bb = ob_idx[int(values[2]) - 1, 0]
+        cc = ob_idx[int(values[3]) - 1, 0]
+        dd = ob_idx[int(values[4]) - 1, 0]
+        jij = int(values[5])
+        pij = ob_idx[int(values[1]) - 1, 1] + ob_idx[int(values[2]) - 1, 1]
+        tij = ob_idx[int(values[1]) - 1, 2] + ob_idx[int(values[2]) - 1, 2]
+        pij = int(pij % 2)
+        tij = int(tij / 2)
+        jkl = int(values[6])
+        pkl = ob_idx[int(values[3]) - 1, 1] + ob_idx[int(values[4]) - 1, 1]
+        tkl = ob_idx[int(values[3]) - 1, 2] + ob_idx[int(values[4]) - 1, 2]
+        pkl = int(pkl % 2)
+        tkl = int(tkl / 2)
+        rd = float(values[-1]) / factor
+        ops.SetTwoBody(jij, pij, tij, jkl, pkl, tkl, aa, bb, cc, dd, rd)
+
+    lidx += 1
+    line = lines[lidx]
+    values = line.strip().split()
+    n_tbrd = int(values[0])
+
+    for obs in range(n_tbrd):
+        lidx += 1
+        line = lines[lidx]
+        values = line.strip().split()
+        aa = ob_idx[int(values[1]) - 1, 0]
+        bb = ob_idx[int(values[2]) - 1, 0]
+        cc = ob_idx[int(values[3]) - 1, 0]
+        ee = ob_idx[int(values[4]) - 1, 0]
+        ff = ob_idx[int(values[5]) - 1, 0]
+        kk = ob_idx[int(values[6]) - 1, 0]
+        jab = int(int(values[7]) / 2)
+        jef = int(int(values[8]) / 2)
+        jtot = int(values[9])
+        rd = float(values[-1]) / np.sqrt(jtot + 1.0)
+        ops.ThreeBody.SetME_pn(jab, jef, jtot, aa, bb, cc, ee, ff, kk, rd)
+    return ops
+
+
+def read_tdm_old(tdm_file, ms):
 
     rank_j, parity, rank_Tz, particle_rank, herm = 0, 0, 0, 2, 1
     ops = Operator(ms, rank_j, parity, rank_Tz, particle_rank)

@@ -397,7 +397,7 @@ void EOM::ConstructNormMatrix() {
         if (e1 != e2)
           continue;
         Orbit &oc1 = modelspace->GetOrbit(c1);
-        Orbit &oc2 = modelspace->GetOrbit(c1);
+        Orbit &oc2 = modelspace->GetOrbit(c2);
         if (oc1.l != oc2.l)
           continue;
         if (oc1.j2 != oc2.j2)
@@ -715,7 +715,7 @@ void EOM::ConstructNormMatrix() {
       // here we use ThreeBody_Diagram_Entries_Internal, to represent a contraction, instead of ThreeBody_Diagram that mimic comm223ss
       double val = ThreeBody_Diagram_Entries_Internal(c1, d1, a2, a1, d2, c2, b1,
                                      tbc_bra.J, tbc_ket.J);
-       //Nkernel(i, j) += val;
+       Nkernel(i, j) += val;
         //std::cout<<"Threebody: "<< a1<<" "<<b1<<" "<<c1<<" "<<d1<<" "<<a2<<" "<<b2<<" "<<c2<<" "<<d2<<" "<< tbc_bra.J<<" "<<tbc_ket.J<<" " <<val<<std::endl;
     }
         
@@ -1239,14 +1239,14 @@ void EOM::SqrtMat(arma::mat& Amat, size_t n)
     double s_max = (s.n_elem > 0) ? arma::max(s) : 0.0;
 
     // If the entire block is zero, the projector is zero.
-    if (s_max < 1e-14) {
+    if (s_max < 1e-6) {
         Amat.zeros(n, n);
         return;
     }
 
     // Use a relative threshold to cleanly separate range from null space.
     // Vectors with s_i < 1e-6 * s_max are floating-point noise, not in the range.
-    arma::uvec range_idx = arma::find(s >= 1e-3 * s_max);
+    arma::uvec range_idx = arma::find(s >= 1e-6 * s_max);
 
     Amat.zeros(n, n);
     if (range_idx.n_elem > 0) {
@@ -1803,7 +1803,7 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
     }
   }
 
-  if (rdm.ThreeBody.IsAllocated()) {
+  if (rdm.ThreeBody.IsAllocated() && H.ThreeBody.IsAllocated() ) {
     for (auto &it : H.ThreeBody.Get_ch_start()) {
       size_t ch_bra = it.first.ch_bra;
       size_t ch_ket = it.first.ch_ket;
@@ -1829,16 +1829,16 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
 
           double norm_denom = Norm_abc(bra.p, bra.q, bra.r)
                             * Norm_abc(ket.p, ket.q, ket.r);
-        //  ovlp3 += h3 * r3 * std::sqrt(double(twoJ) + 1.0)
-        //          / (norm_denom * norm_denom);
+          ovlp3 += h3 * r3 * std::sqrt(double(twoJ) + 1.0)
+                  / (norm_denom * norm_denom);
         }
       }
     }
   }
-  // std::cout << "zero-body contribution to norm: " << ovlp << std::endl;
-  // std::cout << "one-body contribution to norm: " << ovlp1 << std::endl;
-  // std::cout << "two-body contribution to norm: " << ovlp2 << std::endl;
-  // std::cout << "three-body contribution to norm: " << ovlp3 << std::endl;
+   std::cout << "zero-body contribution to norm: " << ovlp << std::endl;
+   std::cout << "one-body contribution to norm: " << ovlp1 << std::endl;
+   std::cout << "two-body contribution to norm: " << ovlp2 << std::endl;
+   std::cout << "three-body contribution to norm: " << ovlp3 << std::endl;
 
   return (ovlp + ovlp1 + ovlp2 + ovlp3);
 }

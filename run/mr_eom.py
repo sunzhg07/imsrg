@@ -108,7 +108,7 @@ Hs = imsrgsolver.GetH_s()
 Hs.ZeroBody = 0.0
 rw.WriteTokyo(Hs, valence_fname, "")
 
-# tdm_op = read_tdm("he6.ref", ms)
+#tdm_op = read_tdm("he8.ref", ms)
 
 
 cm = Commutator
@@ -119,7 +119,7 @@ cm = Commutator
 #
 
 
-eom = EOM(Hs, "he8.ref", rank_j, parity, rank_Tz)
+eom = EOM(Hs, 'he8.ref', rank_j, parity, rank_Tz)
 eom.ConstructConfigs()
 eom.ConstructNormMatrix()
 eom.ConstructProjectMatrix()
@@ -149,11 +149,15 @@ chi_b = eom.GetVSEOM_ladder_multiref(h2, 1)
 
 nm = norm_multiref(eom, chi_a, chi_b)
 print("original py ab: ", nm)
+nm = norm_multiref(eom, chi_b, chi_a)
+print("original py ba: ", nm)
 #
 # nm=norm_multiref(eom,chi_b,chi_a)
 # print('original py ba: ',nm)
 nm = eom.ComputeNorm(chi_a, chi_b)
 print("original c++ ab: ", nm)
+nm = eom.ComputeNorm(chi_b, chi_a)
+print("original c++ ba: ", nm)
 
 
 print("enorm before: ", chi_a.Norm())
@@ -215,34 +219,34 @@ print("hba: ", hba, "h3ba: ", h3ba)
 print("hba+h3ba: ", hba + h3ba)
 
 
-ha = htc_multiref(eom, Hs, chi_a)
-haa = norm_multiref(eom, chi_a, ha)
-h3aa = norm3_multiref(eom, chi_a, chi_a, Hs, ms)
-print("haa: ", haa, "h3aa: ", h3aa)
-print("haa+h3aa: ", haa + h3aa)
-
-
-hb = htc_multiref(eom, Hs, chi_b)
-hbb = norm_multiref(eom, chi_b, hb)
-h3bb = norm3_multiref(eom, chi_b, chi_b, Hs, ms)
-print("hbb: ", hbb, "h3bb: ", h3bb)
-print("hbb+h3bb: ", hbb + h3bb)
-
-chi_c = chi_a + chi_b
-
-hc = htc_multiref(eom, Hs, chi_c)
-hcc = norm_multiref(eom, chi_c, hc)
-h3cc = norm3_multiref(eom, chi_c, chi_c, Hs, ms)
-print("hcc: ", hcc, "h3cc: ", h3cc)
-print("hcc+h3cc: ", hcc + h3cc)
-
-nm = dcom222312(eom, Hs, chi_a)
-print("haa: ", nm)
-
-nm = dcom222312(eom, Hs, chi_b)
-print("hbb: ", nm)
-nm = dcom222312(eom, Hs, chi_c)
-print("hcc: ", nm)
+# ha = htc_multiref(eom, Hs, chi_a)
+# haa = norm_multiref(eom, chi_a, ha)
+# h3aa = norm3_multiref(eom, chi_a, chi_a, Hs, ms)
+# print("haa: ", haa, "h3aa: ", h3aa)
+# print("haa+h3aa: ", haa + h3aa)
+#
+#
+# hb = htc_multiref(eom, Hs, chi_b)
+# hbb = norm_multiref(eom, chi_b, hb)
+# h3bb = norm3_multiref(eom, chi_b, chi_b, Hs, ms)
+# print("hbb: ", hbb, "h3bb: ", h3bb)
+# print("hbb+h3bb: ", hbb + h3bb)
+#
+# chi_c = chi_a + chi_b
+#
+# hc = htc_multiref(eom, Hs, chi_c)
+# hcc = norm_multiref(eom, chi_c, hc)
+# h3cc = norm3_multiref(eom, chi_c, chi_c, Hs, ms)
+# print("hcc: ", hcc, "h3cc: ", h3cc)
+# print("hcc+h3cc: ", hcc + h3cc)
+#
+# nm = dcom222312(eom, Hs, chi_a)
+# print("haa: ", nm)
+#
+# nm = dcom222312(eom, Hs, chi_b)
+# print("hbb: ", nm)
+# nm = dcom222312(eom, Hs, chi_c)
+# print("hcc: ", nm)
 ## ---------------------------------------------------------------
 ## Test: does projecting the Arnoldi vector break hermiticity?
 ## Take chi_a (projected), compute w = H1*chi_a (raw, no prjop).
