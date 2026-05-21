@@ -61,14 +61,32 @@ public:
   size_t channel;
   index_t eom_dims = 0;
   bool arnoldi_use_projection = true;
+  bool arnoldi_check_expectation = false;
+  bool arnoldi_print_timing = false;
+  bool use_reference_energy_shift = false;
+  double reference_energy_shift = 0.0;
+  double dcom_time_ladder = 0.0;
+  double dcom_time_223_231 = 0.0;
+  double dcom_time_223_232 = 0.0;
+  double dcom_time_223_132 = 0.0;
+  double dcom_time_overlap = 0.0;
+  int dcom_profile_calls = 0;
 
   // Methods
   EOM(Operator &Hs, Operator &rdm, int J2, int parity, int itz);
   EOM(Operator &Hs, const std::string &tdm_file, int J2, int parity, int itz);
   EOM(Operator &Hs, int J2, int parity, int itz);
 
+  void EraseValence(Operator &H);
+  void EraseQspace(Operator &H);
   void force_decouple(Operator &H);
+  void PrepareHamiltonianForArnoldi();
   void SetArnoldiUseProjection(bool use_projection) { arnoldi_use_projection = use_projection; }
+  void SetArnoldiCheckExpectation(bool check_expectation) { arnoldi_check_expectation = check_expectation; }
+  void SetArnoldiPrintTiming(bool print_timing) { arnoldi_print_timing = print_timing; }
+  void SetReferenceEnergyShift(double energy) { reference_energy_shift = energy; use_reference_energy_shift = true; }
+  void ClearReferenceEnergyShift() { reference_energy_shift = 0.0; use_reference_energy_shift = false; }
+  double GetReferenceEnergyShift() const { return use_reference_energy_shift ? reference_energy_shift : 0.0; }
 
   double GetVSEOM_Overlap_single(Operator &H1, Operator &H2);
   double GetVSEOM_Overlap_multiref(Operator &H);
@@ -114,7 +132,7 @@ public:
   Operator HtcMultiref(Operator &haml, Operator &chi); ///< [Haml,chi] → ladder_multiref + ProjectOprator
 
   // --- double commutator diagonal (223_231 + 223_232 + 223_132) ---
-  std::pair<double, Operator> DcomMultiref(Operator &haml, Operator &chi);
+  double DcomMultiref(Operator &haml, Operator &chi);
 
   /// Direct expectation value <Psi|H|Psi> / <Psi|Psi> using the same
   /// H = H1 + H2 split as ArnoldiSolve.  Independent of the Krylov

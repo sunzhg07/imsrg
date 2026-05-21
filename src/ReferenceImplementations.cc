@@ -13333,6 +13333,470 @@ namespace ReferenceImplementations
     return;
   }
 
+  namespace
+  {
+  void comm223_132_impl(const Operator &Eta, const Operator &Gamma, Operator &Z,
+                        bool do_ladder, bool do_cross, bool do_onebody,
+                        const std::string &timer_label)
+  {
+    double t_start = omp_get_wtime();
+
+    Z.modelspace->PreCalculateSixJ();
+    auto &Z2 = Z.TwoBody;
+
+    std::vector<size_t> ch_bra_list, ch_ket_list;
+    for (auto &iter : Z2.MatEl)
+    {
+      ch_bra_list.push_back(iter.first[0]);
+      ch_ket_list.push_back(iter.first[1]);
+    }
+
+    size_t nch_z = ch_bra_list.size();
+    if (do_ladder)
+    {
+    // Ladder contribution written directly in the normal-coupled basis.
+#pragma omp parallel for schedule(dynamic, 1)
+    for (size_t ich = 0; ich < nch_z; ++ich)
+    {
+      size_t ch_bra = ch_bra_list[ich];
+      size_t ch_ket = ch_ket_list[ich];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J0 != J1)
+        continue;
+
+      int nbras = tbc_bra.GetNumberKets();
+      int nkets = tbc_ket.GetNumberKets();
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t i = bra.p;
+        size_t j = bra.q;
+
+        int ketmin = (ch_bra == ch_ket) ? ibra : 0;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t k = ket.p;
+          size_t l = ket.q;
+
+          double zijkl = 0.0;
+          for (auto a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double n_a = oa.occ;
+            for (auto b : Z.GetOneBodyChannel(oa.l, oa.j2, oa.tz2))
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double occfactor = (1.0 - n_a) * ob.occ - n_a * (1.0 - ob.occ);
+              if (std::abs(occfactor) < 1e-12)
+                continue;
+
+              double eta_ba = Eta.OneBody(b, a);
+              if (std::abs(eta_ba) < 1e-12)
+                continue;
+
+              double common_factor = occfactor * eta_ba;
+              for (auto c : Z.modelspace->all_orbits)
+              {
+                double eta_cakl = Eta.TwoBody.GetTBME_J(J0, J0, c, a, k, l);
+                double gamma_cakl = Gamma.TwoBody.GetTBME_J(J0, J0, c, a, k, l);
+                double gamma_ijcb = Gamma.TwoBody.GetTBME_J(J0, J0, i, j, c, b);
+                double eta_ijcb = Eta.TwoBody.GetTBME_J(J0, J0, i, j, c, b);
+
+                zijkl += eta_cakl * gamma_ijcb * common_factor;
+                zijkl -= gamma_cakl * eta_ijcb * common_factor;
+              }
+            }
+          }
+
+          if (i == j)
+            zijkl /= PhysConst::SQRT2;
+          if (k == l)
+            zijkl /= PhysConst::SQRT2;
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zijkl);
+        }
+      }
+    }
+    }
+
+    if (do_cross)
+    {
+    // Cross-coupled contribution written directly in the normal-coupled basis.
+#pragma omp parallel for schedule(dynamic, 1)
+    for (size_t ich = 0; ich < nch_z; ++ich)
+    {
+      size_t ch_bra = ch_bra_list[ich];
+      size_t ch_ket = ch_ket_list[ich];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J0 != J1)
+        continue;
+
+      int nbras = tbc_bra.GetNumberKets();
+      int nkets = tbc_ket.GetNumberKets();
+      auto phase_of = [&](int exponent) { return Z.modelspace->phase(exponent); };
+
+      auto add_direct_cross_term = [&](double &zijkl, int sign, int extra_phase_exp,
+                                       size_t ninej_1, size_t ninej_2, size_t ninej_4, size_t ninej_6, size_t ninej_8, size_t ninej_9,
+                                       size_t eta1, size_t eta2, size_t eta3, size_t eta4,
+                                       size_t gamma1, size_t gamma2, size_t gamma3, size_t gamma4,
+                                       double eta_ab, double occfactor) {
+        Orbit &on1 = Z.modelspace->GetOrbit(ninej_1);
+        Orbit &on2 = Z.modelspace->GetOrbit(ninej_2);
+        Orbit &on4 = Z.modelspace->GetOrbit(ninej_4);
+        Orbit &on6 = Z.modelspace->GetOrbit(ninej_6);
+        Orbit &on8 = Z.modelspace->GetOrbit(ninej_8);
+        Orbit &on9 = Z.modelspace->GetOrbit(ninej_9);
+        Orbit &oeta1 = Z.modelspace->GetOrbit(eta1);
+        Orbit &oeta2 = Z.modelspace->GetOrbit(eta2);
+        Orbit &oeta3 = Z.modelspace->GetOrbit(eta3);
+        Orbit &oeta4 = Z.modelspace->GetOrbit(eta4);
+        Orbit &ogamma1 = Z.modelspace->GetOrbit(gamma1);
+        Orbit &ogamma2 = Z.modelspace->GetOrbit(gamma2);
+        Orbit &ogamma3 = Z.modelspace->GetOrbit(gamma3);
+        Orbit &ogamma4 = Z.modelspace->GetOrbit(gamma4);
+
+        int J2min = std::max(std::abs(oeta1.j2 - oeta2.j2), std::abs(oeta3.j2 - oeta4.j2)) / 2;
+        int J2max = std::min(oeta1.j2 + oeta2.j2, oeta3.j2 + oeta4.j2) / 2;
+        int J3min = std::max(std::abs(ogamma1.j2 - ogamma2.j2), std::abs(ogamma3.j2 - ogamma4.j2)) / 2;
+        int J3max = std::min(ogamma1.j2 + ogamma2.j2, ogamma3.j2 + ogamma4.j2) / 2;
+
+        for (int J2 = J2min; J2 <= J2max; ++J2)
+        {
+          for (int J3 = J3min; J3 <= J3max; ++J3)
+          {
+            double ninej = AngMom::NineJ(on1.j2 * 0.5, on2.j2 * 0.5, J2,
+                                         on4.j2 * 0.5, J3, on6.j2 * 0.5,
+                                         J0, on8.j2 * 0.5, on9.j2 * 0.5);
+            if (std::abs(ninej) < 1e-12)
+              continue;
+
+            double eta_me = Eta.TwoBody.GetTBME_J(J2, J2, eta1, eta2, eta3, eta4);
+            double gamma_me = Gamma.TwoBody.GetTBME_J(J3, J3, gamma1, gamma2, gamma3, gamma4);
+            if (std::abs(eta_me) < 1e-12 or std::abs(gamma_me) < 1e-12)
+              continue;
+
+            int common_phase_exp = J2 + J3 + (Z.modelspace->GetOrbit(eta4).j2 + Z.modelspace->GetOrbit(gamma3).j2) / 2;
+            double phase = phase_of(common_phase_exp + extra_phase_exp);
+            zijkl += sign * phase * (2 * J2 + 1) * (2 * J3 + 1) * ninej * eta_me * eta_ab * gamma_me * occfactor;
+          }
+        }
+      };
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t i = bra.p;
+        size_t j = bra.q;
+        Orbit &oi = Z.modelspace->GetOrbit(i);
+        Orbit &oj = Z.modelspace->GetOrbit(j);
+        int ij_phase_exp = (oi.j2 + oj.j2) / 2;
+
+        int ketmin = (ch_bra == ch_ket) ? ibra : 0;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t k = ket.p;
+          size_t l = ket.q;
+          Orbit &ok = Z.modelspace->GetOrbit(k);
+          Orbit &ol = Z.modelspace->GetOrbit(l);
+          int kl_phase_exp = (ok.j2 + ol.j2) / 2;
+
+          double zijkl = 0.0;
+          for (auto a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double n_a = oa.occ;
+            for (auto b : Z.GetOneBodyChannel(oa.l, oa.j2, oa.tz2))
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double occfactor = (1.0 - n_a) * ob.occ - n_a * (1.0 - ob.occ);
+              if (std::abs(occfactor) < 1e-12)
+                continue;
+
+              double eta_ab = Eta.OneBody(a, b);
+              if (std::abs(eta_ab) < 1e-12)
+                continue;
+
+              for (auto c : Z.modelspace->all_orbits)
+              {
+                add_direct_cross_term(zijkl, +1, J0, i, c, j, a, l, k, i, c, k, a, b, j, c, l, eta_ab, occfactor);
+                add_direct_cross_term(zijkl, -1, J0, i, a, j, c, l, k, i, b, k, c, c, j, a, l, eta_ab, occfactor);
+                add_direct_cross_term(zijkl, -1, kl_phase_exp, i, c, j, a, k, l, i, c, l, a, b, j, c, k, eta_ab, occfactor);
+                add_direct_cross_term(zijkl, +1, kl_phase_exp, i, a, j, c, k, l, i, b, l, c, c, j, a, k, eta_ab, occfactor);
+                add_direct_cross_term(zijkl, -1, ij_phase_exp, j, c, i, a, l, k, j, c, k, a, b, i, c, l, eta_ab, occfactor);
+                add_direct_cross_term(zijkl, +1, ij_phase_exp, j, a, i, c, l, k, j, b, k, c, c, i, a, l, eta_ab, occfactor);
+                add_direct_cross_term(zijkl, +1, J0 + ij_phase_exp + kl_phase_exp, j, c, i, a, k, l, j, c, l, a, b, i, c, k, eta_ab, occfactor);
+                add_direct_cross_term(zijkl, -1, J0 + ij_phase_exp + kl_phase_exp, j, a, i, c, k, l, j, b, l, c, c, i, a, k, eta_ab, occfactor);
+              }
+            }
+          }
+
+          if (i == j)
+            zijkl /= PhysConst::SQRT2;
+          if (k == l)
+            zijkl /= PhysConst::SQRT2;
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zijkl);
+        }
+      }
+    }
+    }
+
+    if (do_onebody)
+    {
+    // Remaining direct-coupled one-body contractions written explicitly.
+#pragma omp parallel for schedule(dynamic, 1)
+    for (size_t ich = 0; ich < nch_z; ++ich)
+    {
+      size_t ch_bra = ch_bra_list[ich];
+      size_t ch_ket = ch_ket_list[ich];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J0 != J1)
+        continue;
+
+      int nbras = tbc_bra.GetNumberKets();
+      int nkets = tbc_ket.GetNumberKets();
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t i = bra.p;
+        size_t j = bra.q;
+        Orbit &oi = Z.modelspace->GetOrbit(i);
+        Orbit &oj = Z.modelspace->GetOrbit(j);
+
+        int ketmin = (ch_bra == ch_ket) ? ibra : 0;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t k = ket.p;
+          size_t l = ket.q;
+          Orbit &ok = Z.modelspace->GetOrbit(k);
+          Orbit &ol = Z.modelspace->GetOrbit(l);
+
+          double phase_ij = Z.modelspace->phase(J0 + (oi.j2 + oj.j2) / 2);
+          double phase_kl = Z.modelspace->phase(J0 + (ok.j2 + ol.j2) / 2);
+          double inv_hatji2 = 1.0 / (oi.j2 + 1.0);
+          double inv_hatjj2 = 1.0 / (oj.j2 + 1.0);
+          double inv_hatjk2 = 1.0 / (ok.j2 + 1.0);
+          double inv_hatjl2 = 1.0 / (ol.j2 + 1.0);
+
+          double zijkl = 0.0;
+          for (size_t a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double n_a = oa.occ;
+            for (auto b : Z.GetOneBodyChannel(oa.l, oa.j2, oa.tz2))
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double occfactor = (1.0 - n_a) * ob.occ - n_a * (1.0 - ob.occ);
+              if (std::abs(occfactor) < 1e-12)
+                continue;
+
+              double eta_ba = Eta.OneBody(b, a);
+              if (std::abs(eta_ba) < 1e-12)
+                continue;
+
+              double common_factor = occfactor * eta_ba;
+
+              // Equation 1, Term 1.
+              for (auto c : Z.GetOneBodyChannel(oi.l, oi.j2, oi.tz2))
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double gamma_cjkl = Gamma.TwoBody.GetTBME_J(J0, J0, c, j, k, l);
+                if (std::abs(gamma_cjkl) < 1e-12)
+                  continue;
+
+                int J2min = std::max(std::abs(oi.j2 - oa.j2), std::abs(oc.j2 - ob.j2)) / 2;
+                int J2max = std::min(oi.j2 + oa.j2, oc.j2 + ob.j2) / 2;
+                for (int J2 = J2min; J2 <= J2max; ++J2)
+                {
+                  double eta_iacb = Eta.TwoBody.GetTBME_J(J2, J2, i, a, c, b);
+                  if (std::abs(eta_iacb) < 1e-12)
+                    continue;
+                  zijkl += inv_hatji2 * common_factor * (2 * J2 + 1) * eta_iacb * gamma_cjkl;
+                }
+              }
+
+              // Equation 1, Term 2.
+              for (auto c : Z.GetOneBodyChannel(oj.l, oj.j2, oj.tz2))
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double gamma_cikl = Gamma.TwoBody.GetTBME_J(J0, J0, c, i, k, l);
+                if (std::abs(gamma_cikl) < 1e-12)
+                  continue;
+
+                int J2min = std::max(std::abs(oj.j2 - oa.j2), std::abs(oc.j2 - ob.j2)) / 2;
+                int J2max = std::min(oj.j2 + oa.j2, oc.j2 + ob.j2) / 2;
+                for (int J2 = J2min; J2 <= J2max; ++J2)
+                {
+                  double eta_jacb = Eta.TwoBody.GetTBME_J(J2, J2, j, a, c, b);
+                  if (std::abs(eta_jacb) < 1e-12)
+                    continue;
+                  zijkl -= phase_ij * inv_hatjj2 * common_factor * (2 * J2 + 1) * eta_jacb * gamma_cikl;
+                }
+              }
+
+              // Equation 1, Term 3.
+              for (auto c : Z.GetOneBodyChannel(ok.l, ok.j2, ok.tz2))
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double gamma_ijcl = Gamma.TwoBody.GetTBME_J(J0, J0, i, j, c, l);
+                if (std::abs(gamma_ijcl) < 1e-12)
+                  continue;
+
+                int J2min = std::max(std::abs(oa.j2 - oc.j2), std::abs(ob.j2 - ok.j2)) / 2;
+                int J2max = std::min(oa.j2 + oc.j2, ob.j2 + ok.j2) / 2;
+                for (int J2 = J2min; J2 <= J2max; ++J2)
+                {
+                  double eta_acbk = Eta.TwoBody.GetTBME_J(J2, J2, a, c, b, k);
+                  if (std::abs(eta_acbk) < 1e-12)
+                    continue;
+                  zijkl -= inv_hatjk2 * common_factor * (2 * J2 + 1) * gamma_ijcl * eta_acbk;
+                }
+              }
+
+              // Equation 1, Term 4.
+              for (auto c : Z.GetOneBodyChannel(ol.l, ol.j2, ol.tz2))
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double gamma_ijck = Gamma.TwoBody.GetTBME_J(J0, J0, i, j, c, k);
+                if (std::abs(gamma_ijck) < 1e-12)
+                  continue;
+
+                int J2min = std::max(std::abs(oa.j2 - oc.j2), std::abs(ob.j2 - ol.j2)) / 2;
+                int J2max = std::min(oa.j2 + oc.j2, ob.j2 + ol.j2) / 2;
+                for (int J2 = J2min; J2 <= J2max; ++J2)
+                {
+                  double eta_acbl = Eta.TwoBody.GetTBME_J(J2, J2, a, c, b, l);
+                  if (std::abs(eta_acbl) < 1e-12)
+                    continue;
+                  zijkl += phase_kl * inv_hatjl2 * common_factor * (2 * J2 + 1) * gamma_ijck * eta_acbl;
+                }
+              }
+
+              // Equation 2, Term 1.
+              for (auto c : Z.GetOneBodyChannel(ol.l, ol.j2, ol.tz2))
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double eta_ijkc = Eta.TwoBody.GetTBME_J(J0, J0, i, j, k, c);
+                if (std::abs(eta_ijkc) < 1e-12)
+                  continue;
+
+                int J2min = std::max(std::abs(oc.j2 - oa.j2), std::abs(ol.j2 - ob.j2)) / 2;
+                int J2max = std::min(oc.j2 + oa.j2, ol.j2 + ob.j2) / 2;
+                for (int J2 = J2min; J2 <= J2max; ++J2)
+                {
+                  double gamma_calb = Gamma.TwoBody.GetTBME_J(J2, J2, c, a, l, b);
+                  if (std::abs(gamma_calb) < 1e-12)
+                    continue;
+                  zijkl += inv_hatjl2 * common_factor * (2 * J2 + 1) * eta_ijkc * gamma_calb;
+                }
+              }
+
+              // Equation 2, Term 2.
+              for (auto c : Z.GetOneBodyChannel(ok.l, ok.j2, ok.tz2))
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double eta_ijlc = Eta.TwoBody.GetTBME_J(J0, J0, i, j, l, c);
+                if (std::abs(eta_ijlc) < 1e-12)
+                  continue;
+
+                int J2min = std::max(std::abs(oc.j2 - oa.j2), std::abs(ok.j2 - ob.j2)) / 2;
+                int J2max = std::min(oc.j2 + oa.j2, ok.j2 + ob.j2) / 2;
+                for (int J2 = J2min; J2 <= J2max; ++J2)
+                {
+                  double gamma_cakb = Gamma.TwoBody.GetTBME_J(J2, J2, c, a, k, b);
+                  if (std::abs(gamma_cakb) < 1e-12)
+                    continue;
+                  zijkl -= phase_kl * inv_hatjk2 * common_factor * (2 * J2 + 1) * eta_ijlc * gamma_cakb;
+                }
+              }
+
+              // Equation 2, Term 3.
+              for (auto c : Z.GetOneBodyChannel(oj.l, oj.j2, oj.tz2))
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double eta_ickl = Eta.TwoBody.GetTBME_J(J0, J0, i, c, k, l);
+                if (std::abs(eta_ickl) < 1e-12)
+                  continue;
+
+                int J2min = std::max(std::abs(oj.j2 - oa.j2), std::abs(oc.j2 - ob.j2)) / 2;
+                int J2max = std::min(oj.j2 + oa.j2, oc.j2 + ob.j2) / 2;
+                for (int J2 = J2min; J2 <= J2max; ++J2)
+                {
+                  double gamma_jacb = Gamma.TwoBody.GetTBME_J(J2, J2, j, a, c, b);
+                  if (std::abs(gamma_jacb) < 1e-12)
+                    continue;
+                  zijkl -= inv_hatjj2 * common_factor * (2 * J2 + 1) * gamma_jacb * eta_ickl;
+                }
+              }
+
+              // Equation 2, Term 4.
+              for (auto c : Z.GetOneBodyChannel(oi.l, oi.j2, oi.tz2))
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double eta_jckl = Eta.TwoBody.GetTBME_J(J0, J0, j, c, k, l);
+                if (std::abs(eta_jckl) < 1e-12)
+                  continue;
+
+                int J2min = std::max(std::abs(oi.j2 - oa.j2), std::abs(oc.j2 - ob.j2)) / 2;
+                int J2max = std::min(oi.j2 + oa.j2, oc.j2 + ob.j2) / 2;
+                for (int J2 = J2min; J2 <= J2max; ++J2)
+                {
+                  double gamma_iacb = Gamma.TwoBody.GetTBME_J(J2, J2, i, a, c, b);
+                  if (std::abs(gamma_iacb) < 1e-12)
+                    continue;
+                  zijkl += phase_ij * inv_hatji2 * common_factor * (2 * J2 + 1) * gamma_iacb * eta_jckl;
+                }
+              }
+            }
+          }
+
+          if (i == j)
+            zijkl /= PhysConst::SQRT2;
+          if (k == l)
+            zijkl /= PhysConst::SQRT2;
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zijkl);
+        }
+      }
+    }
+    }
+
+    Z.profiler.timer["ReferenceImplementations::" + timer_label] += omp_get_wtime() - t_start;
+    return;
+  }
+  }
+
+  void comm223_132(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    comm223_132_impl(Eta, Gamma, Z, true, true, true, "comm223_132");
+  }
+
+  void comm223_132_ladder(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    comm223_132_impl(Eta, Gamma, Z, true, false, false, "comm223_132_ladder");
+  }
+
+  void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    comm223_132_impl(Eta, Gamma, Z, false, true, false, "comm223_132_cross");
+  }
+
+  void comm223_132_onebody(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    comm223_132_impl(Eta, Gamma, Z, false, false, true, "comm223_132_onebody");
+  }
+
 
 
 

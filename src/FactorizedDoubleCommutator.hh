@@ -21,6 +21,7 @@
 #define FactorizedDoubleCommutator_hh 1
 
 #include "Operator.hh"
+#include <vector>
 
 namespace Commutator {
 
@@ -67,6 +68,9 @@ void comm223_231_chi2b(const Operator &Eta, const Operator &Gamma, Operator &Z);
 void comm223_232_chi1b(const Operator &Eta, const Operator &Gamma, Operator &Z);
 void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma, Operator &Z);
 void comm223_132(const Operator &Eta, const Operator &Gamma, Operator &Z);
+void comm223_132_ladder(const Operator &Eta, const Operator &Gamma, Operator &Z);
+void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z);
+void comm223_132_onebody(const Operator &Eta, const Operator &Gamma, Operator &Z);
 
 } // namespace FactorizedDoubleCommutator
 } // namespace Commutator

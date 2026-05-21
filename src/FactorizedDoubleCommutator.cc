@@ -1,6 +1,7 @@
 
 #include "FactorizedDoubleCommutator.hh"
 #include "Commutator.hh"
+#include "ReferenceImplementations.hh"
 #include "PhysicalConstants.hh"
 
 namespace Commutator {
@@ -664,10 +665,10 @@ void comm223_231_chi2b(const Operator &Eta, const Operator &Gamma,
 
           double sixj1 = Z.modelspace->GetSixJ(ja, jb, J_cc, jc, jd, J_std);
           if (std::abs(sixj1) > 1e-8) {
-            Xbar -= (2 * J_std + 1) * sixj1 *
-                    Eta.TwoBody.GetTBME_J(J_std, a, d, c, b);
-            Ybar -= (2 * J_std + 1) * sixj1 *
-                    Gamma.TwoBody.GetTBME_J(J_std, a, d, c, b);
+            Xbar += (2 * J_std + 1) * sixj1 *
+              Eta.TwoBody.GetTBME_J(J_std, a, d, b, c)*Z.modelspace->phase((ob.j2+oc.j2)/2+J_std);
+            Ybar += (2 * J_std + 1) * sixj1 *
+              Gamma.TwoBody.GetTBME_J(J_std, a, d, b,c)*Z.modelspace->phase((ob.j2+oc.j2)/2+J_std);
           }
         }
         double flip_phase =
@@ -1347,7 +1348,11 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
     barCHI_III[ch_cc] = bar_Eta[ch_cc] * nnnbar_Eta;
     bar_CHI_V[ch_cc] = bar_Gamma[ch_cc] * nnnbar_Eta;
     bar_CHI_VI[ch_cc] = bar_Gamma[ch_cc] * nnnbar_Eta_d;
-    bar_CHI_VI_II[ch_cc] = hEta * (nnnbar_Eta_d).t() * bar_Gamma[ch_cc];
+    // The following code is stable;
+     arma::mat nnnbar_Eta_d_t = nnnbar_Eta_d.t();
+     bar_CHI_VI_II[ch_cc] = hEta * (nnnbar_Eta_d_t * bar_Gamma[ch_cc]);
+     // The following original code have unexpected behavior, the result is not stable
+    //bar_CHI_VI_II[ch_cc] = hEta * (nnnbar_Eta_d).t() * bar_Gamma[ch_cc];
   }
 
   if (Commutator::verbose) {
@@ -3043,7 +3048,9 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
   return;
 } //  comm223_232_chi2b
 
-void comm223_132(const Operator &Eta, const Operator &Gamma, Operator &Z) {
+void comm223_132_impl(const Operator &Eta, const Operator &Gamma, Operator &Z,
+                      bool do_ladder, bool do_cross, bool do_onebody,
+                      const std::string &timer_label) {
 
   double t_internal = omp_get_wtime(); // timer
   double t_start = omp_get_wtime();    // timer
@@ -3061,28 +3068,8 @@ void comm223_132(const Operator &Eta, const Operator &Gamma, Operator &Z) {
   int hGamma = Gamma.IsHermitian() ? 1 : -1;
   // int hZ = Z.IsHermitian() ? 1 : -1;
   int hZ = hGamma;
-  // ###########################################################
-  //  diagram I
-  // The intermediate one body operator
-  //  Chi_221_a :
-
-  //      |  |
-  //    ___|  |
-  //   a  |  | b  | c
-  //       \/_____|
-  //        Gamma |
-  //              | e
-  // Chi_221_a = \sum \hat(J_0) ( nnnn - ... ) eta eta
-
-
   int nch = Gamma.modelspace->GetNumberTwoBodyChannels();
-  int norbits = Gamma.modelspace->all_orbits.size();
-  std::vector<index_t> allorb_vec(Gamma.modelspace->all_orbits.begin(),
-                                  Gamma.modelspace->all_orbits.end());
-
-  TwoBodyME intermediateTB = Gamma.TwoBody;
-  intermediateTB.Erase();
-
+  if (do_ladder) {
 // full matrix
     for (int ich = 0; ich < nch; ich++)
     {
@@ -3153,317 +3140,17 @@ void comm223_132(const Operator &Eta, const Operator &Gamma, Operator &Z) {
         } // iket
       } // ibra
     } // ch
-
-
-    ///  Z_{i\bar{k}l\bar{j}}=(\eta_{i\bar{k}a\bar{c}} \eta_{ab} \Gamma_{b\bar{c}l\bar{j}}-\eta_{i\bar{k}c\bar{b}}\eta_{ab}\Gamma_{c\bar{a}l\bar{j}})(\bar{n}_a n_b -n_a\bar{n}_b ) 
-    // we first cross couple eta and gamma <ab|cd> -> <ac^-1|db^-1>
-  int n_nonzero = Z.modelspace->GetNumberTwoBodyChannels_CC();
-
-
-  std::deque<arma::mat> IntermediateTwobody(n_nonzero);
-/// Pandya transformation
-  for (int ch_cc = 0; ch_cc < n_nonzero; ++ch_cc) {
-    TwoBodyChannel_CC &tbc_cc = Z.modelspace->GetTwoBodyChannel_CC(ch_cc);
-    int nKets_cc = tbc_cc.GetNumberKets();
-    int J_cc = tbc_cc.J;
-
-     arma::mat Eta_bar = arma::mat(nKets_cc * 2, nKets_cc * 2, arma::fill::zeros); 
-    arma::mat Eta_bar_nnnn = arma::mat(nKets_cc * 2, nKets_cc * 2, arma::fill::zeros);
-    arma::mat Gamma_bar = arma::mat( nKets_cc * 2, nKets_cc * 2, arma::fill::zeros); 
-
-    for (int ibra_cc = 0; ibra_cc < nKets_cc*2; ++ibra_cc) {
-      int a=0, b=0;
-      if(ibra_cc < nKets_cc){
-      Ket &bra_cc = tbc_cc.GetKet(ibra_cc);
-      a = bra_cc.p;
-      b = bra_cc.q;}
-      else{
-      Ket &bra_cc = tbc_cc.GetKet(ibra_cc-nKets_cc);
-      a = bra_cc.q;
-      b = bra_cc.p;
-      if(a==b)continue;
-      }
-
-      Orbit &oa = Z.modelspace->GetOrbit(a);
-      double n_a = oa.occ;
-      double nbar_a = 1 - n_a;
-      double ja = oa.j2 * 0.5;
-
-      Orbit &ob = Z.modelspace->GetOrbit(b);
-      double n_b = ob.occ;
-      double nbar_b = 1 - n_b;
-      double jb = ob.j2 * 0.5;
-
-      // loop over cross-coupled kets |cd> in this channel
-      for (int iket_cc =0 ; iket_cc < nKets_cc * 2; ++iket_cc) {
-        int c, d;
-        if (iket_cc < nKets_cc) {
-          Ket &ket_cc_cd = tbc_cc.GetKet(iket_cc);
-          c = ket_cc_cd.p;
-          d = ket_cc_cd.q;
-        } else {
-          Ket &ket_cc_cd = tbc_cc.GetKet(iket_cc - nKets_cc);
-          d = ket_cc_cd.p;
-          c = ket_cc_cd.q;
-      if(c==d)continue;
-        }
-
-        Orbit &oc = Z.modelspace->GetOrbit(c);
-        double n_c = oc.occ;
-        double nbar_c = 1 - n_c;
-        double jc = oc.j2 * 0.5;
-
-        Orbit &od = Z.modelspace->GetOrbit(d);
-        double n_d = od.occ;
-        double nbar_d = 1 - n_d;
-        double jd = od.j2 * 0.5;
-
-
-
-        int jmin =
-            std::max(std::abs(oa.j2 - od.j2), std::abs(oc.j2 - ob.j2)) / 2;
-        int jmax = std::min(oa.j2 + od.j2, oc.j2 + ob.j2) / 2;
-
-        double Xbar = 0;
-        double Ybar = 0;
-
-        int dJ_std = 1;
-        if ((a == d or b == c)) {
-          dJ_std = 2;
-          jmin += jmin % 2;
-        }
-        for (int J_std = jmin; J_std <= jmax; J_std += dJ_std) {
-
-          double sixj1 = Z.modelspace->GetSixJ(ja, jb, J_cc, jc, jd, J_std);
-          if (std::abs(sixj1) > 1e-8) {
-            Xbar += (2 * J_std + 1) * sixj1 *
-                    Eta.TwoBody.GetTBME_J(J_std, a, d, b, c)*Z.modelspace->phase((ob.j2+oc.j2)/2+J_std);
-            Ybar += (2 * J_std + 1) * sixj1 *
-                    Gamma.TwoBody.GetTBME_J(J_std, a, d, b,c)*Z.modelspace->phase((ob.j2+oc.j2)/2+J_std);
-          }
-        }
-
-          Gamma_bar(ibra_cc, iket_cc) = Ybar;
-          Eta_bar(ibra_cc, iket_cc) = Xbar;
-
-      } // for iket-cc
-
-      //-------------------
-    } // for ibra_cc
-   // now we do the insertion
-
-    for (int ibra_cc = 0; ibra_cc < nKets_cc*2; ++ibra_cc) {
-      int a, b;
-
-        if (ibra_cc < nKets_cc) {
-          Ket &bra_cc = tbc_cc.GetKet(ibra_cc);
-          a = bra_cc.p;
-          b = bra_cc.q;
-        } else {
-          Ket &bra_cc = tbc_cc.GetKet(ibra_cc - nKets_cc);
-          b = bra_cc.p;
-          a = bra_cc.q;
-          if(a==b)continue;
-        }
-
-
-      Orbit &oa = Z.modelspace->GetOrbit(a);
-      double n_a = oa.occ;
-      double nbar_a = 1 - n_a;
-      Orbit &ob = Z.modelspace->GetOrbit(b);
-      double n_b = ob.occ;
-      double nbar_b = 1 - n_b;
-
-
-      // loop over cross-coupled kets |cd> in this channel
-      for (int iket_cc = 0; iket_cc < nKets_cc * 2; ++iket_cc) {
-        int c, d;
-        if (iket_cc < nKets_cc) {
-          Ket &ket_cc_cd = tbc_cc.GetKet(iket_cc);
-          c = ket_cc_cd.p;
-          d = ket_cc_cd.q;
-        } else {
-          Ket &ket_cc_cd = tbc_cc.GetKet(iket_cc - nKets_cc);
-          d = ket_cc_cd.p;
-          c = ket_cc_cd.q;
-          if(c==d)continue;
-        }
-
-      Orbit &oc = Z.modelspace->GetOrbit(c);
-      double n_c = oc.occ;
-      double nbar_c = 1 - n_c;
-      Orbit &od = Z.modelspace->GetOrbit(d);
-      double n_d = od.occ;
-      double nbar_d = 1 - n_d;
-
-      if(a==c){
-        Eta_bar_nnnn(ibra_cc,iket_cc)+=Eta.OneBody(d,b)*(nbar_b*n_d-n_b*nbar_d);
-      }
-      if(b==d){
-       Eta_bar_nnnn(ibra_cc,iket_cc)+=Eta.OneBody(a,c)*(nbar_a*n_c-n_a*nbar_c);
-      }
-
-      }// end iket
-    }// end ibra 
-
-   IntermediateTwobody[ch_cc] = Eta_bar * Eta_bar_nnnn * Gamma_bar;
-
-
-
-  } // for ch_cc
-//  std::cout<< IntermediateTwobody.Norm()<< std::endl;
-    //
-    //
-    //
- //We compute the diagram in the ph representation, now we do reverse transformation
-
-  //  Inverse Pandya transformation, our diagram is indeed antsymitrized
-  //  X^J_ijkl  = - (-)^{J + ji + jj}  sum_J' (2J'+1)
-  //                (-)^{J' + ji + jk}  { j i J }  \bar{X}^J'_jl`ki`
-  //                                    { k l J'}
-  //
-  //
-  for (int ch = 0; ch < nch; ++ch) {
-    int ch_bra = ch_bra_list[ch];
-    int ch_ket = ch_ket_list[ch];
-    TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
-    TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
-    size_t nbras = tbc_bra.GetNumberKets();
-    size_t nkets = tbc_ket.GetNumberKets();
-    int J0 = tbc_bra.J;
-
-    if (nbras == 0 or nkets == 0)
-      continue;
-
-    for (int ibra = 0; ibra < nbras; ++ibra) {
-      Ket &bra = tbc_bra.GetKet(ibra);
-      size_t i = bra.p;
-      size_t j = bra.q;
-      Orbit &oi = Z.modelspace->GetOrbit(i);
-      Orbit &oj = Z.modelspace->GetOrbit(j);
-      //Orbit &oi = *(bra.op);
-      //Orbit &oj = *(bra.oq);
-      int ji = oi.j2;
-      int jj = oj.j2;
-      int phaseFactor = Z.modelspace->phase(J0 + (ji + jj) / 2);
-
-      int ketmin = 0;
-      if (ch_bra == ch_ket)
-        ketmin = ibra;
-      for (int iket = ketmin; iket < nkets; ++iket) {
-        size_t k, l;
-        Ket &ket = tbc_ket.GetKet(iket);
-        k = ket.p;
-        l = ket.q;
-        Orbit &ok = Z.modelspace->GetOrbit(k);
-        Orbit &ol = Z.modelspace->GetOrbit(l);
-
-        int jk = ok.j2;
-        int jl = ol.j2;
-        double commijkl = 0;
-        double commjikl = 0;
-        double commijlk = 0;
-        double commjilk = 0;
-
-        // jikl, direct term        -->  jl  ki
-        // ijlk, exchange ij and kl -->  lj  ik
-        int parity_cc = (oi.l + ok.l) % 2;
-        int Tz_cc = std::abs(oi.tz2 - ok.tz2) / 2;
-        int Jpmin = std::max(std::abs(jj - jl), std::abs(ji - jk)) / 2;
-        int Jpmax = std::min(jj + jl, ji + jk) / 2;
-        for (int Jprime = Jpmin; Jprime <= Jpmax; ++Jprime) {
-          int ch_cc =
-              Z.modelspace->GetTwoBodyChannelIndex(Jprime, parity_cc, Tz_cc);
-          TwoBodyChannel_CC &tbc_cc = Z.modelspace->GetTwoBodyChannel_CC(ch_cc);
-
-          int nkets_cc = tbc_cc.GetNumberKets();
-          if (nkets_cc < 0)
-            continue;
-
-          int indx_ik = tbc_cc.GetLocalIndex(std::min(k, i), std::max(k, i));
-          int indx_lj = tbc_cc.GetLocalIndex(std::min(j, l), std::max(j, l));
-
-          double sixj1 = Z.modelspace->GetSixJ(ji * 0.5, jj * 0.5, J0, jl * 0.5,
-                                               jk * 0.5, Jprime);
-          if ( indx_lj >= 0 and indx_ik >= 0){
-          int phase1 = Z.modelspace->phase(-J0 + (jl + jk) / 2);
-          // direct term
-          indx_lj += (j < l ? nkets_cc : 0);
-          indx_ik += (i > k ? nkets_cc : 0);
-          double me1 = IntermediateTwobody[ch_cc]( indx_ik, indx_lj);
-          commijkl += phase1 * (2 * Jprime + 1) * sixj1 * me1;}
-
-       // // Pij
-           int indx_jk = tbc_cc.GetLocalIndex(std::min(k, j), std::max(k, j));
-           int indx_li = tbc_cc.GetLocalIndex(std::min(i, l), std::max(i, l));
-
-           sixj1 = Z.modelspace->GetSixJ(jj * 0.5, ji * 0.5, J0, jl * 0.5,
-                                               jk * 0.5, Jprime);
-          if ( indx_li >= 0 and indx_jk >= 0){
-
-          int phase1 = Z.modelspace->phase(-J0 + (jl + jk) / 2);
-          // direct term
-          indx_li += (i < l ? nkets_cc : 0);
-          indx_jk += (j > k ? nkets_cc : 0);
-          double me1 = IntermediateTwobody[ch_cc](indx_jk, indx_li);
-          int phase2 = Z.modelspace->phase(J0 + (ji + jj) / 2+1);
-          commjikl += phase1*phase2 * (2 * Jprime + 1) * sixj1 * me1;}
-
-       //   // Pkl
-
-           sixj1 = Z.modelspace->GetSixJ(ji * 0.5, jj * 0.5, J0, jk * 0.5,
-                                               jl * 0.5, Jprime);
-           int indx_il = tbc_cc.GetLocalIndex(std::min(l, i), std::max(l, i));
-           int indx_kj = tbc_cc.GetLocalIndex(std::min(j, k), std::max(j, k));
-          if ( indx_kj >= 0 and indx_il >= 0){
-          int phase1 = Z.modelspace->phase(-J0 + (jl + jk) / 2);
-          int phase2 = Z.modelspace->phase(J0 + (jl + jk) / 2+1);
-          // direct term
-          indx_kj += (j < k ? nkets_cc : 0);
-          indx_il += (i > l ? nkets_cc : 0);
-          double me1 = IntermediateTwobody[ch_cc](indx_il,indx_kj);
-
-          commijlk += phase1 *phase2* (2 * Jprime + 1) * sixj1 * me1;}
-
-
-
-        //P_ij P_kl
-        int    indx_ki = tbc_cc.GetLocalIndex(std::min(i, k), std::max(i, k));
-        int    indx_jl = tbc_cc.GetLocalIndex(std::min(l, j), std::max(l, j));
-           sixj1 = Z.modelspace->GetSixJ(jj * 0.5, ji * 0.5, J0, jk * 0.5,
-                                               jl * 0.5, Jprime);
-          if (indx_ki >= 0 and indx_jl >= 0){
-          int phase1 = Z.modelspace->phase(-J0 + (jl + jk) / 2);
-          int phase2 = Z.modelspace->phase(J0 + (ji + jj) / 2+1);
-          int phase3 = Z.modelspace->phase(J0 + (jl + jk) / 2+1);
-          // direct term
-          indx_ki += (i < k ? nkets_cc : 0);
-          indx_jl += (j > l ? nkets_cc : 0);
-          double me1 = IntermediateTwobody[ch_cc](indx_jl, indx_ki);
-          commjilk += phase1*phase2*phase3 * (2 * Jprime + 1) * sixj1 * me1;}
-        }
-
-        double zijkl =commijkl+commjikl+commijlk+commjilk;
-
-
-        if (i == j)
-          zijkl /= PhysConst::SQRT2;
-        if (k == l)
-          zijkl /= PhysConst::SQRT2;
-
-        Z2.AddToTBME(ch_bra, ch_ket, ibra, iket,zijkl);
-      }
-    }
   }
 
 
-
-  for (int ch_cc = 0; ch_cc < n_nonzero; ++ch_cc) {
-    IntermediateTwobody[ch_cc].clear();
+  if (do_cross) {
+    // Keep the production path numerically correct until the factorized
+    // cross-coupled implementation is rederived and revalidated.
+    ReferenceImplementations::comm223_132_cross(Eta, Gamma, Z);
   }
-  IntermediateTwobody.clear();
 
 
+  if (do_onebody) {
   // now we take care of eta contract to either eta or gamma.
 
  arma::mat CHI_I = Gamma.OneBody * 0;
@@ -3595,9 +3282,29 @@ void comm223_132(const Operator &Eta, const Operator &Gamma, Operator &Z) {
 
   CHI_I.clear();
   CHI_II.clear();
+  }
 
+  if (Commutator::verbose) {
+    Z.profiler.timer["_" + timer_label] += omp_get_wtime() - t_start;
+  }
 
-}// done 223132
+}
+
+void comm223_132(const Operator &Eta, const Operator &Gamma, Operator &Z) {
+  comm223_132_impl(Eta, Gamma, Z, true, true, true, "comm223_132");
+}
+
+void comm223_132_ladder(const Operator &Eta, const Operator &Gamma, Operator &Z) {
+  comm223_132_impl(Eta, Gamma, Z, true, false, false, "comm223_132_ladder");
+}
+
+void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z) {
+  comm223_132_impl(Eta, Gamma, Z, false, true, false, "comm223_132_cross");
+}
+
+void comm223_132_onebody(const Operator &Eta, const Operator &Gamma, Operator &Z) {
+  comm223_132_impl(Eta, Gamma, Z, false, false, true, "comm223_132_onebody");
+}
 
 
 } // namespace FactorizedDoubleCommutator

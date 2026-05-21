@@ -20,9 +20,9 @@ smax_valence = 100  # limit of s for second stage of decoupling
 # f3e1,f3e2,f3e3 = 12,24,12
 # LECs = 'srg0800'
 
-f2b = "input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz"
+f2b = "/Users/wolf/work/srg_io/input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz"
 f2e1, f2e2, f2l = 14, 28, 14
-f3b = "input/NO2B_ThBME_EM1.8_2.0_3NFJmax15_IS_hw16_ms18_36_18.stream.bin"
+f3b = "/Users/wolf/work/srg_io/input/NO2B_ThBME_EM1.8_2.0_3NFJmax15_IS_hw16_ms18_36_18.stream.bin"
 f3e1, f3e2, f3e3 = 18, 36, 18
 hw = 16
 mode3n = "no2b"
@@ -35,7 +35,7 @@ LECs = "EM1820"
 
 ### name of file to write resulting shell model effective interaction.
 ### *.snt is the exension used with KSHELL
-valence_fname = "output/{}_{}_{}_e{}_hw{}.snt".format(val, ref, LECs, emax, hw)
+valence_fname = "/Users/wolf/work/srg_io/output/{}_{}_{}_e{}_hw{}.snt".format(val, ref, LECs, emax, hw)
 
 
 ##########################################################################
@@ -108,7 +108,7 @@ Hs = imsrgsolver.GetH_s()
 Hs.ZeroBody = 0.0
 rw.WriteTokyo(Hs, valence_fname, "")
 
-#tdm_op = read_tdm("he8.ref", ms)
+# tdm_op = read_tdm("he8.ref", ms)
 
 
 cm = Commutator
@@ -119,7 +119,7 @@ cm = Commutator
 #
 
 
-eom = EOM(Hs, 'he8.ref', rank_j, parity, rank_Tz)
+eom = EOM(Hs, "he6.ref", rank_j, parity, rank_Tz)
 eom.ConstructConfigs()
 eom.ConstructNormMatrix()
 eom.ConstructProjectMatrix()

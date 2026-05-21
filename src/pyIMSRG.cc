@@ -956,6 +956,15 @@ PYBIND11_MODULE(pyIMSRG, m) {
       "comm223_232", &Commutator::FactorizedDoubleCommutator::comm223_232);
   FactorizedDoubleCommutator.def(
       "comm223_132", &Commutator::FactorizedDoubleCommutator::comm223_132);
+  FactorizedDoubleCommutator.def(
+       "comm223_132_ladder",
+       &Commutator::FactorizedDoubleCommutator::comm223_132_ladder);
+  FactorizedDoubleCommutator.def(
+       "comm223_132_cross",
+       &Commutator::FactorizedDoubleCommutator::comm223_132_cross);
+  FactorizedDoubleCommutator.def(
+       "comm223_132_onebody",
+       &Commutator::FactorizedDoubleCommutator::comm223_132_onebody);
 
   FactorizedDoubleCommutator.def(
       "comm223_231_chi2b",
@@ -1126,6 +1135,14 @@ PYBIND11_MODULE(pyIMSRG, m) {
                                &ReferenceImplementations::comm223_231);
   ReferenceImplementations.def("comm223_232",
                                &ReferenceImplementations::comm223_232);
+     ReferenceImplementations.def("comm223_132",
+                                                                            &ReferenceImplementations::comm223_132);
+     ReferenceImplementations.def("comm223_132_ladder",
+                                                                            &ReferenceImplementations::comm223_132_ladder);
+     ReferenceImplementations.def("comm223_132_cross",
+                                                                            &ReferenceImplementations::comm223_132_cross);
+     ReferenceImplementations.def("comm223_132_onebody",
+                                                                            &ReferenceImplementations::comm223_132_onebody);
 
   ReferenceImplementations.def("comm331st",
                                &ReferenceImplementations::comm331st);
@@ -1180,6 +1197,10 @@ PYBIND11_MODULE(pyIMSRG, m) {
                                     for (size_t j = 0; j < r.hall.n_cols; ++j)
                                          out[i][j] = r.hall(i, j);
                                return out;
+                          })
+               .def_property_readonly("ritz",
+                          [](const EOM::ArnoldiResult &r) {
+                               return r.ritz;
                           });
 
      py::class_<EOM::ArnoldiTraceDiffResult>(m, "ArnoldiTraceDiffResult")
@@ -1226,8 +1247,21 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("ConstructProjectMatrix", &EOM::ConstructProjectMatrix)
       .def("SetArnoldiUseProjection", &EOM::SetArnoldiUseProjection,
            py::arg("use_projection"))
+      .def("SetArnoldiCheckExpectation", &EOM::SetArnoldiCheckExpectation,
+           py::arg("check_expectation"))
+      .def("SetArnoldiPrintTiming", &EOM::SetArnoldiPrintTiming,
+           py::arg("print_timing"))
+      .def("SetReferenceEnergyShift", &EOM::SetReferenceEnergyShift,
+           py::arg("energy"))
+      .def("ClearReferenceEnergyShift", &EOM::ClearReferenceEnergyShift)
+      .def("GetReferenceEnergyShift", &EOM::GetReferenceEnergyShift)
+      .def("PrepareHamiltonianForArnoldi", &EOM::PrepareHamiltonianForArnoldi)
       // operator-level building blocks used in Python EOM loops
       .def("force_decouple",            &EOM::force_decouple,
+           py::arg("H"))
+      .def("EraseValence",             &EOM::EraseValence,
+           py::arg("H"))
+      .def("EraseQspace",              &EOM::EraseQspace,
            py::arg("H"))
       .def("ProjectOprator",            &EOM::ProjectOprator,
            py::arg("Qin"))
@@ -1237,6 +1271,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("H"))
       .def("NormMultiref",             &EOM::NormMultiref,
            py::arg("T1"), py::arg("T2"))
+      .def("Norm3Multiref",            &EOM::Norm3Multiref,
+           py::arg("t1"), py::arg("t2"), py::arg("haml"))
       .def("HtcMultiref",              &EOM::HtcMultiref,
            py::arg("haml"), py::arg("chi"))
       .def("DcomMultiref",             &EOM::DcomMultiref,

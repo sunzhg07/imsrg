@@ -4,8 +4,6 @@ from pyIMSRG import *
 from rdm_fun import *
 
 cm = Commutator
-# cm.SetIMSRG3Noqqq(True)
-# cm.SetIMSRG3Onlyvvv(True)
 gm = Generator()
 
 
@@ -28,11 +26,33 @@ def norm_multiref(eom, T1, T2):
     nop = T1 * 0.0
     nop.SetHermitian()
     nop = cm.Commutator(T1, T2d)
-    nop.SetParticleRank(3)
-    nop.ThreeBody.SetMode("pn")
-    cm.comm223ss(T1, T2d, nop)
     rst = eom.GetVSEOM_Overlap_multiref(nop)
     return rst / 2.0
+
+
+def norm3_multiref_new(eom, s1, s2, haml, ms):
+
+    # tested
+    t1 = eom.GetVSEOM_ladder_multiref(s1, -1)
+    t2 = eom.GetVSEOM_ladder_multiref(s2, -1)
+
+    rank_j, parity, rank_Tz, particle_rank = 0, 0, 0, 3
+    t3 = Operator(ms, rank_j, parity, rank_Tz, particle_rank)
+    t3.ThreeBody.SetMode("pn")
+
+    t3 *= 0.0
+    rst = 0.0
+
+    nop = t1 * 0.0
+    nop.SetHermitian()
+    t3.SetHermitian()
+
+    cm.comm223ss(haml, t2, t3)
+    cm.comm231ss(t1, t3, nop)
+    cm.comm232ss(t1, t3, nop)
+    cm.comm132ss(t1, t3, nop)
+    rst = eom.GetVSEOM_Overlap_multiref(nop)
+    return -rst / 2
 
 
 def norm3_multiref(eom, t1, t2, haml, ms):
@@ -51,17 +71,9 @@ def norm3_multiref(eom, t1, t2, haml, ms):
     t3.SetAntiHermitian()
 
     cm.comm223ss(haml, t2, t3)
-    cm.comm232ss(t1, t3, nop)
     cm.comm231ss(t1, t3, nop)
+    cm.comm232ss(t1, t3, nop)
     cm.comm132ss(t1, t3, nop)
-
-    #nop.SetParticleRank(3)
-    #nop.ThreeBody.SetMode("pn")
-    #cm.comm233_pp_hhss(t1, t3, nop)
-    #cm.comm233_phss(t1, t3, nop)
-    #cm.comm133ss(t1, t3, nop)
-    #print("threebody norm: ", nop.Norm())
-
     rst = eom.GetVSEOM_Overlap_multiref(nop)
     return rst / 2
 
@@ -84,6 +96,19 @@ def htc_multiref(eom, Haml, chi, prjop=None):
     if prjop != None:
         prjop(heom)
     return heom
+
+
+def dcom222312(eom, Hs, chi):
+    chis = eom.GetVSEOM_ladder_multiref(chi, -1)
+    opa = chi * 0
+    opa.SetHermitian()
+    cm.FactorizedDoubleCommutator.SetUse_1b_Intermediates(True)
+    cm.FactorizedDoubleCommutator.SetUse_2b_Intermediates(True)
+    cm.FactorizedDoubleCommutator.comm223_231(chis, Hs, opa)
+    cm.FactorizedDoubleCommutator.comm223_232(chis, Hs, opa)
+    cm.FactorizedDoubleCommutator.comm223_132(chis, Hs, opa)
+    rst = eom.GetVSEOM_Overlap_multiref(opa)
+    return rst / 2
 
 
 import numpy as np
@@ -621,15 +646,3 @@ def arnoldi_proc(
         ritz_vecs.append(vec)
 
     return e[:state_want], vs, ritz_vecs, hall[:nb, :nb].copy()
-
-
-def dcom222312(eom, Hs, chi):
-    opa = chi * 0
-    opa.SetHermitian()
-    cm.FactorizedDoubleCommutator.SetUse_1b_Intermediates(True)
-    cm.FactorizedDoubleCommutator.SetUse_2b_Intermediates(True)
-    cm.FactorizedDoubleCommutator.comm223_231(chi, Hs, opa)
-    cm.FactorizedDoubleCommutator.comm223_232(chi, Hs, opa)
-    cm.FactorizedDoubleCommutator.comm223_132(chi, Hs, opa)
-    rst = eom.GetVSEOM_Overlap_multiref(opa)
-    return (rst / 2, opa)
