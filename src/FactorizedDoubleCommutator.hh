@@ -70,6 +70,18 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma, Operator &Z);
 void comm223_132(const Operator &Eta, const Operator &Gamma, Operator &Z);
 void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z);
 
+void comm223_231st(const Operator &Eta, const Operator &Gamma, Operator &Z);
+void comm223_232st(const Operator &Eta, const Operator &Gamma, Operator &Z);
+void comm223_132st(const Operator &Eta, const Operator &Gamma, Operator &Z);
+
+void comm223_231st_chi1b(const Operator &Eta, const Operator &Gamma, Operator &Z);
+void comm223_231st_chi2b(const Operator &Eta, const Operator &Gamma, Operator &Z);
+void comm223_232st_chi1b(const Operator &Eta, const Operator &Gamma, Operator &Z);
+void comm223_232st_chi2b(const Operator &Eta, const Operator &Gamma, Operator &Z);
+void comm223_132st_ladder(const Operator &Eta, const Operator &Gamma, Operator &Z);
+void comm223_132st_onebody(const Operator &Eta, const Operator &Gamma, Operator &Z);
+void comm223_132st_cross(const Operator &Eta, const Operator &Gamma, Operator &Z);
+
 } // namespace FactorizedDoubleCommutator
 } // namespace Commutator
 

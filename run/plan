@@ -1,0 +1,35 @@
+We propose to pioneer the use of Artificial Intelligence (AI) in generating optimized High-Performance Computing (HPC) code for critical theoretical calculations in nuclear structure, in support of the Genesis Mission's goal of accelerating scientific discovery through AI. The development of higher-order many-body codes—such as IMSRG(4) and CCSDTQ—is essential for understanding mid-to-heavy nuclei, yet their implementation is currently prohibitive: the number of terms scales exponentially with excitation rank, the code is prone to human error, and optimization for modern HPC architectures demands specialized software engineering expertise that most nuclear theory groups lack.
+
+Deliverables: The concrete deliverables of this project are working, validated IMSRG(4) and CCSDTQ codes capable of capturing correlated four-particle–four-hole excitations. These codes will be deployed on DOE leadership-class supercomputers such as Frontier, whose CPU–GPU hybrid architecture and distributed-memory design present significant optimization challenges that have historically been difficult for nuclear physicists to address without dedicated software engineering support. Developing, benchmarking, and deploying such codes through human effort alone would require years of developer time; AI-assisted code generation can compress this timeline dramatically.
+
+Scientific Impact: The successful completion of this project will open the door to using ab initio methods to study complicated exotic nuclei. With IMSRG(4) and CCSDTQ capabilities, we will be able to investigate deformed nuclei, intruder states, exotic electromagnetic and weak transitions, and various many-body perturbation methods with unprecedented accuracy. This represents a transformative advance for nuclear structure theory, with direct implications for nuclear security and stockpile stewardship, the astrophysical origin of elements, and next-generation reactor design.
+
+Technical Approach: The central challenge is that existing nuclear many-body codebases—comprising thousands of lines of highly specialized C++ and Fortran—exceed the limited input length of current large language models (LLMs). The project is specifically designed to overcome this bottleneck. Our approach will focus on increasing knowledge density by distilling these codebases into a compact, structured reference notebook that details complex conventions—including data storage, access methods for multi-body interactions (two-, three-, and four-body), and the angular momentum coupling schemes used in many-body diagrams. This structured domain knowledge is critical for enabling the AI to efficiently reason about nuclear physics formalisms, generate high-quality code, and accelerate the time-to-solution for state-of-the-art nuclear structure calculations.
+
+Current AI agents are capable of decomposing complicated tasks into small, sequential steps. However, they are susceptible to task drift, hallucination, and scope creep—well-documented failure modes of LLM-based agents operating without structured domain constraints. These limitations can be mitigated by implementing expert-curated, step-by-step task plans that leverage the developer's specialized knowledge to constrain the AI's reasoning. This guidance is particularly important for the high-precision requirements of nuclear theory code development in areas such as shell model, IMSRG, and coupled cluster methods. Our aim is to develop a comprehensive reference notebook for the AI agent, containing the necessary expertise and conventions for developing high-performance, large-scale computer code, with a clear hierarchy detailing algorithms, data storage methods, and the structure of quantum many-body methods.
+
+Validation Strategy: We will employ a dual-implementation verification approach standard in nuclear structure theory. The AI will generate both m-scheme and J-scheme implementations of each method—two fundamentally different computational representations of the same underlying physics. Agreement between the two independent implementations provides a rigorous benchmark of code correctness. This cross-validation, combined with comparison against established results from existing IMSRG(2), IMSRG(3), and CCSD codes, ensures the reliability of the AI-generated code before deployment on leadership-class HPC systems.
+
+Plan: Knowledge Distillation and Code Generation
+
+Phase 1 — Knowledge Distillation:
+
+A. We will prompt the AI to learn the conventions and programming style from existing codebases (IMSRG(2), IMSRG(3), bigstick, MFDn, and coupled cluster) to generate an initial version of the reference notebook.
+
+B. We will review the AI-generated notebook and revise it to reflect the methods and conventions of nuclear structure theory.
+
+C. We will iterate with the AI to refine and update the notebook, effectively increasing its knowledge density and ensuring it captures the full scope of formalisms needed for IMSRG(4) and CCSDTQ.
+
+Phase 2 — Code Generation and Verification:
+
+D. We will provide the AI with the structured reference notebook as domain context, a crucial step for generating the high-order many-body diagrams and operator expressions required for IMSRG(4) and CCSDTQ.
+
+E. We will create detailed, expert-curated task plans to guide the AI through code generation, producing human-readable, HPC-optimized code targeting the CPU–GPU hybrid architecture and distributed-memory environment of DOE supercomputers such as Frontier.
+
+F. We will generate dual implementations (m-scheme and J-scheme) for cross-validation, and benchmark against established IMSRG(2), IMSRG(3), and CCSD results.
+
+Phase 3 — HPC Deployment and Science Applications:
+
+G. We will optimize and deploy the validated codes on leadership-class HPC systems for production calculations of deformed nuclei, intruder states, and exotic transitions in mid-to-heavy nuclei.
+
+H. The final outcomes of this project are: (1) validated, HPC-ready IMSRG(4) and CCSDTQ codes enabling ab initio studies of exotic nuclei previously inaccessible to theory; and (2) a reusable, AI-friendly reference notebook applicable to the development of any nuclear many-body method.

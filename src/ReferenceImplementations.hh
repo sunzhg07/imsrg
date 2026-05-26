@@ -102,10 +102,16 @@ namespace ReferenceImplementations
 
   void comm223_231(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_232(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_231st(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_232st(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_132(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_132_ladder(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_132_onebody(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_132st(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_132st_ladder(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_132st_cross(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_132st_onebody(const Operator &Eta, const Operator &Gamma, Operator &Z);
 
   double TriplesGuess(const Operator &Omega, const Operator &H);
   void comm223_231_fI(const Operator &Eta, const Operator &Gamma, Operator &Z);

@@ -1,0 +1,187 @@
+<(ab)^Jab c|a(bc)J_bc>^J=(-1)^{a+b+c+J}\sqrt((2*J_ab+1)*(2*J_bc+1))*sjs(a,b,J_ab,c,J,J_bc)
+<(ab)^Jab c|(ac)J_ac b>^J=(-1)^{b+c+J_ab+J_ac}\sqrt((2*J_ab+1)*(2*J_ac+1))*sjs(b,a,J_ab,c,J,J_ac)
+
+
+double EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
+                          size_t f, size_t g, double j0, double j2) {
+  double val = 0.;
+  Orbit &oa = modelspace->GetOrbit(a);
+  Orbit &ob = modelspace->GetOrbit(b);
+  Orbit &oc = modelspace->GetOrbit(c);
+  Orbit &od = modelspace->GetOrbit(d);
+  Orbit &oe = modelspace->GetOrbit(e);
+  Orbit &of = modelspace->GetOrbit(f);
+  Orbit &og = modelspace->GetOrbit(g);
+
+  size_t jmin = std::max(abs(j0 * 2 - oc.j2), abs(j2 * 2 - od.j2));
+  size_t jmax = std::min(abs(j0 * 2 + oc.j2), abs(j2 * 2 + od.j2));
+
+  size_t j1_min = abs(od.j2 - oe.j2)/2;
+  size_t j1_max = abs(od.j2 + oe.j2)/2;
+
+  size_t j1_len = (j1_max >= j1_min) ? (j1_max - j1_min + 1) : 0;
+  arma::vec j1_array(j1_len, arma::fill::zeros);
+ 
+
+  double phase_factor=pow(-1, oc.j2*0.5 + oe.j2 * 0.5 + of.j2 * 0.5+og.j2*0.5);
+
+  for (auto jtot = jmin; jtot <= jmax; jtot += 2) {
+    // we loop over all jtotal;
+    // fill j1_array with val1 for each j1
+    for (size_t k = 0; k < j1_len; k++) {
+      size_t j1 = j1_min + k;
+      j1_array[k] = sqrt((2. * j0 + 1.) * (2. * j1 + 1.)) * (2*j2+1.) *
+            AngMom::SixJ(od.j2 * 0.5, og.j2 * 0.5, j0, oc.j2 * 0.5, jtot * 0.5, j2)*
+            AngMom::SixJ(od.j2 * 0.5, oe.j2 * 0.5, j1, of.j2 * 0.5, jtot * 0.5, j2)*phase_factor;
+    }
+
+
+     
+
+    // make a copy of j1_array_bak=j1_array;
+    arma::vec j1_array_bak = j1_array;
+    // j1_array=0
+    j1_array.zeros();
+
+
+
+    if (b == c || a == c) {
+      // Pbc
+      if (b == c) {
+        double phase_bc = pow(-1, ob.j2*0.5 + oc.j2*0.5 ) * (2.*j0+1.);
+        double angmom_bc = AngMom::SixJ(ob.j2*0.5, oa.j2*0.5, j0, oc.j2*0.5, jtot*0.5, j0);
+        j1_array += j1_array_bak * phase_bc * angmom_bc;
+      }
+      // Pac
+      if (a == c) {
+        double phase_ac = 2.*j0+1.;
+        double angmom_ac = AngMom::SixJ(oa.j2*0.5, ob.j2*0.5, j0, oc.j2*0.5, jtot*0.5, j0);
+        j1_array -= j1_array_bak * phase_ac * angmom_ac;
+      }
+    }
+
+    // j1_array_bak = j1_array_bak - j1_array  (reuse bak for ket-side input)
+    j1_array_bak -= j1_array;
+    // j1_array=0
+    j1_array.zeros();
+
+    // ket-side permutations
+    // identity term
+   // for (size_t k = 0; k < j1_len; k++) j1_array[k] += j1_array_bak[k];
+    // Pde: for each j1, j1_array[k] += (-1)^(jd+je-j1) * j1_array_bak[k]
+    if(d==e || d==f){
+
+      if(d==e){
+    for (size_t k = 0; k < j1_len; k++) {
+      size_t j1 = j1_min + k;
+      double phase_de = pow(-1, od.j2*0.5 + oe.j2*0.5 - (double)j1);
+      j1_array[k] += j1_array_bak[k] * phase_de;
+    }
+  }
+
+  
+   
+      // Pdf: for each j1, sum over j3
+      if (d == f) {
+        for (size_t k = 0; k < j1_len; k++) {
+          size_t j1 = j1_min + k;
+          for (size_t m = 0; m < j1_len; m++) {
+            size_t j3 = j1_min + m;
+            double phase_df = sqrt((2.*j1+1.)*(2.*j3+1.));
+            double angmom_df = AngMom::SixJ(od.j2*0.5, oe.j2*0.5, j1, of.j2*0.5, jtot*0.5, j3);
+            j1_array[k] -= j1_array_bak[m] * phase_df * angmom_df;
+          }
+        }
+      }
+
+    }
+
+//    std::cout<< jtot <<" "<<j1_array[0]<< " " <<j1_array[1]<<" "<<j1_array[2]<<std::endl;
+
+      j1_array = j1_array_bak - j1_array;
+    
+
+    std::cout<< jtot <<" "<<j1_array[0]<< " " <<j1_array[1]<<" "<<j1_array[2]<<std::endl;
+
+    // accumulate val: sum over j1 of j1_array[k] * RdmThreeBody_J(...)
+    // for (size_t k = 0; k < j1_len; k++) {
+    //   size_t j1 = j1_min + k;
+    //   double val2 = RdmThreeBody_J(j0, a, b, c, j1, d, e, f, jtot);
+    //   val += j1_array[k] * val2 * phase_factor;
+    // }
+  }
+ 
+
+  return (val);
+}
+
+
+
+
+double EOM::ThreeBody_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
+                          size_t f, size_t g, double j0, double j2) {
+  double val = 0.;
+  Orbit &oa = modelspace->GetOrbit(a);
+  Orbit &ob = modelspace->GetOrbit(b);
+  Orbit &oc = modelspace->GetOrbit(c);
+  Orbit &od = modelspace->GetOrbit(d);
+  Orbit &oe = modelspace->GetOrbit(e);
+  Orbit &of = modelspace->GetOrbit(f);
+  Orbit &og = modelspace->GetOrbit(g);
+
+  size_t jmin = std::max(abs(j0 * 2 - oc.j2), abs(j2 * 2 - od.j2));
+  size_t jmax = std::min(abs(j0 * 2 + oc.j2), abs(j2 * 2 + od.j2));
+
+  
+
+  double phase_factor=-pow(-1, oc.j2*0.5 + og.j2 * 0.5 +j2);
+  phase_factor=phase_factor*pow(-1,oc.j2*0.5 + og.j2 * 0.5 -j0+1);
+
+  for (auto jtot = jmin; jtot <= jmax; jtot += 2) {
+    // we loop over all jtotal;
+    
+    double dterm = sqrt((2. * j0 + 1.) * (2. * j2 + 1.)) *
+            AngMom::SixJ(oc.j2 * 0.5, og.j2 * 0.5, j2, of.j2 * 0.5, jtot * 0.5, j0)*phase_factor;
+    // Now make dterm equal to the value of antisymmetrized;
+    double dterm_antisym = 0.;
+      if (b == c || a == c) {
+      // Pbc
+      if (b == c) {
+        double phase_bc = pow(-1, ob.j2*0.5 + oc.j2*0.5 ) * (2.*j0+1.);
+        double angmom_bc = AngMom::SixJ(ob.j2*0.5, oa.j2*0.5, j0, oc.j2*0.5, jtot*0.5, j0);
+         dterm_antisym += dterm * phase_bc * angmom_bc;
+      }
+      // Pac
+      if (a == c) {
+        double phase_ac = 2.*j0+1.;
+        double angmom_ac = AngMom::SixJ(oa.j2*0.5, ob.j2*0.5, j0, oc.j2*0.5, jtot*0.5, j0);
+        dterm_antisym -= dterm * phase_ac * angmom_ac;
+      }
+    }
+    dterm=dterm - dterm_antisym;
+
+    // now do the same on ket side (1-Pdf-Pef)
+    double dterm_ket_antisym = 0.;
+    if (e == f || d == f) {
+      // Pef
+      if (e == f) {
+        double phase_ef = pow(-1, oe.j2*0.5 + of.j2*0.5) * (2.*j2+1.);
+        double angmom_ef = AngMom::SixJ(oe.j2*0.5, od.j2*0.5, j2, of.j2*0.5, jtot*0.5, j2);
+        dterm_ket_antisym += dterm * phase_ef * angmom_ef;
+      }
+      // Pdf
+      if (d == f) {
+        double phase_df = 2.*j2+1.;
+        double angmom_df = AngMom::SixJ(od.j2*0.5, oe.j2*0.5, j2, of.j2*0.5, jtot*0.5, j2);
+        dterm_ket_antisym -= dterm * phase_df * angmom_df;
+      }
+    }
+    dterm = dterm - dterm_ket_antisym;
+
+
+    std::cout<<"jtot "<<jtot<<" dterm "<<dterm<<std::endl;
+  }
+ 
+
+  return (val);
+}

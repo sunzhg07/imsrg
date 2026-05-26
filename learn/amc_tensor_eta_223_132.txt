@@ -1,0 +1,82 @@
+# AMC input for selected m-scheme kernels of
+#   [eta_2^K, [eta_2^K, Gamma_2^0]_{3b}]_{2b}
+# and one-body eta insertions, with eta declared as a nonscalar tensor.
+#
+# IMSRG storage convention for nonscalar eta:
+#   eta1_ab = <a || eta^K || b>
+#   eta2_abcd = <ab Jbra || eta^K || cd Jket>
+# AMC is run with --wet-convention wigner, matching
+#   <ja ma|eta^K_M|jb mb> = C^{ja ma}_{K M,jb mb}/sqrt(2 ja+1)
+#                            <a||eta^K||b>.
+
+declare Z2ladder {
+    mode=4,
+    scalar=true,
+    reduce=true,
+    latex="Z^{\\mathrm{ladder}}",
+}
+
+declare Z2onebody {
+    mode=4,
+    scalar=true,
+    reduce=true,
+    latex="Z^{\\mathrm{onebody}}",
+}
+
+declare Z2cross {
+    mode=4,
+    scalar=true,
+    reduce=true,
+    latex="Z^{\\mathrm{cross}}",
+}
+
+declare eta1 {
+    mode=2,
+    scalar=false,
+    latex="\\eta",
+}
+
+declare eta2 {
+    mode=4,
+    scalar=false,
+    latex="\\eta",
+}
+
+declare Gamma2 {
+    mode=4,
+    latex="\\Gamma",
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n",
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}",
+}
+
+# Ladder seed in m-scheme.
+Z2ladder_ijkl =
+    sum_abc((nbar_a*n_b - n_a*nbar_b) * eta1_ba
+        * (eta2_cakl * Gamma2_ijcb - Gamma2_cakl * eta2_ijcb));
+
+# Direct one-body insertion seed in m-scheme.
+Z2onebody_ijkl =
+    sum_abc((nbar_a*n_b - n_a*nbar_b) * eta1_ba
+        * ( eta2_iacb * Gamma2_cjkl
+          + eta2_jacb * Gamma2_ickl
+          - Gamma2_ijcl * eta2_cakb
+          - Gamma2_ijkc * eta2_calb
+          - Gamma2_iacb * eta2_cjkl
+          - Gamma2_jacb * eta2_ickl
+          + eta2_ijcl * Gamma2_cakb
+          + eta2_ijkc * Gamma2_calb));
+
+# Cross-coupled seed in m-scheme.
+Z2cross_ijkl =
+    P(i/j) * P(k/l) * sum_abc((nbar_a*n_b - n_a*nbar_b) * eta1_ab
+        * (eta2_icka * Gamma2_bjcl - eta2_ibkc * Gamma2_cjal));

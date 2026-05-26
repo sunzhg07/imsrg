@@ -953,12 +953,28 @@ PYBIND11_MODULE(pyIMSRG, m) {
   FactorizedDoubleCommutator.def(
       "comm223_231", &Commutator::FactorizedDoubleCommutator::comm223_231);
   FactorizedDoubleCommutator.def(
+       "comm223_231st", &Commutator::FactorizedDoubleCommutator::comm223_231st);
+  FactorizedDoubleCommutator.def(
       "comm223_232", &Commutator::FactorizedDoubleCommutator::comm223_232);
+  FactorizedDoubleCommutator.def(
+        "comm223_232st", &Commutator::FactorizedDoubleCommutator::comm223_232st);
   FactorizedDoubleCommutator.def(
       "comm223_132", &Commutator::FactorizedDoubleCommutator::comm223_132);
   FactorizedDoubleCommutator.def(
        "comm223_132_cross",
        &Commutator::FactorizedDoubleCommutator::comm223_132_cross);
+  FactorizedDoubleCommutator.def(
+       "comm223_132st",
+       &Commutator::FactorizedDoubleCommutator::comm223_132st);
+  FactorizedDoubleCommutator.def(
+       "comm223_132st_ladder",
+       &Commutator::FactorizedDoubleCommutator::comm223_132st_ladder);
+  FactorizedDoubleCommutator.def(
+       "comm223_132st_onebody",
+       &Commutator::FactorizedDoubleCommutator::comm223_132st_onebody);
+  FactorizedDoubleCommutator.def(
+       "comm223_132st_cross",
+       &Commutator::FactorizedDoubleCommutator::comm223_132st_cross);
 
   FactorizedDoubleCommutator.def(
       "comm223_231_chi2b",
@@ -1127,8 +1143,12 @@ PYBIND11_MODULE(pyIMSRG, m) {
       &ReferenceImplementations::comm223_232_BruteForce);
   ReferenceImplementations.def("comm223_231",
                                &ReferenceImplementations::comm223_231);
+     ReferenceImplementations.def("comm223_231st",
+                                                                            &ReferenceImplementations::comm223_231st);
   ReferenceImplementations.def("comm223_232",
                                &ReferenceImplementations::comm223_232);
+     ReferenceImplementations.def("comm223_232st",
+                                                                            &ReferenceImplementations::comm223_232st);
      ReferenceImplementations.def("comm223_132",
                                                                             &ReferenceImplementations::comm223_132);
      ReferenceImplementations.def("comm223_132_ladder",
@@ -1137,6 +1157,14 @@ PYBIND11_MODULE(pyIMSRG, m) {
                                                                             &ReferenceImplementations::comm223_132_cross);
      ReferenceImplementations.def("comm223_132_onebody",
                                                                             &ReferenceImplementations::comm223_132_onebody);
+     ReferenceImplementations.def("comm223_132st",
+                                                                            &ReferenceImplementations::comm223_132st);
+     ReferenceImplementations.def("comm223_132st_ladder",
+                                                                            &ReferenceImplementations::comm223_132st_ladder);
+     ReferenceImplementations.def("comm223_132st_cross",
+                                                                            &ReferenceImplementations::comm223_132st_cross);
+     ReferenceImplementations.def("comm223_132st_onebody",
+                                                                            &ReferenceImplementations::comm223_132st_onebody);
 
   ReferenceImplementations.def("comm331st",
                                &ReferenceImplementations::comm331st);

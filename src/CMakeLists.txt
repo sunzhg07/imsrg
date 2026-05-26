@@ -278,7 +278,7 @@ add_library(
     DaggerCommutators.hh DaggerCommutators.cc
     TensorCommutators.hh TensorCommutators.cc
     IMSRG3Commutators.hh IMSRG3Commutators.cc
-    FactorizedDoubleCommutator.hh FactorizedDoubleCommutator.cc
+    FactorizedDoubleCommutator.hh FactorizedDoubleCommutator.cc FactorizedDoubleCommutators_tensor.cc
 )
 target_link_libraries(
     Commutator

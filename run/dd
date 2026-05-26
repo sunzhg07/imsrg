@@ -1,0 +1,1548 @@
+/Users/wolf/work/imsrg/src/ModelSpace.cc line 1415 Changing emax from 0 to 1  and updating six_j_cache_2b_ ... 
+DONE ALLOCATING PN 3-body, size of MatEl is 282  ->  2.10106e-06 GB
+hello
+dimension EOM ph: 4 5
+dimension EOM ppvv: 6 395
+vpvvhere 20 2 16 2 2 0
+vpvvhere 21 2 16 4 4 0
+vpvvhere 22 4 18 2 2 0
+vpvvhere 23 4 18 4 4 0
+vpvvhere 38 2 17 2 3 0
+vpvvhere 39 2 17 4 5 0
+vpvvhere 40 3 16 2 3 0
+vpvvhere 41 3 16 4 5 0
+vpvvhere 42 4 19 2 3 0
+vpvvhere 43 4 19 4 5 0
+vpvvhere 44 5 18 2 3 0
+vpvvhere 45 5 18 4 5 0
+vpvvhere 60 3 17 3 3 0
+vpvvhere 61 3 17 5 5 0
+vpvvhere 62 5 19 3 3 0
+vpvvhere 63 5 19 5 5 0
+vpvvhere 69 2 14 2 4 1
+vpvvhere 70 2 16 2 4 1
+vpvvhere 71 2 18 2 4 1
+vpvvhere 72 4 16 2 4 1
+vpvvhere 73 4 18 2 4 1
+vpvvhere 142 2 15 2 3 1
+vpvvhere 143 2 15 2 5 1
+vpvvhere 144 2 15 3 4 1
+vpvvhere 145 2 15 4 5 1
+vpvvhere 146 2 17 2 3 1
+vpvvhere 147 2 17 2 5 1
+vpvvhere 148 2 17 3 4 1
+vpvvhere 149 2 17 4 5 1
+vpvvhere 150 2 19 2 3 1
+vpvvhere 151 2 19 2 5 1
+vpvvhere 152 2 19 3 4 1
+vpvvhere 153 2 19 4 5 1
+vpvvhere 154 3 14 2 3 1
+vpvvhere 155 3 14 2 5 1
+vpvvhere 156 3 14 3 4 1
+vpvvhere 157 3 14 4 5 1
+vpvvhere 158 3 16 2 3 1
+vpvvhere 159 3 16 2 5 1
+vpvvhere 160 3 16 3 4 1
+vpvvhere 161 3 16 4 5 1
+vpvvhere 162 3 18 2 3 1
+vpvvhere 163 3 18 2 5 1
+vpvvhere 164 3 18 3 4 1
+vpvvhere 165 3 18 4 5 1
+vpvvhere 166 4 17 2 3 1
+vpvvhere 167 4 17 2 5 1
+vpvvhere 168 4 17 3 4 1
+vpvvhere 169 4 17 4 5 1
+vpvvhere 170 4 19 2 3 1
+vpvvhere 171 4 19 2 5 1
+vpvvhere 172 4 19 3 4 1
+vpvvhere 173 4 19 4 5 1
+vpvvhere 174 5 16 2 3 1
+vpvvhere 175 5 16 2 5 1
+vpvvhere 176 5 16 3 4 1
+vpvvhere 177 5 16 4 5 1
+vpvvhere 178 5 18 2 3 1
+vpvvhere 179 5 18 2 5 1
+vpvvhere 180 5 18 3 4 1
+vpvvhere 181 5 18 4 5 1
+vpvvhere 187 3 15 3 5 1
+vpvvhere 188 3 17 3 5 1
+vpvvhere 189 3 19 3 5 1
+vpvvhere 190 5 17 3 5 1
+vpvvhere 191 5 19 3 5 1
+vpvvhere 218 2 12 2 2 2
+vpvvhere 219 2 12 2 4 2
+vpvvhere 220 2 14 2 2 2
+vpvvhere 221 2 14 2 4 2
+vpvvhere 222 2 16 2 2 2
+vpvvhere 223 2 16 2 4 2
+vpvvhere 224 2 18 2 2 2
+vpvvhere 225 2 18 2 4 2
+vpvvhere 226 4 14 2 2 2
+vpvvhere 227 4 14 2 4 2
+vpvvhere 228 4 16 2 2 2
+vpvvhere 229 4 16 2 4 2
+vpvvhere 293 2 13 2 3 2
+vpvvhere 294 2 13 2 5 2
+vpvvhere 295 2 13 3 4 2
+vpvvhere 296 2 15 2 3 2
+vpvvhere 297 2 15 2 5 2
+vpvvhere 298 2 15 3 4 2
+vpvvhere 299 2 17 2 3 2
+vpvvhere 300 2 17 2 5 2
+vpvvhere 301 2 17 3 4 2
+vpvvhere 302 2 19 2 3 2
+vpvvhere 303 2 19 2 5 2
+vpvvhere 304 2 19 3 4 2
+vpvvhere 305 3 12 2 3 2
+vpvvhere 306 3 12 2 5 2
+vpvvhere 307 3 12 3 4 2
+vpvvhere 308 3 14 2 3 2
+vpvvhere 309 3 14 2 5 2
+vpvvhere 310 3 14 3 4 2
+vpvvhere 311 3 16 2 3 2
+vpvvhere 312 3 16 2 5 2
+vpvvhere 313 3 16 3 4 2
+vpvvhere 314 3 18 2 3 2
+vpvvhere 315 3 18 2 5 2
+vpvvhere 316 3 18 3 4 2
+vpvvhere 317 4 15 2 3 2
+vpvvhere 318 4 15 2 5 2
+vpvvhere 319 4 15 3 4 2
+vpvvhere 320 4 17 2 3 2
+vpvvhere 321 4 17 2 5 2
+vpvvhere 322 4 17 3 4 2
+vpvvhere 323 5 14 2 3 2
+vpvvhere 324 5 14 2 5 2
+vpvvhere 325 5 14 3 4 2
+vpvvhere 326 5 16 2 3 2
+vpvvhere 327 5 16 2 5 2
+vpvvhere 328 5 16 3 4 2
+vpvvhere 355 3 13 3 3 2
+vpvvhere 356 3 13 3 5 2
+vpvvhere 357 3 15 3 3 2
+vpvvhere 358 3 15 3 5 2
+vpvvhere 359 3 17 3 3 2
+vpvvhere 360 3 17 3 5 2
+vpvvhere 361 3 19 3 3 2
+vpvvhere 362 3 19 3 5 2
+vpvvhere 363 5 15 3 3 2
+vpvvhere 364 5 15 3 5 2
+vpvvhere 365 5 17 3 3 2
+vpvvhere 366 5 17 3 5 2
+vpvvhere 386 2 13 2 3 3
+vpvvhere 387 2 15 2 3 3
+vpvvhere 388 2 17 2 3 3
+vpvvhere 389 3 12 2 3 3
+vpvvhere 390 3 14 2 3 3
+vpvvhere 391 3 16 2 3 3
+vpvvhere 392 4 13 2 3 3
+vpvvhere 393 4 15 2 3 3
+vpvvhere 394 5 12 2 3 3
+vpvvhere 395 5 14 2 3 3
+dimension EOM pphv: 396 671
+dimension EOM pphh: 672 737
+dimension EOM all: 738
+Precalculating SixJ's
+done calculating sixJs (13373 of them)  now there are 13373 entries 
+Hash table has 20753 buckets and a load factor 0.644389  estimated storage ~ 0.000508517 GB
+[comm223ss_opt:start] J1=2 J2=2 twoJ=5 bra=(2,2,2) ket=(2,2,2) ch3bra=20 ch3ket=20 ibra=28 iket=28
+[comm223ss_opt:perm_ijk] perm=0 I=(2,2,2) J1p_range=[2,2] J1p=2 rec_ijk=1.41421 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[2,2] J2p=2 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.111905 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.0285714 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,3] J2p=1 rec_lmn=0.83666
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,3] J2p=2 rec_lmn=-0.707107
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.111905 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.0285714 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,3] J2p=3 rec_lmn=-0.894427
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,3] J2p=1 rec_lmn=-0.83666
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,3] J2p=2 rec_lmn=-0.707107
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.111905 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.0285714 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,3] J2p=3 rec_lmn=0.894427
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[1,3] J1p=1 rec_ijk=0.83666 ch12=6
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[1,3] J1p=2 rec_ijk=-0.707107 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[2,2] J2p=2 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.111905 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.0285714 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,3] J2p=1 rec_lmn=0.83666
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,3] J2p=2 rec_lmn=-0.707107
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.111905 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.0285714 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,3] J2p=3 rec_lmn=-0.894427
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,3] J2p=1 rec_lmn=-0.83666
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,3] J2p=2 rec_lmn=-0.707107
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.111905 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.0285714 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,3] J2p=3 rec_lmn=0.894427
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[1,3] J1p=3 rec_ijk=-0.894427 ch12=18
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[1,3] J1p=1 rec_ijk=-0.83666 ch12=6
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[1,3] J1p=2 rec_ijk=-0.707107 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[2,2] J2p=2 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.111905 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.0285714 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,3] J2p=1 rec_lmn=0.83666
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,3] J2p=2 rec_lmn=-0.707107
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.111905 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.0285714 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,3] J2p=3 rec_lmn=-0.894427
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,3] J2p=1 rec_lmn=-0.83666
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,3] J2p=2 rec_lmn=-0.707107
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.111905 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.0285714 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,3] J2p=3 rec_lmn=0.894427
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[1,3] J1p=3 rec_ijk=0.894427 ch12=18
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:end] J1=2 J2=2 zijklmn=0
+[comm223ss_opt:start] J1=2 J2=2 twoJ=1 bra=(2,2,2) ket=(2,2,2) ch3bra=4 ch3ket=4 ibra=20 iket=20
+[comm223ss_opt:perm_ijk] perm=0 I=(2,2,2) J1p_range=[2,2] J1p=2 rec_ijk=1.41421 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[2,2] J2p=2 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.2 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,2] J2p=1 rec_lmn=-1.22474
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,2] J2p=2 rec_lmn=-0.707107
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.2 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,2] J2p=1 rec_lmn=1.22474
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,2] J2p=2 rec_lmn=-0.707107
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.41421 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.2 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[1,2] J1p=1 rec_ijk=-1.22474 ch12=6
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[1,2] J1p=2 rec_ijk=-0.707107 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[2,2] J2p=2 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.2 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,2] J2p=1 rec_lmn=-1.22474
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,2] J2p=2 rec_lmn=-0.707107
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.2 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,2] J2p=1 rec_lmn=1.22474
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,2] J2p=2 rec_lmn=-0.707107
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.2 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[1,2] J1p=1 rec_ijk=1.22474 ch12=6
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[1,2] J1p=2 rec_ijk=-0.707107 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[2,2] J2p=2 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.707107 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.2 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,2] J2p=1 rec_lmn=-1.22474
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[1,2] J2p=2 rec_lmn=-0.707107
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.2 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,2] J2p=1 rec_lmn=1.22474
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[1,2] J2p=2 rec_lmn=-0.707107
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.05 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.707107 rec_lmn=-0.707107 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.2 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:end] J1=2 J2=2 zijklmn=0
+[comm223ss_opt:start] J1=0 J2=0 twoJ=3 bra=(2,2,2) ket=(2,2,2) ch3bra=12 ch3ket=12 ibra=30 iket=30
+[comm223ss_opt:perm_ijk] perm=0 I=(2,2,2) J1p_range=[0,0] J1p=0 rec_ijk=1.41421 ch12=0
+[comm223ss_opt:ch12] ind_12=2 nkets_12=13
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[0,0] J2p=0 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=1.41421 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=1.41421 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=1.41421 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=1.41421 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[0,3] J1p=0 rec_ijk=-0.353553 ch12=0
+[comm223ss_opt:ch12] ind_12=2 nkets_12=13
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[0,0] J2p=0 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.353553 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.353553 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.353553 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.353553 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.353553 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.353553 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.353553 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.353553 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.353553 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.353553 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[0,3] J1p=1 rec_ijk=0.612372 ch12=6
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[0,3] J1p=2 rec_ijk=-0.790569 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[0,0] J2p=0 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[0,3] J1p=3 rec_ijk=0.935414 ch12=18
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[0,3] J1p=0 rec_ijk=-0.353553 ch12=0
+[comm223ss_opt:ch12] ind_12=2 nkets_12=13
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[0,0] J2p=0 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.353553 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.353553 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=[comm223ss_opt:start] J1=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.353553 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.353553 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.353553 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.353553 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.353553 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.353553 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.353553 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.353553 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[0,3] J1p=1 rec_ijk=-0.612372 ch12=6
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[0,3] J1p=2 rec_ijk=-0.790569 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[0,0] J2p=0 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=0 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[0,3] J1p=3 rec_ijk=-0.935414 ch12=18
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:end] J1=0 J2=0 zijklmn=0
+2 J2=0 twoJ=3 bra=(2,2,2) ket=(2,2,2) ch3bra=12 ch3ket=12 ibra=31 iket=30
+[comm223ss_opt:perm_ijk] perm=0 I=(2,2,2) J1p_range=[2,2] J1p=2 rec_ijk=1.41421 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[0,0] J2p=0 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.41421 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.41421 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.41421 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.41421 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[0,3] J1p=0 rec_ijk=-0.790569 ch12=0
+[comm223ss_opt:ch12] ind_12=2 nkets_12=13
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[0,0] J2p=0 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[0,3] J1p=1 rec_ijk=0.273861 ch12=6
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[0,3] J1p=2 rec_ijk=1.06066 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[0,0] J2p=0 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.06066 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.06066 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.06066 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.06066 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[0,3] J1p=3 rec_ijk=0.41833 ch12=18
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[0,3] J1p=0 rec_ijk=-0.790569 ch12=0
+[comm223ss_opt:ch12] ind_12=2 nkets_12=13
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[0,0] J2p=0 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[0,3] J1p=1 rec_ijk=-0.273861 ch12=6
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[0,3] J1p=2 rec_ijk=1.06066 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[0,0] J2p=0 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.06066 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.06066 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.353553
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.06066 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.06066 rec_lmn=-0.353553 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.612372
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=0 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.935414
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[0,3] J1p=3 rec_ijk=-0.41833 ch12=18
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:end] J1=2 J2=0 zijklmn=0
+[comm223ss_opt:start] J1=2 J2=2 twoJ=3 bra=(2,2,2) ket=(2,2,2) ch3bra=12 ch3ket=12 ibra=31 iket=31
+[comm223ss_opt:perm_ijk] perm=0 I=(2,2,2) J1p_range=[2,2] J1p=2 rec_ijk=1.41421 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[2,2] J2p=2 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.41421 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.273861
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=1.06066
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.41421 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.41421 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.41421 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.41421 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.41833
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.41421 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.273861
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=1.06066
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.41421 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.41421 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.41421 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.41421 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.41421 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=0 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.41421 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.41833
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[0,3] J1p=0 rec_ijk=-0.790569 ch12=0
+[comm223ss_opt:ch12] ind_12=2 nkets_12=13
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[2,2] J2p=2 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.273861
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=1.06066
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.41833
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.273861
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=1.06066
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.41833
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[0,3] J1p=1 rec_ijk=0.273861 ch12=6
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[0,3] J1p=2 rec_ijk=1.06066 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[2,2] J2p=2 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.273861
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=1.06066
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.41833
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.273861
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=1.06066
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=1 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.41833
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=1 I=(2,2,2) J1p_range=[0,3] J1p=3 rec_ijk=0.41833 ch12=18
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[0,3] J1p=0 rec_ijk=-0.790569 ch12=0
+[comm223ss_opt:ch12] ind_12=2 nkets_12=13
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[2,2] J2p=2 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.273861
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=1.06066
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.41833
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=0 nkets_6a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=0 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=1
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=2 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=0 a=16 rec_ijk=-0.790569 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=1 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.273861
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=1.06066
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=0 J2p=2 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=2 rec_ijk=-0.790569 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=0 J2p=2 a=16 rec_ijk=-0.790569 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=1 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.41833
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[0,3] J1p=1 rec_ijk=-0.273861 ch12=6
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[0,3] J1p=2 rec_ijk=1.06066 ch12=12
+[comm223ss_opt:ch12] ind_12=2 nkets_12=23
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=0 J2p_range=[2,2] J2p=2 rec_lmn=1.41421
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=0 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.06066 rec_lmn=1.41421 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:conds] perm_lmn=0 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=0 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=1 rec_lmn=0.273861
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=2 rec_lmn=1.06066
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=1 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_pair_i=0 pair_j=1 twoJ=3
+bra=(2,2,2) ket=(2,4,4) g=16 j0=0 j2=0
+X seed: channel=0 local=(3,2)
+Y seed: channel=0 local=(3,4)
+J1min=0 J2min=1 shape=(4, 2)
+
+Diagram matrix
+[[ 0.15309311 -0.19764235]
+ [ 0.          0.        ]
+ [-0.3423266   0.44194174]
+ [ 0.          0.        ]]
+
+row col  J1  J2        diagram       Z(J1,J2)       Z(J2,J1)      match
+-----------------------------------------------------------------------
+  0   0   0   1     0.15309311     0.15309311     0.00000000     direct
+  0   1   0   2    -0.19764235    -0.19764235     0.00000000     direct
+  1   1   1   2     0.00000000     0.00000000    -0.34232660     direct
+  2   0   2   1    -0.34232660    -0.34232660     0.00000000     direct
+  2   1   2   2     0.44194174     0.44194174     0.44194174     direct
+
+Nonzero reference entries Z(J1,J2)
+  Z(0,1) =  0.15309311
+  Z(0,2) = -0.19764235
+  Z(2,1) = -0.34232660
+  Z(2,2) =  0.44194174
+opt:perm_lmn] perm=1 J2p_range=[0,3] J2p=3 rec_lmn=0.41833
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=1 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=-1 dTz126a=0 dTz3a45=0 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=0 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=-1 dTz126a=0 dTz3a45=0 X126=1 Y126=1 X345=1 Y345=1
+[comm223ss_opt:ch6a] ch6a=12 nkets_6a=23
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=0 rec_lmn=-0.790569
+[comm223ss_opt:channels] ch45=0 ch3a=0 ind_45=2 nkets_45=13 nkets_3a=13
+[comm223ss_opt:j2a_range] J1p=2 J2p=0 j2a_min=3 j2a_max=3 phase12=1 phase45=1 hat=2.23607
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=2 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=-0.25 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=0 a=16 rec_ijk=1.06066 rec_lmn=-0.790569 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.25 x126a=0 y126a=0 x3a45=1 y3a45=0 contrib=0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=1 rec_lmn=-0.273861
+[comm223ss_opt:channels] ch45=6 ch3a=6 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=2 rec_lmn=1.06066
+[comm223ss_opt:channels] ch45=12 ch3a=12 ind_45=2 nkets_45=23 nkets_3a=23
+[comm223ss_opt:j2a_range] J1p=2 J2p=2 j2a_min=1 j2a_max=7 phase12=1 phase45=1 hat=5
+[comm223ss_opt:onebody_channel] la=1 j2a=1 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=4 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=18 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=1 j2a=3 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=2 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1.41421 phase3a=1.41421 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=16 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=0.15 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=0
+[comm223ss_opt:onebody_channel] la=3 j2a=5 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=14 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:onebody_channel] la=3 j2a=7 tz2a=-1
+[comm223ss_opt:tbme] J1=2 J2=2 pijk=2 plmn=2 I1=2 I2=2 I3=2 I4=2 I5=2 I6=2 J1p=2 J2p=2 a=12 rec_ijk=1.06066 rec_lmn=1.06066 phase12=1 phase45=1 phase6a=1 phase3a=1 sixj=-0.1 x126a=0 y126a=0 x3a45=0 y3a45=0 contrib=-0
+[comm223ss_opt:perm_lmn] perm=2 J2p_range=[0,3] J2p=3 rec_lmn=-0.41833
+[comm223ss_opt:channels] ch45=18 ch3a=18 ind_45=18446744073709551615 nkets_45=13 nkets_3a=13
+[comm223ss_opt:conds] perm_lmn=2 I=(2,2,2) parity_a=1 tz2a=1 dTz126a=-1 dTz3a45=1 X126=0 Y126=0 X345=0 Y345=0
+[comm223ss_opt:perm_ijk] perm=2 I=(2,2,2) J1p_range=[0,3] J1p=3 rec_ijk=-0.41833 ch12=18
+[comm223ss_opt:ch12] ind_12=18446744073709551615 nkets_12=13
+[comm223ss_opt:end] J1=2 J2=2 zijklmn=0

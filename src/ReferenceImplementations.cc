@@ -1,5 +1,7 @@
 
 #include "ReferenceImplementations.hh"
+#include "FactorizedDoubleCommutator.hh"
+#include "TensorCommutators.hh"
 #include "ModelSpace.hh"
 #include "PhysicalConstants.hh"
 #include "AngMom.hh"
@@ -13795,6 +13797,54 @@ namespace ReferenceImplementations
   void comm223_132_onebody(const Operator &Eta, const Operator &Gamma, Operator &Z)
   {
     comm223_132_impl(Eta, Gamma, Z, false, false, true, "comm223_132_onebody");
+  }
+
+  void comm223_132st(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    // Use the explicit AMC-derived direct terms rather than the
+    // comm223st->comm132st chain wrapper path.
+    comm223_132_impl(Eta, Gamma, Z, true, true, true, "comm223_132st");
+  }
+
+  void comm223_132st_ladder(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    comm223_132_impl(Eta, Gamma, Z, true, false, false, "comm223_132st_ladder");
+  }
+
+  void comm223_132st_cross(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    comm223_132_impl(Eta, Gamma, Z, false, true, false, "comm223_132st_cross");
+  }
+
+  void comm223_132st_onebody(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    comm223_132_impl(Eta, Gamma, Z, false, false, true, "comm223_132st_onebody");
+  }
+
+  void comm223_231st(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Operator intermediate3b(*Eta.modelspace, Eta.GetJRank(), Eta.GetTRank(), Eta.GetParity(), 3);
+    intermediate3b.ThreeBody.SetMode("pn");
+    intermediate3b *= 0.0;
+    intermediate3b.SetHermitian();
+
+    Commutator::comm223st(Gamma, Eta, intermediate3b);
+    Commutator::comm231st(Eta, intermediate3b, Z);
+    Z.profiler.timer["ReferenceImplementations::comm223_231st"] += omp_get_wtime() - t_start;
+  }
+
+  void comm223_232st(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Operator intermediate3b(*Eta.modelspace, Eta.GetJRank(), Eta.GetTRank(), Eta.GetParity(), 3);
+    intermediate3b.ThreeBody.SetMode("pn");
+    intermediate3b *= 0.0;
+    intermediate3b.SetHermitian();
+
+    Commutator::comm223st(Gamma, Eta, intermediate3b);
+    Commutator::comm232st(Eta, intermediate3b, Z);
+    Z.profiler.timer["ReferenceImplementations::comm223_232st"] += omp_get_wtime() - t_start;
   }
 
 

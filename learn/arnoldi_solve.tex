@@ -1,0 +1,391 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\lstset{
+  language=C++,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  breaklines=true,
+  frame=single,
+}
+
+\title{\texttt{EOM::ArnoldiSolve} --- Algorithm Explained}
+\author{IMSRG project notes}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\bigskip
+
+This note explains the algorithm implemented in
+\texttt{src/EOM.cc} (\texttt{EOM::ArnoldiSolve}), which performs a
+Rayleigh--Ritz eigenvalue calculation for a Hamiltonian split as
+\begin{equation}
+  H \;=\; H_1 + H_2,
+\end{equation}
+where
+\begin{itemize}
+  \item $H_1 v$ can be applied directly (cheap one-sided action).
+  \item $H_2 v$ cannot be formed; only \emph{diagonal} expectation
+        values $\langle u \mid H_2 \mid u \rangle$ are affordable.
+  \item $H = H_1 + H_2$ is symmetric in the metric defined by
+        \texttt{ComputeNorm}$(a,b) = \langle a \mid b \rangle$,
+        \textbf{but $H_1$ and $H_2$ individually are not symmetric}
+        in that metric.
+\end{itemize}
+The key observation is that even though $H_2$ is never applied to a
+vector, its off-diagonal matrix elements
+$\langle v_i \mid H_2 \mid v_j \rangle$ between two \emph{known}
+vectors can still be recovered from three diagonal expectation values
+via a polarization identity.
+
+% ----------------------------------------------------------------
+\section{Subspace built from $H_1$ only}
+% ----------------------------------------------------------------
+
+We build a metric-orthonormal Krylov-like basis
+$\{v_0, v_1, \dots, v_{m-1}\}$ by applying only $H_1$:
+
+\begin{enumerate}
+  \item Normalize the initial vector:
+        $v_0 = v_i \big/ \sqrt{\langle v_i \mid v_i \rangle}$.
+  \item At step $j$, compute and cache
+        $\tilde{h}_1 v_j \equiv H_1 v_j$
+        (\texttt{HtcMultiref(Hs, $v_j$)}).
+  \item Project onto the physical subspace (\texttt{ProjectOprator}).
+  \item Double-pass classical Gram--Schmidt against
+        $\{v_0, \dots, v_j\}$ in the metric \texttt{ComputeNorm},
+        projecting between passes.
+  \item Set
+        \begin{equation}
+          v_{j+1} \;=\; \frac{w}{\sqrt{\langle w \mid w \rangle}}.
+        \end{equation}
+\end{enumerate}
+
+The resulting subspace is
+\begin{equation}
+  \mathcal{K}_m \;=\;
+  \operatorname{span}\{v_0,\; H_1 v_0,\; H_1^2 v_0,\; \dots\},
+\end{equation}
+the Krylov space of $H_1$ \emph{alone} --- not of the full $H$.
+This is precisely why we never need to apply $H_2$.
+
+% ----------------------------------------------------------------
+\section{The polarization trick for the $H_2$ off-diagonals}
+% ----------------------------------------------------------------
+
+For any operator $A$ that is \emph{symmetric} in the inner product,
+\begin{equation}
+  \langle u \mid A \mid v \rangle
+  \;=\;
+  \tfrac{1}{2}\Bigl(
+    \langle u+v \mid A \mid u+v \rangle
+    - \langle u \mid A \mid u \rangle
+    - \langle v \mid A \mid v \rangle
+  \Bigr).
+\end{equation}
+
+In our case $H_2$ is \textbf{not} symmetric, but its symmetrized
+part is what appears in $H = H_1 + H_2$.  Define
+\begin{equation}
+  \langle u \mid H_2 \mid v \rangle_{\mathrm{sym}}
+  \;\equiv\;
+  \tfrac{1}{2}\bigl(\langle u \mid H_2 \mid v \rangle
+                   + \langle v \mid H_2 \mid u \rangle\bigr),
+\end{equation}
+and similarly for $H_1$.  Polarization recovers exactly the
+symmetrized piece:
+\begin{equation}
+  \langle v_i \mid H_2 \mid v_j \rangle_{\mathrm{sym}}
+  \;=\;
+  \tfrac{1}{2}\Bigl(
+    \underbrace{\langle v_i+v_j \mid H_2 \mid v_i+v_j \rangle}_{\text{cross term}}
+    - \underbrace{\langle v_i \mid H_2 \mid v_i \rangle}_{h_2^{\mathrm{diag}}[i]}
+    - \underbrace{\langle v_j \mid H_2 \mid v_j \rangle}_{h_2^{\mathrm{diag}}[j]}
+  \Bigr).
+\end{equation}
+Every term on the right is a \emph{diagonal} expectation value, which
+is affordable by assumption (\texttt{DcomMultiref}).
+
+We cache $h_2^{\mathrm{diag}}[k] = \langle v_k \mid H_2 \mid v_k \rangle$
+for each basis vector the moment it is added.  Consequently, each new
+step $j$ requires only \textbf{one new cross term}
+$\langle v_i+v_j \mid H_2 \mid v_i+v_j \rangle$ per off-diagonal
+entry $(i,j)$ with $i < j$.
+
+% ----------------------------------------------------------------
+\section{The $H_1$ off-diagonals}
+% ----------------------------------------------------------------
+
+For $H_1$ we do have the one-sided action.  Its \emph{asymmetric}
+matrix elements are
+\begin{equation}
+  \langle v_i \mid H_1 \mid v_j \rangle
+  = \langle v_i \mid H_1 v_j \rangle,
+  \qquad
+  \langle v_j \mid H_1 \mid v_i \rangle
+  = \langle v_j \mid H_1 v_i \rangle,
+\end{equation}
+both computed via \texttt{ComputeNorm} using the cached $H_1 v_k$
+from every previous step.  We take the symmetric part:
+\begin{equation}
+  \langle v_i \mid H_1 \mid v_j \rangle_{\mathrm{sym}}
+  \;=\;
+  \tfrac{1}{2}\bigl(
+    \langle v_i \mid H_1 v_j \rangle
+    + \langle v_j \mid H_1 v_i \rangle
+  \bigr).
+\end{equation}
+
+% ----------------------------------------------------------------
+\section{Assembling the projected matrix}
+% ----------------------------------------------------------------
+
+With both pieces symmetrized, the projected Hamiltonian matrix element
+is
+\begin{equation}
+  \boxed{
+  H_{ij}
+  \;=\;
+  \langle v_i \mid H_1 \mid v_j \rangle_{\mathrm{sym}}
+  \;+\;
+  \langle v_i \mid H_2 \mid v_j \rangle_{\mathrm{sym}}
+  }
+\end{equation}
+stored in \texttt{hall(i,j) = hall(j,i)}.
+
+\subsection*{Diagonal short-circuit ($i = j$)}
+
+For $i = j$ the polarization formula collapses analytically:
+\begin{equation}
+  \tfrac{1}{2}\bigl(
+    \langle 2v \mid H_2 \mid 2v \rangle
+    - 2\langle v \mid H_2 \mid v \rangle
+  \bigr)
+  \;=\;
+  \tfrac{1}{2}(4 - 2)\langle v \mid H_2 \mid v \rangle
+  \;=\;
+  \langle v \mid H_2 \mid v \rangle
+  \;=\;
+  h_2^{\mathrm{diag}}[j].
+\end{equation}
+On the diagonal we therefore
+\begin{itemize}
+  \item \textbf{skip} the extra \texttt{DcomMultiref(Hs, $2v_j$)} call
+        (saves one expensive evaluation per step), and
+  \item \textbf{avoid} the catastrophic cancellation
+        $4x - 2x \to x$ that would otherwise lose one decimal digit of
+        precision when $\langle v \mid H_2 \mid v \rangle$ is large.
+\end{itemize}
+Likewise for $H_1$, the diagonal is just
+$\langle v_j \mid H_1 v_j \rangle$ directly.
+
+% ----------------------------------------------------------------
+\section{Why explicit symmetrization matters}
+% ----------------------------------------------------------------
+
+In general $\langle v_i \mid H_1 \mid v_j \rangle \neq
+\langle v_j \mid H_1 \mid v_i \rangle$, and the same holds for $H_2$.
+The combined matrix element is symmetric \emph{because the antisymmetric
+parts of $H_1$ and $H_2$ exactly cancel}.  The polarization trick
+delivers the \textbf{symmetrized} $H_2$ piece directly, and we
+explicitly symmetrize the $H_1$ piece before adding.  This guarantees
+that \texttt{hall(i,j)} is symmetric \textbf{even if} the antisymmetric
+parts do not cancel perfectly in finite-precision arithmetic.
+
+\subsection*{Asymmetry diagnostic}
+
+The code tracks, for every off-diagonal pair $(i, j)$,
+\begin{equation}
+  r_{ij}
+  \;=\;
+  \frac{
+    \bigl|\langle v_i \mid H_1 v_j \rangle
+         - \langle v_j \mid H_1 v_i \rangle\bigr|
+  }{
+    2\,|H_{ij}|
+  }
+\end{equation}
+and reports $\max_{i < j} r_{ij}$ at the end of the run.
+
+A large value of $r_{ij}$ is \emph{allowed} when $H_2$ carries a
+matching antisymmetric part; it only signals a problem when the
+$H_1/H_2$ split in the calling code is internally inconsistent.
+A warning is printed when $\max r_{ij} > 10^{-3}$.
+
+% ----------------------------------------------------------------
+\section{Diagonalization with explicit symmetrization}
+% ----------------------------------------------------------------
+
+Even after writing \texttt{hall(i,j) = hall(j,i) = value}, repeated
+reads/re-writes leave residual bit-level asymmetry that can confuse
+\texttt{arma::eig\_sym}.  Every diagonalization is therefore routed
+through the helper lambda
+
+\begin{lstlisting}
+auto eigensolve_sub = [&hall](int dim, arma::vec &ev, arma::mat &evec)
+{
+    arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
+    sub = arma::symmatu(0.5 * (sub + sub.t()));
+    arma::eig_sym(ev, evec, sub);
+};
+\end{lstlisting}
+
+so \texttt{eig\_sym} always receives an exactly symmetric matrix.
+
+% ----------------------------------------------------------------
+\section{Convergence and breakdown handling}
+% ----------------------------------------------------------------
+
+After each new basis vector, if $j + 1 \ge \texttt{min\_iter}$:
+\begin{enumerate}
+  \item Diagonalize the leading $(j{+}1)\times(j{+}1)$ block of
+        \texttt{hall} via \texttt{eigensolve\_sub}.
+  \item Take the lowest \texttt{state\_want} eigenvalues as the current
+        Ritz estimates $\mathbf{e}$.
+  \item Compare to the previous step's $\mathbf{e}_{\mathrm{prev}}$.
+        Declare convergence and stop if
+        \begin{equation}
+          \max_k |e_k - e_k^{\mathrm{prev}}| < \texttt{tol}
+          \quad\text{or}\quad
+          \frac{\max_k |e_k - e_k^{\mathrm{prev}}|}{\max(1,\,\max_k|e_k|)}
+          < \texttt{tol}.
+        \end{equation}
+\end{enumerate}
+
+Three breakdown modes can stop the iteration early; each one solves
+the current subspace via \texttt{eigensolve\_sub} and returns:
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+  \toprule
+  Condition & Meaning \\
+  \midrule
+  $|b_j| < \texttt{null\_tol}\cdot\texttt{cn0}$
+    & New vector exhausted by projection (null space). \\
+  $|b_j| < \texttt{bj\_tol}$
+    & Exact breakdown: $w \approx 0$. \\
+  $b_j < 0$
+    & Indefinite metric: \texttt{ComputeNorm} returned a negative norm. \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+A final eigensolve over the entire accumulated subspace is performed
+unconditionally before returning, so the result always reflects the
+full basis that was built.
+
+% ----------------------------------------------------------------
+\section{Variational consistency check}
+% ----------------------------------------------------------------
+
+The function \texttt{EOM::ExpectationValue(Psi)} computes
+\begin{equation}
+  \mathcal{E}(\Psi)
+  \;=\;
+  \frac{\langle\Psi \mid H_1 \mid \Psi\rangle
+       + \langle\Psi \mid H_2 \mid \Psi\rangle}
+       {\langle\Psi \mid \Psi\rangle}
+\end{equation}
+\emph{independently} of the Krylov bookkeeping --- it uses only
+\texttt{HtcMultiref}, \texttt{DcomMultiref}, and
+\texttt{ComputeNorm} on the passed vector.
+
+At every 5th Arnoldi step the code builds each current Ritz vector
+\begin{equation}
+  |\Psi_k\rangle \;=\; \sum_{m=0}^{n_b-1} c_{mk}\, v_m
+\end{equation}
+and prints
+\begin{itemize}
+  \item the Ritz value $E_k$ from diagonalizing \texttt{hall},
+  \item the direct expectation $\mathcal{E}(\Psi_k)$, and
+  \item the difference $\mathcal{E}(\Psi_k) - E_k$.
+\end{itemize}
+The two numbers \emph{must} agree up to machine precision provided the
+basis is metric-orthonormal and \texttt{hall} is assembled correctly.
+A growing discrepancy reveals either loss of orthogonality or leakage
+of unphysical components into the basis.
+
+% ----------------------------------------------------------------
+\section{Ritz vectors}
+% ----------------------------------------------------------------
+
+For each eigenvalue $E_k$ with small-space eigenvector
+$\mathbf{c}_k = (c_{0k}, c_{1k}, \dots)^T$ the corresponding Ritz
+vector in the full operator space is
+\begin{equation}
+  |\Psi_k\rangle \;=\; \sum_{m=0}^{n_b-1} c_{mk}\, v_m,
+\end{equation}
+assembled in the loop that fills \texttt{ritz\_vecs}.
+
+% ----------------------------------------------------------------
+\section{What the algorithm is not}
+% ----------------------------------------------------------------
+
+\begin{itemize}
+  \item It is \textbf{not} a standard Lanczos or Arnoldi iteration
+        for $H = H_1 + H_2$, because the basis is generated solely
+        from $H_1$.  It is a \emph{Galerkin / Rayleigh--Ritz projection}
+        of the full $H$ onto $\mathcal{K}_m(H_1, v_0)$.
+  \item Convergence of the projected eigenvalues (the
+        $\delta < \texttt{tol}$ test) means the small matrix has
+        stabilized, \textbf{not} that the Ritz vectors are true
+        eigenvectors of $H$.  No $H_2$-applied residual is available,
+        so a full residual check on $H$ is not possible.
+  \item The method is well-suited to the regime where $H_2$ is small
+        or strongly aligned with $H_1$-Krylov directions.  Large,
+        structurally different $H_2$ contributions can be missed by
+        the subspace.
+\end{itemize}
+
+% ----------------------------------------------------------------
+\section{Cost summary per Arnoldi step $j$}
+% ----------------------------------------------------------------
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+  \toprule
+  Quantity & Count at step $j$ & Cost class \\
+  \midrule
+  $H_1 v_j$ &
+    1 &
+    one-sided $H_1$ action \\
+  $\langle v_i \mid H_1 v_j\rangle,\ \langle v_j \mid H_1 v_i\rangle$ &
+    $2j$ inner products &
+    cheap \\
+  $\langle v_i{+}v_j \mid H_2 \mid v_i{+}v_j\rangle$, $i < j$ &
+    $j$ &
+    one diagonal $H_2$ expectation each \\
+  $\langle v_{j+1} \mid H_2 \mid v_{j+1}\rangle$ (cache) &
+    1 &
+    one diagonal $H_2$ expectation \\
+  Diagonal $\langle v_j \mid H_2 \mid v_j\rangle$ &
+    0 \ (uses cache) &
+    --- \\
+  GS reorthogonalization &
+    $2(j{+}1)$ inner products + projections &
+    cheap \\
+  Eigensolve of $(j{+}1)\times(j{+}1)$ &
+    1 &
+    tiny dense \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+The total number of expensive $H_2$ diagonal evaluations after $m$
+steps is
+\begin{equation}
+  \binom{m}{2} + m \;=\; \tfrac{m(m+1)}{2} \;=\; \mathcal{O}(m^2),
+\end{equation}
+the same scaling as the off-diagonal block we fill --- and with no
+$H_2 v$ ever required.
+
+\end{document}
