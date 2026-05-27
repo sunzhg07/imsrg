@@ -23,6 +23,7 @@
 #include "Operator.hh"
 #include <map>
 #include <array>
+#include <deque>
 #include <armadillo>
 #include <iostream>
 

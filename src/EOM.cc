@@ -1914,9 +1914,9 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
 /// Thin wrapper around GetVSEOM_Overlap_single.
 double EOM::NormSingle(Operator &T1, Operator &T2)
 {
-  Operator T1d = GetVSEOM_ladder_single(T1, 0);
+  Operator T2d = GetVSEOM_ladder_single(T2, -1);
   Operator nop = T1 * 0.0;
-  nop = Commutator::Commutator(T1d, T2);
+  nop = Commutator::Commutator(T1, T2d);
   return nop.ZeroBody / 2.0;
 }
 
@@ -2035,7 +2035,7 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
   arma::mat hall(max_iter, max_iter, arma::fill::zeros);
 
   // normalize initial vector
-  double nn = NormSingle(vi, vi);
+  double nn = GetVSEOM_Overlap_single(vi, vi);
   Operator v0 = vi / std::sqrt(nn);
   lanczos_vector.push_back(v0);
 
@@ -2051,7 +2051,7 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
     j_final = j;
     Operator w = HtcSingle(Hs, lanczos_vector[j]);
 
-    double ai = NormSingle(w, lanczos_vector[j]);
+    double ai = GetVSEOM_Overlap_single(w, lanczos_vector[j]);
     hall(j, j) = ai;
 
     if (j > 0)
@@ -2070,12 +2070,12 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
     {
       for (int i = 0; i <= j; ++i)
       {
-        double cij = NormSingle(w, lanczos_vector[i]);
+        double cij = GetVSEOM_Overlap_single(w, lanczos_vector[i]);
         w = w - cij * lanczos_vector[i];
       }
     }
 
-    double nm = NormSingle(w, w);
+    double nm = GetVSEOM_Overlap_single(w, w);
     bj = std::sqrt(nm);
 
     if (j < max_iter - 1)
@@ -3227,7 +3227,8 @@ EOM::RunResult EOM::RunSR(int max_iter, int state_want)
   Operator h_rand = unt.RandomOp(*modelspace, J2, itz,parity, 2, 1);
   Operator chi    = GetVSEOM_ladder_single(h_rand, 1); 
 
-  double nm = NormSingle(chi, chi);
+  //double nm = NormSingle(chi, chi);
+  double nm = GetVSEOM_Overlap_single(chi, chi);
   if (nm <= 0.0)
     throw std::runtime_error("EOM::RunSR: initial vector has zero norm");
   chi = chi / std::sqrt(nm);

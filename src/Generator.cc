@@ -45,16 +45,26 @@ void Generator::SetDenominatorPartitioning(std::string dp) {
 
 void Generator::Update(Operator &H_s, Operator &Eta_s) {
   Eta_s.Erase();
-  AddToEta(H_s, Eta_s);
+  AddToEta(H_s, H_s, Eta_s);
   if (use_isospin_averaging) {
     // Eta_s = Eta_s.DoIsospinAveraging();
     Eta_s = Eta_s.UndoNormalOrdering().DoIsospinAveraging().DoNormalOrdering();
   }
 }
 
-void Generator::AddToEta(Operator &H_s, Operator &Eta_s) {
+void Generator::UpdateGeneral(Operator &H_s, Operator &H_denom_in,
+                              Operator &Eta_s) {
+  Eta_s.Erase();
+  AddToEta(H_s, H_denom_in, Eta_s);
+  if (use_isospin_averaging) {
+    Eta_s = Eta_s.UndoNormalOrdering().DoIsospinAveraging().DoNormalOrdering();
+  }
+}
+
+void Generator::AddToEta(Operator &H_s, Operator &H_denom_in, Operator &Eta_s) {
   double start_time = omp_get_wtime();
   H = &H_s;
+  H_denom = &H_denom_in;
   Eta = &Eta_s;
   // modelspace = H->GetModelSpace();
 
