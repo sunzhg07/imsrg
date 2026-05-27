@@ -1623,7 +1623,15 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
 }
 
 double EOM::GetVSEOM_Overlap_single(Operator &H1, Operator &H2) {
-  double ovlp = 0;
+  if (!H1.IsReduced() && !H2.IsReduced()) {
+    // scaler-scaler, we use commutator to compute the overlap, which is more efficient and numerically stable than direct summation
+    Operator H2d = GetVSEOM_ladder_single(H2, -1);
+    Operator nop = H1 * 0.0;
+    nop = Commutator::Commutator(H1, H2d);
+    return nop.ZeroBody / 2.0;
+  }
+  double ovlp = 0.;
+  // tensor-tensor, we compute the overlap by direct summation of matrix elements,since we dont have tensor-tensor commutator implemented yet. We apply the same phase factor as in GetVSEOM_ladder_single to ensure the consistency.
   int hZ = H2.IsHermitian() ? +1 : -1;
   hZ=1.;
   // One-body contribution: ph and vq blocks
