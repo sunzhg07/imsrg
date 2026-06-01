@@ -1,6 +1,7 @@
 #include "IMSRGSolver.hh"
 #include "Commutator.hh"
 #include "BCH.hh"
+#include "TwoBodyME.hh"
 #include "Operator.hh"
 #include <algorithm>
 #include <cmath>
@@ -1311,3 +1312,38 @@ void IMSRGSolver::WriteFlowStatusHeader(std::ostream &f)
     f << std::endl;
   }
 }
+
+
+Operator IMSRGSolver::GetH_sDiagonal(Operator& H)
+  {
+    Operator H_d = H*1.;
+    H_d.Erase();
+
+    H_d.ZeroBody = H.ZeroBody;
+
+    for (auto i : H.modelspace->all_orbits)
+    {
+        H_d.OneBody(i, i) = H.OneBody(i, i);
+    }
+    
+    int num_channels = H.modelspace->GetNumberTwoBodyChannels();
+    for (int ch = 0; ch < num_channels; ++ch)
+    {
+        TwoBodyChannel &tbc = H.modelspace->GetTwoBodyChannel(ch);
+        int num_kets = tbc.GetNumberKets(); 
+
+        for (int idx = 0; idx < num_kets; ++idx)
+        { 
+            size_t global_ket_idx = tbc.GetKetIndex(idx); 
+            Ket &my_ket = H.modelspace->GetKet(global_ket_idx); 
+            int a = static_cast<int>(my_ket.p);
+            int b = static_cast<int>(my_ket.q);
+
+         
+            double tbme = H.TwoBody.GetTBME(ch, ch, a, b, a, b); 
+            H_d.TwoBody.SetTBME(ch, ch, idx, idx, tbme);
+        }
+    }
+
+    return H_d; 
+} 

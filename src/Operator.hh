@@ -131,6 +131,7 @@ void Set_OneBody_antiHermitian();
   void SetNumberLegs( int l);
   void SetQSpaceOrbit( index_t q ) {Q_space_orbit = q;};
   index_t GetQSpaceOrbit( ) const {return Q_space_orbit;};
+  static Operator GetH_sDiagonal(Operator& Hs);
 
   void MakeReduced();
   void MakeNotReduced();

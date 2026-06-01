@@ -1819,6 +1819,47 @@ bool UnitTest::Mscheme_Test_comm110ss(const Operator &X, const Operator &Y)
   return passed;
 }
 
+
+bool UnitTest::Mscheme_Test_comm110tt(const Operator &X, const Operator &Y)
+{
+
+  Operator Z_J(Y);
+  Z_J.Erase();
+
+  ReferenceImplementations::comm110tt(X, Y, Z_J);
+
+  double Z0_m = 0;
+  for (auto a : X.modelspace->all_orbits)
+  {
+    Orbit &oa = X.modelspace->GetOrbit(a);
+    for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+    {
+      double na = oa.occ;
+      for (auto b : X.modelspace->all_orbits)
+      {
+        Orbit &ob = X.modelspace->GetOrbit(b);
+        double nb = ob.occ;
+        for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
+        {
+          double Xab = GetMschemeMatrixElement_1b(X, a, ma, b, mb);
+          double Xba = GetMschemeMatrixElement_1b(X, b, mb, a, ma);
+          double Yba = GetMschemeMatrixElement_1b(Y, b, mb, a, ma);
+          double Yab = GetMschemeMatrixElement_1b(Y, a, ma, b, mb);
+
+          Z0_m += na * (1 - nb) * (Xab * Yba - Yab * Xba);
+        }
+      }
+    }
+  }
+
+  double summed_error = Z0_m - Z_J.ZeroBody;
+  bool passed = std::abs(summed_error) < 1e-6;
+  std::string passfail = passed ? "PASS " : "FAIL";
+  std::cout << "   " << __func__ << "  sum_m, sum_J = " << Z0_m << " " << Z_J.ZeroBody
+            << "    summed error = " << summed_error << "  => " << passfail << std::endl;
+  return passed;
+}
+
 /// M-Scheme Formula:
 ///
 /// Z0 = 1/4 sum_abcd nanb (1-nc)(1-nd) ( Xabcd * Ycdab - Yabcd * Xcdab )
@@ -1882,6 +1923,68 @@ bool UnitTest::Mscheme_Test_comm220ss(const Operator &X, const Operator &Y)
             << "    summed error = " << summed_error << "  => " << passfail << std::endl;
   return passed;
 }
+
+
+bool UnitTest::Mscheme_Test_comm220tt(const Operator &X, const Operator &Y)
+{
+  Operator Z_J(Y);
+  Z_J.Erase();
+
+  ReferenceImplementations::comm220tt(X, Y, Z_J);
+
+  double Z0_m = 0;
+  for (auto a : X.modelspace->all_orbits)
+  {
+    Orbit &oa = X.modelspace->GetOrbit(a);
+    double na = oa.occ;
+    for (auto b : X.modelspace->all_orbits)
+    {
+      Orbit &ob = X.modelspace->GetOrbit(b);
+      double nb = ob.occ;
+      for (auto c : X.modelspace->all_orbits)
+      {
+        Orbit &oc = X.modelspace->GetOrbit(c);
+        double nc = oc.occ;
+        for (auto d : X.modelspace->all_orbits)
+        {
+          Orbit &od = X.modelspace->GetOrbit(d);
+          if ((oa.l + ob.l + oc.l + od.l) % 2 > 0)
+            continue;
+          if ((oa.tz2 + ob.tz2) != (oc.tz2 + od.tz2))
+            continue;
+          double nd = od.occ;
+
+          for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+          {
+            for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
+            {
+              for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
+              {
+                int md = ma + mb - mc;
+
+                double Xabcd = GetMschemeMatrixElement_2b(X, a, ma, b, mb, c, mc, d, md);
+                double Yabcd = GetMschemeMatrixElement_2b(Y, a, ma, b, mb, c, mc, d, md);
+                double Xcdab = GetMschemeMatrixElement_2b(X, c, mc, d, md, a, ma, b, mb);
+                double Ycdab = GetMschemeMatrixElement_2b(Y, c, mc, d, md, a, ma, b, mb);
+
+                Z0_m += (1. / 4) * na * nb * (1.0 - nc) * (1.0 - nd) * (Xabcd * Ycdab - Yabcd * Xcdab);
+
+              } // for mc
+            } // for mb
+          } // for ma
+        } // for d
+      } // for c
+    } // for b
+  } // for a
+
+  double summed_error = Z0_m - Z_J.ZeroBody;
+  bool passed = std::abs(summed_error) < 1e-6;
+  std::string passfail = passed ? "PASS " : "FAIL";
+  std::cout << "   " << __func__ << "  sum_m, sum_J = " << Z0_m << " " << Z_J.ZeroBody
+            << "    summed error = " << summed_error << "  => " << passfail << std::endl;
+  return passed;
+}
+
 
 /// M-Scheme Formula:
 ///

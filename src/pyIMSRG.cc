@@ -283,7 +283,10 @@ PYBIND11_MODULE(pyIMSRG, m) {
           .def("SetModelSpace", &Operator::SetModelSpace)
           .def("GetModelSpace", &Operator::GetModelSpace,
                py::return_value_policy::reference)
-          .def("Truncate", &Operator::Truncate)
+          
+	  .def_static("GetH_sDiagonal", &Operator::GetH_sDiagonal)
+	  
+	  .def("Truncate", &Operator::Truncate)
           .def("DoIsospinAveraging", &Operator::DoIsospinAveraging)
           .def("Norm", &Operator::Norm)
           .def("OneBodyNorm", &Operator::OneBodyNorm)
@@ -778,6 +781,9 @@ PYBIND11_MODULE(pyIMSRG, m) {
       //      .def("GetH_s",&IMSRGSolver::GetH_s,return_value_policy<reference_existing_object>())
       .def("GetH_s", &IMSRGSolver::GetH_s)
       .def("SetH_s", &IMSRGSolver::SetH_s)
+//      .def("GetH_sDiagonal", &IMSRGSolver::GetH_sDiagonal)
+      .def("GetH_sDiagonal",
+           [](IMSRGSolver &self, Operator &H) { return self.GetH_sDiagonal(H); })
       .def("GetS", &IMSRGSolver::GetS)
       .def("SetMagnusAdaptive", &IMSRGSolver::SetMagnusAdaptive)
       .def("SetReadWrite", &IMSRGSolver::SetReadWrite)
@@ -1035,8 +1041,12 @@ PYBIND11_MODULE(pyIMSRG, m) {
       "ReferenceImplementations", "ReferenceImplementations namespace");
   ReferenceImplementations.def("comm110ss",
                                &ReferenceImplementations::comm110ss);
+  ReferenceImplementations.def("comm110tt",
+                               &ReferenceImplementations::comm110tt);
   ReferenceImplementations.def("comm220ss",
                                &ReferenceImplementations::comm220ss);
+  ReferenceImplementations.def("comm220tt",
+                               &ReferenceImplementations::comm220tt);
   ReferenceImplementations.def("comm111ss",
                                &ReferenceImplementations::comm111ss);
   ReferenceImplementations.def("comm121ss",
@@ -1424,7 +1434,9 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("Test_comm333_pph_hhpss", &UnitTest::Test_comm333_pph_hhpss)
 
       .def("Mscheme_Test_comm110ss", &UnitTest::Mscheme_Test_comm110ss)
+      .def("Mscheme_Test_comm110tt", &UnitTest::Mscheme_Test_comm110tt)
       .def("Mscheme_Test_comm220ss", &UnitTest::Mscheme_Test_comm220ss)
+      .def("Mscheme_Test_comm220tt", &UnitTest::Mscheme_Test_comm220tt)
       .def("Mscheme_Test_comm111ss", &UnitTest::Mscheme_Test_comm111ss)
       .def("Mscheme_Test_comm121ss", &UnitTest::Mscheme_Test_comm121ss)
       .def("Mscheme_Test_comm221ss", &UnitTest::Mscheme_Test_comm221ss)

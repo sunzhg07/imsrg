@@ -23,9 +23,7 @@
 
 #include "Operator.hh"
 
-namespace ReferenceImplementations
-{
-
+namespace ReferenceImplementations {
   void comm110ss(const Operator &X, const Operator &Y, Operator &Z);
   void comm220ss(const Operator &X, const Operator &Y, Operator &Z);
   void comm111ss(const Operator &X, const Operator &Y, Operator &Z);
@@ -76,6 +74,10 @@ namespace ReferenceImplementations
   void comm233_phst(const Operator &X, const Operator &Y, Operator &Z);         // PASS the unit test (J and T)
   void comm333_ppp_hhhst(const Operator &X, const Operator &Y, Operator &Z);    // PASS the unit test (J and T)
   void comm333_pph_hhpst(const Operator &X, const Operator &Y, Operator &Z);    // PASS the unit test (J and T)
+
+  // tensor-tensor commutators
+  void comm110tt(const Operator &X, const Operator &Y, Operator &Z);
+  void comm220tt(const Operator &X, const Operator &Y, Operator &Z);
 
 
   /// Two-nested-commutator expressions Z = [X,[X,Y]_3]  where X and Y are 2-body.

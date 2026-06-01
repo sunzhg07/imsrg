@@ -1832,6 +1832,39 @@ void Operator::AntiSymmetrize()
   TwoBody.AntiSymmetrize();
 }
 
+Operator Operator::GetH_sDiagonal(Operator& Hs)
+  {
+    Operator H_d = Hs;
+    H_d.Erase();
+
+    H_d.ZeroBody = Hs.ZeroBody;
+
+    for (auto i : Hs.modelspace->all_orbits)
+    {
+        H_d.OneBody(i, i) = Hs.OneBody(i, i);
+    }
+    
+    int num_channels = Hs.modelspace->GetNumberTwoBodyChannels();
+    for (int ch = 0; ch < num_channels; ++ch)
+    {
+        TwoBodyChannel &tbc = Hs.modelspace->GetTwoBodyChannel(ch);
+        int num_kets = tbc.GetNumberKets(); 
+
+        for (int idx = 0; idx < num_kets; ++idx)
+        { 
+            size_t global_ket_idx = tbc.GetKetIndex(idx); 
+            Ket &my_ket = Hs.modelspace->GetKet(global_ket_idx); 
+            int a = static_cast<int>(my_ket.p);
+            int b = static_cast<int>(my_ket.q);
+
+         
+            double tbme = Hs.TwoBody.GetTBME(ch, ch, a, b, a, b); 
+            H_d.TwoBody.SetTBME(ch, ch, idx, idx, tbme);
+        }
+    }
+
+    return H_d; 
+}
 /*
 // Modified version of GetMP2_Energy. Determines each orbital's impact on the total MP2 energy
 // (i.e., by how much would EMP2 change if this single orbital were removed)

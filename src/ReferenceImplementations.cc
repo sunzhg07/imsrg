@@ -38,6 +38,34 @@ namespace ReferenceImplementations
     Z.profiler.timer[ "ReferenceImplementations::" + std::string(__func__)] += omp_get_wtime() - t_start;
   }
 
+  
+  //[X1,Y1](0) = -sum_ab((n_a - n_b) * (-)^(j_a + j_b) * 1/(2lambda+1) * X_ab^JY_ba^J 
+  void comm110tt(const Operator &X, const Operator &Y, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    auto &X1 = X.OneBody;
+    auto &Y1 = Y.OneBody;
+    double z0 = 0;
+
+    for (size_t a : Z.modelspace->all_orbits)
+    {
+      Orbit &oa = Z.modelspace->GetOrbit(a);
+
+      for (size_t b : Z.modelspace->all_orbits)
+      {
+        Orbit &ob = Z.modelspace->GetOrbit(b);
+        double phase = (oa.j2 + ob.j2 +  2)/2;
+        double pha = std::pow(-1, phase);
+        double hat_lambda_inv = 1.0 / (2.0 * X.GetJRank() + 1.0);
+        z0 +=  (oa.occ - ob.occ) * pha *  hat_lambda_inv * X1(a,b)*Y1(b,a);
+      }
+
+    }
+    Z.ZeroBody += z0;
+    Z.profiler.timer[ "ReferenceImplementations::" + std::string(__func__)] += omp_get_wtime() - t_start;
+  }
+
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///
   /// Expression : Z0 = 1/4 sum_abcd sum_J (2J+1) ( n_a n_b nbar_c nbar_d ) ( x_abcd y_cdab - y_abcd x_cdab )
@@ -81,7 +109,61 @@ namespace ReferenceImplementations
     Z.ZeroBody += z0;
     Z.profiler.timer[ "ReferenceImplementations::" + std::string(__func__)] += omp_get_wtime() - t_start;
   }
+  
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///
+  /// Expression : Z0 = 1/4 sum_abcd sum_J (2lambda+1) (-1)^(J0 + J1 + lambda) ( n_a n_b nbar_c nbar_d ) ( x_abcd y_cdab - y_abcd x_cdab )
+  ///
+  ///
 
+  void comm220tt(const Operator &X, const Operator &Y, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    auto &X2 = X.TwoBody;
+    auto &Y2 = Y.TwoBody;
+    double z0 = 0;
+    for (size_t a : Z.modelspace->all_orbits)
+    {
+      Orbit &oa = Z.modelspace->GetOrbit(a);
+      for (size_t b : Z.modelspace->all_orbits)
+      {
+        Orbit &ob = Z.modelspace->GetOrbit(b);
+
+        for (size_t c : Z.modelspace->all_orbits)
+        {
+          Orbit &oc = Z.modelspace->GetOrbit(c);
+          for (size_t d : Z.modelspace->all_orbits)
+          {
+            Orbit &od = Z.modelspace->GetOrbit(d);
+
+	    //int Jmin = std::max(std::abs(oa.j2 - ob.j2), std::abs(oc.j2 - od.j2)) / 2;
+            //int Jmax = std::min(oa.j2 + ob.j2, oc.j2 + od.j2) / 2;
+            //for (int J = Jmin; J <= Jmax; J++)
+            int J0_min = (oa.j2 - ob.j2)/2;
+	    int J0_max = (oa.j2 + ob.j2)/2;
+	    int J1_min = (oc.j2 - od.j2)/2;
+            int J1_max = (oc.j2 + od.j2)/2;
+	    for(int J0 = J0_min; J0 <= J0_max; J0++)
+	    {
+	      for(int J1 = J1_min; J1 <= J1_max; J1++)
+	        {
+                double phase = (J0 + J1  + 2* X.GetJRank());
+                double pha = std::pow(-1, phase);
+	        double hat_lambda_inv = 1.0 / (2.0 * X.GetJRank() + 1.0);
+	        double xabcd = X2.GetTBME_J(J0, J1, a, b, c, d);
+                double xcdab = X2.GetTBME_J(J1, J0, c, d, a, b);
+                double yabcd = Y2.GetTBME_J(J0, J1, a, b, c, d);
+                double ycdab = Y2.GetTBME_J(J1, J0, c, d, a, b);
+	        z0 += 1. / 4. *  hat_lambda_inv * pha  * (oa.occ * ob.occ * (1 - oc.occ) * (1 - od.occ)) * (xabcd * ycdab - yabcd * xcdab);
+		} 
+	    }
+          }
+        }
+      }
+      }
+    Z.ZeroBody += z0;
+    Z.profiler.timer[ "ReferenceImplementations::" + std::string(__func__)] += omp_get_wtime() - t_start;
+  }  
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///
   /// Expression:    Zij = sum_a  (Xia Yaj - Yia Xaj)
