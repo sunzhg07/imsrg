@@ -284,8 +284,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
           .def("GetModelSpace", &Operator::GetModelSpace,
                py::return_value_policy::reference)
           
-	  .def_static("GetH_sDiagonal", &Operator::GetH_sDiagonal)
-	  
+	  .def("GetH_sDiagonal", &Operator::GetH_sDiagonal)
+	 
 	  .def("Truncate", &Operator::Truncate)
           .def("DoIsospinAveraging", &Operator::DoIsospinAveraging)
           .def("Norm", &Operator::Norm)
@@ -784,6 +784,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
 //      .def("GetH_sDiagonal", &IMSRGSolver::GetH_sDiagonal)
       .def("GetH_sDiagonal",
            [](IMSRGSolver &self, Operator &H) { return self.GetH_sDiagonal(H); })
+ 
+      .def("GetA", [](IMSRGSolver &self, Operator &O, Operator &H, Operator &Om) { return self.GetA(O,H,Om); })
       .def("GetS", &IMSRGSolver::GetS)
       .def("SetMagnusAdaptive", &IMSRGSolver::SetMagnusAdaptive)
       .def("SetReadWrite", &IMSRGSolver::SetReadWrite)
@@ -834,7 +836,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("Transform", [](IMSRGSolverPV &self, Operator &op, Operator &opPV) {
         return self.Transform(op, opPV);
       });
-
+      
   py::class_<Generator>(m, "Generator")
       .def(py::init<>())
       .def("SetType", &Generator::SetType, py::arg("gen_type"))
@@ -844,7 +846,11 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("tf"))
       .def("Update", &Generator::Update, py::arg("H"), py::arg("Eta"))
       .def("GetHod_SingleRef", &Generator::GetHod_SingleRef, py::arg("H"))
-      .def("GetHod", &Generator::GetHod, py::arg("H"));
+      .def("GetHod", &Generator::GetHod, py::arg("H"))
+     
+      .def("GetEta", &Generator::GetEta, py::return_value_policy::reference_internal)
+      .def("UpdateGeneral", [](Generator &self, Operator &A, Operator &H, Operator &Om) { return self.UpdateGeneral(A,H,Om);});
+
 
   py::class_<GeneratorPV, Generator>(m, "GeneratorPV")
       .def(py::init<>())

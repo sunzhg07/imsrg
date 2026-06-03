@@ -134,6 +134,8 @@ class IMSRGSolver
   Operator& GetEta(){return Eta;};
   Generator& GetGenerator(){return generator;};
   Operator GetH_sDiagonal(Operator& H);
+  Operator GetA(Operator& O, Operator& H, Operator& Om);
+
 
   void UpdateOmega();
   void UpdateH();

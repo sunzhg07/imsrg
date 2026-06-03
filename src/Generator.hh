@@ -74,7 +74,7 @@ class Generator
   Operator GetHod(Operator& H);
   Operator GetHod_CC(Operator& H, std::string lr);
 
-
+  Operator& GetEta() {return *Eta;}
 
   void ConstructGenerator_SingleRef(std::function<double (double,double)>& etafunc );
   void ConstructGenerator_SingleRef_3body(std::function<double (double,double)>& etafunc );

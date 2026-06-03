@@ -1915,7 +1915,6 @@ bool UnitTest::Mscheme_Test_comm220ss(const Operator &X, const Operator &Y)
       } // for c
     } // for b
   } // for a
-
   double summed_error = Z0_m - Z_J.ZeroBody;
   bool passed = std::abs(summed_error) < 1e-6;
   std::string passfail = passed ? "PASS " : "FAIL";
@@ -1976,7 +1975,7 @@ bool UnitTest::Mscheme_Test_comm220tt(const Operator &X, const Operator &Y)
       } // for c
     } // for b
   } // for a
-
+  Z_J.MakeReduced();
   double summed_error = Z0_m - Z_J.ZeroBody;
   bool passed = std::abs(summed_error) < 1e-6;
   std::string passfail = passed ? "PASS " : "FAIL";

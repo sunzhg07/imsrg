@@ -54,10 +54,9 @@ namespace ReferenceImplementations
       for (size_t b : Z.modelspace->all_orbits)
       {
         Orbit &ob = Z.modelspace->GetOrbit(b);
-        double phase = (oa.j2 + ob.j2 +  2)/2;
-        double pha = std::pow(-1, phase);
+        double phase = AngMom::phase((oa.j2 - ob.j2)/2);
         double hat_lambda_inv = 1.0 / (2.0 * X.GetJRank() + 1.0);
-        z0 +=  (oa.occ - ob.occ) * pha *  hat_lambda_inv * X1(a,b)*Y1(b,a);
+        z0 +=  (oa.occ -  ob.occ) * phase *  hat_lambda_inv * X1(a,b)*Y1(b,a);
       }
 
     }
@@ -139,22 +138,23 @@ namespace ReferenceImplementations
 	    //int Jmin = std::max(std::abs(oa.j2 - ob.j2), std::abs(oc.j2 - od.j2)) / 2;
             //int Jmax = std::min(oa.j2 + ob.j2, oc.j2 + od.j2) / 2;
             //for (int J = Jmin; J <= Jmax; J++)
-            int J0_min = (oa.j2 - ob.j2)/2;
+            int J0_min = std::abs(oa.j2 - ob.j2)/2;
 	    int J0_max = (oa.j2 + ob.j2)/2;
-	    int J1_min = (oc.j2 - od.j2)/2;
+	    int J1_min = std::abs(oc.j2 - od.j2)/2;
             int J1_max = (oc.j2 + od.j2)/2;
 	    for(int J0 = J0_min; J0 <= J0_max; J0++)
 	    {
 	      for(int J1 = J1_min; J1 <= J1_max; J1++)
 	        {
-                double phase = (J0 + J1  + 2* X.GetJRank());
-                double pha = std::pow(-1, phase);
-	        double hat_lambda_inv = 1.0 / (2.0 * X.GetJRank() + 1.0);
-	        double xabcd = X2.GetTBME_J(J0, J1, a, b, c, d);
-                double xcdab = X2.GetTBME_J(J1, J0, c, d, a, b);
-                double yabcd = Y2.GetTBME_J(J0, J1, a, b, c, d);
-                double ycdab = Y2.GetTBME_J(J1, J0, c, d, a, b);
-	        z0 += 1. / 4. *  hat_lambda_inv * pha  * (oa.occ * ob.occ * (1 - oc.occ) * (1 - od.occ)) * (xabcd * ycdab - yabcd * xcdab);
+		  //if (std::abs(J0 - J1) > X.GetJRank() || (J0 + J1) < X.GetJRank()) continue;
+                  double phase = AngMom::phase((J0 + J1));
+	          double hat_lambda_inv = 1.0 / (2.0 * X.GetJRank() + 1.0);
+	          double xabcd = X2.GetTBME_J(J0, J1, a, b, c, d);
+                  double xcdab = X2.GetTBME_J(J1, J0, c, d, a, b);
+                  double yabcd = Y2.GetTBME_J(J0, J1, a, b, c, d);
+                  double ycdab = Y2.GetTBME_J(J1, J0, c, d, a, b);
+	          z0 += 1. / 4. *  hat_lambda_inv * phase  * (oa.occ * ob.occ * (1 - oc.occ) * (1 - od.occ)) * (xabcd * ycdab - yabcd * xcdab);
+		  
 		} 
 	    }
           }

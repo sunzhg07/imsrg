@@ -3,6 +3,7 @@
 #include "BCH.hh"
 #include "TwoBodyME.hh"
 #include "Operator.hh"
+#include "ReferenceImplementations.hh"
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
@@ -1346,4 +1347,38 @@ Operator IMSRGSolver::GetH_sDiagonal(Operator& H)
     }
 
     return H_d; 
-} 
+}
+
+Operator IMSRGSolver::GetA(Operator& O, Operator& H, Operator& Om)
+  {
+    Operator Z_1(H);
+    Operator Z_2(H);
+    Z_1.Erase();
+    Z_2.Erase();
+    
+    ReferenceImplementations::comm110tt(Om, H, Z_1);
+    ReferenceImplementations::comm220tt(Om, H, Z_2);
+    
+    Operator Z = Z_1 + Z_2;
+
+    Operator A = Om + Z.ZeroBody;
+    return A;
+  }
+
+Operator IMSRGSolver::ComputeForEta(
+  {
+    Gen = imsrgsolver.generator
+A = imsrgsolver.GetA(E1T, H_od, E1T)
+#A.PrintOneBody()
+
+E1T.PrintOneBody()
+print("\n")
+Eta_in = Gen.GetEta()
+Gen.UpdateGeneral(A, Hs, E1T)
+Eta_1up = Gen.GetEta()
+Eta_1up.PrintOneBody()
+print("\n")
+Gen.UpdateGeneral(A,Hs,Eta_1up)
+Eta_2up = Gen.GetEta()
+Eta_2up.PrintOneBody()
+
