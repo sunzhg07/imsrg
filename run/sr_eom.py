@@ -23,7 +23,7 @@ smax_core = 50  # limit of integration in flow parameter s for first stage of de
 
 #### Example format of how to read input interaction matrix elements from file (these are not included with the code)
 # f2b='input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz'
-f2b = "/Users/wolf/work/srg_io/input/chi2b_srg0625_eMax08_hwHO020.me2j.gz"
+f2b = "../../input/chi2b_srg0625_eMax08_hwHO020.me2j.gz"
 f2e1, f2e2, f2l = 4, 8, 4
 f3b = "none"
 f3e1, f3e2, f3e3 = 14, 28, 18
@@ -100,7 +100,7 @@ imsrgsolver.Solve()
 Hs = imsrgsolver.GetH_s()
 
 # ---------------------------------------------------------------
-rank_j, parity, rank_Tz = 0, 0, 0
+rank_j, parity, rank_Tz = 2, 1, 0
 
 
 eom = EOM(Hs, rank_j, parity, rank_Tz)
