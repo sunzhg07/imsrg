@@ -100,7 +100,7 @@ imsrgsolver.Solve()
 Hs = imsrgsolver.GetH_s()
 
 # ---------------------------------------------------------------
-rank_j, parity, rank_Tz = 0, 0, 0
+rank_j, parity, rank_Tz = 2, 0, 0
 
 
 eom = EOM(Hs, rank_j, parity, rank_Tz)

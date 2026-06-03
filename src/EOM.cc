@@ -2035,7 +2035,7 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
   arma::mat hall(max_iter, max_iter, arma::fill::zeros);
 
   // normalize initial vector
-  double nn = GetVSEOM_Overlap_single(vi, vi);
+  double nn = NormSingle(vi, vi);
   Operator v0 = vi / std::sqrt(nn);
   lanczos_vector.push_back(v0);
 
@@ -2051,7 +2051,7 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
     j_final = j;
     Operator w = HtcSingle(Hs, lanczos_vector[j]);
 
-    double ai = GetVSEOM_Overlap_single(w, lanczos_vector[j]);
+    double ai = NormSingle(w, lanczos_vector[j]);
     hall(j, j) = ai;
 
     if (j > 0)
@@ -2070,12 +2070,12 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
     {
       for (int i = 0; i <= j; ++i)
       {
-        double cij = GetVSEOM_Overlap_single(w, lanczos_vector[i]);
+        double cij = NormSingle(w, lanczos_vector[i]);
         w = w - cij * lanczos_vector[i];
       }
     }
 
-    double nm = GetVSEOM_Overlap_single(w, w);
+    double nm = NormSingle(w, w);
     bj = std::sqrt(nm);
 
     if (j < max_iter - 1)
@@ -3227,8 +3227,7 @@ EOM::RunResult EOM::RunSR(int max_iter, int state_want)
   Operator h_rand = unt.RandomOp(*modelspace, J2, itz,parity, 2, 1);
   Operator chi    = GetVSEOM_ladder_single(h_rand, 1); 
 
-  //double nm = NormSingle(chi, chi);
-  double nm = GetVSEOM_Overlap_single(chi, chi);
+  double nm = NormSingle(chi, chi);
   if (nm <= 0.0)
     throw std::runtime_error("EOM::RunSR: initial vector has zero norm");
   chi = chi / std::sqrt(nm);
