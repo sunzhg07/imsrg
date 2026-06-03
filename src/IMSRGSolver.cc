@@ -1365,20 +1365,21 @@ Operator IMSRGSolver::GetA(Operator& O, Operator& H, Operator& Om)
     return A;
   }
 
-Operator IMSRGSolver::ComputeForEta(
-  {
-    Gen = imsrgsolver.generator
-A = imsrgsolver.GetA(E1T, H_od, E1T)
-#A.PrintOneBody()
-
-E1T.PrintOneBody()
-print("\n")
-Eta_in = Gen.GetEta()
-Gen.UpdateGeneral(A, Hs, E1T)
-Eta_1up = Gen.GetEta()
-Eta_1up.PrintOneBody()
-print("\n")
-Gen.UpdateGeneral(A,Hs,Eta_1up)
-Eta_2up = Gen.GetEta()
-Eta_2up.PrintOneBody()
+// TODO: ComputeForEta implementation is incomplete (contains Python code)
+// Operator IMSRGSolver::ComputeForEta(
+// {
+//   Gen = imsrgsolver.generator
+// A = imsrgsolver.GetA(E1T, H_od, E1T)
+// #A.PrintOneBody()
+// 
+// E1T.PrintOneBody()
+// print("\n")
+// Eta_in = Gen.GetEta()
+// Gen.UpdateGeneral(A, Hs, E1T)
+// Eta_1up = Gen.GetEta()
+// Eta_1up.PrintOneBody()
+// print("\n")
+// Gen.UpdateGeneral(A,Hs,Eta_1up)
+// Eta_2up = Gen.GetEta()
+// Eta_2up.PrintOneBody()
 

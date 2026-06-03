@@ -959,8 +959,8 @@ double EOM::Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
   Orbit &of = modelspace->GetOrbit(f);
   size_t jmin = std::max(abs(oa.j2 - ob.j2) / 2, abs(oc.j2 - od.j2) / 2);
   size_t jmax = std::min(abs(oa.j2 + ob.j2) / 2, abs(oc.j2 + od.j2) / 2);
-  size_t p_bra = (oa.l + ob.l, 2) % 2;
-  size_t p_ket = (oc.l + od.l, 2) % 2;
+  size_t p_bra = (oa.l + ob.l) % 2;
+  size_t p_ket = (oc.l + od.l) % 2;
   if (p_bra != p_ket)
     return (val);
   int itz_bra = (oa.tz2 + ob.tz2) / 2;
@@ -1022,9 +1022,9 @@ void EOM::ConstructProjectMatrix() {
   Prj_kernel.zeros();
 
   size_t number_channels = modelspace->GetNumberTwoBodyChannels();
-  int nconf_pphh_ch[number_channels] = {0};
-  int nconf_pphv_ch[number_channels] = {0};
-  int nconf_ppvv_ch[number_channels] = {0};
+  std::vector<int> nconf_pphh_ch(number_channels, 0);
+  std::vector<int> nconf_pphv_ch(number_channels, 0);
+  std::vector<int> nconf_ppvv_ch(number_channels, 0);
 
   for (index_t i = ppvv_start; i <= ppvv_end; i++) {
     index_t ich = eom_confs.at(i)[2];

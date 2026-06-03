@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.18)
-cmake_policy(SET CMP0167 NEW)
+if(POLICY CMP0167)
+  cmake_policy(SET CMP0167 NEW)
+endif()
 set(INSTDIR $ENV{HOME})
 set(BLA_VENDOR OpenBLAS)
 # set(CMAKE_SKIP_INSTALL_RPATH ON)
 # set(CMAKE_SYSTEM_PREFIX_PATH $ENV{EBROOTGENTOO})
-set(CMAKE_CURRENT_BINARY_DIR "../build")
 
 option(IMSRG_BUILD_PYTHON_BINDINGS "Build Python bindings" ON)
 
@@ -30,9 +31,9 @@ if(IMSRGPLUSPLUS_MAIN_PROJECT AND NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-project(imsrg++ VERSION 0.1.0)
+project(imsrg++ VERSION 0.1.0 LANGUAGES CXX)
 
-find_package(OpenMP REQUIRED)
+find_package(OpenMP REQUIRED COMPONENTS CXX)
 find_package(BLAS REQUIRED)
 find_package(GSL REQUIRED)
 find_package(Boost REQUIRED)
@@ -41,7 +42,7 @@ find_package(ZLIB REQUIRED)
 # include_directories(${ARMADILLO_INCLUDE_DIRS})
 
 
-add_compile_options(-frounding-math)
+add_compile_options(-frounding-math -Wno-deprecated-literal-operator)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
@@ -545,6 +546,10 @@ if(IMSRG_BUILD_PYTHON_BINDINGS)
         PRIVATE
         IMSRG
     )
+    # Armadillo static objects are built without hidden visibility on macOS.
+    # Override pybind11's default hidden visibility for the extension module
+    # so weak symbols such as arma::Datum<double>::nan are resolved consistently.
+    target_compile_options(pyIMSRG PRIVATE -fvisibility=default)
     set_target_properties(pyIMSRG PROPERTIES SUFFIX ".so")
     set_target_properties(pyIMSRG PROPERTIES POSITION_INDEPENDENT_CODE ON)
 endif()
