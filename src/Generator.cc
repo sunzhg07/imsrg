@@ -319,7 +319,10 @@ void Generator::ConstructGenerator_SingleRef(
                        tbc_bra.GetKetIndex_qv())) {
         double denominator = Get2bDenominator(ch_bra, ch_ket, ibra, iket);
         ETA2(ibra, iket) = etafunc(H2(ibra, iket), denominator);
-        ETA2(iket, ibra) = -ETA2(ibra, iket); // Eta needs to be antisymmetric
+        // Only diagonal channel blocks are square and store both (ibra,iket)
+        // and (iket,ibra). Off-diagonal blocks are handled by TBME symmetry.
+        if (ch_bra == ch_ket)
+          ETA2(iket, ibra) = -ETA2(ibra, iket);
         Ket &bra = tbc_bra.GetKet(ibra);
         Ket &ket = tbc_ket.GetKet(iket);
         //            std::cout << __func__ << "  line " << __LINE__ << "
