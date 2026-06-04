@@ -144,7 +144,9 @@ double Generator::Get1bDenominator(int i, int j) {
   double ni = H->modelspace->GetOrbit(i).occ;
   double nj = H->modelspace->GetOrbit(j).occ;
 
-  double denominator = H->OneBody(i, i) - H->OneBody(j, j);
+   double denominator = H_denom->OneBody(i, i) - H_denom->OneBody(j, j);
+   //double denominator = H->OneBody(i, i) - H->OneBody(j, j);
+   //std::cout<< denominator<<" "<<denominator1<<" "<< i<<" "<<j<<std::endl;
   if (denominator_partitioning == Epstein_Nesbet) {
     denominator += (ni - nj) * H->TwoBody.GetTBMEmonopole(i, j, i, j);
   } else if (denominator_partitioning == MP_isospin) {
@@ -189,7 +191,8 @@ double Generator::Get2bDenominator(int ch_bra, int ch_ket, int ibra, int iket) {
   int k = ket.p;
   int l = ket.q;
   double denominator =
-      H->OneBody(i, i) + H->OneBody(j, j) - H->OneBody(k, k) - H->OneBody(l, l);
+      H_denom->OneBody(i, i) + H_denom->OneBody(j, j) - H_denom->OneBody(k, k) - H_denom->OneBody(l, l);
+      //H->OneBody(i, i) + H->OneBody(j, j) - H->OneBody(k, k) - H->OneBody(l, l);
 
   if (denominator_partitioning == MP_isospin) {
     // Average the SP energies of protons and neutrons to make the denominator
@@ -297,6 +300,7 @@ void Generator::ConstructGenerator_SingleRef(
       Eta->OneBody(a, i) = -Eta->OneBody(i, a);
     }
   }
+  
   if (only_1b_eta)
     return;
   // Two body piece -- eliminate pp'hh' bits

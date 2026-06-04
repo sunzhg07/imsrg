@@ -4,6 +4,7 @@
 #include "TwoBodyME.hh"
 #include "Operator.hh"
 #include "ReferenceImplementations.hh"
+#include "EOM.hh"
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
@@ -1317,6 +1318,7 @@ void IMSRGSolver::WriteFlowStatusHeader(std::ostream &f)
 
 Operator IMSRGSolver::GetH_sDiagonal(Operator& H)
   {
+    
     Operator H_d = H*1.;
     H_d.Erase();
 
@@ -1343,16 +1345,41 @@ Operator IMSRGSolver::GetH_sDiagonal(Operator& H)
          
             double tbme = H.TwoBody.GetTBME(ch, ch, a, b, a, b); 
             H_d.TwoBody.SetTBME(ch, ch, idx, idx, tbme);
-        }
+        }   
     }
+    //Operator H_od = generator.GetHod(H);
+    //Operator H_d = H - H_od;
+    //Operator H_d = H;
+    //EOM eom_worker(H_d, 0, 1, 0); 
+    //eom_worker.force_decouple(H_d);
 
     return H_d; 
 }
 
 Operator IMSRGSolver::GetA(Operator& O, Operator& H, Operator& Om)
   {
-    Operator Z_1(H);
-    Operator Z_2(H);
+    Operator Z = Commutator::Commutator(Om, H);
+    /*
+    Operator Z_1(Om);
+    Operator Z_2(Om);
+    Operator Z_3(Om);
+    Z_1.Erase();
+    Z_2.Erase();
+    Z_3.Erase();
+
+    ReferenceImplementations::comm111st(Om, H, Z_1);
+    ReferenceImplementations::comm121st(Om, H, Z_2);
+    ReferenceImplementations::comm122st(Om, H, Z_3);
+    */
+    std::cout << "Operator Norm: " << O.Norm() << "Commutator Norm: " << Z.Norm();
+    Operator A = O + Z;
+    return Operator(A);
+  }
+
+Operator IMSRGSolver::CheckWork(Operator& Om, Operator& H)
+  {
+    Operator Z_1 = Operator(*H.modelspace, H.rank_J, H.rank_T, H.parity, H.particle_rank);
+    Operator Z_2 = Operator(*H.modelspace, H.rank_J, H.rank_T, H.parity, H.particle_rank);
     Z_1.Erase();
     Z_2.Erase();
     
@@ -1360,10 +1387,10 @@ Operator IMSRGSolver::GetA(Operator& O, Operator& H, Operator& Om)
     ReferenceImplementations::comm220tt(Om, H, Z_2);
     
     Operator Z = Z_1 + Z_2;
-
-    Operator A = Om + Z.ZeroBody;
-    return A;
+    
+    return Z;
   }
+
 
 // TODO: ComputeForEta implementation is incomplete (contains Python code)
 // Operator IMSRGSolver::ComputeForEta(

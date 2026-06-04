@@ -133,8 +133,14 @@ class IMSRGSolver
   void SetH_s( Operator& Hset){ FlowingOps[0] = Hset;};
   Operator& GetEta(){return Eta;};
   Generator& GetGenerator(){return generator;};
+  
+
   Operator GetH_sDiagonal(Operator& H);
   Operator GetA(Operator& O, Operator& H, Operator& Om);
+  Operator CheckWork(Operator& Om, Operator& H);
+
+
+
 
 
   void UpdateOmega();

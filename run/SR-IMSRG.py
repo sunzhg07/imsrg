@@ -5,15 +5,16 @@ from pyIMSRG import *
 
 
 emax = 3       # maximum number of oscillator quanta in the model space
-ref = 'O22'     # reference used for normal ordering
+ref = 'O16'     # reference used for normal ordering
 val = ref # valence space
 
-core_generator = 'atan'   # definition of generator eta for decoupling the core (could also use 'white')
+core_generator = 'white'   # definition of generator eta for decoupling the core (could also use 'white')
 smax_core = 50       # limit of integration in flow parameter s for first stage of decoupling
 
 f2b='../../input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz'
 f2e1,f2e2,f2l = 14,28,14
-f3b='../../input/NO2B_ThBME_EM7.5_1.8_2.0_IS_hw16from16_ms14_28_18.me3j.gz'
+#f3b='../../input/NO2B_ThBME_EM7.5_1.8_2.0_IS_hw16from16_ms14_28_18.me3j.gz'
+f3b = 'none'
 f3e1,f3e2,f3e3 = 14,28,18
 mode3n='no2b'
 LECs = 'EM7.5_1820'
@@ -69,6 +70,7 @@ imsrgsolver = IMSRGSolver(HNO)
 imsrgsolver.SetMethod('magnus')  # Solve using the Magnus formulation. Could also be 'flow_RK4'
 
 imsrgsolver.SetGenerator(core_generator)
+imsrgsolver.SetDenominatorPartitioning("M")
 imsrgsolver.SetSmax(smax_core)
 
 ### Do the first stage of integration to decouple the core
@@ -83,32 +85,54 @@ Hs = imsrgsolver.GetH_s()
 ## Obtaining E1 operator and performing similarity transofrmation
 E1 = OperatorFromString(ms,'E1')
 E1T = imsrgsolver.Transform(E1)
-E1T.PrintOneBody()
-print("Before confusion")
+print("E1 Info: Parity",E1T.GetParity(),"\tJRank",E1T.GetJRank(),"\tTRank",E1T.GetTRank(),"\tParticleRank",E1T.GetParticleRank())
+#E1T.PrintOneBody()
+
+print("Hs")
+#Hs.PrintOneBody()
+
+
 H_d = imsrgsolver.GetH_sDiagonal(Hs)
+#H_d = Hs
+#EOM.force_decouple(H_d)
 
 H_od = Hs - H_d
-#Hs.PrintOneBody()
+print("H_od is:\n\n")
 #H_od.PrintOneBody()
-#H_d.PrintOneBody()
-#print(H_d.PrintTwoBody())
-Gen = imsrgsolver.generator 
-A = imsrgsolver.GetA(E1T, H_od, H_d) 
-#A.PrintOneBody()
+Gen = imsrgsolver.generator
 
-E1Tin = E1T
-print("\n")
-Eta_in = Gen.GetEta()
-Gen.UpdateGeneral(A, H_d, E1Tin)
-Eta_1up = Gen.GetEta()
-Eta_1up.PrintOneBody()
-print("\n")
-A2 = imsrgsolver.GetA(E1T, H_od, Eta_1up)
-Gen.UpdateGeneral(A2,H_d,E1T)
-Eta_2up = Gen.GetEta()
-Eta_2up.PrintOneBody()
+omega_k = E1T*0.0
+omega_k.SetAntiHermitian()
+print(f"Omega Norm before first update: {omega_k.Norm()}") # Should be 0.0
 
-print("\n")
-print("\n")
-E1T.PrintOneBody()
-Hs.PrintOneBody()
+A = imsrgsolver.GetA(E1T, H_od, omega_k)
+print(f"First A Norm: {A.Norm()}")
+print("JP", A.GetJRank(), A.GetParity(), A.GetParticleRank(), A.GetTRank())
+Gen.UpdateGeneral(E1T, H_d, omega_k)
+print(f"Omega Norm AFTER first update: {omega_k.Norm()}")  # Check this number!
+exit()
+A = imsrgsolver.GetA(E1T, H_od, omega_k)
+Gen.UpdateGeneral(A, H_d, omega_k)
+print(f"Second A Norm: {A.Norm()}")
+print(f"Omega Norm AFTER second update: {omega_k.Norm()}")
+exit()
+
+Niter = 100
+for it in range(Niter):
+   omega_snapshot = Operator(omega_k)
+   
+   A = imsrgsolver.GetA(E1T, H_od, omega_snapshot)
+   print(f"--- Iteration {it+1} ---")
+   print(f"Driving Operator A Norm: {A.Norm():.4e}")
+   
+   Gen.UpdateGeneral(A, H_d, omega_k)
+   print(f"Updated Generator Norm: {omega_k.Norm():.4e}")
+   
+   if omega_k.Norm() > 1e10:
+       print("Explosion detected! Terminating loop to check matrix elements.")
+       break
+
+# This will now contain the cleanly evolved generator matrix elements
+final_eta = Gen.GetEta()
+O = imsrgsolver.CheckWork(final_eta, Hs)
+O.PrintOneBody()
