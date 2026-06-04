@@ -104,7 +104,7 @@ rank_j, parity, rank_Tz = 2, 0, 2
 
 
 eom = EOM(Hs, rank_j, parity, rank_Tz)
-res = eom.Run(100, 6)
+res = eom.Run(60, 6)
 ## ---------------------------------------------------------------
 # print(f'\n  [SR EOM]  ZeroBody(eref) = {res.eref:.6f} MeV')
 # for k, e in enumerate(res.arnoldi.energies):

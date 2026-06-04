@@ -1,0 +1,1251 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\section{Factorized double-commutator
+equations}\label{factorized-double-commutator-equations}
+
+This note extracts the equations implemented in
+\href{../src/ReferenceImplementations.cc}{src/ReferenceImplementations.cc}
+and
+\href{../src/FactorizedDoubleCommutator.cc}{src/FactorizedDoubleCommutator.cc}
+for
+
+\begin{equation}
+Z = [\eta,[\eta,\Gamma]_{3b}]_{1b,2b},
+\end{equation}
+
+where all two-body matrix elements are the non-reduced J-coupled matrix
+elements used by the code.
+
+\subsection{Notation}\label{notation}
+
+\begin{equation}
+\bar n_a \equiv 1-n_a, \qquad d_a \equiv 2j_a+1, \qquad \hat J^2 \equiv 2J+1.
+\end{equation}
+
+The C++ code often stores \texttt{j2\ =\ 2j}, so factors such as
+\texttt{op.j2\ +\ 1.0} are written here as \(d_p = 2j_p+1\). Matrix
+elements are written as
+
+\begin{equation}
+\eta^J_{ab,cd} \equiv \langle ab;J | \eta | cd;J\rangle,
+\qquad
+\Gamma^J_{ab,cd} \equiv \langle ab;J | \Gamma | cd;J\rangle .
+\end{equation}
+
+The permutation symbols \(P_{pg}\) and \(P_{qh}\) mean that the code
+evaluates the direct term plus the exchanged terms with the
+corresponding stored two-body phase, e.g.~\texttt{bra.Phase(J0)} or
+\texttt{ket.Phase(J0)}. The final matrix storage also divides by
+\(\sqrt2\) when either pair contains identical orbits.
+
+\subsection{\texorpdfstring{Reference implementation:
+\texttt{comm223\_231\_BruteForce}}{Reference implementation: comm223\_231\_BruteForce}}\label{reference-implementation-comm223_231_bruteforce}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L6620-L7352}{src/ReferenceImplementations.cc}.
+
+This routine builds the one-body part \(Z_{pq}\) directly by summing the
+full diagram expressions.
+
+\subsubsection{Diagram I}\label{diagram-i}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L6631-L6725}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{I}_{pq}
+&= \frac{1}{2}\frac{\delta_{j_p j_q}}{d_p}
+\sum_{abcdeJ_0J_1}\delta_{j_dj_e}
+\frac{\hat J_0^2\hat J_1^2}{d_d}
+\Big(
+\bar n_a\bar n_c n_b n_d
+-\bar n_b\bar n_d n_a n_c
+-\bar n_b\bar n_e n_a n_c
++\bar n_a\bar n_c n_b n_e
+\Big) \\
+&\qquad\times
+\eta^{J_0}_{bd,ac}\,
+\eta^{J_0}_{ac,be}\,
+\Gamma^{J_1}_{ep,dq} .
+\end{aligned}
+\end{equation}
+
+\subsubsection{Diagram IIa}\label{diagram-iia}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L6731-L6847}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{IIa}_{pq}
+&=\frac{\delta_{j_pj_q}}{d_p}
+\sum_{abcdeJ_0J_1J_2J_3}
+(-1)^{J_0+J_1+J_2+j_c+j_d}
+\hat J_0^2\hat J_1^2\hat J_2^2\hat J_3^2
+\Big(\bar n_a\bar n_c n_b n_d-\bar n_b\bar n_d n_a n_c\Big) \\
+&\qquad\times
+\begin{Bmatrix} j_a&j_b&J_3\\ j_d&j_c&J_0\end{Bmatrix}
+\begin{Bmatrix} j_p&j_e&J_3\\ j_d&j_c&J_1\end{Bmatrix}
+\begin{Bmatrix} j_b&j_p&J_2\\ j_e&j_a&J_3\end{Bmatrix}
+\eta^{J_0}_{bd,ac}\,
+\eta^{J_1}_{cp,de}\,
+\Gamma^{J_2}_{ae,bq} .
+\end{aligned}
+\end{equation}
+
+\subsubsection{Diagram IIb}\label{diagram-iib}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L6853-L6957}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{IIb}_{pq}
+&=\frac{1}{4}\frac{\delta_{j_pj_q}}{d_p}
+\sum_{abcdeJ_0}
+\hat J_0^2
+\Big(\bar n_a\bar n_d n_b n_e-\bar n_b\bar n_e n_a n_d\Big)
+\eta^{J_0}_{be,ad}\,
+\eta^{J_0}_{cp,be}\,
+\Gamma^{J_0}_{ad,cq} .
+\end{aligned}
+\end{equation}
+
+\subsubsection{Diagram IIc}\label{diagram-iic}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L6963-L7078}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{IIc}_{pq}
+&=\frac{\delta_{j_pj_q}}{d_p}
+\sum_{abcdeJ_0J_1J_2J_3}
+\hat J_0^2\hat J_1^2\hat J_2^2\hat J_3^2
+\Big(\bar n_a\bar n_d n_b n_e-\bar n_b\bar n_e n_a n_d\Big) \\
+&\qquad\times
+\begin{Bmatrix} j_d&j_e&J_3\\ j_b&j_a&J_0\end{Bmatrix}
+\begin{Bmatrix} j_c&j_p&J_3\\ j_b&j_a&J_1\end{Bmatrix}
+\begin{Bmatrix} j_e&j_c&J_2\\ j_p&j_d&J_3\end{Bmatrix}
+\eta^{J_0}_{be,da}\,
+\eta^{J_1}_{ca,bq}\,
+\Gamma^{J_2}_{dp,ce} .
+\end{aligned}
+\end{equation}
+
+\subsubsection{Diagram IId}\label{diagram-iid}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L7084-L7163}{src/ReferenceImplementations.cc}.
+
+The code keeps this as a commented expression and notes that it is
+almost the same as IIb, so it is combined in the optimized
+implementation.
+
+\begin{equation}
+\begin{aligned}
+Z^{IId}_{pq}
+&=-\frac{1}{4}\frac{\delta_{j_pj_q}}{d_p}
+\sum_{abcdeJ_0}
+\hat J_0^2
+\Big(\bar n_c\bar n_d n_a n_e-\bar n_a\bar n_e n_c n_d\Big)
+\eta^{J_0}_{ae,cd}\,
+\eta^{J_0}_{cd,bq}\,
+\Gamma^{J_0}_{bp,ae} .
+\end{aligned}
+\end{equation}
+
+\subsubsection{Diagram IIIa}\label{diagram-iiia}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L7171-L7256}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{IIIa}_{pq}
+&=\frac{1}{2}\frac{\delta_{j_pj_q}}{d_p}
+\sum_{abcdeJ_0J_1}\delta_{j_dj_e}
+\frac{\hat J_0^2\hat J_1^2}{d_d}
+\Big(\bar n_a\bar n_e n_b n_c-\bar n_b\bar n_c n_a n_e\Big)
+\eta^{J_0}_{bc,ae}\,
+\eta^{J_1}_{ep,dq}\,
+\Gamma^{J_0}_{ad,bc} .
+\end{aligned}
+\end{equation}
+
+\subsubsection{Diagram IIIb}\label{diagram-iiib}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L7262-L7352}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{IIIb}_{pq}
+&=-\frac{1}{2}\frac{\delta_{j_pj_q}}{d_p}
+\sum_{abcdeJ_0J_1}\delta_{j_dj_e}
+\frac{\hat J_0^2\hat J_1^2}{d_d}
+\Big(\bar n_a\bar n_c n_b n_d-\bar n_b\bar n_d n_a n_c\Big)
+\eta^{J_0}_{bd,ac}\,
+\eta^{J_1}_{ep,dq}\,
+\Gamma^{J_0}_{ac,be} .
+\end{aligned}
+\end{equation}
+
+\subsection{\texorpdfstring{Factorized implementation:
+\texttt{comm223\_231}}{Factorized implementation: comm223\_231}}\label{factorized-implementation-comm223_231}
+
+Source:
+\href{../src/FactorizedDoubleCommutator.cc\#L55-L801}{src/FactorizedDoubleCommutator.cc}.
+
+ArXiv correspondence: this section matches the one-body J-coupled
+factorized equations in \href{./arxiv.txt}{learn/arxiv.txt}, namely \begin{equation}
+f^{\mathrm{I}},\quad f^{\mathrm{II}},\quad f^{\mathrm{III}_a},\quad f^{\mathrm{III}_b}
+\end{equation} in \texttt{doubleCommutator\_1b\_Jcoupled\_factorized}, together with
+the intermediates \begin{equation}
+\chi^{\alpha},\quad \chi^{\beta},\quad \bar\chi^{\gamma},\quad \chi^{\delta}
+\end{equation} in \texttt{Jcoupled\_chi\_1b}.
+
+The optimized one-body implementation splits the same result into a
+one-body-intermediate path and a two-body-intermediate path.
+
+\subsubsection{One-body intermediate, diagram
+I}\label{one-body-intermediate-diagram-i}
+
+Source:
+\href{../src/FactorizedDoubleCommutator.cc\#L99-L249}{src/FactorizedDoubleCommutator.cc}.
+
+ArXiv correspondence tag: this is the code-backed version of \begin{equation}
+f^{\mathrm{I}}_{ij}
+\end{equation} with intermediate \begin{equation}
+\chi^{\alpha}_{ij}.
+\end{equation}
+
+For a two-body channel with angular momentum \(J_0\), define the
+occupation-dressed matrix
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: contributes to }\chi^{\alpha}\text{ in }\texttt{Jcoupled\_chi\_1b}.}
+\end{equation}
+
+\begin{equation}
+\left(\eta_{nn\bar n\bar n}^{J_0}\right)_{ij,kl}
+=\Big[n_i n_j\bar n_k\bar n_l-\bar n_i\bar n_j n_k n_l\Big] \eta^{J_0}_{ij,kl} .
+\end{equation}
+
+The code forms
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: matrix-product realization of }\chi^{\alpha}.}
+\end{equation}
+
+\begin{equation}
+T^{J_0}=2\hat J_0^2\,\eta_{nn\bar n\bar n}^{J_0}\eta^{J_0}
++\left(2\hat J_0^2\,\eta_{nn\bar n\bar n}^{J_0}\eta^{J_0}\right)^T,
+\end{equation}
+
+and contracts it to
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: }\chi^{\alpha}_{ij}.}
+\end{equation}
+
+\begin{equation}
+\chi^{(221a)}_{de}
+=\frac{1}{d_d}\sum_{bJ_0}T^{J_0}_{bd,be} .
+\end{equation}
+
+Then
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: }f^{\mathrm{I}}_{ij}\text{ in }\texttt{doubleCommutator\_1b\_Jcoupled\_factorized}.}
+\end{equation}
+
+\begin{equation}
+Z^{I}_{pq}=\frac{1}{2d_p}\sum_{deJ_1}\hat J_1^2\,
+\chi^{(221a)}_{de}\,
+\Gamma^{J_1}_{ep,dq} .
+\end{equation}
+
+\subsubsection{One-body intermediate, diagrams IIIa and
+IIIb}\label{one-body-intermediate-diagrams-iiia-and-iiib}
+
+Source:
+\href{../src/FactorizedDoubleCommutator.cc\#L257-L371}{src/FactorizedDoubleCommutator.cc}.
+
+ArXiv correspondence tag: this is the code-backed version of \begin{equation}
+f^{\mathrm{II}}_{ij}
+\end{equation} with intermediate \begin{equation}
+\chi^{\beta}_{ij}.
+\end{equation}
+
+The non-Hermitian one-body intermediate is
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: }\chi^{\beta}_{ij}\text{ in }\texttt{Jcoupled\_chi\_1b}.}
+\end{equation}
+
+\begin{equation}
+\chi^{(221b)}_{de}
+=\frac{1}{d_d}
+\sum_{abcJ_0}\hat J_0^2
+\Big(\bar n_a\bar n_e n_b n_c-\bar n_b\bar n_c n_a n_e\Big)
+\eta^{J_0}_{bc,ae}\,
+\Gamma^{J_0}_{ad,bc} .
+\end{equation}
+
+The final contraction is
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: }f^{\mathrm{II}}_{ij}\text{ in }\texttt{doubleCommutator\_1b\_Jcoupled\_factorized}.}
+\end{equation}
+
+\begin{equation}
+Z^{IIIa+IIIb}_{pq}
+=\frac{1}{2d_p}\sum_{deJ_1}\hat J_1^2
+\Big[\chi^{(221b)}_{de}-h_Z\chi^{(221b)}_{ed}\Big]
+\eta^{J_1}_{ep,dq} .
+\end{equation}
+
+\subsubsection{Two-body intermediate, diagrams IIb and
+IId}\label{two-body-intermediate-diagrams-iib-and-iid}
+
+Source:
+\href{../src/FactorizedDoubleCommutator.cc\#L380-L541}{src/FactorizedDoubleCommutator.cc}.
+
+ArXiv correspondence tag: this is the code-backed version of \begin{equation}
+f^{\mathrm{III}_b}_{ij}
+\end{equation} with intermediate \begin{equation}
+\chi^{\delta}_{ijkl}.
+\end{equation}
+
+In each ordinary two-body channel, define
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: contributes to }\chi^{\delta J}_{ijkl}\text{ in }\texttt{Jcoupled\_chi\_1b}.}
+\end{equation}
+
+\begin{equation}
+\eta^{J}_{occ}(ij,kl)
+=\Big[n_i n_j\bar n_k\bar n_l-\bar n_i\bar n_j n_k n_l\Big]\eta^J_{ij,kl} .
+\end{equation}
+
+The optimized code builds the matrix product
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: matrix-product realization of }\chi^{\delta J}.}
+\end{equation}
+
+\begin{equation}
+\chi^{(222b),J}
+=4\hat J^2\left(
+\eta^J\eta^J_{occ}\Gamma^J
+-\Gamma^J\eta^J_{occ}\eta^J
+\right),
+\end{equation}
+
+with the equal-channel case using transpose symmetry. The one-body
+contraction is
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: }f^{\mathrm{III}_b}_{ij}\text{ in }\texttt{doubleCommutator\_1b\_Jcoupled\_factorized}.}
+\end{equation}
+
+\begin{equation}
+Z^{IIb+IId}_{pq}
+=\frac{1}{4d_p}\sum_{cJ_0}\chi^{(222b),J_0}_{cp,cq} .
+\end{equation}
+
+\subsubsection{Pandya transform for diagrams IIa and
+IIc}\label{pandya-transform-for-diagrams-iia-and-iic}
+
+Source:
+\href{../src/FactorizedDoubleCommutator.cc\#L546-L801}{src/FactorizedDoubleCommutator.cc}.
+
+ArXiv correspondence tag: this is the code-backed version of \begin{equation}
+f^{\mathrm{III}_a}_{ij}
+\end{equation} with intermediate \begin{equation}
+\bar\chi^{\gamma J}_{i\bar j k\bar l},
+\end{equation} written in the Pandya/cross-coupled channel used by the code.
+
+The code uses cross-coupled channels and the Pandya transform
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: Pandya transform entering }\bar\chi^{\gamma J}.}
+\end{equation}
+
+\begin{equation}
+\bar X^J_{ab,cd}
+=\sum_{J'}(-1)^{j_b+j_c+J'}\hat J'^2
+\begin{Bmatrix} j_a&j_b&J\\ j_c&j_d&J'\end{Bmatrix}
+X^{J'}_{ad,bc} .
+\end{equation}
+
+With
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: occupation factor entering }\bar\chi^{\gamma J}.}
+\end{equation}
+
+\begin{equation}
+f_{ab,cd}=\bar n_c\bar n_b n_a n_d-n_c n_b\bar n_a\bar n_d,
+\end{equation}
+
+the intermediate matrix is
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: matrix-product realization of }\bar\chi^{\gamma J}_{i\bar j k\bar l}.}
+\end{equation}
+
+\begin{equation}
+\bar\chi^{(222a),J}=\hat J^2\,\bar\eta^J\,\bar\eta^J_{occ}\,\bar\Gamma^J .
+\end{equation}
+
+The one-body contractions are implemented as the two terms
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: }f^{\mathrm{III}_a}_{ij}\text{ in }\texttt{doubleCommutator\_1b\_Jcoupled\_factorized}.}
+\end{equation}
+
+\begin{equation}
+Z^{IIa}_{pq}=\frac{1}{d_p}\sum_{eJ}\bar\chi^{(222a),J}_{pe,qe},
+\qquad
+Z^{IIc}_{pq}=-\frac{1}{d_p}\sum_{eJ}\bar\chi^{(222a),J}_{eq,ep},
+\end{equation}
+
+with signs from the stored cross-coupled ordering.
+
+\subsection{\texorpdfstring{Reference implementation:
+\texttt{comm223\_232\_BruteForce}}{Reference implementation: comm223\_232\_BruteForce}}\label{reference-implementation-comm223_232_bruteforce}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L7359-L10303}{src/ReferenceImplementations.cc}.
+
+This routine builds the two-body part \(Z^J_{pg,qh}\) directly. The
+direct forms below use the permutation symbols that the code expands by
+explicit direct and exchange loops.
+
+\subsubsection{Diagrams Ia, Ib, IVa, IVb}\label{diagrams-ia-ib-iva-ivb}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L7386-L7818}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{Ia,J_0}_{pg,qh}
+&=\frac{1}{2}P_{pg}\sum_{abcdJ_2}
+\frac{\delta_{j_dj_p}}{d_p}\hat J_2^2
+\Big(\bar n_a\bar n_c n_b+\bar n_b n_a n_c\Big)
+\eta^{J_2}_{bp,ac}\,
+\eta^{J_2}_{ac,bd}\,
+\Gamma^{J_0}_{dg,qh},\\
+Z^{Ib,J_0}_{pg,qh}
+&=\frac{1}{2}P_{qh}\sum_{abcdJ_2}
+\frac{\delta_{j_dj_q}}{d_q}\hat J_2^2
+\Big(\bar n_a n_b n_c+\bar n_b\bar n_c n_a\Big)
+\eta^{J_2}_{ad,bc}\,
+\eta^{J_2}_{bc,aq}\,
+\Gamma^{J_0}_{pg,dh},\\
+Z^{IVa,J_0}_{pg,qh}
+&=-\frac{1}{2}P_{qh}\sum_{abcdJ_2}
+\frac{\delta_{j_dj_q}}{d_q}\hat J_2^2
+\Big(\bar n_a n_b n_c+\bar n_b\bar n_c n_a\Big)
+\eta^{J_2}_{bc,aq}\,
+\eta^{J_0}_{pg,dh}\,
+\Gamma^{J_2}_{ad,bc},\\
+Z^{IVb,J_0}_{pg,qh}
+&=-\frac{1}{2}P_{pg}\sum_{abcdJ_2}
+\frac{\delta_{j_dj_p}}{d_p}\hat J_2^2
+\Big(\bar n_a\bar n_c n_b+\bar n_b n_a n_c\Big)
+\eta^{J_2}_{bp,ac}\,
+\eta^{J_0}_{dg,qh}\,
+\Gamma^{J_2}_{ac,bd}.
+\end{aligned}
+\end{equation}
+
+\subsubsection{Diagrams IIa and IIc}\label{diagrams-iia-and-iic}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L7823-L8135}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{IIa,J_0}_{pg,qh}
+&=-P_{pg}\sum_{abcdJ_2J_3J_4}
+\hat J_2^2\hat J_3^2\hat J_4^2
+\Big(\bar n_b\bar n_d n_c+\bar n_c n_b n_d\Big) \\
+&\qquad\times
+\begin{Bmatrix} j_d&j_g&J_4\\ j_c&j_b&J_2\end{Bmatrix}
+\begin{Bmatrix} j_p&j_a&J_4\\ j_c&j_b&J_3\end{Bmatrix}
+\begin{Bmatrix} j_g&j_p&J_0\\ j_a&j_d&J_4\end{Bmatrix}
+\eta^{J_2}_{cg,db}\,
+\eta^{J_3}_{pb,ca}\,
+\Gamma^{J_0}_{da,qh},\\
+Z^{IIc,J_0}_{pg,qh}
+&=-P_{qh}\sum_{abcdJ_2J_3J_4}
+\hat J_2^2\hat J_3^2\hat J_4^2
+\Big(\bar n_b n_c n_d+\bar n_c\bar n_d n_b\Big) \\
+&\qquad\times
+\begin{Bmatrix} j_q&j_d&J_4\\ j_c&j_b&J_2\end{Bmatrix}
+\begin{Bmatrix} j_a&j_h&J_4\\ j_c&j_b&J_3\end{Bmatrix}
+\begin{Bmatrix} j_q&j_h&J_0\\ j_a&j_d&J_4\end{Bmatrix}
+\eta^{J_2}_{cd,qb}\,
+\eta^{J_3}_{ab,ch}\,
+\Gamma^{J_0}_{pg,ad}.
+\end{aligned}
+\end{equation}
+
+\subsubsection{Diagrams IIb and IId}\label{diagrams-iib-and-iid}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L8140-L8628}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{IIb,J_0}_{pg,qh}
+&=-P_{pg}P_{qh}\sum_{abcdJ_2J_3J_4J_5}
+\hat J_2^2\hat J_3^2\hat J_4^2\hat J_5^2
+\Big(\bar n_b n_c n_d+\bar n_c\bar n_d n_b\Big) \\
+&\qquad\times
+\begin{Bmatrix} j_q&j_d&J_5\\ j_c&j_b&J_2\end{Bmatrix}
+\begin{Bmatrix} j_p&j_a&J_5\\ j_c&j_b&J_3\end{Bmatrix}
+\begin{Bmatrix} J_0&J_5&J_4\\ j_d&j_h&j_q\end{Bmatrix}
+\begin{Bmatrix} J_0&J_4&J_5\\ j_a&j_p&j_g\end{Bmatrix}
+\eta^{J_2}_{dc,bq}\,
+\eta^{J_3}_{bp,ac}\,
+\Gamma^{J_4}_{ga,hd},\\
+Z^{IId,J_0}_{pg,qh}
+&=-P_{pg}P_{qh}\sum_{abcdJ_2J_3J_4J_5}
+\hat J_2^2\hat J_3^2\hat J_4^2\hat J_5^2
+\Big(\bar n_c n_b n_d+\bar n_b\bar n_d n_c\Big) \\
+&\qquad\times
+\begin{Bmatrix} j_d&j_g&J_5\\ j_c&j_b&J_2\end{Bmatrix}
+\begin{Bmatrix} j_a&j_h&J_5\\ j_c&j_b&J_3\end{Bmatrix}
+\begin{Bmatrix} J_0&J_5&J_4\\ j_d&j_p&j_g\end{Bmatrix}
+\begin{Bmatrix} J_5&J_4&J_0\\ j_q&j_h&j_a\end{Bmatrix}
+\eta^{J_2}_{gc,bd}\,
+\eta^{J_3}_{ba,hc}\,
+\Gamma^{J_4}_{dp,aq}.
+\end{aligned}
+\end{equation}
+
+\subsubsection{Diagrams IIe and IIf}\label{diagrams-iie-and-iif}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L8633-L9061}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{IIe,J_0}_{pg,qh}
+&=-\frac{1}{2}P_{pg}P_{qh}\sum_{abcdJ_2J_3J_4}
+\hat J_2^2\hat J_3^2\hat J_4^2
+\Big(\bar n_b n_a n_c+\bar n_a\bar n_c n_b\Big) \\
+&\qquad\times
+\begin{Bmatrix} j_p&j_h&J_4\\ j_b&j_d&J_2\end{Bmatrix}
+\begin{Bmatrix} j_q&j_g&J_4\\ j_b&j_d&J_3\end{Bmatrix}
+\begin{Bmatrix} j_h&j_q&J_0\\ j_g&j_p&J_4\end{Bmatrix}
+\eta^{J_2}_{ac,bh}\,
+\eta^{J_2}_{pd,ac}\,
+\Gamma^{J_3}_{bg,qd},\\
+Z^{IIf,J_0}_{pg,qh}
+&=-\frac{1}{2}P_{pg}P_{qh}\sum_{abcdJ_2J_3J_4}
+\hat J_2^2\hat J_3^2\hat J_4^2
+\Big(\bar n_a\bar n_c n_b+\bar n_b n_a n_c\Big) \\
+&\qquad\times
+\begin{Bmatrix} j_h&j_p&J_4\\ j_b&j_d&J_2\end{Bmatrix}
+\begin{Bmatrix} j_g&j_q&J_4\\ j_b&j_d&J_3\end{Bmatrix}
+\begin{Bmatrix} j_h&j_q&J_0\\ j_g&j_p&J_4\end{Bmatrix}
+\eta^{J_2}_{pb,ac}\,
+\eta^{J_2}_{ac,dh}\,
+\Gamma^{J_3}_{dg,qb}.
+\end{aligned}
+\end{equation}
+
+\subsubsection{Diagrams IIIa and IIIb}\label{diagrams-iiia-and-iiib}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L9066-L9551}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{IIIa,J_0}_{pg,qh}
+&=P_{pg}P_{qh}\sum_{abcdJ_2J_3J_4J_5}
+\hat J_2^2\hat J_3^2\hat J_4^2\hat J_5^2
+\Big(\bar n_a\bar n_c n_b+\bar n_b n_a n_c\Big) \\
+&\qquad\times
+\begin{Bmatrix} j_a&j_b&J_5\\ j_p&j_c&J_2\end{Bmatrix}
+\begin{Bmatrix} J_3&J_0&J_5\\ j_p&j_c&j_g\end{Bmatrix}
+\begin{Bmatrix} j_q&j_d&J_5\\ j_a&j_b&J_4\end{Bmatrix}
+\begin{Bmatrix} J_3&J_0&J_5\\ j_q&j_d&j_h\end{Bmatrix}
+\eta^{J_2}_{bp,ca}\,
+\eta^{J_3}_{gc,hd}\,
+\Gamma^{J_4}_{da,bq},\\
+Z^{IIIb,J_0}_{pg,qh}
+&=P_{pg}P_{qh}\sum_{abcdJ_2J_3J_4J_5}
+\hat J_2^2\hat J_3^2\hat J_4^2\hat J_5^2
+\Big(\bar n_a n_b n_c+\bar n_b\bar n_c n_a\Big) \\
+&\qquad\times
+\begin{Bmatrix} j_a&j_b&J_5\\ j_c&j_q&J_2\end{Bmatrix}
+\begin{Bmatrix} J_0&J_3&J_5\\ j_c&j_q&j_h\end{Bmatrix}
+\begin{Bmatrix} j_d&j_p&J_5\\ j_a&j_b&J_4\end{Bmatrix}
+\begin{Bmatrix} J_0&J_3&J_5\\ j_d&j_p&j_g\end{Bmatrix}
+\eta^{J_2}_{cb,aq}\,
+\eta^{J_3}_{gd,hc}\,
+\Gamma^{J_4}_{ap,db}.
+\end{aligned}
+\end{equation}
+
+\subsubsection{Diagrams IIIc and IIId}\label{diagrams-iiic-and-iiid}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L9556-L9868}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{IIIc,J_0}_{pg,qh}
+&=-P_{qh}\sum_{abcdJ_2J_3J_4}
+\hat J_2^2\hat J_3^2\hat J_4^2
+\Big(\bar n_a n_b n_c+\bar n_b\bar n_c n_a\Big) \\
+&\qquad\times
+\begin{Bmatrix} j_q&j_b&J_4\\ j_c&j_a&J_2\end{Bmatrix}
+\begin{Bmatrix} J_3&J_0&J_4\\ j_c&j_a&j_d\end{Bmatrix}
+\begin{Bmatrix} J_4&J_3&J_0\\ j_h&j_q&j_b\end{Bmatrix}
+\eta^{J_2}_{bc,aq}\,
+\eta^{J_0}_{pg,cd}\,
+\Gamma^{J_3}_{da,hb},\\
+Z^{IIId,J_0}_{pg,qh}
+&=-P_{pg}\sum_{abcdJ_2J_3J_4}
+\hat J_2^2\hat J_3^2\hat J_4^2
+\Big(\bar n_a\bar n_c n_b+\bar n_b n_a n_c\Big) \\
+&\qquad\times
+\begin{Bmatrix} j_a&j_p&J_4\\ j_b&j_c&J_2\end{Bmatrix}
+\begin{Bmatrix} J_0&J_3&J_4\\ j_b&j_c&j_d\end{Bmatrix}
+\begin{Bmatrix} J_4&J_3&J_0\\ j_g&j_p&j_a\end{Bmatrix}
+\eta^{J_2}_{bp,ac}\,
+\eta^{J_0}_{cd,qh}\,
+\Gamma^{J_3}_{ga,db}.
+\end{aligned}
+\end{equation}
+
+\subsubsection{Diagrams IIIe and IIIf}\label{diagrams-iiie-and-iiif}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L9873-L10299}{src/ReferenceImplementations.cc}.
+
+\begin{equation}
+\begin{aligned}
+Z^{IIIe,J_0}_{pg,qh}
+&=-\frac{1}{2}P_{pg}P_{qh}\sum_{abcdJ_2J_3J_4}
+\hat J_2^2\hat J_3^2\hat J_4^2
+\Big(\bar n_d n_a n_b+\bar n_a\bar n_b n_d\Big) \\
+&\qquad\times
+\begin{Bmatrix} J_2&J_3&J_4\\ j_p&j_h&j_d\end{Bmatrix}
+\begin{Bmatrix} J_2&J_3&J_4\\ j_q&j_g&j_c\end{Bmatrix}
+\begin{Bmatrix} j_h&j_q&J_0\\ j_g&j_p&J_4\end{Bmatrix}
+\eta^{J_2}_{ab,hd}\,
+\eta^{J_3}_{dp,cq}\,
+\Gamma^{J_2}_{gc,ab},\\
+Z^{IIIf,J_0}_{pg,qh}
+&=-\frac{1}{2}P_{pg}P_{qh}\sum_{abcdJ_2J_3J_4}
+\hat J_2^2\hat J_3^2\hat J_4^2
+\Big(\bar n_c n_a n_b+\bar n_a\bar n_b n_c\Big) \\
+&\qquad\times
+\begin{Bmatrix} J_2&J_3&J_4\\ j_q&j_g&j_c\end{Bmatrix}
+\begin{Bmatrix} J_2&J_3&J_4\\ j_p&j_h&j_d\end{Bmatrix}
+\begin{Bmatrix} j_h&j_q&J_0\\ j_g&j_p&J_4\end{Bmatrix}
+\eta^{J_2}_{gc,ab}\,
+\eta^{J_3}_{dp,cq}\,
+\Gamma^{J_2}_{ab,hd}.
+\end{aligned}
+\end{equation}
+
+\subsection{\texorpdfstring{Factorized implementation:
+\texttt{comm223\_232}}{Factorized implementation: comm223\_232}}\label{factorized-implementation-comm223_232}
+
+Source:
+\href{../src/FactorizedDoubleCommutator.cc\#L805-L3049}{src/FactorizedDoubleCommutator.cc}.
+
+ArXiv correspondence: this section matches the two-body J-coupled
+factorized equations in \href{./arxiv.txt}{learn/arxiv.txt}, namely \begin{equation}
+\Gamma^{\mathrm{I}J},\ \Gamma^{\mathrm{II}J},\ \Gamma^{\mathrm{III}_aJ},\ \overline{\overline\Gamma}^{\mathrm{III}_bJ},\ \bar\Gamma^{\mathrm{III}_cJ},\ \Gamma^{\mathrm{IV}_aJ},\ \overline{\overline\Gamma}^{\mathrm{IV}_bJ},\ \bar\Gamma^{\mathrm{IV}_cJ}
+\end{equation} in \texttt{Jcoupled\_Factorized\_DoubleCommutator\_twobody}, together
+with the intermediates \begin{equation}
+\chi^{\epsilon},\ \chi^{\zeta},\ \bar\chi^{\eta},\ \chi^{\theta},\ \bar\chi^{\iota},\ \overline{\overline\chi}^{\kappa},\ \chi^{\lambda}
+\end{equation} in \texttt{chi\_2b\_Jcoupled}.
+
+\subsubsection{One-body intermediates for Ia, Ib, IVa,
+IVb}\label{one-body-intermediates-for-ia-ib-iva-ivb}
+
+Source:
+\href{../src/FactorizedDoubleCommutator.cc\#L850-L1144}{src/FactorizedDoubleCommutator.cc}.
+
+ArXiv correspondence tag: this block packages the two
+one-body-intermediate families \begin{equation}
+\Gamma^{\mathrm{I}J}_{ijkl}
+\quad\text{and}\quad
+\Gamma^{\mathrm{II}J}_{ijkl},
+\end{equation} with intermediates \begin{equation}
+\chi^{\epsilon}_{ij}
+\quad\text{and}\quad
+\chi^{\zeta}_{ij}.
+\end{equation} In the code-backed form above, the first four insertions are the
+\texttt{\textbackslash{}chi\^{}I} /
+\texttt{\textbackslash{}chi\^{}\{\textbackslash{}epsilon\}} family and
+the second four insertions are the
+\texttt{\textbackslash{}chi\^{}\{II\}} /
+\texttt{\textbackslash{}chi\^{}\{\textbackslash{}zeta\}} family.
+
+The optimized one-body-intermediate path forms two matrices. The code
+loops over holes \(i,j\) for the \(\bar n_a n_i n_j\) term and over an
+unrestricted \(b\) for the \(\bar n_a\bar n_b n_i\) term:
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: }\chi^{\epsilon}_{ij}\text{ and }\chi^{\zeta}_{ij}\text{ in }\texttt{chi\_2b\_Jcoupled}.}
+\end{equation}
+
+\begin{equation}
+\begin{aligned}
+\chi^{I}_{pq}
+&=\frac{1}{2d_q}\sum_{aijJ_2}\hat J_2^2\bar n_a n_i n_j\,
+\eta^{J_2}_{ap,ij}\eta^{J_2}_{ij,aq}
++\frac{1}{2d_q}\sum_{abiJ_2}\hat J_2^2\bar n_a\bar n_b n_i\,
+\eta^{J_2}_{ip,ab}\eta^{J_2}_{ab,iq},\\
+\chi^{II}_{pq}
+&=\frac{1}{2d_q}\sum_{aijJ_2}\hat J_2^2\bar n_a n_i n_j\,
+\Gamma^{J_2}_{ap,ij}\eta^{J_2}_{ij,aq}
++\frac{1}{2d_q}\sum_{abiJ_2}\hat J_2^2\bar n_a\bar n_b n_i\,
+\Gamma^{J_2}_{ip,ab}\eta^{J_2}_{ab,iq}.
+\end{aligned}
+\end{equation}
+
+The resulting two-body update can be written schematically as the
+ordinary one-body/two-body insertion on the bra and ket sides:
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: }\Gamma^{\mathrm{I}J}_{ijkl}\text{ and }\Gamma^{\mathrm{II}J}_{ijkl}\text{ in }\texttt{Jcoupled\_Factorized\_DoubleCommutator\_twobody}.}
+\end{equation}
+
+\begin{equation}
+\begin{aligned}
+Z^{J}_{pq,rs} &\mathrel{+}=
+\sum_b\Big[
+\chi^I_{pb}\Gamma^J_{bq,rs}
++\chi^I_{qb}\Gamma^J_{pb,rs}
++\Gamma^J_{pq,bs}\chi^I_{br}
++\Gamma^J_{pq,rb}\chi^I_{bs}
+\Big] \\
+&\quad
++h_Z\sum_b\Big[
+\chi^{II}_{bp}\eta^J_{bq,rs}
++\chi^{II}_{bq}\eta^J_{pb,rs}
+-\eta^J_{pq,bs}\chi^{II}_{br}
+-\eta^J_{pq,rb}\chi^{II}_{bs}
+\Big],
+\end{aligned}
+\end{equation}
+
+with pair-normalization and exchange phases supplied by
+\texttt{GetTBME\_norm}.
+
+\subsubsection{Two-body intermediates for diagrams II and
+III}\label{two-body-intermediates-for-diagrams-ii-and-iii}
+
+Source:
+\href{../src/FactorizedDoubleCommutator.cc\#L1151-L3049}{src/FactorizedDoubleCommutator.cc}.
+
+ArXiv correspondence tag: this block packages the remaining J-coupled
+two-body families. The correspondence is grouped by coupling scheme as
+follows.
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{\textbackslash{}chi\^{}\{III\}\textbackslash{}Gamma\ +\ h\_Z\textbackslash{}Gamma(\textbackslash{}chi\^{}\{III\})\^{}T}
+  corresponds to the ordinary-channel
+  \texttt{\textbackslash{}chi\^{}\{\textbackslash{}eta\}} family, i.e.
+  \begin{equation}
+  \Gamma^{\mathrm{III}_aJ}_{ijkl}.
+  \end{equation}
+\item
+  \texttt{\textbackslash{}bar\textbackslash{}chi\^{}\{V\}\_\{RC\}} and
+  \texttt{\textbackslash{}chi\^{}V\_\{final\}=\textbackslash{}bar\textbackslash{}eta\textbackslash{},\textbackslash{}bar\textbackslash{}chi\^{}V\_\{RC\}}
+  correspond to the double-bar / cross-coupled
+  \texttt{\textbackslash{}chi\^{}\{\textbackslash{}eta\}} family, i.e.
+  \begin{equation}
+  \overline{\overline\Gamma}^{\mathrm{III}_bJ}_{j\bar l k\bar i}.
+  \end{equation}
+\item
+  \texttt{\textbackslash{}bar\textbackslash{}chi\_\textbackslash{}Gamma=\textbackslash{}bar\textbackslash{}chi\^{}\{IV\}\textbackslash{}bar\textbackslash{}Gamma}
+  corresponds to the barred
+  \texttt{\textbackslash{}chi\^{}\{\textbackslash{}theta\}} family, i.e.
+  \begin{equation}
+  \bar\Gamma^{\mathrm{III}_cJ}_{i\bar l k\bar j}.
+  \end{equation}
+\item
+  \texttt{-\textbackslash{}eta\textbackslash{}chi\^{}\{VI\}-\textbackslash{}chi\^{}\{VI,II\}\textbackslash{}eta}
+  is the code-packed ordinary-channel realization of the
+  \texttt{\textbackslash{}chi\^{}\{\textbackslash{}kappa\}} family, i.e.
+  \begin{equation}
+  \Gamma^{\mathrm{IV}_aJ}_{ijkl}.
+  \end{equation}
+\item
+  \texttt{\textbackslash{}bar\textbackslash{}chi\^{}\{VII\}} and its
+  inverse-Pandya insertion correspond to the barred/double-barred
+  \texttt{\textbackslash{}chi\^{}\{\textbackslash{}iota\}} and
+  \texttt{\textbackslash{}chi\^{}\{\textbackslash{}lambda\}} families,
+  i.e. \begin{equation}
+  \overline{\overline\Gamma}^{\mathrm{IV}_bJ}_{j\bar l k\bar i}
+  \quad\text{and}\quad
+  \bar\Gamma^{\mathrm{IV}_cJ}_{i\bar l k\bar j}.
+  \end{equation}
+\end{itemize}
+
+Manual-check note: the code bundles several arXiv subterms into matrix
+products, so these tags indicate equation families rather than one
+printed line per C++ line.
+
+The optimized two-body-intermediate path constructs full cross-coupled
+matrices \(\bar\eta\) and \(\bar\Gamma\) using the Pandya transform
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: common Pandya transform for }\bar\chi^{\eta},\ \bar\chi^{\iota},\ \bar\chi^{\lambda}\text{ families.}}
+\end{equation}
+
+\begin{equation}
+\bar X^J_{ab,cd}
+=\sum_{J'}(-1)^{j_b+j_c+J'}\hat J'^2
+\begin{Bmatrix} j_a&j_b&J\\ j_c&j_d&J'\end{Bmatrix}
+X^{J'}_{ad,bc} .
+\end{equation}
+
+The occupation-dressed matrices in the first block are
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: occupation factors entering }\chi^{\eta},\ \chi^{\kappa},\ \chi^{\lambda}\text{ families.}}
+\end{equation}
+
+\begin{equation}
+\begin{aligned}
+f_{abc} &= \bar n_a n_b n_c+n_a\bar n_b\bar n_c,\\
+f_{abd} &= n_a\bar n_b n_d+\bar n_a n_b\bar n_d,\\
+f_{bcd} &= n_b n_c\bar n_d+\bar n_b\bar n_c n_d,\\
+f_{acd} &= n_a\bar n_c n_d+\bar n_a n_c\bar n_d .
+\end{aligned}
+\end{equation}
+
+The code then builds the matrix products
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: packed intermediates for }\chi^{\eta}\text{ and }\chi^{\kappa}\text{ families.}}
+\end{equation}
+
+\begin{equation}
+\begin{aligned}
+\bar\chi^{III} &= \bar\eta\,\bar\eta_{occ},\\
+\bar\chi^{V} &= \bar\Gamma\,\bar\eta_{occ},\\
+\bar\chi^{VI} &= \bar\Gamma\,\bar\eta_{occ,d},\\
+\bar\chi^{VI,II} &= h_\eta\,\bar\eta_{occ,d}^{T}\bar\Gamma .
+\end{aligned}
+\end{equation}
+
+After inverse/ordinary channel recoupling, the first direct matrix
+update is
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: packed realization of }\Gamma^{\mathrm{III}_aJ}_{ijkl}\text{ and }\Gamma^{\mathrm{IV}_aJ}_{ijkl}.}
+\end{equation}
+
+\begin{equation}
+Z^{IIa+IIc+IIIc+IIId}
+\mathrel{+}=
+\chi^{III}\Gamma+h_Z\Gamma(\chi^{III})^T
+-\eta\chi^{VI}-\chi^{VI,II}\eta .
+\end{equation}
+
+The IIb/IId and IIIa/IIIb terms are recoupled through
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: recoupling step for }\overline{\overline\Gamma}^{\mathrm{III}_bJ}.}
+\end{equation}
+
+\begin{equation}
+\bar X^{J}_{ab,cd}
+=\sum_{J'}(-1)^{j_b+j_c+J'}\hat J'^2
+\begin{Bmatrix} j_a&j_b&J\\ j_c&j_d&J'\end{Bmatrix}
+\bar X^{J'}_{ad,bc},
+\end{equation}
+
+followed by
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: matrix-product realization of the }\chi^{\eta}\text{ cross-coupled family.}}
+\end{equation}
+
+\begin{equation}
+\chi^V_{final}=\bar\eta\,\bar\chi^V_{RC}
+\end{equation}
+
+and the inverse Pandya transform
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: inverse transform returning }\overline{\overline\Gamma}^{\mathrm{III}_bJ}\text{ and related packed families to standard coupling.}}
+\end{equation}
+
+\begin{equation}
+X^J_{ij,kl}=-(1-P_{ij})(1-P_{kl})(-1)^{J+j_i+j_j}
+\sum_{J'}(-1)^{J'+j_i+j_k}\hat J'^2
+\begin{Bmatrix} j_j&j_i&J\\ j_k&j_l&J'\end{Bmatrix}
+\bar X^{J'}_{jl,ki} .
+\end{equation}
+
+For IIe/IIf the code builds
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: packed intermediate for }\bar\chi^{\theta J}.}
+\end{equation}
+
+\begin{equation}
+\chi^{IV}=\eta\eta_{occ,c}+(\eta\eta_{occ,d})^T,
+\end{equation}
+
+and for IIIe/IIIf it builds
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: packed intermediate for }\bar\chi^{\iota J}\text{ and }\chi^{\lambda J}\text{ families.}}
+\end{equation}
+
+\begin{equation}
+\chi^{VII}=\Gamma\eta_{occ,d}+h_\eta\eta_{occ,d}^T\Gamma .
+\end{equation}
+
+These are recoupled to \(\bar\chi^{IV}\) and \(\bar\chi^{VII}\), then
+IIe/IIf use
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: matrix-product realization of }\bar\Gamma^{\mathrm{III}_cJ}_{i\bar l k\bar j}.}
+\end{equation}
+
+\begin{equation}
+\bar\chi_\Gamma=\bar\chi^{IV}\bar\Gamma,
+\end{equation}
+
+with the same inverse Pandya transform. The comments in the code write
+these final two as
+
+\begin{equation}
+{\color{red}\text{ArXiv correspondence: packed inverse-Pandya forms for }\bar\Gamma^{\mathrm{III}_cJ}\text{ and }\bar\Gamma^{\mathrm{IV}_cJ}.}
+\end{equation}
+
+\begin{equation}
+\begin{aligned}
+Z^{IIe,J}_{ij,kl}
+&=-\frac12(1-P_{ij})(1-P_{kl})
+\sum_{J'}\hat J'^2
+\begin{Bmatrix} j_i&j_j&J\\ j_k&j_l&J'\end{Bmatrix}
+\bar\chi_{\Gamma;il,kj}^{J'},\\
+Z^{IIf,J}_{ij,kl}
+&=-\frac12(1-P_{ij})(1-P_{kl})
+\sum_{J'}\hat J'^2
+\begin{Bmatrix} j_i&j_j&J\\ j_k&j_l&J'\end{Bmatrix}
+\bar\chi_{\Gamma,II;il,kj}^{J'}.
+\end{aligned}
+\end{equation}
+
+\subsection{\texorpdfstring{Reference and factorized implementation:
+\texttt{comm223\_132}}{Reference and factorized implementation: comm223\_132}}\label{reference-and-factorized-implementation-comm223_132}
+
+Sources:
+\href{../src/ReferenceImplementations.cc\#L13338-L13799}{src/ReferenceImplementations.cc},
+\href{../src/FactorizedDoubleCommutator.cc\#L3051-L3565}{src/FactorizedDoubleCommutator.cc}.
+
+The \texttt{223\_132} contribution is the remaining two-body part of
+
+\begin{equation}
+[\eta_2,[\eta_2,\Gamma_2]_{3b}]_{2b}
+\end{equation}
+
+where one of the contractions is represented by the one-body part of
+\texttt{Eta}. In the reference code it is implemented by
+\texttt{comm223\_132\_impl} with three independently callable pieces:
+
+\begin{equation}
+Z^{223\_132}=Z^{\rm ladder}+Z^{\rm cross}+Z^{\rm onebody}.
+\end{equation}
+
+The wrappers \texttt{comm223\_132\_ladder},
+\texttt{comm223\_132\_cross}, and \texttt{comm223\_132\_onebody} select
+these pieces separately.
+
+ArXiv correspondence tag: \texttt{223\_132} is not covered by the scalar
+factorized equations in \href{./arxiv.txt}{learn/arxiv.txt}. Manual
+checking for this section should instead use the dedicated AMC-derived
+note and the code-backed equations in this file.
+
+\subsubsection{Common one-body
+contraction}\label{common-one-body-contraction}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L13377-L13403}{src/ReferenceImplementations.cc},
+\href{../src/FactorizedDoubleCommutator.cc\#L3114-L3131}{src/FactorizedDoubleCommutator.cc}.
+
+All three pieces use the occupation-weighted one-body contraction
+
+\begin{equation}
+f_{ab}\equiv \big(\bar n_a n_b-n_a\bar n_b\big)\eta_{ba},
+\qquad j_a=j_b,
+\end{equation}
+
+or the transposed matrix element \(\eta_{ab}\) depending on the
+orientation of the diagram. The code enforces the angular-momentum delta
+by looping over \texttt{GetOneBodyChannel(oa.l,\ oa.j2,\ oa.tz2)}.
+
+\subsubsection{Ladder piece}\label{ladder-piece}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L13357-L13424}{src/ReferenceImplementations.cc},
+\href{../src/FactorizedDoubleCommutator.cc\#L3058-L3142}{src/FactorizedDoubleCommutator.cc}.
+
+For a two-body channel with \(J_0=J_1=J\), the direct ladder
+contribution is
+
+\begin{equation}
+\begin{aligned}
+Z^{\rm ladder,J}_{ij,kl}
+&=\sum_{abc} f_{ab}
+\Big(
+\eta^J_{ca,kl}\Gamma^J_{ij,cb}
+-\Gamma^J_{ca,kl}\eta^J_{ij,cb}
+\Big) .
+\end{aligned}
+\end{equation}
+
+The C++ loops also include the exchanged storage of the intermediate ket
+pair \((c,a)\) and apply the usual \(1/\sqrt2\) pair normalization for
+\(i=j\) or \(k=l\) before storing the TBME.
+
+\subsubsection{Direct one-body-contraction
+piece}\label{direct-one-body-contraction-piece}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L13553-L13775}{src/ReferenceImplementations.cc},
+\href{../src/FactorizedDoubleCommutator.cc\#L3150-L3278}{src/FactorizedDoubleCommutator.cc}.
+
+The reference implementation forms two one-body intermediates
+
+\begin{equation}
+\begin{aligned}
+\chi^\eta_{pq}
+&=\frac{1}{d_q}\sum_{ijJ_2}\hat J_2^2
+\big(\bar n_i n_j-n_i\bar n_j\big)
+\eta^{J_2}_{pi,qj}\eta_{ji},\\
+\chi^\Gamma_{pq}
+&=\frac{1}{d_q}\sum_{ijJ_2}\hat J_2^2
+\big(\bar n_i n_j-n_i\bar n_j\big)
+\Gamma^{J_2}_{pi,qj}\eta_{ji}.
+\end{aligned}
+\end{equation}
+
+These are then inserted into the external two-body line as
+
+\begin{equation}
+\begin{aligned}
+Z^{\rm onebody,J}_{ij,kl}
+&=\sum_a\Big(
+\chi^\eta_{ia}\Gamma^J_{aj,kl}
++\chi^\eta_{ja}\Gamma^J_{ia,kl}
+-\Gamma^J_{ij,al}\chi^\eta_{ak}
+-\Gamma^J_{ij,ka}\chi^\eta_{al}
+\Big)\\
+&\quad-\sum_a\Big(
+\chi^\Gamma_{ia}\eta^J_{aj,kl}
++\chi^\Gamma_{ja}\eta^J_{ia,kl}
+-\eta^J_{ij,al}\chi^\Gamma_{ak}
+-\eta^J_{ij,ka}\chi^\Gamma_{al}
+\Big),
+\end{aligned}
+\end{equation}
+
+with the exchange phases supplied explicitly in the reference routine as
+
+\begin{equation}
+(-1)^{J+j_i+j_j},\qquad (-1)^{J+j_k+j_l}
+\end{equation}
+
+when the insertion is on the exchanged bra or ket leg. Written with
+those phases displayed, the eight explicit reference-code terms are
+
+\begin{equation}
+\begin{aligned}
+Z^{\rm onebody,J}_{ij,kl}
+&=\sum_{abcJ_2}\hat J_2^2 f_{ab}
+\Bigg[
+\frac{1}{d_i}\eta^{J_2}_{ia,cb}\Gamma^J_{cj,kl}
+-\frac{(-1)^{J+j_i+j_j}}{d_j}\eta^{J_2}_{ja,cb}\Gamma^J_{ci,kl}\\
+&\qquad
+-\frac{1}{d_k}\Gamma^J_{ij,cl}\eta^{J_2}_{ac,bk}
++\frac{(-1)^{J+j_k+j_l}}{d_l}\Gamma^J_{ij,ck}\eta^{J_2}_{ac,bl}\\
+&\qquad
++\frac{1}{d_l}\eta^J_{ij,kc}\Gamma^{J_2}_{ca,lb}
+-\frac{(-1)^{J+j_k+j_l}}{d_k}\eta^J_{ij,lc}\Gamma^{J_2}_{ca,kb}\\
+&\qquad
+-\frac{1}{d_j}\Gamma^{J_2}_{ja,cb}\eta^J_{ic,kl}
++\frac{(-1)^{J+j_i+j_j}}{d_i}\Gamma^{J_2}_{ia,cb}\eta^J_{jc,kl}
+\Bigg].
+\end{aligned}
+\end{equation}
+
+\subsubsection{Cross-coupled reference
+piece}\label{cross-coupled-reference-piece}
+
+Source:
+\href{../src/ReferenceImplementations.cc\#L13428-L13549}{src/ReferenceImplementations.cc}.
+
+The direct reference implementation writes the cross term in the
+normal-coupled basis with a nine-j recoupling. A representative direct
+term is
+
+\begin{equation}
+\begin{aligned}
+Z^{{\rm cross},J_0}_{ij,kl}
+&\supset \sum_{abcJ_2J_3}
+(-1)^{J_2+J_3+j_a+j_c+J_0}
+\hat J_2^2\hat J_3^2
+\begin{Bmatrix}
+j_i&j_c&J_2\\
+j_j&J_3&j_a\\
+J_0&j_l&j_k
+\end{Bmatrix}
+\eta^{J_2}_{ic,ka}\,\eta_{ab}\,\Gamma^{J_3}_{bj,cl}
+\big(\bar n_a n_b-n_a\bar n_b\big).
+\end{aligned}
+\end{equation}
+
+The code expands this seed into the eight antisymmetrized variants
+generated by exchanging \(i\leftrightarrow j\) and
+\(k\leftrightarrow l\), with signs and extra phases
+
+\begin{equation}
+1,
+\quad (-1)^{j_i+j_j},
+\quad (-1)^{j_k+j_l},
+\quad (-1)^{J_0+j_i+j_j+j_k+j_l}.
+\end{equation}
+
+The alternate direct term in the lambda is the same recoupling with the
+one-body contraction placed on the other side of the two-body matrix
+element,
+
+\begin{equation}
+-\eta^{J_2}_{ib,kc}\,\eta_{ab}\,\Gamma^{J_3}_{cj,al},
+\end{equation}
+
+and its exchanged partners.
+
+\subsubsection{Factorized cross
+implementation}\label{factorized-cross-implementation}
+
+Source:
+\href{../src/FactorizedDoubleCommutator.cc\#L3287-L3565}{src/FactorizedDoubleCommutator.cc}.
+
+The optimized \texttt{FactorizedDoubleCommutator::comm223\_132\_cross}
+evaluates the same cross piece through cross-coupled matrix products. It
+first forms
+
+\begin{equation}
+\bar X^J_{ab,cd}
+=\sum_{J'}(-1)^{j_b+j_c+J'}\hat J'^2
+\begin{Bmatrix} j_a&j_b&J\\ j_c&j_d&J'\end{Bmatrix}
+X^{J'}_{ad,bc},
+\qquad X\in\{\eta,\Gamma\}.
+\end{equation}
+
+The one-body-contraction matrix in the same cross-coupled space is
+
+\begin{equation}
+\bar\eta^{(1),J}_{ab,cd}
+=\delta_{ac}\,\eta_{db}\big(\bar n_b n_d-n_b\bar n_d\big)
++\delta_{bd}\,\eta_{ac}\big(\bar n_a n_c-n_a\bar n_c\big).
+\end{equation}
+
+The cross intermediate is the simple matrix product
+
+\begin{equation}
+\bar\chi^{132,J}=\bar\eta^J\,\bar\eta^{(1),J}\,\bar\Gamma^J .
+\end{equation}
+
+It is transformed back to the normal-coupled TBME through the same
+inverse Pandya antisymmetrizer used elsewhere in the factorized double
+commutator:
+
+\begin{equation}
+X^J_{ij,kl}=-(1-P_{ij})(1-P_{kl})(-1)^{J+j_i+j_j}
+\sum_{J'}(-1)^{J'+j_i+j_k}\hat J'^2
+\begin{Bmatrix} j_j&j_i&J\\ j_k&j_l&J'\end{Bmatrix}
+\bar X^{J'}_{jl,ki} .
+\end{equation}
+
+In component form the code accumulates four inverse-Pandya pieces,
+
+\begin{equation}
+Z^{\rm cross,J}_{ij,kl}
+=C_{ij,kl}
+-(-1)^{j_i+j_j-J}C_{ji,kl}
+-(-1)^{j_k+j_l-J}C_{ij,lk}
++(-1)^{j_i+j_j+j_k+j_l}C_{ji,lk},
+\end{equation}
+
+where each \(C\) is a \(J'\) sum over the appropriate element of
+\(\bar\chi^{132,J'}\).
+
+\end{document}
