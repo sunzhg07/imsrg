@@ -786,6 +786,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
            [](IMSRGSolver &self, Operator &H) { return self.GetH_sDiagonal(H); })
  
       .def("GetA", [](IMSRGSolver &self, Operator &O, Operator &H, Operator &Om) { return self.GetA(O,H,Om); })
+      
+      .def("CheckWork", [](IMSRGSolver &self, Operator &Om, Operator &H) { return self.CheckWork(Om, H); })
       .def("GetS", &IMSRGSolver::GetS)
       .def("SetMagnusAdaptive", &IMSRGSolver::SetMagnusAdaptive)
       .def("SetReadWrite", &IMSRGSolver::SetReadWrite)

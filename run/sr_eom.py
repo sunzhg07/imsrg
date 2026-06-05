@@ -13,7 +13,7 @@ smax_core = 50  # limit of integration in flow parameter s for first stage of de
 # smax_core = 0       # limit of integration in flow parameter s for first stage of decoupling
 
 ##### Example format of how to read input interaction matrix elements from file (these are not included with the code)
-# f2b='input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz'
+#f2b='input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz'
 # f2e1,f2e2,f2l = 14,28,14
 # f3b='input/NO2B_ThBME_EM1.8_2.0_3NFJmax15_IS_hw16_ms18_36_18.stream.bin'
 # f3e1,f3e2,f3e3 = 18,36,18
@@ -22,7 +22,7 @@ smax_core = 50  # limit of integration in flow parameter s for first stage of de
 # hw=16
 
 #### Example format of how to read input interaction matrix elements from file (these are not included with the code)
-# f2b='input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz'
+# f2b='../../input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz'
 f2b = "../../input/chi2b_srg0625_eMax08_hwHO020.me2j.gz"
 f2e1, f2e2, f2l = 4, 8, 4
 f3b = "none"
@@ -100,11 +100,11 @@ imsrgsolver.Solve()
 Hs = imsrgsolver.GetH_s()
 
 # ---------------------------------------------------------------
-rank_j, parity, rank_Tz = 2, 1, 0
+rank_j, parity, rank_Tz = 0, 0, 0
 
 
 eom = EOM(Hs, rank_j, parity, rank_Tz)
-res = eom.Run(100, 6)
+res = eom.Run(80, 6)
 ## ---------------------------------------------------------------
 # print(f'\n  [SR EOM]  ZeroBody(eref) = {res.eref:.6f} MeV')
 # for k, e in enumerate(res.arnoldi.energies):
