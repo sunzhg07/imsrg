@@ -1,0 +1,184 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=0.6in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{breqn}
+\usepackage{expl3}
+\usepackage{xparse}
+\usepackage{hyperref}
+
+\newcommand{\threej}[3]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \end{Bmatrix}\endgroup}
+\newcommand{\sixj}[6]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \end{Bmatrix}\endgroup}
+\newcommand{\ninej}[9]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \\ #7 & #8 & #9 \end{Bmatrix}\endgroup}
+
+\ExplSyntaxOn
+\tl_new:N \l__hatfact_tl
+\NewDocumentCommand{\hatfact} {m} { \__hatfact_parse:n {#1} }
+\cs_new:Nn \__hatfact_parse:n { \tl_set:Nn \l__hatfact_main_tl {#1} \__hatfact_hat: }
+\cs_generate_variant:Nn \str_set:Nn {Nx}
+\cs_new:Nn \__hatfact_hat:
+  {
+    \str_set:Nx \l_tmpa_str {\l__hatfact_main_tl}
+    \str_set:Nn \l_tmpb_str {j}
+    \str_if_eq:NNTF \l_tmpa_str \l_tmpb_str { \hat{\jmath} } { \hat \l__hatfact_main_tl }
+  }
+\ExplSyntaxOff
+
+\newcommand{\CompareBlock}[3]{%
+\subsection*{#1}
+\noindent
+\begin{minipage}[t]{0.48\textwidth}
+\textbf{ArXiv scalar}
+#2
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\textbf{AMC generated (tensor setup)}
+\input{#3}
+\end{minipage}
+\vspace{1em}
+}
+
+\begin{document}
+\small
+
+\section*{ArXiv Scalar vs AMC Tensor-Setup Equations (Term-by-Term)}
+
+
+\CompareBlock{One-body I (AMC factorized: $\chi^{\alpha}$ + closure)}{
+
+
+m-scheme
+\begin{equation*}
+ \chi^{\alpha}_{ij}=\frac12\sum_{abc}\left(\bar n_a\bar n_b n_c n_i-n_a n_b\bar n_c\bar n_i\right)\Omega_{ciab}\Omega_{abcj}
+\end{equation*}
+
+\begin{equation*}
+ f^{I}_{ij}=\sum_{ab}(\chi^{\alpha}_{ab}\Gamma^J_{biaj}+\chi^{\alpha}_{ab}\Gamma^J_{aibj})
+\end{equation*}
+arxiv j-scheme:
+
+\begin{equation*}
+ \chi^{\alpha}_{ij}=\sum_{abcJ}\frac{\hat{J}^2}{2\hat{j_i}^2}\left(\bar n_a\bar n_b n_c n_i-n_a n_b\bar n_c\bar n_i\right)\Omega_{ciab}\Omega_{abcj}
+\end{equation*}
+
+\begin{equation*}
+ f^{I}_{ij}=\delta_{j_i j_j}\hat j_i^{-2}\sum_{abJ}\hat J^2\,\chi^{\alpha}_{ab}\,\Gamma^J_{biaj}
+\end{equation*}
+
+}{amc_eq_snippets_clean/dc_f1_tensor_clean_body.tex}
+
+\CompareBlock{One-body II}{
+
+
+m-scheme:
+\begin{equation*}
+ f^{II}_{ij}=\sum_{ab}\hat J^2(\chi^{\beta}_{ab}-\chi^{\beta}_{ba})\,\Omega^J_{biaj}
+\end{equation*}
+\begin{equation*}
+ \chi^{\beta}_{ij}=\frac12\sum_{abc}\left(\bar n_a\bar n_b n_c n_i-n_a n_b\bar n_c\bar n_i\right)\Omega_{ciab}\Gamma_{abcj}
+\end{equation*}
+
+arxiv j-scheme:
+
+\begin{equation*}
+ f^{II}_{ij}=\delta_{j_i j_j}\hat j_i^{-2}\sum_{abJ}\hat J^2(\chi^{\beta}_{ab}-\chi^{\beta}_{ba})\,\Omega^J_{biaj}
+\end{equation*}
+\begin{equation*}
+ \chi^{\beta}_{ij}=\frac12\sum_{abc}\left(\bar n_a\bar n_b n_c n_i-n_a n_b\bar n_c\bar n_i\right)\Omega_{ciab}\Gamma_{abcj}
+\end{equation*}
+}{amc_eq_snippets_clean/dc_f2_chibeta_tensor_only_body.tex}
+
+\CompareBlock{One-body IIIa}{
+\begin{equation*}
+ f^{III_a}_{ij}=\delta_{j_i j_j}\hat j_i^{-2}\sum_{abcJ}
+\left(\bar\chi^{\gamma J}_{i\bar c a\bar b}\Gamma^J_{a\bar b j\bar c}-\bar\chi^{\gamma J}_{c\bar j a\bar b}\Gamma^J_{a\bar b c\bar i}\right)
+\end{equation*}
+\begin{equation*}
+ \chi^{\gamma}_{ijkl}=\sum_{ab}\left(n_a\bar n_b n_j\bar n_k-\bar n_a n_b\bar n_j n_k\right)\Omega_{ajkb}\Omega_{ibal}
+\end{equation*}
+}{amc_eq_snippets_clean/dc_f3a_tensor_clean_body.tex}
+
+\CompareBlock{One-body IIIb}{
+\begin{equation*}
+ f^{III_b}_{ij}=\delta_{j_i j_j}\hat j_i^{-2}\sum_{abcJ}
+\left(\chi^{\delta J}_{ciab}\Gamma^J_{abcj}-\chi^{\delta J}_{abcj}\Gamma^J_{ciab}\right)
+\end{equation*}
+\begin{equation*}
+ \chi^{\delta}_{ijkl}=\frac14\sum_{ab}\left(\bar n_i\bar n_j n_a n_b-n_i n_j\bar n_a\bar n_b\right)\Omega_{ijab}\Omega_{abkl}
+\end{equation*}
+}{amc_eq_snippets_clean/dc_f3b_tensor_clean_body.tex}
+
+\CompareBlock{Two-body I}{
+\begin{equation*}
+\Gamma^{I,J}_{ijkl}=\sum_a\left[(1-\hat P^J_{ij})\chi^{\epsilon}_{ai}\Gamma^J_{ajkl}+(1-\hat P^J_{kl})\chi^{\epsilon}_{ak}\Gamma^J_{ijal}\right]
+\end{equation*}
+\begin{equation*}
+ \chi^{\epsilon}_{ij}=\frac12\sum_{abc}\left(\bar n_a\bar n_b n_c+n_a n_b\bar n_c\right)\Omega_{ciab}\Omega_{abcj}
+\end{equation*}
+}{amc_eq_snippets_clean/dc_G1_tensor_clean_body.tex}
+
+\CompareBlock{Two-body II}{
+\begin{equation*}
+\Gamma^{II,J}_{ijkl}=\sum_a\left[(1-\hat P^J_{ij})\chi^{\zeta}_{aj}\Omega^J_{iakl}-(1-\hat P^J_{kl})\chi^{\zeta}_{ak}\Omega^J_{ijal}\right]
+\end{equation*}
+\begin{equation*}
+ \chi^{\zeta}_{ij}=\frac12\sum_{abc}\left(n_a n_b\bar n_c+\bar n_a\bar n_b n_c\right)\Gamma_{aibc}\Omega_{bcaj}
+\end{equation*}
+}{amc_eq_snippets_clean/dc_G2_chizeta_tensor_only_body.tex}
+
+\CompareBlock{Two-body IIIa}{
+\begin{equation*}
+\Gamma^{III_a,J}_{ijkl}=\sum_{ab}\left[(1-\hat P^J_{ij})\chi^{\eta J}_{ijab}\Gamma^J_{abkl}+(1-\hat P^J_{kl})\Gamma^J_{ijab}\chi^{\eta J}_{abkl}\right]
+\end{equation*}
+\begin{equation*}
+ \chi^{\eta}_{ijkl}=\sum_{ab}\left(\bar n_a n_b\bar n_k+n_a\bar n_b n_k\right)\Omega_{iabl}\Omega_{bjka}
+\end{equation*}
+}{amc_eq_snippets_clean/dc_G3a_tensor_clean_body.tex}
+
+\CompareBlock{Two-body IIIb}{
+\begin{equation*}
+\overline{\overline\Gamma}^{III_b,J}_{j\bar l k\bar i}=(1-\hat P^J_{ij})(1-\hat P^J_{kl})\sum_{ab}\overline{\overline\Gamma}^J_{j\bar l a\bar b}\left(\overline{\overline\chi}^{\eta J}_{a\bar b k\bar i}+\overline{\overline\chi}^{\eta J}_{k\bar i b\bar a}\right)
+\end{equation*}
+\begin{equation*}
+ \chi^{\eta}_{ijkl}=\sum_{ab}\left(\bar n_a n_b\bar n_k+n_a\bar n_b n_k\right)\Omega_{iabl}\Omega_{bjka}
+\end{equation*}
+}{amc_eq_snippets_clean/dc_G3b_tensor_clean_body.tex}
+
+\CompareBlock{Two-body IIIc}{
+\begin{equation*}
+\bar\Gamma^{III_c,J}_{i\bar l k\bar j}=\tfrac12(1-\hat P^J_{ij})(1-\hat P^J_{kl})\sum_{ab}\bar\chi^{\theta J}_{i\bar l a\bar b}\bar\Gamma^J_{a\bar b k\bar j}
+\end{equation*}
+\begin{equation*}
+ \chi^{\theta}_{ijkl}=\sum_{ab}\left(n_a n_b\bar n_k+\bar n_a\bar n_b n_k+n_a n_b\bar n_j+\bar n_a\bar n_b n_j\right)\Omega_{ijab}\Omega_{abkl}
+\end{equation*}
+}{amc_eq_snippets_clean/dc_G3c_tensor_clean_body.tex}
+
+\CompareBlock{Two-body IVa}{
+\begin{equation*}
+\Gamma^{IV_a,J}_{ijkl}=-\sum_{ab}\left[(1-\hat P^J_{ij})\chi^{\kappa J}_{ijab}\Omega^J_{abkl}+(1-\hat P^J_{kl})\Omega^J_{ijab}\chi^{\kappa J}_{klab}\right]
+\end{equation*}
+\begin{equation*}
+ \chi^{\kappa}_{ijkl}=\sum_{ab}\left(\bar n_a n_b n_k+n_a\bar n_b\bar n_k\right)\Omega_{ajbl}\Gamma_{ibka}
+\end{equation*}
+}{amc_eq_snippets_clean/dc_G4a_tensor_clean_body.tex}
+
+\CompareBlock{Two-body IVb}{
+\begin{equation*}
+\overline{\overline\Gamma}^{IV_b,J}_{j\bar l k\bar i}=(1-\hat P^J_{ij})(1-\hat P^J_{kl})\sum_{ab}\overline{\overline\Omega}^{J}_{j\bar l a\bar b}\left(\bar\chi^{\iota J}_{a\bar b k\bar i}-\bar\chi^{\iota J}_{k\bar i a\bar b}\right)
+\end{equation*}
+\begin{equation*}
+ \chi^{\iota}_{ijkl}=\sum_{ab}\left(\bar n_a n_b\bar n_k+n_a\bar n_b n_k\right)\Omega_{bika}\Gamma_{jabl}
+\end{equation*}
+}{amc_eq_snippets_clean/dc_G4b_tensor_clean_body.tex}
+
+\CompareBlock{Two-body IVc}{
+\begin{equation*}
+\bar\Gamma^{IV_c,J}_{i\bar l k\bar j}=\tfrac12(1-\hat P^J_{ij})(1-\hat P^J_{kl})\sum_{ab}\bar\chi^{\lambda J}_{i\bar l a\bar b}\,\bar\Omega^J_{a\bar k j\bar b}
+\end{equation*}
+\begin{equation*}
+ \chi^{\lambda}_{ijkl}=\sum_{ab}\left(\bar n_a\bar n_b n_l+n_a n_b\bar n_l\right)\Gamma_{ijab}\Omega_{abkl}+\sum_{ab}\left(\bar n_a\bar n_b n_j+n_a n_b\bar n_j\right)\Omega_{ijab}\Gamma_{abkl}
+\end{equation*}
+}{amc_eq_snippets_clean/dc_G4c_tensor_clean_body.tex}
+
+\end{document}
