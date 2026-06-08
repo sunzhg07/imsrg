@@ -297,7 +297,14 @@ void Generator::ConstructGenerator_SingleRef(
     for (auto &i : VectorUnion(H->modelspace->valence, H->modelspace->qspace)) {
       double denominator = Get1bDenominator(i, a);
       Eta->OneBody(i, a) = etafunc(H->OneBody(i, a), denominator);
-      Eta->OneBody(a, i) = -Eta->OneBody(i, a);
+      if(H->IsReduced()){
+        // tensor case
+        Eta->OneBody(a, i) = etafunc(H->OneBody(a, i), -denominator);
+      }
+      else {
+        // scaler is simple
+        Eta->OneBody(a, i) = -Eta->OneBody(i, a);
+      }
     }
   }
   
@@ -321,8 +328,18 @@ void Generator::ConstructGenerator_SingleRef(
         ETA2(ibra, iket) = etafunc(H2(ibra, iket), denominator);
         // Only diagonal channel blocks are square and store both (ibra,iket)
         // and (iket,ibra). Off-diagonal blocks are handled by TBME symmetry.
-        if (ch_bra == ch_ket)
+        if (ch_bra == ch_ket){
+          if(H->IsReduced()){
+            //tensor
+            ETA2(iket, ibra) = etafunc(H2(iket, ibra), -denominator);
+          }
+          else{
+          // scaler
           ETA2(iket, ibra) = -ETA2(ibra, iket);
+          }
+        }
+    
+
         Ket &bra = tbc_bra.GetKet(ibra);
         Ket &ket = tbc_ket.GetKet(iket);
         //            std::cout << __func__ << "  line " << __LINE__ << "

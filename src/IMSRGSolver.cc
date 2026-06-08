@@ -1319,36 +1319,37 @@ void IMSRGSolver::WriteFlowStatusHeader(std::ostream &f)
 Operator IMSRGSolver::GetH_sDiagonal(Operator& H)
   {
     
-    Operator H_d = H*1.;
-    H_d.Erase();
+    Operator H_d = H*0.;
+    // H_d.Erase();
 
-    H_d.ZeroBody = H.ZeroBody;
+    // H_d.ZeroBody = H.ZeroBody;
 
     for (auto i : H.modelspace->all_orbits)
     {
         H_d.OneBody(i, i) = H.OneBody(i, i);
     }
-    
-    int num_channels = H.modelspace->GetNumberTwoBodyChannels();
-    for (int ch = 0; ch < num_channels; ++ch)
-    {
-        TwoBodyChannel &tbc = H.modelspace->GetTwoBodyChannel(ch);
-        int num_kets = tbc.GetNumberKets(); 
 
-        for (int idx = 0; idx < num_kets; ++idx)
-        { 
-            size_t global_ket_idx = tbc.GetKetIndex(idx); 
-            Ket &my_ket = H.modelspace->GetKet(global_ket_idx); 
-            int a = static_cast<int>(my_ket.p);
-            int b = static_cast<int>(my_ket.q);
+    // int num_channels = H.modelspace->GetNumberTwoBodyChannels();
+    // for (int ch = 0; ch < num_channels; ++ch)
+    // {
+    //     TwoBodyChannel &tbc = H.modelspace->GetTwoBodyChannel(ch);
+    //     int num_kets = tbc.GetNumberKets(); 
+
+    //     for (int idx = 0; idx < num_kets; ++idx)
+    //     { 
+    //         size_t global_ket_idx = tbc.GetKetIndex(idx); 
+    //         Ket &my_ket = H.modelspace->GetKet(global_ket_idx); 
+    //         int a = static_cast<int>(my_ket.p);
+    //         int b = static_cast<int>(my_ket.q);
 
          
-            double tbme = H.TwoBody.GetTBME(ch, ch, a, b, a, b); 
-            H_d.TwoBody.SetTBME(ch, ch, idx, idx, tbme);
-        }   
-    }
-    //Operator H_od = generator.GetHod(H);
-    //Operator H_d = H - H_od;
+    //         double tbme = H.TwoBody.GetTBME(ch, ch, a, b, a, b); 
+    //         H_d.TwoBody.SetTBME(ch, ch, idx, idx, tbme);
+    //     }   
+    // }
+    
+    // Operator H_od = generator.GetHod(H);
+    // Operator H_d = H - H_od;
     //Operator H_d = H;
     //EOM eom_worker(H_d, 0, 1, 0); 
     //eom_worker.force_decouple(H_d);
@@ -1358,36 +1359,54 @@ Operator IMSRGSolver::GetH_sDiagonal(Operator& H)
 
 Operator IMSRGSolver::GetA(Operator& O, Operator& H, Operator& Om)
   {
-    Operator Z = Commutator::Commutator(Om, H);
-    /*
+    Operator Z_1(O);
+    Operator Z_2(O);
+    Operator Z_3(O);
+    Z_1.Erase();
+    Z_2.Erase();
+    Z_3.Erase();
+    Z_1.SetAntiHermitian();
+    Z_2.SetAntiHermitian();
+    Z_3.SetAntiHermitian();
+
+    ReferenceImplementations::comm111st(Om, H, Z_1);
+    ReferenceImplementations::comm121st(Om, H, Z_2);
+    ReferenceImplementations::comm122st(Om, H, Z_3);
+
+    // Commutator::comm111st(Om, H, Z_1);
+    // Commutator::comm121st(Om, H, Z_2);
+    //Commutator::comm122st(Om, H, Z_3);
+
+    Operator A =  O - Z_1 - Z_2 - Z_3;
+    //std::cout << "Operator Norm: " << O.Norm() << "Commutator Norm: " << Z.Norm();
+    //Z = Commutator::Commutator(Om, H);
+
+    //Operator A = O + Z;
+    return Operator(A);
+  }
+
+Operator IMSRGSolver::CheckWork(Operator& Om, Operator& H)
+  {
     Operator Z_1(Om);
     Operator Z_2(Om);
     Operator Z_3(Om);
     Z_1.Erase();
     Z_2.Erase();
     Z_3.Erase();
-
+    Z_1.SetHermitian();
+    Z_2.SetHermitian();
+    Z_3.SetHermitian();
     ReferenceImplementations::comm111st(Om, H, Z_1);
     ReferenceImplementations::comm121st(Om, H, Z_2);
     ReferenceImplementations::comm122st(Om, H, Z_3);
-    */
-    std::cout << "Operator Norm: " << O.Norm() << "Commutator Norm: " << Z.Norm();
-    Operator A = O + Z;
-    return Operator(A);
-  }
+    
 
-Operator IMSRGSolver::CheckWork(Operator& Om, Operator& H)
-  {
-    Operator Z_1 = Operator(*H.modelspace, H.rank_J, H.rank_T, H.parity, H.particle_rank);
-    Operator Z_2 = Operator(*H.modelspace, H.rank_J, H.rank_T, H.parity, H.particle_rank);
-    Z_1.Erase();
-    Z_2.Erase();
+   // Commutator::comm111st(Om, H, Z_1);
+    //Commutator::comm121st(Om, H, Z_2);
+    //Commutator::comm122st(Om, H, Z_3);
+    Operator Z = Z_1 + Z_2 + Z_3;
     
-    ReferenceImplementations::comm110tt(Om, H, Z_1);
-    ReferenceImplementations::comm220tt(Om, H, Z_2);
-    
-    Operator Z = Z_1 + Z_2;
-    
+    //Operator Z = Commutator::Commutator(Om, H);
     return Z;
   }
 
