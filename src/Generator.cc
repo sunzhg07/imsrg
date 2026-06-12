@@ -144,7 +144,7 @@ double Generator::Get1bDenominator(int i, int j) {
   double ni = H->modelspace->GetOrbit(i).occ;
   double nj = H->modelspace->GetOrbit(j).occ;
 
-   double denominator = H_denom->OneBody(i, i) - H_denom->OneBody(j, j);
+  double denominator = H_denom->OneBody(i, i) - H_denom->OneBody(j, j);
    //double denominator = H->OneBody(i, i) - H->OneBody(j, j);
    //std::cout<< denominator<<" "<<denominator1<<" "<< i<<" "<<j<<std::endl;
   if (denominator_partitioning == Epstein_Nesbet) {
@@ -192,6 +192,10 @@ double Generator::Get2bDenominator(int ch_bra, int ch_ket, int ibra, int iket) {
   int l = ket.q;
   double denominator =
       H_denom->OneBody(i, i) + H_denom->OneBody(j, j) - H_denom->OneBody(k, k) - H_denom->OneBody(l, l);
+  // double norm_bra = (i == j) ? 0.5 : 1.0;
+  // double norm_ket = (k == l) ? 0.5 : 1.0;
+  // denominator += norm_bra * H_denom->TwoBody.GetTBME(ch_bra, ch_bra, i, j, i, j)
+  //              - norm_ket * H_denom->TwoBody.GetTBME(ch_ket, ch_ket, k, l, k, l);
       //H->OneBody(i, i) + H->OneBody(j, j) - H->OneBody(k, k) - H->OneBody(l, l);
 
   if (denominator_partitioning == MP_isospin) {
@@ -219,14 +223,14 @@ double Generator::Get2bDenominator(int ch_bra, int ch_ket, int ibra, int iket) {
 
   if (denominator_partitioning == Epstein_Nesbet) {
     denominator +=
-        (1 - ni - nj) * H->TwoBody.GetTBMEmonopole(i, j, i, j); // pp'pp'
+        (1 - ni - nj) * H_denom->TwoBody.GetTBMEmonopole(i, j, i, j); // pp'pp'
     denominator -=
-        (1 - nk - nl) * H->TwoBody.GetTBMEmonopole(k, l, k, l);        // hh'hh'
-    denominator += (ni - nk) * H->TwoBody.GetTBMEmonopole(i, k, i, k); // phph
-    denominator += (ni - nl) * H->TwoBody.GetTBMEmonopole(i, l, i, l); // ph'ph'
-    denominator += (nj - nk) * H->TwoBody.GetTBMEmonopole(j, k, j, k); // p'hp'h
+        (1 - nk - nl) * H_denom->TwoBody.GetTBMEmonopole(k, l, k, l);        // hh'hh'
+    denominator += (ni - nk) * H_denom->TwoBody.GetTBMEmonopole(i, k, i, k); // phph
+    denominator += (ni - nl) * H_denom->TwoBody.GetTBMEmonopole(i, l, i, l); // ph'ph'
+    denominator += (nj - nk) * H_denom->TwoBody.GetTBMEmonopole(j, k, j, k); // p'hp'h
     denominator +=
-        (nj - nl) * H->TwoBody.GetTBMEmonopole(j, l, j, l); // p'h'p'h'
+        (nj - nl) * H_denom->TwoBody.GetTBMEmonopole(j, l, j, l); // p'h'p'h'
   }
 
   // if (std::abs(denominator) < denominator_cutoff)
@@ -290,77 +294,68 @@ double Generator::Get2bDenominator_Jdep(int ch, int ibra, int iket) {
   return denominator;
 }
 
-void Generator::ConstructGenerator_SingleRef(
-    std::function<double(double, double)> &etafunc) {
-  // One body piece -- eliminate ph bits
-  for (auto &a : H->modelspace->core) {
-    for (auto &i : VectorUnion(H->modelspace->valence, H->modelspace->qspace)) {
-      double denominator = Get1bDenominator(i, a);
-      Eta->OneBody(i, a) = etafunc(H->OneBody(i, a), denominator);
-      if(H->IsReduced()){
-        // tensor case
-        Eta->OneBody(a, i) = etafunc(H->OneBody(a, i), -denominator);
+void Generator::ConstructGenerator_SingleRef(std::function<double (double,double)>& etafunc )
+{
+   // One body piece -- eliminate ph bits
+   for ( auto& a : H->modelspace->core)
+   {
+      for ( auto& i : VectorUnion(H->modelspace->valence, H->modelspace->qspace) )
+      {
+         double denominator = Get1bDenominator(i,a);
+         Eta->OneBody(i,a) = etafunc( H->OneBody(i,a), denominator);
+         Eta->OneBody(a,i) = etafunc( H->OneBody(a,i), -denominator);  // this also handles the non-scalar case where we get a phase
+//         Eta->OneBody(a,i) = - Eta->OneBody(i,a);
       }
-      else {
-        // scaler is simple
-        Eta->OneBody(a, i) = -Eta->OneBody(i, a);
+   }
+   if (only_1b_eta)
+      return;
+   // Two body piece -- eliminate pp'hh' bits
+   for ( auto& iter : Eta->TwoBody.MatEl )
+   {
+      size_t ch_bra = iter.first[0];
+      size_t ch_ket = iter.first[1];
+      TwoBodyChannel& tbc_bra = H->modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel& tbc_ket = H->modelspace->GetTwoBodyChannel(ch_ket);
+      arma::mat& ETA2 =  iter.second;
+      arma::mat& H2 = H->TwoBody.GetMatrix(ch_bra,ch_ket);
+      for ( auto& iket : tbc_ket.GetKetIndex_cc() ) // cc means core-core ('holes' refer to the reference state)
+      {
+         for ( auto& ibra : VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(), tbc_bra.GetKetIndex_qv() ) )
+         {
+            double denominator = Get2bDenominator(ch_bra,ch_ket,ibra,iket);
+            ETA2(ibra,iket) = etafunc( H2(ibra,iket), denominator);
+            if (ch_bra == ch_ket ) // if ch_bra != ch_ket, we don't store the <ket|bra> matrix element.
+            {
+               ETA2(iket,ibra) = - ETA2(ibra,iket) ; // Eta needs to be antisymmetric
+            }
+         }
       }
-    }
-  }
-  
-  if (only_1b_eta)
-    return;
-  // Two body piece -- eliminate pp'hh' bits
-  for (auto &iter : Eta->TwoBody.MatEl) {
-    size_t ch_bra = iter.first[0];
-    size_t ch_ket = iter.first[1];
-    TwoBodyChannel &tbc_bra = H->modelspace->GetTwoBodyChannel(ch_bra);
-    TwoBodyChannel &tbc_ket = H->modelspace->GetTwoBodyChannel(ch_ket);
-    arma::mat &ETA2 = iter.second;
-    arma::mat &H2 = H->TwoBody.GetMatrix(ch_bra, ch_ket);
-    for (auto &iket : tbc_ket.GetKetIndex_cc()) // cc means core-core ('holes'
-                                                // refer to the reference state)
-    {
-      for (auto &ibra :
-           VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
-                       tbc_bra.GetKetIndex_qv())) {
-        double denominator = Get2bDenominator(ch_bra, ch_ket, ibra, iket);
-        ETA2(ibra, iket) = etafunc(H2(ibra, iket), denominator);
-        // Only diagonal channel blocks are square and store both (ibra,iket)
-        // and (iket,ibra). Off-diagonal blocks are handled by TBME symmetry.
-        if (ch_bra == ch_ket){
-          if(H->IsReduced()){
-            //tensor
-            ETA2(iket, ibra) = etafunc(H2(iket, ibra), -denominator);
-          }
-          else{
-          // scaler
-          ETA2(iket, ibra) = -ETA2(ibra, iket);
-          }
+      /// For operators that aren't channel diagonal, we need to check if the pp and hh orbits sit in the other channels
+      if ( ch_bra != ch_ket )
+      {
+        for ( auto& ibra : tbc_bra.GetKetIndex_cc() ) // cc means core-core ('holes' refer to the reference state)
+        {
+           for ( auto& iket : VectorUnion(tbc_ket.GetKetIndex_qq(), tbc_ket.GetKetIndex_vv(), tbc_ket.GetKetIndex_qv() ) )
+           {
+              double denominator = Get2bDenominator(ch_bra,ch_ket,ibra,iket);
+              ETA2(ibra,iket) = etafunc( H2(ibra,iket), denominator);
+//              ETA2(iket,ibra) = - ETA2(ibra,iket) ; // Eta needs to be antisymmetric
+           }
         }
-    
-
-        Ket &bra = tbc_bra.GetKet(ibra);
-        Ket &ket = tbc_ket.GetKet(iket);
-        //            std::cout << __func__ << "  line " << __LINE__ << "
-        //            bra,ket " << bra.p << " " << bra.q << " , " << ket.p << "
-        //            " << ket.q  << "  J = " << tbc_bra.J << "   numerator
-        //            /denom = " << H2(ibra,iket) << " / " << denominator <<
-        //            std::endl;
       }
     }
-  }
 
-  if (Eta->GetParticleRank() > 2 and H->GetParticleRank() > 2 and
-      not only_2b_eta) {
-    double t_start = omp_get_wtime();
-    ConstructGenerator_SingleRef_3body(etafunc);
-    H->profiler.timer["Update Eta 3body"] += omp_get_wtime() - t_start;
-  } // if particle rank >3
+    if ( Eta->GetParticleRank()>2 and H->GetParticleRank()>2 and not only_2b_eta )
+    {
+       double t_start = omp_get_wtime();
+       ConstructGenerator_SingleRef_3body( etafunc );
+       H->profiler.timer["Update Eta 3body"] += omp_get_wtime() - t_start;
+    }// if particle rank >3
 }
 
+
 // Off-diagonal pieces are <abc|ijk> = <ppp|ccc> where c is core and p is either
-// valence or q (that is, not core).
+// valence or q1 (that is, not core).
 // void Generator::ConstructGenerator_Atan_3body()
 void Generator::ConstructGenerator_SingleRef_3body(
     std::function<double(double, double)> &etafunc) {
