@@ -2,8 +2,8 @@
 import numpy as np
 from pyIMSRG import *
 
-emax = 3  # maximum number of oscillator quanta in the model space
-ref = "O22"  # reference used for normal ordering
+emax = 2  # maximum number of oscillator quanta in the model space
+ref = "He8"  # reference used for normal ordering
 val = ref  # valence space
 
 core_generator = "white"  # definition of generator eta for decoupling the core (could also use 'white')
@@ -11,8 +11,8 @@ smax_core = 50  # limit of integration in flow parameter s for first stage of de
 
 f2b = "../../input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz"
 f2e1, f2e2, f2l = 14, 28, 14
-f3b='../../input/NO2B_ThBME_EM7.5_1.8_2.0_IS_hw16from16_ms14_28_18.me3j.gz'
-#f3b = "none"
+#f3b='../../input/NO2B_ThBME_EM7.5_1.8_2.0_IS_hw16from16_ms14_28_18.me3j.gz'
+f3b = "none"
 mode3n = "no2b"
 f3e1, f3e2, f3e3 = 14, 28, 18
 LECs = "EM7.5_1820"
@@ -32,6 +32,7 @@ if f3b != "none":
 
 ### Create an instance of the Operator class, representing the Hamiltonian
 H = Operator(ms, rank_j, parity, rank_Tz, particle_rank)
+
 
 ### Either generate the matrix elements of the Minnesota potential, or read in matrix elements from file
 if LECs == "Minnesota":
@@ -68,7 +69,7 @@ imsrgsolver.SetMethod(
 )  # Solve using the Magnus formulation. Could also be 'flow_RK4'
 
 imsrgsolver.SetGenerator(core_generator)
-imsrgsolver.SetDenominatorPartitioning("Moller_Plesset")
+imsrgsolver.SetDenominatorPartitioning("MP")
 imsrgsolver.SetSmax(smax_core)
 
 ### Do the first stage of integration to decouple the core
@@ -77,6 +78,7 @@ imsrgsolver.Solve()
 
 ### Hs is the IMSRG-evolved Hamiltonian
 Hs = imsrgsolver.GetH_s()
+IVD = OperatorFromString(ms, "IVD")
 eom=EOM(Hs,1,1,0)
 
 def UpdateOmega(ms, A, H_denom, omega,
@@ -143,12 +145,12 @@ def UpdateOmega(ms, A, H_denom, omega,
 E1 = OperatorFromString(ms, "E1")
 #E1.PrintOneBody()
 E1T = imsrgsolver.Transform(E1)
-#E1T.PrintOneBody()
+#print(E1T.ThreeBodyNorm())
+
 
 
 print("Hs:")
 H_d = imsrgsolver.GetH_sDiagonal(Hs)
-
 
 H_od = Hs - H_d
 print("H_od is:\n\n")
@@ -159,52 +161,7 @@ omega_k.SetAntiHermitian()
 
 
 Niter = 1000
-
-# Brody-DIIS controls
-diis_start = 3
-diis_dim = 6
-diis_eps = 1e-12
-diis_conv_tol = 1e-15
-omega_hist = []
-res_hist = []
-
-
-def op_inner(op_a, op_b):
-    # Use polarization identity to get an inner product from operator norms.
-    apb = op_a + op_b
-    return 0.5 * (apb.Norm() ** 2 - op_a.Norm() ** 2 - op_b.Norm() ** 2)
-
-
-def diis_extrapolate(ops, residuals):
-    m = len(residuals)
-    if m < 2:
-        return None
-
-    B = np.empty((m + 1, m + 1), dtype=float)
-    B.fill(-1.0)
-    B[m, m] = 0.0
-    rhs = np.zeros(m + 1, dtype=float)
-    rhs[m] = -1.0
-
-    for i in range(m):
-        for j in range(m):
-            B[i, j] = op_inner(residuals[i], residuals[j])
-
-    # Regularize nearly singular DIIS systems.
-    for i in range(m):
-        B[i, i] += diis_eps
-
-    try:
-        coeff = np.linalg.solve(B, rhs)[:m]
-    except np.linalg.LinAlgError:
-        return None
-
-    mixed = ops[0] * 0.0
-    for c, op in zip(coeff, ops):
-        mixed += op * float(c)
-    mixed.SetAntiHermitian()
-    return mixed
-
+diis_conv_tol = 1e-10
 
 for it in range(Niter):
     omega_k = eom.GetVSEOM_ladder_single(omega_k,-1)
