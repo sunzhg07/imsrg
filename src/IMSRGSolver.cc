@@ -1329,23 +1329,23 @@ Operator IMSRGSolver::GetH_sDiagonal(Operator& H)
         H_d.OneBody(i, i) = H.OneBody(i, i);
     }
 
-    // int num_channels = H.modelspace->GetNumberTwoBodyChannels();
-    // for (int ch = 0; ch < num_channels; ++ch)
-    // {
-    //     TwoBodyChannel &tbc = H.modelspace->GetTwoBodyChannel(ch);
-    //     int num_kets = tbc.GetNumberKets();
+    int num_channels = H.modelspace->GetNumberTwoBodyChannels();
+    for (int ch = 0; ch < num_channels; ++ch)
+    {
+        TwoBodyChannel &tbc = H.modelspace->GetTwoBodyChannel(ch);
+        int num_kets = tbc.GetNumberKets();
 
-    //     for (int ibra = 0; ibra < num_kets; ++ibra)
-    //     {
-    //         Ket &bra = tbc.GetKet(ibra);
-    //         int i = bra.p;
-    //         int j = bra.q;
+        for (int ibra = 0; ibra < num_kets; ++ibra)
+        {
+            Ket &bra = tbc.GetKet(ibra);
+            int i = bra.p;
+            int j = bra.q;
 
-    //         double norm = (i == j) ? 0.5 : 1.0;  // (1/sqrt(2))^2 = 0.5
-    //         double tbme = H.TwoBody.GetTBME(ch, ch, i, j, i, j) * norm;
-    //         H_d.TwoBody.SetTBME(ch, ch, i, j, i, j, tbme);
-    //     }
-    // }
+            double norm = (i == j) ? 0.5 : 1.0;  // (1/sqrt(2))^2 = 0.5
+            double tbme = H.TwoBody.GetTBME(ch, ch, i, j, i, j) * norm;
+            H_d.TwoBody.SetTBME(ch, ch, i, j, i, j, tbme);
+        }
+    }
     
     // Operator H_od = generator.GetHod(H);
     // Operator H_d = H - H_od;

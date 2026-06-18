@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 import numpy as np
 from pyIMSRG import *
-
-emax = 3  # maximum number of oscillator quanta in the model space
-ref = "O22"  # reference used for normal ordering
+import sys
+#emax = int(sys.argv[1])    # maximum number of oscillator quanta in the model space
+#ref = sys.argv[2]  # reference used for normal ordering
+emax = 6
+ref = "Ca40"
 val = ref  # valence space
 
 core_generator = "white"  # definition of generator eta for decoupling the core (could also use 'white')
 smax_core = 50  # limit of integration in flow parameter s for first stage of decoupling
 
-f2b = "../../input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz"
-f2e1, f2e2, f2l = 14, 28, 14
-f3b='../../input/NO2B_ThBME_EM7.5_1.8_2.0_IS_hw16from16_ms14_28_18.me3j.gz'
-#f3b = "none"
+
+#f2b = "../../input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz"
+f2b = "../../input/TwBME-HO_NN-only_N2LO_sat_bare_hw16_emax16_e2max32.me2j.gz"
+f2e1, f2e2, f2l = 16, 32, 16
+#f3b='../../input/NO2B_ThBME_EM7.5_1.8_2.0_IS_hw16from16_ms14_28_18.me3j.gz'
+f3b = '../../input/NO2B_ThBME_N2LOsat_3NFJmax15_IS_hw16_ms18_36_24.stream.bin'
+f3b = "none"
 mode3n = "no2b"
-f3e1, f3e2, f3e3 = 14, 28, 18
+f3e1, f3e2, f3e3 = 18, 36, 24
 LECs = "EM7.5_1820"
 hw = 16
 
@@ -68,7 +73,7 @@ imsrgsolver.SetMethod(
 )  # Solve using the Magnus formulation. Could also be 'flow_RK4'
 
 imsrgsolver.SetGenerator(core_generator)
-imsrgsolver.SetDenominatorPartitioning("Moller_Plesset")
+imsrgsolver.SetDenominatorPartitioning("Mo")
 imsrgsolver.SetSmax(smax_core)
 
 ### Do the first stage of integration to decouple the core
