@@ -1,4 +1,5 @@
 #include "IMSRG.hh"
+#include "FactorizedDoubleCommutator_eths.hh"
 #include "version.hh"
 #include <Python.h>
 #include <sstream>
@@ -930,10 +931,13 @@ PYBIND11_MODULE(pyIMSRG, m) {
   Commutator.def("Discard2bFrom3b", &Commutator::Discard2bFrom3b);
   Commutator.def("comm331st", &Commutator::comm331st);
   Commutator.def("comm223st", &Commutator::comm223st);
+  Commutator.def("comm223tts", &Commutator::comm223tts);
   Commutator.def("comm231st", &Commutator::comm231st);
+     Commutator.def("comm231tts", &Commutator::comm231tts);
   Commutator.def("comm232st", &Commutator::comm232st);
   Commutator.def("comm133st", &Commutator::comm133st);
   Commutator.def("comm132st", &Commutator::comm132st);
+     Commutator.def("comm132tts", &Commutator::comm132tts);
 
   //      Commutator.def("comm223_231_Factorization",
   //      &Commutator::comm223_231_Factorization);
@@ -1009,6 +1013,22 @@ PYBIND11_MODULE(pyIMSRG, m) {
   FactorizedDoubleCommutator.def(
       "SetUse_TypeIII_2b",
       &Commutator::FactorizedDoubleCommutator::SetUse_TypeIII_2b);
+
+  py::module FactorizedDoubleCommutator_eths = Commutator.def_submodule(
+       "FactorizedDoubleCommutator_eths",
+       "Tensor-focused FactorizedDoubleCommutator_eths namespace");
+  FactorizedDoubleCommutator_eths.def(
+       "comm223_231_st",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_231_st);
+  FactorizedDoubleCommutator_eths.def(
+       "comm223_232",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_232);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_1b_Intermediates",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_1b_Intermediates);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_2b_Intermediates",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_2b_Intermediates);
   FactorizedDoubleCommutator.def(
       "SetUse_GT_TypeI_2b",
       &Commutator::FactorizedDoubleCommutator::SetUse_GT_TypeI_2b);

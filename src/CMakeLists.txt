@@ -279,6 +279,7 @@ add_library(
     TensorCommutators.hh TensorCommutators.cc
     IMSRG3Commutators.hh IMSRG3Commutators.cc
     FactorizedDoubleCommutator.hh FactorizedDoubleCommutator.cc
+    FactorizedDoubleCommutator_eths.hh FactorizedDoubleCommutator_eths.cc
 )
 target_link_libraries(
     Commutator
