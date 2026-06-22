@@ -4,6 +4,7 @@
 #include <armadillo>
 #include <random>
 #include <string>
+#include <iostream>
 #include "Commutator.hh"
 #include "IMSRG3Commutators.hh"
 #include "BCH.hh"
@@ -1159,6 +1160,7 @@ double UnitTest::GetMschemeMatrixElement_1b(const Operator &Op, int a, int ma, i
     Orbit &ob = Op.modelspace->GetOrbit(b);
     if (oa.j2 + ob.j2 >= 2 * Jop and std::abs(oa.j2 - ob.j2) <= 2 * Jop and  2 * Jop >= std::abs(ma - mb))
     {
+      // matel = AngMom::CG(0.5 * oa.j2, 0.5 * ma, 0.5 * ob.j2, -0.5 * mb, Jop, 0.5 * (ma - mb)) / sqrt(2*Jop + 1.0) * Op.OneBody(a, b) * pow(-1, 0.5*(ob.j2 + mb));
       matel = AngMom::CG(0.5 * ob.j2, 0.5 * mb, Jop, 0.5 * (ma - mb), 0.5 * oa.j2, 0.5 * ma) / sqrt(oa.j2 + 1.0) * Op.OneBody(a, b);
 //      std::cout << __func__ << "  " << AngMom::CG(0.5 * ob.j2, 0.5 * mb, Jop, 0.5 * (ma - mb), 0.5 * oa.j2, 0.5 * ma) << " / " << sqrt(oa.j2 + 1.0) << " * " << Op.OneBody(a, b) << "  = " << matel << std::endl;
     }
@@ -1846,7 +1848,7 @@ bool UnitTest::Mscheme_Test_comm110tt(const Operator &X, const Operator &Y)
           double Yba = GetMschemeMatrixElement_1b(Y, b, mb, a, ma);
           double Yab = GetMschemeMatrixElement_1b(Y, a, ma, b, mb);
 
-          Z0_m += na * (1 - nb) * (Xab * Yba - Yab * Xba);
+          Z0_m +=  AngMom::CG(X.GetJRank(), -0.5*(mb - ma), X.GetJRank(), 0.5*(mb - ma), 0, 0 ) * na * (1 - nb) * (Xab * Yba - Yab * Xba);
         }
       }
     }
@@ -1947,9 +1949,9 @@ bool UnitTest::Mscheme_Test_comm220tt(const Operator &X, const Operator &Y)
         for (auto d : X.modelspace->all_orbits)
         {
           Orbit &od = X.modelspace->GetOrbit(d);
-          if ((oa.l + ob.l + oc.l + od.l) % 2 > 0)
+          if ((oa.l + ob.l + oc.l + od.l + X.GetParity()) % 2 > 0)
             continue;
-          if ((oa.tz2 + ob.tz2) != (oc.tz2 + od.tz2))
+          if (std::abs((oa.tz2 + ob.tz2) - (oc.tz2 + od.tz2)) != 2*X.GetTRank())
             continue;
           double nd = od.occ;
 
@@ -1959,15 +1961,15 @@ bool UnitTest::Mscheme_Test_comm220tt(const Operator &X, const Operator &Y)
             {
               for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
               {
-                int md = ma + mb - mc;
+                for (int md = -od.j2; md <= od.j2; md += 2)
+                {
+                  double Xabcd = GetMschemeMatrixElement_2b(X, a, ma, b, mb, c, mc, d, md);
+                  double Yabcd = GetMschemeMatrixElement_2b(Y, a, ma, b, mb, c, mc, d, md);
+                  double Xcdab = GetMschemeMatrixElement_2b(X, c, mc, d, md, a, ma, b, mb);
+                  double Ycdab = GetMschemeMatrixElement_2b(Y, c, mc, d, md, a, ma, b, mb);
 
-                double Xabcd = GetMschemeMatrixElement_2b(X, a, ma, b, mb, c, mc, d, md);
-                double Yabcd = GetMschemeMatrixElement_2b(Y, a, ma, b, mb, c, mc, d, md);
-                double Xcdab = GetMschemeMatrixElement_2b(X, c, mc, d, md, a, ma, b, mb);
-                double Ycdab = GetMschemeMatrixElement_2b(Y, c, mc, d, md, a, ma, b, mb);
-
-                Z0_m += (1. / 4) * na * nb * (1.0 - nc) * (1.0 - nd) * (Xabcd * Ycdab - Yabcd * Xcdab);
-
+                  Z0_m += AngMom::CG(X.GetJRank(), 0.5*(md + mc - mb - ma), X.GetJRank(), - 0.5*(md + mc - mb - ma), 0, 0 ) * (1. / 4) * na * nb * (1.0 - nc) * (1.0 - nd) * (Xabcd * Ycdab - Yabcd * Xcdab);
+                }
               } // for mc
             } // for mb
           } // for ma

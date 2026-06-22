@@ -54,10 +54,15 @@ namespace ReferenceImplementations
       for (size_t b : Z.modelspace->all_orbits)
       {
         Orbit &ob = Z.modelspace->GetOrbit(b);
-        //double phase = AngMom::phase((oa.j2 - ob.j2)/2);
-        double hat_lambda_inv = 1.0 / (2.0 * X.GetJRank() + 1.0);
-        //z0 +=  (oa.occ -  ob.occ) * phase *  hat_lambda_inv * X1(a,b)*Y1(b,a);
-        z0 +=  (oa.occ -  ob.occ) *  hat_lambda_inv * X1(a,b)*Y1(a,b);
+        double phase = AngMom::phase((oa.j2 - ob.j2)/2 + X.GetJRank());
+        double hat_lambda_inv = 1.0 / sqrt((2.0 * X.GetJRank() + 1.0));
+        z0 +=  (oa.occ -  ob.occ) * phase *  hat_lambda_inv * X1(a,b)*Y1(b,a);
+        // if (Y.IsAntiHermitian()) {
+        //   z0 +=  - (oa.occ -  ob.occ) *  hat_lambda_inv * X1(a,b)*Y1(a,b);
+        // }
+        // else {
+        // z0 += (oa.occ -  ob.occ) *  hat_lambda_inv * X1(a,b)*Y1(a,b);
+        // }
       }
 
     }
@@ -148,8 +153,8 @@ namespace ReferenceImplementations
 	      for(int J1 = J1_min; J1 <= J1_max; J1++)
 	        {
 		  //if (std::abs(J0 - J1) > X.GetJRank() || (J0 + J1) < X.GetJRank()) continue;
-                  double phase = AngMom::phase((J0 + J1));
-	          double hat_lambda_inv = 1.0 / (2.0 * X.GetJRank() + 1.0);
+                  double phase = AngMom::phase((J0 + J1) + X.GetJRank());
+	          double hat_lambda_inv = 1.0 / sqrt((2.0 * X.GetJRank() + 1.0));
 	          double xabcd = X2.GetTBME_J(J0, J1, a, b, c, d);
                   double xcdab = X2.GetTBME_J(J1, J0, c, d, a, b);
                   double yabcd = Y2.GetTBME_J(J0, J1, a, b, c, d);
