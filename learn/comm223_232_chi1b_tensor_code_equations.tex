@@ -1,0 +1,145 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[margin=1in]{geometry}
+
+\newcommand{\sixj}[6]{\left\{\begin{matrix}#1&#2&#3\\#4&#5&#6\end{matrix}\right\}}
+
+\title{Implemented Equations From comm223\_232\_chi1b (Tensor Branch)}
+\author{Code-faithful audit note}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+This note records the currently implemented equations in
+\texttt{src/FactorizedDoubleCommutator\_eths.cc} for the tensor branch inside
+\texttt{comm223\_232\_chi1b(Eta,Gamma,Z)}.
+It is intentionally code-faithful and may differ from analytic idealization.
+
+\section*{Branch and Conventions}
+The documented branch is used when:
+\begin{align}
+\texttt{tensor\_case} \equiv (\texttt{Eta.GetJRank()}\neq 0)\land(\texttt{Gamma.GetJRank()}=0)\land(\texttt{Z.TwoBody.rank\_T}=0).
+\end{align}
+Define
+\begin{align}
+\lambda &= \mathrm{Eta.GetJRank()},
+&
+\hat\lambda^{-1} &= \frac{1}{\sqrt{2\lambda+1}},
+&
+\phi(x) &= (-1)^x.
+\end{align}
+
+\section*{One-body Intermediates in Tensor Branch}
+The code stores
+\begin{align}
+\mathrm{CHI\_I}(p,q) &\leftarrow \chi^{\epsilon}_{pq},
+&
+\mathrm{CHI\_II}(p,q) &\leftarrow \chi^{\zeta}_{pq}.
+\end{align}
+
+\subsection*{Implemented $\chi^{\epsilon}$ (Omega*Omega, tensor-tensor to scalar)}
+For fixed $(p,q)$:
+\begin{align}
+\chi^{\epsilon}_{pq}
+=\frac{1}{2j_p+1}
+\sum_{abcJ_0J_1}
+\Big(\bar n_a\bar n_b n_c + n_a n_b\bar n_c\Big)
+\phi(J_0+J_1+\lambda)
+\hat\lambda^{-1}
+\Omega_{cpab}^{J_0J_1\lambda}
+\Omega_{abcq}^{J_1J_0\lambda},
+\end{align}
+with loop-domain intersection exactly as in code:
+\begin{align}
+J_0 &\in
+\left[
+\max\!\left(\frac{|j_a-j_b|}{2},\frac{|j_c-j_p|}{2}\right),
+\min\!\left(\frac{j_a+j_b}{2},\frac{j_c+j_p}{2}\right)
+\right],
+\\
+J_1 &\in
+\left[
+\max\!\left(\frac{|j_a-j_b|}{2},\frac{|j_c-j_q|}{2}\right),
+\min\!\left(\frac{j_a+j_b}{2},\frac{j_c+j_q}{2}\right)
+\right],
+\end{align}
+plus triangle filter $|J_0-J_1|\le\lambda\le J_0+J_1$.
+
+\subsection*{Implemented $\chi^{\zeta}$ (Gamma*Omega, scalar-tensor to tensor)}
+For fixed $(p,q)$, code uses
+\begin{align}
+\chi^{\zeta}_{pq}
+=\frac{1}{2}\phi\!\left(\frac{j_q}{2}+\lambda\right)
+\sum_{abcJ_0J_1}
+\Big(\bar n_a\bar n_b n_c + n_a n_b\bar n_c\Big)
+\phi\!\left(J_0+\frac{j_a}{2}\right)
+\hat J_0\hat J_1
+\sixj{\lambda}{J_1}{J_0}{j_a/2}{j_p/2}{j_q/2}
+\Gamma_{apbc}^{J_0J_0 0}
+\Omega_{bcaq}^{J_0J_1\lambda},
+\end{align}
+where $\hat J\equiv\sqrt{2J+1}$,
+and the implemented ranges are
+\begin{align}
+J_0 &\in
+\left[
+\max\!\left(\frac{|j_b-j_c|}{2},\frac{|j_a-j_p|}{2}\right),
+\min\!\left(\frac{j_b+j_c}{2},\frac{j_a+j_p}{2}\right)
+\right],
+\\
+J_1 &\in
+\left[
+\frac{|j_a-j_q|}{2},\frac{j_a+j_q}{2}
+\right],
+\end{align}
+plus $|J_0-J_1|\le\lambda\le J_0+J_1$.
+
+\section*{Two-body Update: Implemented $\Gamma^{(I)}$ Piece}
+The code reuses the original channel-local contraction with
+\texttt{GetTBME\_norm(...)} and antisymmetry normalization factors
+(\texttt{norm} built from $\sqrt{2}$ and ket/bra phase factors).
+In this reused block, all terms multiplying \texttt{CHI\_I}
+remain active in tensor case, providing the implemented $\Gamma^{(I)}$-type part.
+
+\section*{Two-body Update: Implemented $\Gamma^{(II)}$ Piece (explicit)}
+In tensor case, the old scalar-only \texttt{CHI\_II*Eta} contractions are disabled.
+Instead, for each matrix element $(pq;rs)$ in channel $J_0\equiv J$, code adds
+\begin{align}
+\Gamma^{(II)}_{pqrs} \mathrel{+}= \gammaII_{pqrs},
+\end{align}
+with
+\begin{align}
+\gammaII_{pqrs}
+&=
+\phi\!\left(\frac{j_p}{2}\right)\hat J_0^{-1}
+\sum_{aJ_2}
+\phi\!\left(J_2+\frac{j_a}{2}\right)
+\hat J_2\hat\lambda^{-1}
+\sixj{J_0}{J_2}{\lambda}{j_a/2}{j_q/2}{j_p/2}
+\chi^{\zeta}_{qa}
+\Omega_{pars}^{J_2J_0\lambda}
+\\
+&\quad-
+\phi\!\left(\frac{j_s}{2}\right)\hat J_0^{-1}
+\sum_{aJ_2}
+\phi\!\left(J_2+\frac{j_a}{2}\right)
+\hat J_2\hat\lambda^{-1}
+\sixj{J_0}{J_2}{\lambda}{j_a/2}{j_r/2}{j_s/2}
+\chi^{\zeta}_{ar}
+\Omega_{pqas}^{J_0J_2\lambda},
+\end{align}
+with triangle filter $|J_0-J_2|\le\lambda\le J_0+J_2$ and per-term
+$J_2$ limits from the corresponding pair-coupling intersections used in code:
+\begin{align}
+J_2:&\ (p,a)\leftrightarrow(r,s) \quad\text{for the first term},
+\\
+J_2:&\ (a,s)\leftrightarrow(p,q) \quad\text{for the second term}.
+\end{align}
+
+\section*{Final Note}
+This file mirrors the implemented code path and variable/argument ordering.
+It is intended for validation against \texttt{diag2\_compact} term-by-term.
+
+\end{document}

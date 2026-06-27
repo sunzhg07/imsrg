@@ -1,0 +1,377 @@
+\documentclass{scrartcl}
+
+\usepackage{expl3}
+\usepackage{xparse}
+\usepackage{amsmath}
+\usepackage{breqn}
+
+\newcommand{\threej}[3]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \end{Bmatrix}\endgroup}
+\newcommand{\sixj}[6]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \end{Bmatrix}\endgroup}
+\newcommand{\ninej}[9]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \\ #7 & #8 & #9 \end{Bmatrix}\endgroup}
+
+\ExplSyntaxOn
+\tl_new:N \l__hatfact_tl
+\NewDocumentCommand{\hatfact} {m} { \__hatfact_parse:n #1 }
+\cs_new:Nn \__hatfact_parse:n { \tl_set:Nn \l__hatfact_main_tl {#1} \__hatfact_hat: }
+\cs_generate_variant:Nn \str_set:Nn {Nx}
+\cs_new:Nn \__hatfact_hat:
+  {
+    \str_set:Nx \l_tmpa_str {\l__hatfact_main_tl}
+    \str_set:Nn \l_tmpb_str {j}
+    \str_if_eq:NNTF \l_tmpa_str \l_tmpb_str {
+      \hat{\jmath}
+    } {
+      \hat \l__hatfact_main_tl
+    }
+  }
+\ExplSyntaxOff
+
+\begin{document}
+
+The equation of comm231st in the code, It soppose X is scaler, and Y is tensor
+
+
+
+
+\begin{align}
+Z_{ij}^{\Lambda}
+&= \frac{1}{4}\sum_{abcd}\sum_{J_1 j_1 j_2}
+n_a n_b \bar n_c \bar n_d\,
+\sqrt{(2j_1+1)(2j_2+1)}\,
+(-1)^{j_j+\Lambda+J_1+j_1}
+\begin{Bmatrix}
+j_j & j_i & \Lambda\\
+j_1 & j_2 & J_1
+\end{Bmatrix}
+\nonumber\\
+&\qquad\times
+\left(
+X^{J_1}_{ab\,cd}\,
+Y^{(J_1 j_1,\;J_1 j_2)\Lambda}_{cd\,i\,ab\,j}
+-
+Y^{(J_1 j_1,\;J_1 j_2)\Lambda}_{ab\,i\,cd\,j}\,
+X^{J_1}_{cd\,ab}
+\right)
+\nonumber\\[1ex]
+&\quad
++ \frac{1}{4}\sum_{abcd}\sum_{J_1 J_2 j_1}
+n_a n_b \bar n_c \bar n_d\,(2j_1+1)
+\Bigg[
+(-1)^{j_i+J_1+j_1}
+\begin{Bmatrix}
+\Lambda & J_2 & J_1\\
+j_1 & j_i & j_j
+\end{Bmatrix}
+X^{(J_1 j_1,\;J_2 j_1)0}_{ab\,i\,cd\,j}\,
+Y^{(J_2,J_1)\Lambda}_{cd\,ab}
+\nonumber\\
+&\qquad\qquad\qquad\qquad
+-
+(-1)^{j_i+J_2+j_1}
+\begin{Bmatrix}
+\Lambda & J_2 & J_1\\
+j_1 & j_j & j_i
+\end{Bmatrix}
+Y^{(J_1,J_2)\Lambda}_{ab\,cd}\,
+X^{(J_2 j_1,\;J_1 j_1)0}_{cd\,i\,ab\,j}
+\Bigg].
+\label{sym:comm231st}
+\end{align}
+for tensor-tensor-to-scaler(comm231tts) commutator:
+
+\section{Equation 1}
+\begin{dmath*}
+\begin{aligned}
+Z_{i j}^{0}
+&= \frac{1}{4}\,\delta_{{j}_{j},{j}_{i}} \, (-1)^{{j}_{i}} \, \hatfact{{j}_{i}^{-2}}
+\sum_{a b c d {J}_{0} {J}_{1} {j}_{0} {j}_{1} {{\lambda}}_{0}}
+n_{a} \, n_{b} \, \bar{n}_{c} \, \bar{n}_{d}
+\, (-1)^{{J}_{0}+{j}_{1}} \, \hatfact{{j}_{0}} \, \hatfact{{j}_{1}} \, \hatfact{{{\lambda}}_{0}^{-1}}
+\, \sixj{{J}_{1}}{{{\lambda}}_{0}}{{J}_{0}}{{j}_{1}}{{j}_{i}}{{j}_{0}}
+\\
+&\quad\times
+\Big(
+X_{a b c d}^{{J}_{0} {J}_{1} {{\lambda}}_{0}} \, Y_{c d i a b j}^{{J}_{1} {j}_{0} {J}_{0} {j}_{1} {{\lambda}}_{0}}
+-
+X_{c d a b}^{{J}_{0} {J}_{1} {{\lambda}}_{0}} \, Y_{a b i c d j}^{{J}_{1} {j}_{0} {J}_{0} {j}_{1} {{\lambda}}_{0}}
+\Big)
+\end{aligned}
+\end{dmath*}
+
+\section{Equation 2}
+\begin{dmath*}
+\begin{aligned}
+Z_{i j}^{0}
+&= \frac{1}{4}\,\delta_{{j}_{j},{j}_{i}} \, (-1)^{{j}_{i}} \, \hatfact{{j}_{i}^{-2}}
+\sum_{a b c d {J}_{0} {J}_{1} {j}_{0} {j}_{1} {{\lambda}}_{0}}
+n_{a} \, n_{b} \, \bar{n}_{c} \, \bar{n}_{d}
+\, (-1)^{{J}_{1}+{j}_{1}} \, \hatfact{{j}_{0}} \, \hatfact{{j}_{1}} \, \hatfact{{{\lambda}}_{0}^{-1}}
+\, \sixj{{{\lambda}}_{0}}{{J}_{0}}{{J}_{1}}{{j}_{i}}{{j}_{1}}{{j}_{0}}
+\\
+&\quad\times
+\Big(
+X_{a b i c d j}^{{J}_{0} {j}_{0} {J}_{1} {j}_{1} {{\lambda}}_{0}} \, Y_{c d a b}^{{J}_{1} {J}_{0} {{\lambda}}_{0}}
+-
+X_{c d i a b j}^{{J}_{0} {j}_{0} {J}_{1} {j}_{1} {{\lambda}}_{0}} \, Y_{a b c d}^{{J}_{1} {J}_{0} {{\lambda}}_{0}}
+\Big)
+\end{aligned}
+\end{dmath*}
+
+
+The comm232st is implemented as:
+
+\begin{align}
+Z_{ijkl}^{(J_1,J_2)\Lambda}
+&= Z_{ijkl}^{[1]} + Z_{ijkl}^{[2]} + Z_{ijkl}^{[3]} + Z_{ijkl}^{[4]},\\[0.5em]
+\mathcal{N}_{abc}
+&\equiv n_a n_b \bar n_c + \bar n_a \bar n_b n_c .
+\end{align}
+
+\begin{align}
+Z_{ijkl}^{[1]}
+&= -\frac12\sum_{abc}\sum_{J_3 j_1 j_2}
+\mathcal{N}_{abc}(1-P_{ij}^{J_1})
+\sqrt{(2J_1+1)(2J_3+1)(2j_1+1)(2j_2+1)}
+\nonumber\\
+&\quad\times (-1)^{J_1+\Lambda+j_c+j_2}
+\begin{Bmatrix} j_i&j_j&J_1\\ j_c&j_1&J_3\end{Bmatrix}
+\begin{Bmatrix} \Lambda&J_1&J_2\\ j_c&j_2&j_1\end{Bmatrix}
+X^{J_3}_{cjab}\,Y^{(J_3 j_1,\,J_2 j_2)\Lambda}_{abiklc},
+\\[0.8em]
+Z_{ijkl}^{[2]}
+&= -\frac12\sum_{abc}\sum_{J_3 J_4 j_1 j_2}
+\mathcal{N}_{abc}(1-P_{ij}^{J_1})
+\sqrt{(2J_1+1)(2J_3+1)}(2j_1+1)(2j_2+1)
+\nonumber\\
+&\quad\times (-1)^{J_1+j_i+j_c+j_3}
+\begin{Bmatrix}\Lambda&J_4&J_3\\ j_c&j_j&j_2\end{Bmatrix}
+\begin{Bmatrix}j_c&j_1&J_2\\ j_i&j_2&J_4\end{Bmatrix}
+\begin{Bmatrix}\Lambda&J_1&J_2\\ j_i&j_2&j_j\end{Bmatrix}
+Y^{(J_3,J_4)\Lambda}_{cjab}\,X^{(J_4 j_1,\,J_2 j_1)0}_{abiklc},
+\\[0.8em]
+Z_{ijkl}^{[3]}
+&= +\frac12\sum_{abc}\sum_{J_3 j_1 j_2}
+\mathcal{N}_{abc}(1-P_{kl}^{J_2})
+\sqrt{(2J_2+1)(2J_3+1)(2j_1+1)(2j_2+1)}
+\nonumber\\
+&\quad\times (-1)^{J_1+\Lambda+j_c+j_2}
+\begin{Bmatrix}J_2&\Lambda&J_1\\ j_1&j_c&j_2\end{Bmatrix}
+\begin{Bmatrix}j_k&j_l&J_2\\ j_c&j_2&J_3\end{Bmatrix}
+Y^{(J_1 j_1,\,J_3 j_2)\Lambda}_{ijcabk}\,X^{J_3}_{abcl},
+\\[0.8em]
+Z_{ijkl}^{[4]}
+&= +\frac12\sum_{abc}\sum_{J_3 J_4 j_1 j_2}
+\mathcal{N}_{abc}(1-P_{kl}^{J_2})
+\sqrt{(2J_2+1)(2J_4+1)}(2j_1+1)(2j_2+1)
+\nonumber\\
+&\quad\times (-1)^{J_1+j_k+j_c+J_3}
+\begin{Bmatrix}j_c&j_1&J_1\\ j_k&j_2&j_3\end{Bmatrix}
+\begin{Bmatrix}\Lambda&J_3&J_4\\ j_c&j_l&j_2\end{Bmatrix}
+\begin{Bmatrix}J_2&J_1&\Lambda\\ j_2&j_l&j_k\end{Bmatrix}
+X^{(J_1 j_1,\,J_3 j_1)0}_{ijcabk}\,Y^{(J_3,J_4)\Lambda}_{abcl}.
+\end{align}
+
+
+with amc check:
+
+\paragraph{Index mapping to comm232st notation}
+The following AMC equations match the comm232st equations above under:
+\begin{align*}
+J_0 &\leftrightarrow J_1, & J_1 &\leftrightarrow J_2, & \lambda_0 &\leftrightarrow \Lambda,\\
+J_2 &\leftrightarrow J_3\ \text{(or }J_4\text{ in 3-$6j$ terms)}, &
+j_0 &\leftrightarrow j_1, & j_1 &\leftrightarrow j_2.
+\end{align*}
+
+\section{Equation 1}
+\begin{dmath*}
+Z_{i j k l}^{[1],\,{J}_{0} {J}_{1} {{\lambda}}_{0}}
+= -\frac{1}{2}(-1)^{{J}_{0}+{{\lambda}}_{0}} \* \hatfact{{J}_{0}} \*
+\sum_{a b c {J}_{2} {j}_{0} {j}_{1}} \*
+\mathcal{N}_{abc}(1-P_{ij}^{{J}_{0}}) \*
+(-1)^{{j}_{c}+{j}_{1}} \* \hatfact{{J}_{2}} \* \hatfact{{j}_{0}} \* \hatfact{{j}_{1}} \*
+\sixj{{j}_{i}}{{j}_{j}}{{J}_{0}}{{j}_{c}}{{j}_{0}}{{J}_{2}} \*
+\sixj{{{\lambda}}_{0}}{{J}_{0}}{{J}_{1}}{{j}_{c}}{{j}_{1}}{{j}_{0}} \*
+X_{c j a b}^{{J}_{2} {J}_{2} 0} \* Y_{a b i k l c}^{{J}_{2} {j}_{0} {J}_{1} {j}_{1} {{\lambda}}_{0}}
+\end{dmath*}
+
+\section{Equation 2}
+\begin{dmath*}
+Z_{i j k l}^{[3],\,{J}_{0} {J}_{1} {{\lambda}}_{0}}
+= +\frac{1}{2}(-1)^{{J}_{0}+{{\lambda}}_{0}} \* \hatfact{{J}_{1}} \*
+\sum_{a b c {J}_{2} {j}_{0} {j}_{1}} \*
+\mathcal{N}_{abc}(1-P_{kl}^{{J}_{1}}) \*
+(-1)^{{j}_{c}+{j}_{1}} \* \hatfact{{J}_{2}} \* \hatfact{{j}_{0}} \* \hatfact{{j}_{1}} \*
+\sixj{{J}_{1}}{{{\lambda}}_{0}}{{J}_{0}}{{j}_{0}}{{j}_{c}}{{j}_{1}} \*
+\sixj{{j}_{k}}{{j}_{l}}{{J}_{1}}{{j}_{c}}{{j}_{1}}{{J}_{2}} \*
+Y_{i j c a b k}^{{J}_{0} {j}_{0} {J}_{2} {j}_{1} {{\lambda}}_{0}} \* X_{a b c l}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+
+\section{Equation 3}
+\begin{dmath*}
+Z_{i j k l}^{[2],\,{J}_{0} {J}_{1} {{\lambda}}_{0}}
+= -\frac{1}{2}(-1)^{{J}_{0}+{j}_{i}} \* \hatfact{{J}_{0}} \*
+\sum_{a b c {J}_{2} {J}_{3} {j}_{0} {j}_{1}} \*
+\mathcal{N}_{abc}(1-P_{ij}^{{J}_{0}}) \*
+(-1)^{{J}_{2}+{j}_{c}} \* \hatfact{{J}_{2}} \* \hatfact{{j}_{0}^{2}} \* \hatfact{{j}_{1}^{2}} \*
+\sixj{{{\lambda}}_{0}}{{J}_{3}}{{J}_{2}}{{j}_{c}}{{j}_{j}}{{j}_{1}} \*
+\sixj{{j}_{c}}{{j}_{0}}{{J}_{1}}{{j}_{i}}{{j}_{1}}{{J}_{3}} \*
+\sixj{{J}_{0}}{{{\lambda}}_{0}}{{J}_{1}}{{j}_{1}}{{j}_{i}}{{j}_{j}} \*
+Y_{c j a b}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* X_{a b i k l c}^{{J}_{3} {j}_{0} {J}_{1} {j}_{0} 0}
+\end{dmath*}
+
+\section{Equation 4}
+\begin{dmath*}
+Z_{i j k l}^{[4],\,{J}_{0} {J}_{1} {{\lambda}}_{0}}
+= \frac{1}{2}(-1)^{{J}_{0}+{j}_{k}} \* \hatfact{{J}_{1}} \*
+\sum_{a b c {J}_{2} {J}_{3} {j}_{0} {j}_{1}} \*
+\mathcal{N}_{abc}(1-P_{kl}^{{J}_{1}}) \*
+(-1)^{{J}_{2}+{j}_{c}} \* \hatfact{{J}_{3}} \* \hatfact{{j}_{0}^{2}} \* \hatfact{{j}_{1}^{2}} \*
+\sixj{{j}_{c}}{{j}_{0}}{{J}_{0}}{{j}_{k}}{{j}_{1}}{{J}_{2}} \*
+\sixj{{{\lambda}}_{0}}{{J}_{2}}{{J}_{3}}{{j}_{c}}{{j}_{l}}{{j}_{1}} \*
+\sixj{{J}_{1}}{{J}_{0}}{{{\lambda}}_{0}}{{j}_{1}}{{j}_{l}}{{j}_{k}} \*
+X_{i j c a b k}^{{J}_{0} {j}_{0} {J}_{2} {j}_{0} 0} \* Y_{a b c l}^{{J}_{2} {J}_{3} {{\lambda}}_{0}}
+\end{dmath*}
+
+
+
+if X and Y are tensor and Z is scaler, then the equations are
+comm223tts:
+
+\paragraph{Added factors}
+Using the same pattern-based convention as above:
+\(\mathcal{N}_{abc} = n_a n_b \bar n_c + \bar n_a \bar n_b n_c\),
+\((1-P_{ij}^{J_0})\) for the \(\cdots cjab\times\cdots abiklc\) pair,
+and \((1-P_{kl}^{J_1})\) for the \(\cdots ijcabk\times\cdots abcl\) pair.
+
+\section{Equation 1}
+\begin{dmath*}
+Z_{i j k l}^{[1],\,{J}_{0} {J}_{1} 0}
+= -\frac{1}{2}\,\delta_{{J}_{1},{J}_{0}} \* (-1)^{{j}_{i}} \* \hatfact{{J}_{0}^{-1}} \*
+\sum_{a b c {J}_{2} {J}_{3} {j}_{0} {j}_{1} {{\lambda}}_{0}} \*
+\mathcal{N}_{abc}(1-P_{ij}^{{J}_{0}}) \*
+(-1)^{{J}_{2}+{j}_{1}} \* \hatfact{{J}_{2}} \* \hatfact{{j}_{0}} \* \hatfact{{j}_{1}} \* \hatfact{{{\lambda}}_{0}^{-1}} \*
+\sixj{{j}_{c}}{{j}_{j}}{{J}_{2}}{{j}_{i}}{{j}_{1}}{{J}_{0}} \*
+\sixj{{J}_{3}}{{{\lambda}}_{0}}{{J}_{2}}{{j}_{1}}{{j}_{i}}{{j}_{0}} \*
+X_{c j a b}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* Y_{a b i k l c}^{{J}_{3} {j}_{0} {J}_{0} {j}_{1} {{\lambda}}_{0}}
+\end{dmath*}
+
+\section{Equation 2}
+\begin{dmath*}
+Z_{i j k l}^{[3],\,{J}_{0} {J}_{1} 0}
+= +\frac{1}{2}\,\delta_{{J}_{1},{J}_{0}} \* (-1)^{{j}_{k}} \* \hatfact{{J}_{0}^{-1}} \*
+\sum_{a b c {J}_{2} {J}_{3} {j}_{0} {j}_{1} {{\lambda}}_{0}} \*
+\mathcal{N}_{abc}(1-P_{kl}^{{J}_{1}}) \*
+(-1)^{{J}_{2}+{j}_{1}} \* \hatfact{{J}_{3}} \* \hatfact{{j}_{0}} \* \hatfact{{j}_{1}} \* \hatfact{{{\lambda}}_{0}^{-1}} \*
+\sixj{{j}_{c}}{{j}_{l}}{{J}_{3}}{{j}_{k}}{{j}_{0}}{{J}_{0}} \*
+\sixj{{J}_{3}}{{J}_{2}}{{{\lambda}}_{0}}{{j}_{1}}{{j}_{0}}{{j}_{k}} \*
+Y_{i j c a b k}^{{J}_{0} {j}_{0} {J}_{2} {j}_{1} {{\lambda}}_{0}} \* X_{a b c l}^{{J}_{2} {J}_{3} {{\lambda}}_{0}}
+\end{dmath*}
+
+\section{Equation 3}
+\begin{dmath*}
+Z_{i j k l}^{[2],\,{J}_{0} {J}_{1} 0}
+= -\frac{1}{2}\,\delta_{{J}_{1},{J}_{0}} \* (-1)^{{j}_{i}} \* \hatfact{{J}_{0}^{-1}} \*
+\sum_{a b c {J}_{2} {J}_{3} {j}_{0} {j}_{1} {{\lambda}}_{0}} \*
+\mathcal{N}_{abc}(1-P_{ij}^{{J}_{0}}) \*
+(-1)^{{J}_{2}+{j}_{1}} \* \hatfact{{J}_{2}} \* \hatfact{{j}_{0}} \* \hatfact{{j}_{1}} \* \hatfact{{{\lambda}}_{0}^{-1}} \*
+\sixj{{j}_{c}}{{j}_{j}}{{J}_{2}}{{j}_{i}}{{j}_{1}}{{J}_{0}} \*
+\sixj{{J}_{3}}{{{\lambda}}_{0}}{{J}_{2}}{{j}_{1}}{{j}_{i}}{{j}_{0}} \*
+Y_{c j a b}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* X_{a b i k l c}^{{J}_{3} {j}_{0} {J}_{0} {j}_{1} {{\lambda}}_{0}}
+\end{dmath*}
+
+\section{Equation 4}
+\begin{dmath*}
+Z_{i j k l}^{[4],\,{J}_{0} {J}_{1} 0}
+= +\frac{1}{2}\,\delta_{{J}_{1},{J}_{0}} \* (-1)^{{j}_{k}} \* \hatfact{{J}_{0}^{-1}} \*
+\sum_{a b c {J}_{2} {J}_{3} {j}_{0} {j}_{1} {{\lambda}}_{0}} \*
+\mathcal{N}_{abc}(1-P_{kl}^{{J}_{1}}) \*
+(-1)^{{J}_{2}+{j}_{1}} \* \hatfact{{J}_{3}} \* \hatfact{{j}_{0}} \* \hatfact{{j}_{1}} \* \hatfact{{{\lambda}}_{0}^{-1}} \*
+\sixj{{j}_{c}}{{j}_{l}}{{J}_{3}}{{j}_{k}}{{j}_{0}}{{J}_{0}} \*
+\sixj{{J}_{3}}{{J}_{2}}{{{\lambda}}_{0}}{{j}_{1}}{{j}_{0}}{{j}_{k}} \*
+X_{i j c a b k}^{{J}_{0} {j}_{0} {J}_{2} {j}_{1} {{\lambda}}_{0}} \* Y_{a b c l}^{{J}_{2} {J}_{3} {{\lambda}}_{0}}
+\end{dmath*}
+
+The com132st is implemented as:
+
+\begin{align}
+Z_{ijkl}^{(J_1,J_2)\Lambda}
+&=
+\sum_{ab}\sum_{j_1 j_2}
+(n_a-n_b)\,
+(-1)^{j_a+j_2+J_1+\Lambda}\,
+\hat{j}_1\hat{j}_2\,
+\begin{Bmatrix}
+\Lambda & J_1 & J_2\\
+j_a & j_2 & j_1
+\end{Bmatrix}
+X_{ab}\,
+Y_{ijbkla}^{(J_1j_1,J_2j_2)\Lambda}
+\nonumber\\
+&\quad
+-\sum_{ab}\sum_{j_1}
+(n_a-n_b)\,
+(-1)^{j_a+j_1+J_2}\,
+\hat{j}_1^2\,
+\begin{Bmatrix}
+J_2 & \Lambda & J_1\\
+j_b & j_1 & j_a
+\end{Bmatrix}
+Y_{ab}\,
+X_{ijbkla}^{(J_1j_1,J_2j_1)0}.
+\end{align}
+
+the amc is:
+
+\section{Equation 1}
+\begin{dmath*}
+Z_{i j k l}^{[1],\,{J}_{0} {J}_{1} {{\lambda}}_{0}}
+= \sum_{a b {j}_{0} {j}_{1}}
+(n_a-n_b) \*
+(-1)^{{J}_{0}+{{\lambda}}_{0}+{j}_{a}+{j}_{1}} \*
+\hatfact{{j}_{0}} \* \hatfact{{j}_{1}} \*
+\sixj{{{\lambda}}_{0}}{{J}_{0}}{{J}_{1}}{{j}_{a}}{{j}_{1}}{{j}_{0}} \*
+X_{a b}^{0} \*
+Y_{i j b k l a}^{{J}_{0} {j}_{0} {J}_{1} {j}_{1} {{\lambda}}_{0}}
+\end{dmath*}
+
+\section{Equation 2}
+\begin{dmath*}
+Z_{i j k l}^{[2],\,{J}_{0} {J}_{1} {{\lambda}}_{0}}
+= -\sum_{a b {j}_{0}}
+(n_a-n_b) \*
+(-1)^{{J}_{1}+{j}_{a}+{j}_{0}} \*
+\hatfact{{j}_{0}^{2}} \*
+\sixj{{J}_{1}}{{{\lambda}}_{0}}{{J}_{0}}{{j}_{b}}{{j}_{0}}{{j}_{a}} \*
+Y_{a b}^{{{\lambda}}_{0}} \*
+X_{i j b k l a}^{{J}_{0} {j}_{0} {J}_{1} {j}_{0} 0}
+\end{dmath*}
+
+for X Y are tensor, the equations should be:
+
+\section{Equation 1}
+\begin{dmath*}
+Z_{i j k l}^{[1],\,{J}_{0} {J}_{1} 0}
+= \delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}} \* \hatfact{{J}_{0}^{-2}} \*
+\sum_{a b {j}_{0} {j}_{1} {{\lambda}}_{0}} \*
+(n_a-n_b) \*
+(-1)^{{j}_{b}+{j}_{0}} \* \hatfact{{j}_{0}} \* \hatfact{{j}_{1}} \* \hatfact{{{\lambda}}_{0}^{-1}} \*
+\sixj{{j}_{a}}{{j}_{b}}{{{\lambda}}_{0}}{{j}_{0}}{{j}_{1}}{{J}_{0}} \*
+X_{a b}^{{{\lambda}}_{0}} \*
+Y_{i j b k l a}^{{J}_{0} {j}_{0} {J}_{0} {j}_{1} {{\lambda}}_{0}}
+\end{dmath*}
+
+\section{Equation 2}
+\begin{dmath*}
+Z_{i j k l}^{[2],\,{J}_{0} {J}_{1} 0}
+= -\delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}} \* \hatfact{{J}_{0}^{-2}} \*
+\sum_{a b {j}_{0} {j}_{1} {{\lambda}}_{0}} \*
+(n_a-n_b) \*
+(-1)^{{j}_{b}+{j}_{0}} \* \hatfact{{j}_{0}} \* \hatfact{{j}_{1}} \* \hatfact{{{\lambda}}_{0}^{-1}} \*
+\sixj{{j}_{a}}{{j}_{b}}{{{\lambda}}_{0}}{{j}_{0}}{{j}_{1}}{{J}_{0}} \*
+Y_{a b}^{{{\lambda}}_{0}} \*
+X_{i j b k l a}^{{J}_{0} {j}_{0} {J}_{0} {j}_{1} {{\lambda}}_{0}}
+\end{dmath*}
+
+
+
+\end{document}

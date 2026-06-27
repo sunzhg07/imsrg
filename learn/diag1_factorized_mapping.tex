@@ -1,0 +1,194 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\begin{document}
+
+\section*{Detailed Match / Non-Match Map for \texttt{diag1\_compact.tex}}
+
+This note compares every displayed equation in
+\texttt{amc/examples/sample_output/diag1\_compact.tex} against the
+code-backed equations described in \texttt{learn/factorized\_latex.tex}.
+
+The goal here is not only to record matches, but also to distinguish
+three cases:
+\begin{itemize}
+\item \textbf{Exact / explicit match}: the same equation family is named explicitly in
+  \texttt{factorized\_latex.tex}, usually with a code-backed ArXiv tag.
+\item \textbf{Family / packed match}: the compact equation is implemented by the code,
+  but in \texttt{factorized\_latex.tex} it only appears as part of a packed matrix
+  product, a grouped family, or a recoupled channel.
+\item \textbf{No standalone match found}: no separate displayed equation with the same
+  object name appears in \texttt{factorized\_latex.tex}; only a generic transform or
+  surrounding family can be identified.
+\end{itemize}
+
+All code references below are taken from the explicit source links already
+embedded in \texttt{learn/factorized\_latex.tex}.
+
+\section*{Primary Factorized Blocks and Code Ranges}
+
+\begin{itemize}
+\item One-body intermediate, diagram I:
+  \texttt{FactorizedDoubleCommutator.cc L99--L249}
+  \newline
+  \texttt{factorized\_latex.tex} lines 263--320.
+\item One-body intermediate, diagrams IIIa and IIIb:
+  \texttt{FactorizedDoubleCommutator.cc L257--L371}
+  \newline
+  \texttt{factorized\_latex.tex} lines 321--359.
+\item Two-body intermediate, diagrams IIb and IId:
+  \texttt{FactorizedDoubleCommutator.cc L380--L541}
+  \newline
+  \texttt{factorized\_latex.tex} lines 361--408.
+\item Pandya transform for diagrams IIa and IIc:
+  \texttt{FactorizedDoubleCommutator.cc L546--L801}
+  \newline
+  \texttt{factorized\_latex.tex} lines 410--460.
+\item One-body intermediates for Ia, Ib, IVa, IVb:
+  \texttt{FactorizedDoubleCommutator.cc L850--L1144}
+  \newline
+  \texttt{factorized\_latex.tex} lines 727--800.
+\item Two-body intermediates for diagrams II and III:
+  \texttt{FactorizedDoubleCommutator.cc L1151--L3049}
+  \newline
+  \texttt{factorized\_latex.tex} lines 801--1008.
+\end{itemize}
+
+\section*{Full Inventory}
+
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}{p{0.18\textwidth} p{0.13\textwidth} p{0.25\textwidth} p{0.16\textwidth} p{0.22\textwidth}}
+\toprule
+Compact equation & Status & Factorized section & Code reference & Notes \\
+\midrule
+\endhead
+
+$\chi^{\alpha}$ & Exact / explicit match & One-body intermediate, diagram I & L99--L249 & Explicitly identified as the code-backed version of $\chi^{\alpha}_{ij}$; code writes the packed contraction as $\chi^{(221a)}_{de}$. \\
+
+$f^{(I)}$ & Exact / explicit match & One-body intermediate, diagram I & L99--L249 & Explicitly identified as the code-backed version of $f^{\mathrm{I}}_{ij}$; final contraction written as $Z^I_{pq}$. \\
+
+$\chi^{\beta}$ & Exact / explicit match & One-body intermediate, diagrams IIIa and IIIb & L257--L371 & Explicitly identified as the code-backed version of $\chi^{\beta}_{ij}$; code writes the packed intermediate as $\chi^{(221b)}_{de}$. \\
+
+$f^{(II)}$ & Exact / explicit match & One-body intermediate, diagrams IIIa and IIIb & L257--L371 & Explicitly identified as the code-backed version of $f^{\mathrm{II}}_{ij}$. This is one of the naming swaps noted by you: the subsection is labeled by diagrams IIIa/IIIb, but the resulting compact family is $f^{(II)}$. \\
+
+$\bar\Omega$ & No standalone match found & Closest object is the Pandya transform block for diagrams IIa and IIc & L546--L801 & The compact file has a separate displayed equation for $\bar\Omega_{ajkb}$. In \texttt{factorized\_latex.tex} there is no standalone displayed $\bar\Omega$ equation; only the generic Pandya transform $\bar X^J_{ab,cd}$ is given. \\
+
+$\bar\chi^{\gamma}$ & Exact / explicit match & Pandya transform for diagrams IIa and IIc & L546--L801 & Explicitly identified as the code-backed version of $\bar\chi^{\gamma J}_{i\bar j k\bar l}$. The code writes the packed matrix as $\bar\chi^{(222a),J}$. \\
+
+$f^{(III_a)}$ & Exact / explicit match & Pandya transform for diagrams IIa and IIc & L546--L801 & Explicitly identified as the code-backed version of $f^{\mathrm{III}_a}_{ij}$; written as the two contractions $Z^{IIa}_{pq}$ and $Z^{IIc}_{pq}$. \\
+
+$\chi^{\delta}$ & Exact / explicit match & Two-body intermediate, diagrams IIb and IId & L380--L541 & Explicitly identified as the code-backed version of $\chi^{\delta}_{ijkl}$; the packed code object is $\chi^{(222b),J}$. \\
+
+$f^{(III_b)}$ & Exact / explicit match & Two-body intermediate, diagrams IIb and IId & L380--L541 & Explicitly identified as the code-backed version of $f^{\mathrm{III}_b}_{ij}$; the final contraction is $Z^{IIb+IId}_{pq}$. \\
+
+$\chi^{\epsilon}$ & Family / packed match & One-body intermediates for Ia, Ib, IVa, IVb & L850--L1144 & \texttt{factorized\_latex.tex} says this block packages $\chi^{\epsilon}_{ij}$ and $\chi^{\zeta}_{ij}$ together. The displayed code-backed formulas use $\chi^I_{pq}$ and $\chi^{II}_{pq}$ rather than the exact compact symbols. \\
+
+$\chi^{\zeta}$ & Family / packed match & One-body intermediates for Ia, Ib, IVa, IVb & L850--L1144 & Same situation as $\chi^{\epsilon}$: present as a named family, but only through the packed one-body intermediates $\chi^I$ and $\chi^{II}$. \\
+
+$\bar\chi^{\eta}$ & Family / packed match & Two-body intermediates for diagrams II and III & L1151--L3049 & Present only at family level. The text says the ordinary-channel $\chi^{\eta}$ family corresponds to $\Gamma^{\mathrm{III}_aJ}$ and the cross-coupled / double-bar family corresponds to $\overline{\overline\Gamma}^{\mathrm{III}_bJ}$. No single displayed equation with the exact compact symbol $\bar\chi^{\eta}$ is given. \\
+
+$\chi^{\theta}$ & Family / packed match & Two-body intermediates for diagrams II and III & L1151--L3049 & Present through the tagged family ``packed intermediate for $\bar\chi^{\theta J}$'' and the later $\bar\chi_\Gamma = \bar\chi^{IV}\bar\Gamma$ construction. No one-line standalone compact formula is reproduced. \\
+
+$\bar\chi^{\iota}$ & Family / packed match & Two-body intermediates for diagrams II and III & L1151--L3049 & Present through the tagged family ``packed intermediate for $\bar\chi^{\iota J}$ and $\chi^{\lambda J}$''. This is a family-level correspondence, not a standalone one-line reproduction. \\
+
+$\overline{\overline\chi}^{\kappa}$ & Family / packed match & Two-body intermediates for diagrams II and III & L1151--L3049 & The factorized note says the code-packed ordinary-channel realization $-\eta\chi^{VI}-\chi^{VI,II}\eta$ corresponds to the $\chi^{\kappa}$ family, i.e. to $\Gamma^{\mathrm{IV}_aJ}$. The exact double-bar compact symbol is not displayed as its own standalone equation. \\
+
+$\chi^{\lambda}$ & Family / packed match & Two-body intermediates for diagrams II and III & L1151--L3049 & Present through the tagged family ``packed intermediate for $\bar\chi^{\iota J}$ and $\chi^{\lambda J}$''. The exact expanded compact form is not printed separately in the factorized note. \\
+
+$\Gamma^{(I)}$ & Family / packed match & One-body intermediates for Ia, Ib, IVa, IVb & L850--L1144 & Explicit family-level match. The factorized note says this block packages $\Gamma^{\mathrm{I}J}_{ijkl}$ and $\Gamma^{\mathrm{II}J}_{ijkl}$ together in a single update formula $Z^J_{pq,rs}$. \\
+
+$\Gamma^{(II)}$ & Family / packed match & One-body intermediates for Ia, Ib, IVa, IVb & L850--L1144 & Explicit family-level match, but not a one-equation-per-family layout. The compact equation corresponds to the part of the combined update that uses $\chi^{II}$. \\
+
+$\Gamma^{(III_a)}$ & Family / packed match & Two-body intermediates for diagrams II and III & L1151--L3049 & Explicitly mapped as the ordinary-channel $\chi^{\eta}$ family. The code-backed form is the packed matrix update $\chi^{III}\Gamma + h_Z\Gamma(\chi^{III})^T$, not a standalone expanded compact equation. \\
+
+$\overline{\overline\Gamma}^{(III_b)}$ & Family / packed match & Two-body intermediates for diagrams II and III & L1151--L3049 & Explicitly mapped by the recoupled $\chi^{\eta}$ family and the inverse Pandya return to standard coupling. Again, this is a packed / recoupled realization, not a literal compact-form rewrite. \\
+
+$\bar\Gamma^{(III_c)}$ & Family / packed match & Two-body intermediates for diagrams II and III & L1151--L3049 & Explicitly mapped through the barred $\chi^{\theta}$ family and then through the packed product $\bar\chi_\Gamma = \bar\chi^{IV}\bar\Gamma$. \\
+
+$\Gamma^{(IV_a)}$ & Family / packed match & Two-body intermediates for diagrams II and III & L1151--L3049 & Explicitly mapped as the $\chi^{\kappa}$ family through the packed ordinary-channel update $-\eta\chi^{VI}-\chi^{VI,II}\eta$. \\
+
+$\overline{\overline\Gamma}^{(IV_b)}$ & Family / packed match & Two-body intermediates for diagrams II and III & L1151--L3049 & Explicitly mapped as part of the barred / double-barred $\chi^{\iota}$ and $\chi^{\lambda}$ families with inverse Pandya insertion. \\
+
+$\bar\Gamma^{(IV_c)}$ & Family / packed match & Two-body intermediates for diagrams II and III & L1151--L3049 & Explicitly mapped together with the $\chi^{\lambda}$ family; the packed inverse-Pandya forms for $\bar\Gamma^{\mathrm{III}_cJ}$ and $\bar\Gamma^{\mathrm{IV}_cJ}$ are written near the end of the section. \\
+
+\bottomrule
+\end{longtable}
+
+\section*{What Matches Exactly}
+
+The strongest one-to-one matches are:
+\begin{itemize}
+\item $\chi^{\alpha}$ and $f^{(I)}$.
+\item $\chi^{\beta}$ and $f^{(II)}$.
+\item $\bar\chi^{\gamma}$ and $f^{(III_a)}$.
+\item $\chi^{\delta}$ and $f^{(III_b)}$.
+\end{itemize}
+
+These are the cases where \texttt{factorized\_latex.tex} explicitly says
+``this is the code-backed version of'' the same named compact family and gives
+an associated \texttt{FactorizedDoubleCommutator.cc} block.
+
+\section*{What Only Matches at Family Level}
+
+The remaining compact equations are implemented in the factorized code, but the
+factorized note groups them into packed matrix products, recoupled channels, or
+shared update formulas:
+\begin{itemize}
+\item $\chi^{\epsilon}$, $\chi^{\zeta}$.
+\item $\bar\chi^{\eta}$, $\chi^{\theta}$, $\bar\chi^{\iota}$,
+  $\overline{\overline\chi}^{\kappa}$, $\chi^{\lambda}$.
+\item $\Gamma^{(I)}$, $\Gamma^{(II)}$, $\Gamma^{(III_a)}$,
+  $\overline{\overline\Gamma}^{(III_b)}$, $\bar\Gamma^{(III_c)}$,
+  $\Gamma^{(IV_a)}$, $\overline{\overline\Gamma}^{(IV_b)}$,
+  $\bar\Gamma^{(IV_c)}$.
+\end{itemize}
+
+So these are \emph{matches}, but not line-by-line compact reproductions.
+
+\section*{What Does Not Have a Standalone Match}
+
+Only one displayed equation in \texttt{diag1\_compact.tex} clearly lacks a
+standalone counterpart in \texttt{factorized\_latex.tex}:
+\begin{itemize}
+\item $\bar\Omega_{ajkb}$.
+\end{itemize}
+
+The factorized note clearly uses the same object implicitly through the generic
+Pandya transform, but it does not print a separate displayed equation for
+$\bar\Omega$ itself.
+
+\section*{Naming Mismatches to Keep in Mind}
+
+\begin{itemize}
+\item In the one-body factorized section, the compact family $f^{(II)}$ is tied
+  to the subsection called ``diagrams IIIa and IIIb''. This is a real naming /
+  regrouping mismatch, not a mistake in your reading.
+\item In the two-body factorized section, $\Gamma^{(I)}$ and $\Gamma^{(II)}$ are
+  presented together in one block, and the same happens for several later
+  $\Gamma$ families.
+\item The factorized note often documents the packed code object rather than the
+  final expanded compact expression. For that reason, several compact equations
+  have a valid code match even though no visually identical formula is printed.
+\end{itemize}
+
+\section*{Bottom Line}
+
+Comparing \texttt{diag1\_compact.tex} against \texttt{factorized\_latex.tex} and
+using only the code references embedded there, I find:
+\begin{itemize}
+\item 8 explicit / near-one-to-one matches.
+\item 15 family-level or packed matches.
+\item 1 equation with no standalone displayed counterpart: $\bar\Omega$.
+\end{itemize}
+
+So almost everything in \texttt{diag1\_compact.tex} is represented in the
+factorized implementation note, but much of the two-body material is only
+visible there in grouped packed form rather than as one compact equation per
+family.
+
+\end{document}

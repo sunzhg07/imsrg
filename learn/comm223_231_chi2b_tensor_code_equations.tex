@@ -1,0 +1,147 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[margin=1in]{geometry}
+
+\newcommand{\sixj}[6]{\left\{\begin{matrix}#1&#2&#3\\#4&#5&#6\end{matrix}\right\}}
+
+\title{Implemented Equations From comm223\_231\_chi2b\_tensor}
+\author{Code-faithful audit note}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+This note records the \emph{currently implemented} formulas in
+src/FactorizedDoubleCommutator\_eths.cc for
+comm223\_231\_chi2b\_tensor.
+It is intended for debugging and may differ from diag2\_compact.
+
+\section*{Conventions}
+\begin{align}
+\phi(x) &\equiv (-1)^x, \\
+\hat\lambda^{-1} &\equiv \frac{1}{\sqrt{2\lambda+1}},
+\end{align}
+with
+\begin{align}
+\lambda = \mathrm{Eta.GetJRank()}.
+\end{align}
+
+\section*{Implemented Barred Two-body Transform}
+For an operator $O$ (used for both $\Omega\equiv\mathrm{Eta}$ and
+$\Gamma$ in code), the implemented barred transform is
+\begin{align}
+\bar O_{ajkb}^{J_0J_1\lambda}
+=
+\phi\!\left(J_0+\frac{j_a+j_k}{2}+\lambda\right)
+\sqrt{(2J_0+1)(2J_1+1)}
+\sum_{J_2J_3j_0}
+\phi(J_2)
+\sqrt{(2J_2+1)(2J_3+1)}(2j_0+1)
+\\
+\times
+\sixj{\lambda}{J_3}{J_2}{j_a/2}{j_j/2}{j_0}
+\sixj{j_a/2}{j_b/2}{J_0}{j_k/2}{j_0}{J_3}
+\sixj{J_1}{J_0}{\lambda}{j_0}{j_j/2}{j_k/2}
+\,O_{abjk}^{J_2J_3\lambda}.
+\end{align}
+
+Code loop limits:
+\begin{align}
+J_2 &\in \left[\frac{|j_a-j_b|}{2},\frac{j_a+j_b}{2}\right],
+&
+J_3 &\in \left[\frac{|j_j-j_k|}{2},\frac{j_j+j_k}{2}\right],
+&
+j_0 &\in \left[\frac{|j_a-j_j|}{2},\frac{j_a+j_j}{2}\right],
+\end{align}
+plus the triangle filter $|J_2-J_3|\le\lambda\le J_2+J_3$.
+
+\section*{Implemented $\bar\chi^{\gamma}$-like Intermediate (IIIa block)}
+The helper \texttt{bar\_chi\_gamma(i,l,k,j;J0)} implements
+\begin{align}
+\bar\chi^{\gamma}_{ilkj}(J_0)
+=
+\frac{\phi(J_0)}{2J_0+1}
+\sum_{abJ_2}
+\Big(n_a\bar n_b n_l\bar n_k - \bar n_a n_b\bar n_l n_k\Big)
+\phi(J_2+\lambda)
+\hat\lambda^{-1}
+\bar\Omega_{ibaj}^{J_0J_2\lambda}
+\bar\Omega_{alkb}^{J_2J_0\lambda},
+\end{align}
+with
+\begin{align}
+J_2\in
+\left[
+\frac{\max(|j_a-j_j|,|j_a-j_l|)}{2},
+\frac{\min(j_a+j_j,j_a+j_l)}{2}
+\right],
+\end{align}
+and $|J_0-J_2|\le\lambda\le J_0+J_2$.
+
+\section*{Implemented $\chi^{\delta}$-like Intermediate (IIIb block)}
+The helper \texttt{chi\_delta(i,j,k,l;J0)} implements
+\begin{align}
+\chi^{\delta}_{ijkl}(J_0)
+=
+\frac{\phi(J_0)}{4(2J_0+1)}
+\sum_{mnJ_2}
+\Big(\bar n_i\bar n_j n_m n_n - n_i n_j\bar n_m\bar n_n\Big)
+\phi(J_2+\lambda)
+\hat\lambda^{-1}
+\Omega_{ijmn}^{J_0J_2\lambda}
+\Omega_{mnkl}^{J_2J_0\lambda},
+\end{align}
+with
+\begin{align}
+J_2\in
+\left[
+\frac{\max(|j_i-j_j|,|j_m-j_n|)}{2},
+\frac{\min(j_i+j_j,j_m+j_n)}{2}
+\right],
+\end{align}
+and $|J_0-J_2|\le\lambda\le J_0+J_2$.
+
+\section*{Implemented Final One-body IIIa + IIIb Update}
+For each $p,q$ in the same one-body channel (with code condition $q\le p$),
+\begin{align}
+z_{IIIa} &=
+\sum_{abcJ_0}(2J_0+1)
+\left[
+\bar\chi^{\gamma}_{pcab}(J_0)\,\bar\Gamma_{abqc}^{J_0J_0 0}
+-
+\bar\chi^{\gamma}_{cqab}(J_0)\,\bar\Gamma_{abcp}^{J_0J_0 0}
+\right],
+\\
+z_{IIIb} &=
+\sum_{abcJ_0}(2J_0+1)
+\left[
+\chi^{\delta}_{cpab}(J_0)\,\Gamma_{abcq}^{J_0J_0 0}
+-
+\Gamma_{cpab}^{J_0J_0 0}\,\chi^{\delta}_{abcq}(J_0)
+\right],
+\end{align}
+so the explicit $(2J_0+1)$ in the outer sum cancels the
+$1/(2J_0+1)$ inside $\chi^{\delta}$, matching the intended
+$\hat J_0^2\times\hat J_0^{-2}$ pattern.
+with
+\begin{align}
+J_0\in
+\left[
+\frac{\max(|j_c-j_p|,|j_a-j_b|,|j_c-j_q|)}{2},
+\frac{\min(j_c+j_p,j_a+j_b,j_c+j_q)}{2}
+\right].
+\end{align}
+
+Code update:
+\begin{align}
+Z_{pq} &\mathrel{+}= \frac{1}{2j_p+1}(z_{IIIa}+z_{IIIb}), \\
+Z_{qp} &\mathrel{+}= h_Z\frac{1}{2j_p+1}(z_{IIIa}+z_{IIIb})\quad (p\ne q).
+\end{align}
+
+\section*{Review Note}
+This file is intentionally code-faithful, preserving current prefactors,
+loop limits, and symmetry updates so mismatches versus diag2\_compact can be
+reviewed term-by-term.
+
+\end{document}

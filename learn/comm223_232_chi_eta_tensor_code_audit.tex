@@ -1,0 +1,95 @@
+% Code-faithful audit for chi^eta path in comm223_232_chi2b (tensor upgrade)
+% Source: src/FactorizedDoubleCommutator_eths.cc (comm223_232_chi2b)
+% Conventions:
+% 1) Barred operator uses cross-coupled convention with adcb mapping for direct TBME legs.
+% 2) Scalar branch is preserved when tensor_eta_case is false.
+% 3) Tensor branch modifies only chi^eta construction and reverse-Pandya recoupling factors.
+
+\section*{chi^eta Tensor Code Audit (comm223\_232\_chi2b)}
+
+\subsection*{Branch selection}
+\begin{align}
+\texttt{tensor\_eta\_case}
+&\equiv (\lambda_\eta \neq 0)\wedge(\lambda_\Gamma = 0)\wedge(Z\text{ scalar}), \\
+\hat\lambda^{-1} &= \frac{1}{\sqrt{2\lambda_\eta+1}}.
+\end{align}
+
+\subsection*{Barred tensor Omega used in chi^eta}
+Code helper \texttt{barred\_eta\_tensor(a,j,k,b;J_0,J_1)} computes
+\begin{align}
+\bar\Omega_{a j k b}^{J_0 J_1 \lambda}
+&= (-1)^{J_0 + (j_a+j_k)/2 + \lambda}
+\sqrt{(2J_0+1)(2J_1+1)}
+\sum_{J_2,J_3,j_0}
+(-1)^{J_2}
+\sqrt{(2J_2+1)(2J_3+1)}(2j_0+1) \\
+&\quad \times
+\sixj{\lambda}{J_3}{J_2}{j_a}{j_j}{j_0}
+\sixj{j_a}{j_b}{J_0}{j_k}{j_0}{J_3}
+\sixj{J_1}{J_0}{\lambda}{j_0}{j_j}{j_k}
+\,\Omega_{a b j k}^{J_2 J_3 \lambda},
+\end{align}
+with triangle constraints in code for all coupled triples.
+
+This is the code realization of the adcb barred convention:
+\begin{align}
+\bar\Omega_{(a,j)(k,b)}\leftrightarrow \Omega_{(a,b)(j,k)}.
+\end{align}
+
+\subsection*{chi^eta construction in cross-coupled space}
+For each cross-coupled channel $J_{cc}$ and matrix element $[(i,l),(k,j)]$:
+\begin{align}
+\bar\chi^{\eta}_{i l k j}(J_{cc})
+&= \frac{(-1)^{J_{cc}}}{2J_{cc}+1}
+\sum_{a b J_2}
+\Big(\bar n_a n_b \bar n_k + n_a \bar n_b n_k\Big)
+(-1)^{J_2+\lambda}\hat\lambda^{-1}
+\bar\Omega_{i b a j}^{J_{cc} J_2 \lambda}
+\bar\Omega_{a l k b}^{J_2 J_{cc} \lambda}.
+\end{align}
+This is exactly the tensor branch implemented for \texttt{barCHI\_III}.
+
+\subsection*{Scalar fallback (unchanged)}
+When \texttt{tensor\_eta\_case=false}, code keeps
+\begin{align}
+\bar\chi^{\eta} = \bar\Eta\cdot (\texttt{nnnbar\_Eta}),
+\end{align}
+with the pre-existing scalar-Pandya pipeline.
+
+\subsection*{Reverse Pandya step used for Chi\_III\_Op}
+Existing scalar reverse transform in code is retained for non-tensor branch.
+For tensor branch, each sampled barred element in the reverse loop is multiplied by
+an added recoupling factor
+\begin{align}
+\mathcal R(i,j,k,l;J_0,J')
+&= (2J_0+1)(-1)^{J_0 + j_i + j_k + \lambda}
+\sum_{j_0}
+(-1)^{J'}(2J'+1)(2j_0+1) \\
+&\quad\times
+\sixj{\lambda}{J'}{J'}{j_i}{j_j}{j_0}
+\sixj{j_i}{j_l}{J_0}{j_k}{j_0}{J'}
+\sixj{J_0}{J_0}{\lambda}{j_0}{j_j}{j_k},
+\end{align}
+and analogously for exchanged $(i\leftrightarrow j)$ contribution.
+
+So reverse accumulation in tensor branch is code-equivalent to
+\begin{align}
+\texttt{commij} &\mathrel{+}= \mathcal R(i,j,k,l;J_0,J')\,\bar\chi^{\eta}_{i l k j}(J'), \\
+\texttt{commji} &\mathrel{+}= \mathcal R(j,i,k,l;J_0,J')\,\bar\chi^{\eta}_{j l k i}(J').
+\end{align}
+
+\subsection*{Final contraction status}
+After reverse mapping, the downstream scalar contraction path is unchanged:
+\begin{align}
+\Delta Z_{2b} \supset \Chi\_III\_Op\cdot\Gamma + h_Z\,\Gamma\cdot\Chi\_III\_Op^T,
+\end{align}
+which matches your requirement that chi^eta is treated as scalar at this stage.
+
+\subsection*{Audit note versus diag2\_compact}
+The implemented tensor branch now matches the intended structure:
+\begin{align}
+\bar\chi^{\eta} \sim \bar\Omega\,\bar\Omega,
+\end{align}
+with adcb barred-index interpretation in code. The reverse step is implemented as
+an explicit three-6j recoupling factor multiplying sampled barred matrix elements
+inside the existing reverse loop structure.

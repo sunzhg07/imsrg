@@ -1,0 +1,155 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[margin=1in]{geometry}
+
+\newcommand{\sixj}[6]{\left\{\begin{matrix}#1&#2&#3\\#4&#5&#6\end{matrix}\right\}}
+
+\title{Implemented Equations From \texttt{comm223\_231\_chi1b\_tensor}}
+\author{Auto-generated from code structure}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+This note reflects the \emph{current code implementation} in
+\texttt{src/FactorizedDoubleCommutator\_eths.cc} for
+\texttt{comm223\_231\_chi1b\_tensor}.
+It is intended for code-vs-equation review and may differ from
+\texttt{diag2\_compact.tex}.
+
+\section*{Conventions}
+\begin{align}
+\hat\lambda^{-1} &\equiv \frac{1}{\sqrt{2\lambda+1}}, \\
+\phi(n) &\equiv (-1)^n \quad \text{(implemented as \texttt{modelspace->phase(n)}).}
+\end{align}
+
+External rank:
+\begin{align}
+\lambda = \mathrm{Eta.GetJRank()}.
+\end{align}
+
+The tensor branch is called only for:
+\begin{align}
+\lambda>0,\qquad \Gamma \text{ scalar},\qquad Z \text{ scalar}.
+\end{align}
+
+\section*{Implemented Intermediate $\chi^\alpha$}
+For each orbit $d$ and each $e$ in the same one-body channel as $d$,
+with an implementation restriction $e\le d$:
+\begin{align}
+\chi^{\alpha}_{de}
+=\frac{1}{2j_d+1}
+\sum_{abc}
+\sum_{J_0,J_1}
+\Big(
+\bar n_a\bar n_b n_c n_d - n_a n_b \bar n_c \bar n_d
+\Big)
+\,\phi(J_0+J_1+\lambda)
+\,\hat\lambda^{-1}
+\,\Omega^{J_0J_1\lambda}_{cdab}
+\,\Omega^{J_1J_0\lambda}_{abce},
+\end{align}
+with loop limits
+\begin{align}
+J_{ab}^{\min} &= \frac{|j_a-j_b|}{2}, & J_{ab}^{\max} &= \frac{j_a+j_b}{2},\\
+J_{cd}^{\min} &= \frac{|j_c-j_d|}{2}, & J_{cd}^{\max} &= \frac{j_c+j_d}{2},\\
+J_{ce}^{\min} &= \frac{|j_c-j_e|}{2}, & J_{ce}^{\max} &= \frac{j_c+j_e}{2},\\
+J_0^{\min} &= \max(J_{ab}^{\min},J_{cd}^{\min}), & J_0^{\max} &= \min(J_{ab}^{\max},J_{cd}^{\max}),\\
+J_1^{\min} &= \max(J_{ab}^{\min},J_{ce}^{\min}), & J_1^{\max} &= \min(J_{ab}^{\max},J_{ce}^{\max}),
+\end{align}
+and the triangle filter
+\begin{align}
+|J_0-J_1|\le \lambda \le J_0+J_1.
+\end{align}
+
+Hermitian fill in code:
+\begin{align}
+\chi^{\alpha}_{ed} \leftarrow \chi^{\alpha}_{de}\quad (d\ne e).
+\end{align}
+
+\section*{Implemented Intermediate $\chi^\beta$}
+For each $d,e$ (same one-body channel):
+\begin{align}
+\chi^{\beta}_{de}
+= \frac{1}{2}
+\sum_{abc}
+\sum_{J_0,J_1}
+\phi\!\left(\frac{j_e}{2}+\lambda\right)
+\Big(
+\bar n_a\bar n_b n_c n_d - n_a n_b \bar n_c \bar n_d
+\Big)
+\phi\!\left(J_0+\frac{j_c}{2}\right)
+\sqrt{(2J_0+1)(2J_1+1)}
+\sixj{J_0}{J_1}{\lambda}{j_e/2}{j_d/2}{j_c/2}
+\,\Omega^{J_0J_1\lambda}_{cdab}
+\,\Gamma^{J_1J_1 0}_{abce},
+\end{align}
+with the same triangle filter and with loop ranges in code:
+\begin{align}
+J_0^{\min} &= \max\!\left(\frac{|j_c-j_d|}{2},\frac{|j_a-j_b|}{2}\right),
+&
+J_0^{\max} &= \min\!\left(\frac{j_c+j_d}{2},\frac{j_a+j_b}{2}\right),\\
+J_1^{\min} &= \max\!\left(\frac{|j_a-j_b|}{2},\frac{|j_c-j_e|}{2}\right),
+&
+J_1^{\max} &= \min\!\left(\frac{j_a+j_b}{2},\frac{j_c+j_e}{2}\right).
+\end{align}
+
+\section*{Implemented One-body Output: $f^{(I)}+f^{(II)}$}
+For each $p,q$ in the same one-body channel (code uses $q\le p$), define
+\begin{align}
+z_I &=
+\sum_{ab}\!\!\!\!\!\!\!\!\!\!\!\!
+\sum_{\substack{J_0\\ j_a=j_b}}
+(2J_0+1)
+\chi^{\alpha}_{ab}
+\left(
+\Gamma^{J_0J_0 0}_{bpaq} + \Gamma^{J_0J_0 0}_{apbq}
+\right),
+\end{align}
+with
+\begin{align}
+J_0^{\min} = \frac{\max(|j_b-j_p|,|j_a-j_q|)}{2},
+\quad
+J_0^{\max} = \frac{\min(j_b+j_p,j_a+j_q)}{2}.
+\end{align}
+
+And
+\begin{align}
+z_{II} &= \sum_{ab}\!\!\!\!\!\!\!\!\!\!\!\!
+\sum_{\substack{J_0,J_1\\ j_a=j_b}}
+\hat\lambda^{-1}\sqrt{(2J_0+1)(2J_1+1)}
+\Bigg[
+\phi\!\left(J_1+\frac{j_a}{2}\right)
+\sixj{J_1}{\lambda}{J_0}{j_b/2}{j_p/2}{j_a/2}
+\chi^{\beta}_{ab}
+\Omega^{J_0J_1\lambda}_{bpaq}
+\\
+&\hspace{3.0cm}
+-
+\phi\!\left(J_1+\frac{j_b}{2}\right)
+\sixj{J_1}{\lambda}{J_0}{j_a/2}{j_p/2}{j_b/2}
+\chi^{\beta}_{ba}
+\Omega^{J_0J_1\lambda}_{apbq}
+\Bigg],
+\end{align}
+where the code currently uses
+\begin{align}
+J_0\in\left[\frac{|j_b-j_p|}{2},\frac{j_b+j_p}{2}\right],\qquad
+J_1\in\left[\frac{|j_a-j_q|}{2},\frac{j_a+j_q}{2}\right]
+\end{align}
+with triangle filter $|J_0-J_1|\le\lambda\le J_0+J_1$.
+
+Final update implemented in code:
+\begin{align}
+Z_{pq} &\mathrel{+}= \frac{1}{2j_p+1}z_I + \phi\!\left(\frac{j_p}{2}\right)\frac{1}{2j_p+1}z_{II},\\
+Z_{qp} &\mathrel{+}= h_Z\left[\frac{1}{2j_p+1}z_I + \phi\!\left(\frac{j_p}{2}\right)\frac{1}{2j_p+1}z_{II}\right],\quad (p\ne q),
+\end{align}
+with $h_Z=\pm 1$ from hermiticity of $\Gamma$.
+
+\section*{Review Notes}
+This file is intentionally \emph{code-faithful}, not \emph{theory-faithful}.
+It records current implemented sums/filters exactly so they can be audited
+against \texttt{diag2\_compact.tex}.
+
+\end{document}
