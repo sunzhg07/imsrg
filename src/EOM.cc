@@ -6,12 +6,15 @@
 #include "FactorizedDoubleCommutator.hh"
 #include "ReadWrite.hh"
 #include "UnitTest.hh"
+#include <algorithm>
 #include <cmath>
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <string>
+#include <vector>
 using PhysConst::SQRT2;
 
 // we have two constructor for the EOM, w/o the rdm for multi-reference and
@@ -107,6 +110,8 @@ double EOM::RdmTB_J(double J, size_t a_hs, size_t b_hs, size_t c_hs, size_t d_hs
 
 double EOM::RdmThreeBody_J(int Jab, size_t a_hs, size_t b_hs, size_t c_hs,
                            int Jed, size_t d_hs, size_t e_hs, size_t f_hs, int twoJ) const {
+  if (!use_rdm3 || !rdm.ThreeBody.IsAllocated())
+    return 0.0;
   size_t norbits_hs = modelspace->GetNumberOrbits();
   if (a_hs >= norbits_hs || b_hs >= norbits_hs || c_hs >= norbits_hs ||
       d_hs >= norbits_hs || e_hs >= norbits_hs || f_hs >= norbits_hs) return 0.0;
@@ -148,142 +153,153 @@ double EOM::RdmThreeBody_J(int Jab, size_t a_hs, size_t b_hs, size_t c_hs,
 
 ///  In case we want to construct the A matrix for a single channel
 ///  and it's more convenient to specify J,parity,Tz than the channel index.
+void EOM::SetIncludeConfigs(bool qv, bool ph, bool ppvv, bool pphv, bool pphh) {
+  include_qv = qv;
+  include_ph = ph;
+  include_ppvv = ppvv;
+  include_pphv = pphv;
+  include_pphh = pphh;
+  PrintIncludeConfigs();
+}
+
+void EOM::PrintIncludeConfigs() const {
+  std::cout << "EOM include configs:"
+            << " qv=" << (include_qv ? 1 : 0)
+            << " ph=" << (include_ph ? 1 : 0)
+            << " ppvv=" << (include_ppvv ? 1 : 0)
+            << " pphv=" << (include_pphv ? 1 : 0)
+            << " pphh=" << (include_pphh ? 1 : 0) << std::endl;
+}
+
 void EOM::ConstructConfigs() {
-  // Generate configuration for fock space EOM
-  // First ppvv
+  // Generate configuration for fock space EOM.
+  // Blocks gated by SetIncludeConfigs (default: all on).
+  eom_confs.clear();
+  eom_dims = 0;
+  qv_dim = ph_dim = ppvv_dim = pphv_dim = pphh_dim = 0;
+  qv_start = qv_end = 0;
+  ph_start = ph_end = 0;
+  ppvv_start = ppvv_end = 0;
+  pphv_start = pphv_end = 0;
+  pphh_start = pphh_end = 0;
+
   std::cout << "Constructing EOM configurations for J2=" << J2
             << " parity=" << parity << " itz=" << itz << std::endl;
-  // first we do one body
-  qv_start = 0;
-  qv_end = 0;
-  qv_dim = 0;
+  PrintIncludeConfigs();
+
   int norbits = modelspace->norbits;
-  for (index_t i_orb = 0; i_orb < norbits; i_orb++) {
-    Orbit &oi = modelspace->GetOrbit(i_orb);
-    if (oi.cvq != 2)
-      continue;
-    for (index_t j_orb = 0; j_orb < norbits; j_orb++) {
-      Orbit &oj = modelspace->GetOrbit(j_orb);
-      if (oj.cvq != 1)
+
+  // qv: 1b excluded ← valence
+  qv_start = 0;
+  if (include_qv) {
+    for (index_t i_orb = 0; i_orb < norbits; i_orb++) {
+      Orbit &oi = modelspace->GetOrbit(i_orb);
+      if (oi.cvq != 2)
         continue;
-      if (oj.l != oi.l)
-        continue;
-      if (oj.j2 != oi.j2)
-        continue;
-      if (oj.tz2 != oi.tz2)
-        continue;
-      eom_confs.push_back({i_orb, j_orb, 0, eom_dims});
-      eom_dims += 1;
-      qv_dim += 1;
+      for (index_t j_orb = 0; j_orb < norbits; j_orb++) {
+        Orbit &oj = modelspace->GetOrbit(j_orb);
+        if (oj.cvq != 1)
+          continue;
+        if (oj.l != oi.l)
+          continue;
+        if (oj.j2 != oi.j2)
+          continue;
+        if (oj.tz2 != oi.tz2)
+          continue;
+        eom_confs.push_back({i_orb, j_orb, 0, eom_dims});
+        eom_dims += 1;
+        qv_dim += 1;
+      }
     }
   }
   if (qv_dim > 0)
     qv_end = qv_start + qv_dim - 1;
-std::cout << "dimension EOM qv: " << qv_start << " " << qv_end << std::endl;
+  std::cout << "dimension EOM qv: " << qv_start << " " << qv_end
+            << " (dim=" << qv_dim << ")" << std::endl;
+
+  // ph: 1b (v∪q) ← core
   ph_start = eom_confs.size();
-  ph_end = 0;
-  for (index_t i_orb = 0; i_orb < norbits; i_orb++) {
-    Orbit &oi = modelspace->GetOrbit(i_orb);
-    if (oi.cvq == 0)
-      continue;
-    for (index_t j_orb = 0; j_orb < norbits; j_orb++) {
-      Orbit &oj = modelspace->GetOrbit(j_orb);
-      if (oj.cvq != 0)
+  if (include_ph) {
+    for (index_t i_orb = 0; i_orb < norbits; i_orb++) {
+      Orbit &oi = modelspace->GetOrbit(i_orb);
+      if (oi.cvq == 0)
         continue;
-      if (oj.l != oi.l)
-        continue;
-      if (oj.j2 != oi.j2)
-        continue;
-      if (oj.tz2 != oi.tz2)
-        continue;
-      eom_confs.push_back({i_orb, j_orb, 0, eom_dims});
-      eom_dims += 1;
-      ph_dim += 1;
+      for (index_t j_orb = 0; j_orb < norbits; j_orb++) {
+        Orbit &oj = modelspace->GetOrbit(j_orb);
+        if (oj.cvq != 0)
+          continue;
+        if (oj.l != oi.l)
+          continue;
+        if (oj.j2 != oi.j2)
+          continue;
+        if (oj.tz2 != oi.tz2)
+          continue;
+        eom_confs.push_back({i_orb, j_orb, 0, eom_dims});
+        eom_dims += 1;
+        ph_dim += 1;
+      }
     }
   }
   if (ph_dim > 0)
     ph_end = ph_start + ph_dim - 1;
-  std::cout << "dimension EOM ph: " << ph_start << " " << ph_end << std::endl;
+  std::cout << "dimension EOM ph: " << ph_start << " " << ph_end
+            << " (dim=" << ph_dim << ")" << std::endl;
 
+  // ppvv / qqvv: bra qq∪qv, ket vv
   ppvv_start = eom_confs.size();
-  ppvv_end = 0;
   size_t number_channels = modelspace->GetNumberTwoBodyChannels();
-  for (index_t ich = 0; ich < number_channels; ich++) {
-    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(ich);
-    for (auto &ibra : VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv())) {
-      for (auto &iket : tbc.GetKetIndex_vv()) {
-        eom_confs.push_back({ibra, iket, ich, eom_dims});
-        eom_dims += 1;
-        ppvv_dim += 1;
+  if (include_ppvv) {
+    for (index_t ich = 0; ich < number_channels; ich++) {
+      TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(ich);
+      for (auto &ibra :
+           VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv())) {
+        for (auto &iket : tbc.GetKetIndex_vv()) {
+          eom_confs.push_back({ibra, iket, ich, eom_dims});
+          eom_dims += 1;
+          ppvv_dim += 1;
+        }
       }
     }
   }
   if (ppvv_dim > 0)
     ppvv_end = ppvv_start + ppvv_dim - 1;
-
   std::cout << "dimension EOM ppvv: " << ppvv_start << " " << ppvv_end
-            << std::endl;
-  // for (index_t i = ppvv_start; i < ppvv_start + ppvv_dim; i++) {
-  //   auto &c = eom_confs.at(i);
-  //   TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(c[2]);
-  //   Ket &kbra = tbc.GetKet(c[0]);
-  //   int cvq_p = modelspace->GetOrbit(kbra.p).cvq;
-  //   int cvq_q = modelspace->GetOrbit(kbra.q).cvq;
-  //   // vpvv: bra ket has one valence (1) and one particle (2)
-  //   if ((cvq_p == 2 && cvq_q == 1) || (cvq_p == 1 && cvq_q == 2)) {
-  //     Ket &kket = tbc.GetKet(c[1]);
-  //     std::cout << "vpvvhere " << i
-  //               << " " << kbra.p << " " << kbra.q
-  //               << " " << kket.p << " " << kket.q
-  //               << " " << tbc.J << std::endl;
-  //   }
-  // }
+            << " (dim=" << ppvv_dim << ")" << std::endl;
 
+  // pphv / qqhv: bra qq∪qv∪vv, ket vc
   pphv_start = eom_confs.size();
-  pphv_end = 0;
-  number_channels = modelspace->GetNumberTwoBodyChannels();
-  for (index_t ich = 0; ich < number_channels; ich++) {
-    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(ich);
-    for (auto &ibra : VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv(),
-                                  tbc.GetKetIndex_vv())) {
-      for (auto &iket : tbc.GetKetIndex_vc()) {
-        eom_confs.push_back({ibra, iket, ich, eom_dims});
-        eom_dims += 1;
-        pphv_dim += 1;
+  if (include_pphv) {
+    for (index_t ich = 0; ich < number_channels; ich++) {
+      TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(ich);
+      for (auto &ibra :
+           VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv(),
+                       tbc.GetKetIndex_vv())) {
+        for (auto &iket : tbc.GetKetIndex_vc()) {
+          eom_confs.push_back({ibra, iket, ich, eom_dims});
+          eom_dims += 1;
+          pphv_dim += 1;
+        }
       }
     }
   }
   if (pphv_dim > 0)
     pphv_end = pphv_start + pphv_dim - 1;
   std::cout << "dimension EOM pphv: " << pphv_start << " " << pphv_end
-            << std::endl;
-  // for (index_t i = pphv_start; i < pphv_start + pphv_dim; i++) {
-  //   auto &c = eom_confs.at(i);
-  //   TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(c[2]);
-  //   Ket &kbra = tbc.GetKet(c[0]);
-  //   int cvq_p = modelspace->GetOrbit(kbra.p).cvq;
-  //   int cvq_q = modelspace->GetOrbit(kbra.q).cvq;
-  //   // vvhv: bra ket has two valence (1,1)
-  //   if (cvq_p == 1 && cvq_q == 1) {
-  //     Ket &kket = tbc.GetKet(c[1]);
-  //     std::cout << "vvhv " << i
-  //               << " " << kbra.p << " " << kbra.q
-  //               << " " << kket.p << " " << kket.q
-  //               << " " << c[2] << std::endl;
-  //   }
-  // }
+            << " (dim=" << pphv_dim << ")" << std::endl;
 
+  // pphh: bra qq∪qv∪vv, ket cc
   pphh_start = eom_confs.size();
-  pphh_end = 0;
-  number_channels = modelspace->GetNumberTwoBodyChannels();
-  for (index_t ich = 0; ich < number_channels; ich++) {
-    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(ich);
-    for (auto &ibra : VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv(),
-                                  tbc.GetKetIndex_vv())) {
-      for (auto &iket : tbc.GetKetIndex_cc()) {
-        eom_confs.push_back({ibra, iket, ich, eom_dims});
-        eom_dims += 1;
-        pphh_dim += 1;
+  if (include_pphh) {
+    for (index_t ich = 0; ich < number_channels; ich++) {
+      TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(ich);
+      for (auto &ibra :
+           VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv(),
+                       tbc.GetKetIndex_vv())) {
+        for (auto &iket : tbc.GetKetIndex_cc()) {
+          eom_confs.push_back({ibra, iket, ich, eom_dims});
+          eom_dims += 1;
+          pphh_dim += 1;
+        }
       }
     }
   }
@@ -291,7 +307,7 @@ std::cout << "dimension EOM qv: " << qv_start << " " << qv_end << std::endl;
     pphh_end = pphh_start + pphh_dim - 1;
 
   std::cout << "dimension EOM pphh: " << pphh_start << " " << pphh_end
-            << std::endl;
+            << " (dim=" << pphh_dim << ")" << std::endl;
 
   std::cout << "Total dimension of EOM: " << eom_confs.size() << std::endl;
 }
@@ -685,10 +701,9 @@ void EOM::ConstructNormMatrix() {
   }
 
 
-  // C1 threebody diagram
-   std::cout<<"start three body norm "<<std::endl;
-  if (ppvv_dim != 0) {
-
+  // C1 threebody diagram (valence ρ₃)
+  if (use_rdm3 && rdm.ThreeBody.IsAllocated() && ppvv_dim != 0) {
+    std::cout << "start three body norm " << std::endl;
     for (index_t i = ppvv_start; i <= ppvv_end; i++) {
       std::array<index_t, 4> &cf_bra = eom_confs.at(i);
       TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
@@ -722,6 +737,8 @@ void EOM::ConstructNormMatrix() {
         
       }
     }
+  } else if (!use_rdm3) {
+    std::cout << "skip three body norm (SetUseRdm3 false)" << std::endl;
   }
 
 
@@ -909,7 +926,7 @@ double EOM::ThreeBody_Diagram_Entries_Internal(size_t a, size_t b, size_t c,
                                                size_t d, size_t e, size_t f,
                                                size_t g, double j0, double j2)
 {
-  if (!rdm.ThreeBody.IsAllocated())
+  if (!use_rdm3 || !rdm.ThreeBody.IsAllocated())
     return 0.0;
 
   double norm_denom = Norm_abc(a, b, c) * Norm_abc(d, e, f);
@@ -1434,31 +1451,342 @@ void EOM::block_svd(std::vector<int> &coupled_vector) {
   }
 }
 
+arma::vec EOM::FlattenOperator(Operator &Op) const
+{
+  arma::vec v(eom_dims, arma::fill::zeros);
+  auto set1 = [&](index_t i) {
+    v(i) = Op.GetOneBody(eom_confs.at(i)[0], eom_confs.at(i)[1]);
+  };
+  auto set2 = [&](index_t i) {
+    v(i) = Op.GetTwoBody(eom_confs.at(i)[2], eom_confs.at(i)[2],
+                         eom_confs.at(i)[0], eom_confs.at(i)[1]);
+  };
+  if (qv_dim > 0)
+    for (index_t i = qv_start; i <= qv_end; ++i) set1(i);
+  if (ph_dim > 0)
+    for (index_t i = ph_start; i <= ph_end; ++i) set1(i);
+  if (pphh_dim > 0)
+    for (index_t i = pphh_start; i <= pphh_end; ++i) set2(i);
+  if (ppvv_dim > 0)
+    for (index_t i = ppvv_start; i <= ppvv_end; ++i) set2(i);
+  if (pphv_dim > 0)
+    for (index_t i = pphv_start; i <= pphv_end; ++i) set2(i);
+  return v;
+}
+
+void EOM::UnflattenOperator(Operator &Op, const arma::vec &v) const
+{
+  Op *= 0.0;
+  auto put1 = [&](index_t i) {
+    Op.OneBody(eom_confs.at(i)[0], eom_confs.at(i)[1]) = v(i);
+  };
+  auto put2 = [&](index_t i) {
+    Op.TwoBody.SetTBME(eom_confs.at(i)[2], eom_confs.at(i)[2],
+                       eom_confs.at(i)[0], eom_confs.at(i)[1], v(i));
+  };
+  if (qv_dim > 0)
+    for (index_t i = qv_start; i <= qv_end; ++i) put1(i);
+  if (ph_dim > 0)
+    for (index_t i = ph_start; i <= ph_end; ++i) put1(i);
+  if (pphh_dim > 0)
+    for (index_t i = pphh_start; i <= pphh_end; ++i) put2(i);
+  if (ppvv_dim > 0)
+    for (index_t i = ppvv_start; i <= ppvv_end; ++i) put2(i);
+  if (pphv_dim > 0)
+    for (index_t i = pphv_start; i <= pphv_end; ++i) put2(i);
+}
+
+int EOM::BuildCanonicalTransform(double eps)
+{
+  const int N = (int)eom_dims;
+  if (N <= 0)
+    throw std::runtime_error("BuildCanonicalTransform: empty EOM space");
+
+  // Dense symmetric overlap S ≡ Nkernel
+  arma::mat S(N, N, arma::fill::zeros);
+  for (int i = 0; i < N; ++i)
+    for (int j = 0; j <= i; ++j)
+    {
+      double sij = Nkernel(i, j);
+      S(i, j) = S(j, i) = sij;
+    }
+
+  arma::vec s;
+  arma::mat U;
+  // Symmetric eigendecomposition (S is PSD in exact arithmetic)
+  arma::eig_sym(s, U, S);
+
+  double s_max = (s.n_elem > 0) ? arma::max(s) : 0.0;
+  double thresh = eps * std::max(s_max, 1.0);
+  arma::uvec keep = arma::find(s >= thresh);
+  const int M = (int)keep.n_elem;
+  std::cout << "Canonical ortho: N=" << N << "  M=" << M
+            << "  s_max=" << s_max << "  thresh=" << thresh
+            << "  (eps=" << eps << ")" << std::endl;
+  if (M == 0)
+    throw std::runtime_error("BuildCanonicalTransform: no retained modes");
+
+  // X = U_sub * s_sub^{-1/2}   (N x M)
+  arma::mat Usub = U.cols(keep);
+  arma::vec ssub = s.elem(keep);
+  arma::mat Sinvsqrt = arma::diagmat(1.0 / arma::sqrt(ssub));
+  X_canon = Usub * Sinvsqrt;
+  have_X_canon = true;
+
+  // Sanity: X^T N X ≈ I
+  arma::mat G = X_canon.t() * S * X_canon;
+  double max_off = arma::max(arma::max(arma::abs(G - arma::eye(M, M))));
+  std::cout << "  max |X^T N X - I| = " << max_off << std::endl;
+  return M;
+}
+
+EOM::ArnoldiResult
+EOM::SolveGEPCanonical(int state_want, double eps, int n_h2_subspace)
+{
+  using Clock = std::chrono::steady_clock;
+  auto t0 = Clock::now();
+  auto elapsed = [](Clock::time_point a) {
+    return std::chrono::duration<double>(Clock::now() - a).count();
+  };
+
+  if (eom_dims == 0)
+    throw std::runtime_error("SolveGEPCanonical: call ConstructConfigs first");
+  if (Nkernel.n_rows != eom_dims)
+    throw std::runtime_error("SolveGEPCanonical: call ConstructNormMatrix first");
+
+  // Full decoupled H (keep vv); eigenvalues are Delta E.
+  PrepareHamiltonianForArnoldi();
+
+  const int N = (int)eom_dims;
+  const int M = BuildCanonicalTransform(eps);
+
+  // Dense N
+  arma::mat S(N, N, arma::fill::zeros);
+  for (int i = 0; i < N; ++i)
+    for (int j = 0; j <= i; ++j)
+    {
+      double sij = Nkernel(i, j);
+      S(i, j) = S(j, i) = sij;
+    }
+
+  // --- Step 1: hermitized H2 in config basis, then H̃₂ = Xᵀ H₂ X ---
+  bool save_proj = arnoldi_use_projection;
+  arnoldi_use_projection = false; // canonical X replaces Euclidean P
+
+  arma::mat H2mat(N, N, arma::fill::zeros);
+  std::cout << "SolveGEPCanonical: building H2 (" << N << " Htc actions)..."
+            << std::endl;
+
+  Operator scratch = Hs * 0.0;
+  std::vector<arma::vec> htc_flat(N);
+  for (int j = 0; j < N; ++j)
+  {
+    arma::vec ej(N, arma::fill::zeros);
+    ej(j) = 1.0;
+    UnflattenOperator(scratch, ej);
+    Operator hj = HtcMultiref(Hs, scratch);
+    htc_flat[j] = FlattenOperator(hj);
+    if ((j + 1) % 50 == 0 || j + 1 == N)
+      std::cout << "  Htc column " << j + 1 << " / " << N << std::endl;
+  }
+
+  for (int j = 0; j < N; ++j)
+  {
+    arma::vec Nh = S * htc_flat[j];
+    for (int i = 0; i <= j; ++i)
+    {
+      double hij = Nh(i);
+      double hji = arma::dot(htc_flat[i], S.col(j));
+      double h2 = 0.5 * (hij + hji);
+      H2mat(i, j) = H2mat(j, i) = h2;
+    }
+  }
+  // free Htc cache
+  htc_flat.clear();
+  htc_flat.shrink_to_fit();
+
+  arma::mat Htilde2 = X_canon.t() * H2mat * X_canon;
+  Htilde2 = arma::symmatu(0.5 * (Htilde2 + Htilde2.t()));
+
+  arma::vec evals2;
+  arma::mat evecs2;
+  arma::eig_sym(evals2, evecs2, Htilde2);
+  std::cout << "H2 spectrum (lowest 5):";
+  for (int k = 0; k < std::min(5, (int)evals2.n_elem); ++k)
+    std::cout << " " << evals2(k);
+  std::cout << std::endl;
+
+  arma::vec e;
+  arma::mat C; // N x nwant back-transformed eigenvectors
+  arma::mat Htilde_final;
+  std::string reason = "canonical_gep_h2";
+
+  if (!arnoldi_use_h3)
+  {
+    const int nwant = std::min(state_want, (int)evals2.n_elem);
+    e = evals2.head(nwant);
+    C = X_canon * evecs2.cols(0, nwant - 1);
+    Htilde_final = Htilde2;
+  }
+  else
+  {
+    // --- Step 2: lowest n_sub H2 eigenvectors; build H2+H3 in that subspace ---
+    const int n_sub = std::min(n_h2_subspace, (int)evals2.n_elem);
+    std::cout << "SolveGEPCanonical: H3 in lowest " << n_sub
+              << " H2 eigenvectors (polarization)..." << std::endl;
+
+    // Orthonormal (N-metric) Operators φ_a = X * evecs2.col(a)
+    std::vector<Operator> phi;
+    phi.reserve(n_sub);
+    for (int a = 0; a < n_sub; ++a)
+    {
+      arma::vec coef = X_canon * evecs2.col(a);
+      Operator pa = Hs * 0.0;
+      UnflattenOperator(pa, coef);
+      double nn = ComputeNorm(pa, pa);
+      if (nn > 0.0)
+        pa = pa / std::sqrt(nn);
+      phi.push_back(pa);
+    }
+
+    std::vector<double> h3_diag(n_sub, 0.0);
+    for (int a = 0; a < n_sub; ++a)
+    {
+      h3_diag[a] = DcomMultiref(Hs, phi[a]);
+      if ((a + 1) % 10 == 0 || a + 1 == n_sub)
+        std::cout << "  H3 diag " << a + 1 << " / " << n_sub << std::endl;
+    }
+
+    // In the (re-normalized) H2 eigenbasis, use E2 on the diagonal for H2.
+    // Rebuild off-diagonal H2 from Htc only if needed; for exact H2 evecs
+    // of the dense GEP, off-diagonal H2 vanishes in the X-metric. After
+    // N-renorm of φ, keep a small Htc rebuild for consistency with Arnoldi.
+    arma::mat Hsub(n_sub, n_sub, arma::fill::zeros);
+    std::vector<Operator> htc_phi(n_sub);
+    for (int a = 0; a < n_sub; ++a)
+      htc_phi[a] = HtcMultiref(Hs, phi[a]);
+
+    std::cout << "  a   E2_a        h2_rebuild   H3_aa       nab" << std::endl;
+    for (int a = 0; a < std::min(8, n_sub); ++a)
+    {
+      double nab = ComputeNorm(phi[a], phi[a]);
+      double h2r = ComputeNorm(phi[a], htc_phi[a]);
+      std::cout << "  " << a << "  " << evals2(a) << "  " << h2r
+                << "  " << h3_diag[a] << "  " << nab << std::endl;
+    }
+
+    for (int b = 0; b < n_sub; ++b)
+    {
+      for (int a = 0; a <= b; ++a)
+      {
+        double h2_ab;
+        if (a == b)
+        {
+          // Prefer the dense-GEP eigenvalue (exact in X basis before renorm)
+          h2_ab = evals2(a);
+        }
+        else
+        {
+          h2_ab = 0.5 * (ComputeNorm(phi[a], htc_phi[b])
+                         + ComputeNorm(phi[b], htc_phi[a]));
+        }
+
+        double h3_ab = 0.0;
+        if (a == b)
+          h3_ab = h3_diag[a];
+        else
+        {
+          Operator psum = phi[a] + phi[b];
+          double cross = DcomMultiref(Hs, psum);
+          h3_ab = 0.5 * (cross - h3_diag[a] - h3_diag[b]);
+        }
+        Hsub(a, b) = Hsub(b, a) = h2_ab + h3_ab;
+      }
+      if ((b + 1) % 10 == 0 || b + 1 == n_sub)
+        std::cout << "  H2+H3 column " << b + 1 << " / " << n_sub << std::endl;
+    }
+
+    Hsub = arma::symmatu(0.5 * (Hsub + Hsub.t()));
+
+    // First-order PT reference: E2_a + H3_aa (no off-diagonal H3)
+    arma::vec fo(n_sub);
+    for (int a = 0; a < n_sub; ++a)
+      fo(a) = evals2(a) + h3_diag[a];
+    arma::uvec fo_ord = arma::sort_index(fo);
+    std::cout << "H2+H3 FO-PT (lowest 5):";
+    for (int k = 0; k < std::min(5, n_sub); ++k)
+      std::cout << " " << fo(fo_ord(k));
+    std::cout << std::endl;
+
+    arma::vec evals3;
+    arma::mat evecs3;
+    arma::eig_sym(evals3, evecs3, Hsub);
+    std::cout << "H2+H3 subspace (lowest 5):";
+    for (int k = 0; k < std::min(5, (int)evals3.n_elem); ++k)
+      std::cout << " " << evals3(k);
+    std::cout << std::endl;
+
+    const int nwant = std::min(state_want, (int)evals3.n_elem);
+    e = evals3.head(nwant);
+    // Back-transform: c = sum_a evecs3(a,k) * φ_a  → flatten
+    C.set_size(N, nwant);
+    C.zeros();
+    for (int k = 0; k < nwant; ++k)
+    {
+      arma::vec ck(N, arma::fill::zeros);
+      for (int a = 0; a < n_sub; ++a)
+        ck += evecs3(a, k) * FlattenOperator(phi[a]);
+      C.col(k) = ck;
+    }
+    Htilde_final = Hsub;
+    reason = "canonical_gep_h2_then_h3_subspace";
+  }
+
+  arnoldi_use_projection = save_proj;
+
+  const int nwant = (int)e.n_elem;
+  std::vector<Operator> ritz;
+  for (int k = 0; k < nwant; ++k)
+  {
+    Operator rk = Hs * 0.0;
+    UnflattenOperator(rk, C.col(k));
+    double nn = ComputeNorm(rk, rk);
+    if (nn > 0.0)
+      rk = rk / std::sqrt(nn);
+    ritz.push_back(rk);
+  }
+
+  ArnoldiResult result;
+  result.energies = e;
+  result.eigvecs = C;
+  result.ritz = ritz;
+  result.hall = Htilde_final;
+  result.residuals = arma::vec(nwant, arma::fill::zeros);
+  result.max_ortho = 0.0;
+  result.steps = M;
+  result.converged = true;
+  result.stop_reason = reason;
+
+  std::cout << "SolveGEPCanonical done in " << elapsed(t0) << " s"
+            << "  M=" << M << "  nwant=" << nwant
+            << "  reason=" << reason << std::endl;
+  const double eref = GetVSEOM_Overlap_multiref(Hs);
+  for (int k = 0; k < nwant; ++k)
+    std::cout << "  E(" << k << ") = " << e(k)
+              << "  absolute=" << e(k) + eref
+              << std::endl;
+  return result;
+}
+
 
 void EOM::EraseValence(Operator &H) {
-  reference_energy_shift = GetVSEOM_Overlap_multiref(H);
-  use_reference_energy_shift = true;
-
-  // zero out all valence↔valence matrix elements, to remove valence space
-  for (auto &i : H.modelspace->valence) {
-    for (auto &a : H.modelspace->valence) {
-      H.OneBody(a, i) = 0.;
-      H.OneBody(i, a) = 0.;
-    }
-  }
-
-  for (auto &iter : H.TwoBody.MatEl) {
-    size_t ch_bra = iter.first[0];
-    size_t ch_ket = iter.first[1];
-    TwoBodyChannel &tbc_bra = H.modelspace->GetTwoBodyChannel(ch_bra);
-    TwoBodyChannel &tbc_ket = H.modelspace->GetTwoBodyChannel(ch_ket);
-
-    for (auto &iket : tbc_ket.GetKetIndex_vv()) {
-      for (auto &ibra : tbc_bra.GetKetIndex_vv()) {
-        H.TwoBody.SetTBME(ch_bra, ch_ket, ibra, iket, 0.);
-      }
-    }
-  }
+  // DISABLED: zeroing vv and shifting by E_val*N is incorrect for MR-EOM.
+  // The connected kernel must use the full decoupled H (vv kept); eigenvalues
+  // are already Delta E.  This routine is a no-op kept for API compatibility.
+  (void)H;
+  ClearReferenceEnergyShift();
+  std::cerr << "EOM::EraseValence: DISABLED (no-op). "
+            << "Use full decoupled H; do not drop vv / E_val*N.\n";
 }
 
 void EOM::EraseQspace(Operator &H) {
@@ -1486,7 +1814,11 @@ void EOM::EraseQspace(Operator &H) {
 
 void EOM::PrepareHamiltonianForArnoldi() {
   force_decouple(Hs);
-  EraseValence(Hs);
+  // Full decoupled H (vv kept). Eigenvalues of the connected kernel are Delta E;
+  // do not EraseValence or shift by E_val*N.
+  Hs_full = Hs;
+  have_Hs_full = true;
+  ClearReferenceEnergyShift();
 }
 
 // we enforce the decoupling condition for numerical stability
@@ -1570,52 +1902,53 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
     herm_phase = -1;
   }
 
-  // One body: copy ph and vq blocks, applying (anti-)hermitian phase.
-  for (auto &i : H.modelspace->core) {
-    Orbit &oi = H.modelspace->GetOrbit(i);
-    for (auto &a : VectorUnion(H.modelspace->valence, H.modelspace->qspace)) {
-      Orbit &oa = H.modelspace->GetOrbit(a);
-      Hod.SetOneBody(a,i,H.OneBody(a, i));
+  // One body: ph block (gated by include_ph).
+  if (include_ph) {
+    for (auto &i : H.modelspace->core) {
+      for (auto &a : VectorUnion(H.modelspace->valence, H.modelspace->qspace)) {
+        Hod.SetOneBody(a, i, H.OneBody(a, i));
+      }
     }
   }
 
-  // Two body: copy pp-hh, pp-vh and pp-vv blocks; (anti-)hermitian partner added automatically.
-  for (auto &iter : H.TwoBody.MatEl) {
-    size_t ch_bra = iter.first[0];
-    size_t ch_ket = iter.first[1];
-    TwoBodyChannel &tbc_bra = H.modelspace->GetTwoBodyChannel(ch_bra);
-    TwoBodyChannel &tbc_ket = H.modelspace->GetTwoBodyChannel(ch_ket);
-    arma::mat &H2 = iter.second;
+  // Two body: pphh block (gated by include_pphh).
+  if (include_pphh) {
+    for (auto &iter : H.TwoBody.MatEl) {
+      size_t ch_bra = iter.first[0];
+      size_t ch_ket = iter.first[1];
+      TwoBodyChannel &tbc_bra = H.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = H.modelspace->GetTwoBodyChannel(ch_ket);
+      arma::mat &H2 = iter.second;
 
-    // diagonal and off-diagonal channels treated the same for pp-hh block
-    if (ch_bra == ch_ket) {
-      for (auto &iket : tbc_ket.GetKetIndex_cc()) {
-        for (auto &ibra :
-             VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
-                         tbc_bra.GetKetIndex_qv())) {
-          Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
-        }
-      }
-    }
-
-    if (ch_bra != ch_ket) {
-      for (auto &iket : tbc_ket.GetKetIndex_cc()) {
-        for (auto &ibra :
-             VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
-                         tbc_bra.GetKetIndex_qv())) {
-          Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
+      if (ch_bra == ch_ket) {
+        for (auto &iket : tbc_ket.GetKetIndex_cc()) {
+          for (auto &ibra :
+               VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
+                           tbc_bra.GetKetIndex_qv())) {
+            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
+          }
         }
       }
 
-    // in a <J1|O^{LM}|J2> block, we have pphh and hhpp, hhpp-> pphh in conjugate channel->hhpp
-      for (auto &ibra : tbc_bra.GetKetIndex_cc()) {
-        for (auto &iket :
-             VectorUnion(tbc_ket.GetKetIndex_qq(), tbc_ket.GetKetIndex_vv(),
-                         tbc_ket.GetKetIndex_qv())) {
-          Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket)*herm_phase*hZ);
+      if (ch_bra != ch_ket) {
+        for (auto &iket : tbc_ket.GetKetIndex_cc()) {
+          for (auto &ibra :
+               VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
+                           tbc_bra.GetKetIndex_qv())) {
+            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
+          }
+        }
+
+        // conjugate hhpp → pphh with (anti)hermitian phase
+        for (auto &ibra : tbc_bra.GetKetIndex_cc()) {
+          for (auto &iket :
+               VectorUnion(tbc_ket.GetKetIndex_qq(), tbc_ket.GetKetIndex_vv(),
+                           tbc_ket.GetKetIndex_qv())) {
+            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket,
+                                  H2(ibra, iket) * herm_phase * hZ);
+          }
         }
       }
-
     }
   }
 
@@ -1726,102 +2059,90 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
     herm_phase = -1;
   }
 
-  // One body piece -- eliminate ph bits
-  //
-  for (auto &i : H.modelspace->core) {
-    Orbit &oi = H.modelspace->GetOrbit(i);
-    for (auto &a : VectorUnion(H.modelspace->valence, H.modelspace->qspace)) {
-      Orbit &oa = H.modelspace->GetOrbit(a);
-      Hod.SetOneBody(a,i,H.OneBody(a, i));
+  // One body: ph = (v∪q) ← core
+  if (include_ph) {
+    for (auto &i : H.modelspace->core) {
+      for (auto &a : VectorUnion(H.modelspace->valence, H.modelspace->qspace)) {
+        Hod.SetOneBody(a, i, H.OneBody(a, i));
+      }
     }
   }
 
-  // Two body piece only stored half channel, no need to change
-  for (auto &iter : H.TwoBody.MatEl) {
-    size_t ch_bra = iter.first[0];
-    size_t ch_ket = iter.first[1];
-    TwoBodyChannel &tbc_bra = H.modelspace->GetTwoBodyChannel(ch_bra);
-    TwoBodyChannel &tbc_ket = H.modelspace->GetTwoBodyChannel(ch_ket);
+  // Two body: pphh = (qq∪qv∪vv) ← cc
+  if (include_pphh) {
+    for (auto &iter : H.TwoBody.MatEl) {
+      size_t ch_bra = iter.first[0];
+      size_t ch_ket = iter.first[1];
+      TwoBodyChannel &tbc_bra = H.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = H.modelspace->GetTwoBodyChannel(ch_ket);
+      arma::mat &H2 = iter.second;
 
-    arma::mat &H2 = iter.second;
-
-    // diagonal channel
-    // add <ab|ij> and <ij||ab> will be automatically added
-    // with proper factor from (anti)hermitian
-    if (ch_bra == ch_ket) {
-
-      for (auto &iket :
-           tbc_ket.GetKetIndex_cc()) // cc means core-core ('holes' refer to the
-                                     // reference state)
-      {
-        for (auto &ibra :
-             VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
-                         tbc_bra.GetKetIndex_qv())) {
-          Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
-        }
-      }
-    }
-
-    if (ch_bra != ch_ket) {
-
-      // off-diagonal channel
-
-      for (auto &iket :
-           tbc_ket.GetKetIndex_cc()) // cc means core-core ('holes' refer to the
-                                     // reference state)
-      {
-        for (auto &ibra :
-             VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
-                         tbc_bra.GetKetIndex_qv())) {
-          Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
+      if (ch_bra == ch_ket) {
+        for (auto &iket : tbc_ket.GetKetIndex_cc()) {
+          for (auto &ibra :
+               VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
+                           tbc_bra.GetKetIndex_qv())) {
+            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
+          }
         }
       }
 
-      for (auto &ibra :
-           tbc_bra.GetKetIndex_cc()) // cc means core-core ('holes' refer to the
-                                     // reference state)
-      {
-        for (auto &iket :
-             VectorUnion(tbc_ket.GetKetIndex_qq(), tbc_ket.GetKetIndex_vv(),
-                         tbc_ket.GetKetIndex_qv())) {
-          Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket,
-                                H2(ibra, iket) * hZ * herm_phase);
+      if (ch_bra != ch_ket) {
+        for (auto &iket : tbc_ket.GetKetIndex_cc()) {
+          for (auto &ibra :
+               VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
+                           tbc_bra.GetKetIndex_qv())) {
+            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
+          }
+        }
+
+        for (auto &ibra : tbc_bra.GetKetIndex_cc()) {
+          for (auto &iket :
+               VectorUnion(tbc_ket.GetKetIndex_qq(), tbc_ket.GetKetIndex_vv(),
+                           tbc_ket.GetKetIndex_qv())) {
+            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket,
+                                  H2(ibra, iket) * hZ * herm_phase);
+          }
         }
       }
     }
   }
 
-  for (auto &i : H.modelspace->valence) {
-    for (auto &a : H.modelspace->qspace) {
-      Hod.SetOneBody(a,i,H.OneBody(a, i));
+  // One body: qv = q ← v
+  if (include_qv) {
+    for (auto &i : H.modelspace->valence) {
+      for (auto &a : H.modelspace->qspace) {
+        Hod.SetOneBody(a, i, H.OneBody(a, i));
+      }
     }
   }
 
+  // Two body: pphv (vc) and ppvv (vv)
+  if (include_pphv || include_ppvv) {
+    for (auto &iter : H.TwoBody.MatEl) {
+      size_t ch_bra = iter.first[0];
+      size_t ch_ket = iter.first[1];
+      TwoBodyChannel &tbc_bra = H.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = H.modelspace->GetTwoBodyChannel(ch_ket);
+      arma::mat &H2 = iter.second;
 
-  // Two body piece only stored half channel, no need to change
-  for (auto &iter : H.TwoBody.MatEl) {
-    size_t ch_bra = iter.first[0];
-    size_t ch_ket = iter.first[1];
-    TwoBodyChannel &tbc_bra = H.modelspace->GetTwoBodyChannel(ch_bra);
-    TwoBodyChannel &tbc_ket = H.modelspace->GetTwoBodyChannel(ch_ket);
-    arma::mat &H2 = iter.second;
-
-    // PPvc: valence-core pairs
-    for (auto &iket : tbc_ket.GetKetIndex_vc())
-    {
-      for (auto &ibra :
-           VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
-                       tbc_bra.GetKetIndex_qv())) {
-        Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
+      if (include_pphv) {
+        for (auto &iket : tbc_ket.GetKetIndex_vc()) {
+          for (auto &ibra :
+               VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
+                           tbc_bra.GetKetIndex_qv())) {
+            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
+          }
+        }
       }
-    }
 
-    // PPvv: valence-valence pairs
-    for (auto &iket : tbc_ket.GetKetIndex_vv())
-    {
-      for (auto &ibra :
-           VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_qv())) {
-        Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
+      if (include_ppvv) {
+        for (auto &iket : tbc_ket.GetKetIndex_vv()) {
+          for (auto &ibra :
+               VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_qv())) {
+            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
+          }
+        }
       }
     }
   }
@@ -1873,7 +2194,7 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
     }
   }
 
-  if (rdm.ThreeBody.IsAllocated() && H.ThreeBody.IsAllocated() ) {
+  if (use_rdm3 && rdm.ThreeBody.IsAllocated() && H.ThreeBody.IsAllocated() ) {
     for (auto &it : H.ThreeBody.Get_ch_start()) {
       size_t ch_bra = it.first.ch_bra;
       size_t ch_ket = it.first.ch_ket;
@@ -1929,9 +2250,11 @@ double EOM::NormSingle(Operator &T1, Operator &T2)
 }
 
 /// <T1|T2> using the multiref metric:
-///   D† = GetVSEOM_ladder_multiref(T1, 0)
-///   nop = [D†, T2]
-///   result = GetVSEOM_Overlap_multiref(nop) / 2
+///   T2d = ladder(T2, -1)   (anti-Hermitian)
+///   nop2 = [T1, T2d]       (IMSRG(2) only → 0b+1b+2b)
+///   If use_rdm3: t3 = [T1, T2d]_3 via comm223ss (2b×2b → 3b),
+///   then contract t3 with valence ρ₃.
+///   result = (⟨nop2⟩_ρ + ⟨t3⟩_ρ) / 2
 double EOM::NormMultiref(Operator &T1, Operator &T2)
 {
   Operator T2d = T1 * 0.0;
@@ -1939,7 +2262,21 @@ double EOM::NormMultiref(Operator &T1, Operator &T2)
   Operator nop = T1 * 0.0;
   nop.SetHermitian();
   nop = Commutator::Commutator(T1, T2d);
-  return GetVSEOM_Overlap_multiref(nop) / 2.0;
+  double rst = GetVSEOM_Overlap_multiref(nop);
+
+  // ρ₃ piece: [χ₂, χ₂]_3 is not produced by the default IMSRG(2) Commutator.
+  if (use_rdm3 && rdm.ThreeBody.IsAllocated())
+  {
+    Operator t3(*modelspace, 0, 0, 0, 3);
+    t3.ThreeBody.SetMode("pn");
+    t3 *= 0.0;
+    // T1 Hermitian, T2d anti-Hermitian → [T1,T2d] Hermitian
+    t3.SetHermitian();
+    Commutator::comm223ss(T1, T2d, t3);
+    rst += GetVSEOM_Overlap_multiref(t3);
+  }
+
+  return rst / 2.0;
 }
 
 /// 3-body contribution to <t1|t2>:
@@ -2162,21 +2499,18 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
 // ============================================================
 
 // ------------------------------------------------------------
-// ExpectationValue
+// ExpectationValue / ExpectationValueFull
 // ------------------------------------------------------------
-// Compute <Psi|H|Psi> / <Psi|Psi> using the same H = H1 + H2 split
-// that ArnoldiSolve uses internally:
+// Both use the Arnoldi H = H1 + H2 split on an S^(+/-) Ritz vector:
 //
-//   H1 part : <Psi | H1 Psi>   via HtcMultiref + ComputeNorm
-//   H2 part : <Psi | H2 Psi>   via DcomMultiref(Hs, Psi)
+//   H1 : <S | Htc(H,S) >   (2b-truncated matvec, then metric)
+//   H2 : DcomMultiref(H,S) (induced 3b double commutator; already /2
+//                           because S is (anti)Hermitian vs chi)
 //
-// Independent of the Krylov bookkeeping (no cached h1v, no hall
-// matrix involved), so it can be used as a variational consistency
-// check on any Ritz vector built from the Lanczos basis.  If the
-// Arnoldi-projected eigenvalue and this direct expectation drift
-// apart, the basis has lost orthogonality (or unphysical pieces are
-// leaking in), and the projected eigenvalues should not be trusted
-// past that step.
+// On the full decoupled H (vv kept), the Rayleigh quotient is Delta E.
+// ExpectationValue and ExpectationValueFull are therefore equivalent
+// when Hs_full has been set; ExpectationValue uses working Hs.
+//
 double EOM::ExpectationValue(Operator &Psi)
 {
   double nrm = ComputeNorm(Psi, Psi);
@@ -2185,9 +2519,35 @@ double EOM::ExpectationValue(Operator &Psi)
   Operator h1psi = HtcMultiref(Hs, Psi);
   double h1exp   = ComputeNorm(Psi, h1psi);
   double h2exp   = DcomMultiref(Hs, Psi);
-  double shift    = GetReferenceEnergyShift() * nrm;
 
-  return (h1exp + h2exp - shift) / nrm;
+  return (h1exp + h2exp) / nrm;
+}
+
+double EOM::ExpectationValueFull(Operator &Psi, bool use_rdm_norm)
+{
+  if (!have_Hs_full)
+    throw std::runtime_error(
+        "EOM::ExpectationValueFull: Hs_full not set; call "
+        "PrepareHamiltonianForArnoldi() or RunMR first");
+
+  double nrm = 0.0;
+  double h1exp = 0.0;
+  Operator h1psi = HtcMultiref(Hs_full, Psi);
+  if (use_rdm_norm)
+  {
+    nrm   = NormMultiref(Psi, Psi);
+    h1exp = NormMultiref(Psi, h1psi);
+  }
+  else
+  {
+    nrm   = ComputeNorm(Psi, Psi);
+    h1exp = ComputeNorm(Psi, h1psi);
+  }
+  if (std::abs(nrm) < 1e-30) return 0.0;
+
+  // DcomMultiref already returns <[S^-,[H,S]]>_{3b}/2 (S vs chi factor).
+  double h2exp = DcomMultiref(Hs_full, Psi);
+  return (h1exp + h2exp) / nrm;
 }
 
 EOM::ArnoldiResult
@@ -2215,40 +2575,88 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
   int h2_cross_calls = 0;
   int h2_diag_calls = 0;
 
-  const double tol      = 1e-8;
   const double bj_tol   = 1e-4;
   const double null_tol = 1e-4;
   const int    min_iter = state_want + 1;
+  const int    stable_window = std::max(1, arnoldi_stable_window);
 
   std::vector<Operator> lanczos_vector;
   std::vector<Operator> h1v_cache;
   std::vector<double>   h2_diag;
   arma::mat hall(max_iter, max_iter, arma::fill::zeros);
 
-  // normalize initial vector
   double nn = ComputeNorm(vi, vi);
   Operator v0 = vi / std::sqrt(nn);
   lanczos_vector.push_back(v0);
   auto timer = Clock::now();
-  h2_diag.push_back(DcomMultiref(Hs, v0));
+  h2_diag.push_back(arnoldi_use_h3 ? DcomMultiref(Hs, v0) : 0.0);
   time_h2_diag += elapsed(timer);
   ++h2_diag_calls;
   const double cn0 = ComputeNorm(v0, v0);
 
   arma::vec e(state_want, arma::fill::zeros);
   arma::mat vs(1, 1, arma::fill::zeros);
-  arma::vec prev_e;
-  bool      prev_e_valid = false;
+  arma::vec residuals(state_want, arma::fill::zeros);
+  std::vector<arma::vec> energy_history;
+  double max_ortho_seen = 0.0;
+  bool   converged_flag = false;
+  std::string stop_reason = "max_iter";
   int       j_final      = 0;
 
-  // Helper: symmetric eigensolve of the leading principal submatrix of
-  // hall, with explicit symmetrization so eig_sym never sees the raw
-  // FP asymmetry that survives writing hall(i,j)=hall(j,i)=value.
   auto eigensolve_sub = [&hall](int dim, arma::vec &ev, arma::mat &evec)
   {
     arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
     sub = arma::symmatu(0.5 * (sub + sub.t()));
     arma::eig_sym(ev, evec, sub);
+  };
+
+  // Physical root pick on full-H Hall (Delta E). Soft E < soft_floor
+  // roots of the truncated kernel are discarded when prefer_positive.
+  auto pick_physical_roots =
+      [this, state_want](const arma::vec &eigval, const arma::mat &eigvec,
+                         int j_col, double beta,
+                         arma::vec &e_out, arma::mat &vs_out,
+                         arma::vec &resid_out)
+  {
+    std::vector<int> idx;
+    idx.reserve((size_t)state_want);
+    if (arnoldi_prefer_positive)
+    {
+      for (int k = 0; k < (int)eigval.n_elem; ++k)
+        if (eigval(k) >= arnoldi_soft_floor)
+          idx.push_back(k);
+      if ((int)idx.size() < state_want)
+      {
+        for (int k = 0; k < (int)eigval.n_elem && (int)idx.size() < state_want; ++k)
+          if (eigval(k) < arnoldi_soft_floor)
+            idx.push_back(k);
+      }
+    }
+    else
+    {
+      for (int k = 0; k < std::min(state_want, (int)eigval.n_elem); ++k)
+        idx.push_back(k);
+    }
+    if ((int)idx.size() > state_want)
+      idx.resize((size_t)state_want);
+
+    const int nwant = (int)idx.size();
+    e_out.set_size(nwant);
+    resid_out.set_size(nwant);
+    vs_out = eigvec; // keep full subspace; selection is via column indices below
+    // Compact selected eigenvectors into the first nwant columns of vs_out
+    arma::mat vs_sel(eigvec.n_rows, nwant, arma::fill::zeros);
+    for (int i = 0; i < nwant; ++i)
+    {
+      const int k = idx[(size_t)i];
+      e_out(i) = eigval(k);
+      vs_sel.col(i) = eigvec.col(k);
+      if (j_col >= 0 && j_col < (int)eigvec.n_rows)
+        resid_out(i) = beta * std::abs(eigvec(j_col, k));
+      else
+        resid_out(i) = 0.0;
+    }
+    vs_out = std::move(vs_sel);
   };
 
   auto report_expectation_check =
@@ -2269,16 +2677,14 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
       double nrm = ComputeNorm(ritz, ritz);
       Operator h1ritz = HtcMultiref(Hs, ritz);
       double h1exp = ComputeNorm(ritz, h1ritz);
-      double h2exp = DcomMultiref(Hs, ritz);
-      double shift = GetReferenceEnergyShift() * nrm;
-      double direct_num = h1exp + h2exp - shift;
+      double h2exp = arnoldi_use_h3 ? DcomMultiref(Hs, ritz) : 0.0;
+      double direct_num = h1exp + h2exp;
       double direct_quotient = (std::abs(nrm) < 1e-30) ? 0.0 : direct_num / nrm;
       std::cout << "  state " << k
                 << ": diag=" << ev(k)
                 << "  hall=<c|H|c>=" << hall_expect
                 << "  norm=" << nrm
                 << "  direct_num=" << direct_num
-                << "  E0=" << GetReferenceEnergyShift()
                 << "  direct_E=" << direct_quotient
                 << "  delta_num=" << (direct_num - hall_expect)
                 << "  delta_E=" << (direct_quotient - ev(k)) << std::endl;
@@ -2295,33 +2701,42 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
       Operator ritz = lanczos_vector[0] * 0.0;
       for (int m = 0; m < dim; ++m)
         ritz = ritz + evec(m, k) * lanczos_vector[m];
-
       rw.WriteOperator(ritz, prefix + std::to_string(k) + ".op");
     }
   };
+
+  auto gram_offdiag_max = [this, &lanczos_vector]() -> double
+  {
+    double mx = 0.0;
+    const int n = (int)lanczos_vector.size();
+    for (int i = 0; i < n; ++i)
+      for (int jj = i + 1; jj < n; ++jj)
+        mx = std::max(mx, std::abs(ComputeNorm(lanczos_vector[i], lanczos_vector[jj])));
+    return mx;
+  };
+
+  std::cout << "ArnoldiSolve: full H (vv kept), Hall = (Htc_ab+Htc_ba)/2"
+            << (arnoldi_use_h3 ? " + Dcom(H3)" : " (H3 off; PT after)")
+            << (arnoldi_prefer_positive
+                    ? ("  prefer ΔE>=" + std::to_string(arnoldi_soft_floor))
+                    : "  (all roots)")
+            << "  (no E_val shift)" << std::endl;
 
   for (int j = 0; j < max_iter - 1; ++j)
   {
     j_final = j;
 
-    // H1 * v_j  (raw, before projection — used for matrix elements)
     timer = Clock::now();
     Operator h1v_j = HtcMultiref(Hs, lanczos_vector[j]);
     time_h1_action += elapsed(timer);
     h1v_cache.push_back(h1v_j);
 
-    // Fill row / column j of the projected Hamiltonian using the symmetric
-    // H1/H2 reconstruction built from one-sided H1 actions and H2 polarization.
     for (int i = 0; i <= j; ++i)
     {
       double h1_sym;
       double h2_sym;
-
       if (i == j)
       {
-        // Use the cached direct H2 diagonal. Reconstructing the diagonal from
-        // the polarization identity is algebraically equivalent, but it is
-        // numerically less stable than the direct value from DcomMultiref.
         timer = Clock::now();
         h1_sym = ComputeNorm(lanczos_vector[j], h1v_j);
         time_hall_h1 += elapsed(timer);
@@ -2335,27 +2750,31 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
         h1_sym      = 0.5 * (h1ij + h1ji);
         time_hall_h1 += elapsed(timer);
 
-        Operator v_sum  = lanczos_vector[i] + lanczos_vector[j];
-        timer = Clock::now();
-        double h2_cross = DcomMultiref(Hs, v_sum);
-        time_hall_h2 += elapsed(timer);
-        ++h2_cross_calls;
-        h2_sym          = 0.5 * (h2_cross - h2_diag[i] - h2_diag[j]);
+        if (arnoldi_use_h3)
+        {
+          Operator v_sum  = lanczos_vector[i] + lanczos_vector[j];
+          timer = Clock::now();
+          double h2_cross = DcomMultiref(Hs, v_sum);
+          time_hall_h2 += elapsed(timer);
+          ++h2_cross_calls;
+          h2_sym          = 0.5 * (h2_cross - h2_diag[i] - h2_diag[j]);
+        }
+        else
+        {
+          h2_sym = 0.0;
+        }
       }
 
       timer = Clock::now();
-      double norm_ij = ComputeNorm(lanczos_vector[i], lanczos_vector[j]);
+      hall(i, j) = hall(j, i) = h1_sym + h2_sym;
       time_hall_norm += elapsed(timer);
-      hall(i, j) = hall(j, i) = h1_sym + h2_sym - GetReferenceEnergyShift() * norm_ij;
     }
 
-    // double-pass classical Gram-Schmidt orthogonalization
     timer = Clock::now();
     Operator w = h1v_j * 1.0;
     if (arnoldi_use_projection)
       ProjectOprator(w);
-    for (int pass = 0; pass < 2; ++pass)
-    {
+    auto gs_pass = [&]() {
       for (int i = 0; i <= j; ++i)
       {
         double cij = ComputeNorm(lanczos_vector[i], w);
@@ -2363,15 +2782,14 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
       }
       if (arnoldi_use_projection)
         ProjectOprator(w);
-    }
+    };
+    gs_pass();
+    gs_pass();
 
-    double bj        = ComputeNorm(w, w);
-  time_gs += elapsed(timer);
+    double bj = ComputeNorm(w, w);
+    time_gs += elapsed(timer);
     double bj_kernel = bj;
-    // double bj_kernel = ComputeNorm(w, w);
-    // std::cout<< bj<<" "<< bj_kernel<<" kernels "<<std::endl;
 
-    // null-space breakdown: w exhausted the physical subspace
     if (std::abs(bj_kernel) < null_tol * cn0)
     {
       std::cout << "arnoldi: null vector (breakdown) at step " << j + 1
@@ -2380,12 +2798,10 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
       timer = Clock::now();
       eigensolve_sub(j + 1, ev, evec);
       time_eigensolve += elapsed(timer);
-      e  = ev.head(std::min(state_want, (int)ev.n_elem));
-      vs = evec;
+      pick_physical_roots(ev, evec, -1, 0.0, e, vs, residuals);
+      stop_reason = "null_breakdown";
       break;
     }
-
-    // exact breakdown: w == 0
     if (std::abs(bj) < bj_tol)
     {
       std::cout << "arnoldi: exact breakdown at step " << j + 1 << ", stopping." << std::endl;
@@ -2393,12 +2809,10 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
       timer = Clock::now();
       eigensolve_sub(j + 1, ev, evec);
       time_eigensolve += elapsed(timer);
-      e  = ev.head(std::min(state_want, (int)ev.n_elem));
-      vs = evec;
+      pick_physical_roots(ev, evec, -1, 0.0, e, vs, residuals);
+      stop_reason = "exact_breakdown";
       break;
     }
-
-    // negative norm: indefinite metric hit — solve and stop
     if (bj < 0.0)
     {
       std::cout << "arnoldi: bj=" << bj << " < 0 at step " << j + 1
@@ -2407,69 +2821,167 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
       timer = Clock::now();
       eigensolve_sub(j + 1, ev, evec);
       time_eigensolve += elapsed(timer);
-      e  = ev.head(std::min(state_want, (int)ev.n_elem));
-      vs = evec;
+      pick_physical_roots(ev, evec, -1, 0.0, e, vs, residuals);
+      stop_reason = "indefinite_metric";
       break;
     }
 
-    // normal step: add new basis vector
-    Operator new_vec = w / std::sqrt(bj);
+    // Hall/Ritz in span(v0..vj); residual ~ beta * |s_{j,k}|.
+    const double beta = std::sqrt(bj);
+    Operator new_vec = w / beta;
+
+    if (arnoldi_monitor_ortho)
+    {
+      double max_ov = 0.0;
+      for (int i = 0; i <= j; ++i)
+        max_ov = std::max(max_ov, std::abs(ComputeNorm(lanczos_vector[i], new_vec)));
+      if (max_ov > arnoldi_ortho_warn)
+      {
+        for (int pass = 0; pass < 2; ++pass)
+        {
+          for (int i = 0; i <= j; ++i)
+          {
+            double cij = ComputeNorm(lanczos_vector[i], new_vec);
+            new_vec = new_vec - cij * lanczos_vector[i];
+          }
+          if (arnoldi_use_projection)
+            ProjectOprator(new_vec);
+        }
+        double nn_new = ComputeNorm(new_vec, new_vec);
+        if (nn_new <= 0.0)
+        {
+          std::cout << "arnoldi: reortho produced non-positive norm at step "
+                    << j + 1 << ", stopping." << std::endl;
+          stop_reason = "reortho_breakdown";
+          arma::vec ev; arma::mat evec;
+          eigensolve_sub(j + 1, ev, evec);
+          pick_physical_roots(ev, evec, -1, 0.0, e, vs, residuals);
+          break;
+        }
+        new_vec = new_vec / std::sqrt(nn_new);
+        max_ov = 0.0;
+        for (int i = 0; i <= j; ++i)
+          max_ov = std::max(max_ov, std::abs(ComputeNorm(lanczos_vector[i], new_vec)));
+      }
+      max_ortho_seen = std::max(max_ortho_seen, max_ov);
+      if (max_ov > arnoldi_ortho_warn)
+        std::cout << "arnoldi: ortho warn at step " << j + 1
+                  << "  max|<v_i|v_new>|=" << max_ov << std::endl;
+      if (max_ov > arnoldi_ortho_fail)
+      {
+        std::cout << "arnoldi: orthogonality lost at step " << j + 1
+                  << "  max|<v_i|v_new>|=" << max_ov
+                  << " > fail tol " << arnoldi_ortho_fail
+                  << " — stopping (Ritz unreliable)." << std::endl;
+        stop_reason = "ortho_lost";
+      }
+    }
+
     lanczos_vector.push_back(new_vec);
     timer = Clock::now();
-    h2_diag.push_back(DcomMultiref(Hs, new_vec));
+    h2_diag.push_back(arnoldi_use_h3 ? DcomMultiref(Hs, new_vec) : 0.0);
     time_h2_diag += elapsed(timer);
     ++h2_diag_calls;
 
-    // eigenvalue check / convergence
+    if (arnoldi_monitor_ortho && ((j + 1) % 5 == 0))
+    {
+      double gmax = gram_offdiag_max();
+      max_ortho_seen = std::max(max_ortho_seen, gmax);
+      std::cout << "arnoldi: Gram offdiag max @ step " << j + 1
+                << " = " << gmax << std::endl;
+      if (gmax > arnoldi_ortho_fail)
+      {
+        std::cout << "arnoldi: full Gram orthogonality lost — stopping." << std::endl;
+        stop_reason = "ortho_lost";
+      }
+    }
+
     if (j + 1 >= min_iter)
     {
+      const int hall_dim = j + 1;
       arma::vec eigval; arma::mat eigvec;
       timer = Clock::now();
-      eigensolve_sub(j + 1, eigval, eigvec);
+      eigensolve_sub(hall_dim, eigval, eigvec);
       time_eigensolve += elapsed(timer);
 
-      e  = eigval.head(std::min(state_want, (int)eigval.n_elem));
-      vs = eigvec;
+      pick_physical_roots(eigval, eigvec, j, beta, e, vs, residuals);
+      const int nwant = (int)e.n_elem;
+      double max_resid = 0.0;
+      for (int k = 0; k < nwant; ++k)
+        max_resid = std::max(max_resid, residuals(k));
 
-      if ((j + 1) % 5 == 0)
+      // Soft-root diagnostics (full spectrum before selection)
+      if ((j + 1) % 5 == 0 && arnoldi_prefer_positive)
       {
-        std::cout << "arnoldi eigenvalues @ step " << j + 1 << ": ";
-        for (int k = 0; k < (int)e.n_elem; ++k)
-          std::cout << e(k) << " ";
-        std::cout << std::endl;
+        int nsoft = 0;
+        for (int k = 0; k < (int)eigval.n_elem; ++k)
+          if (eigval(k) < arnoldi_soft_floor)
+            ++nsoft;
+        if (nsoft > 0)
+          std::cout << "arnoldi @ step " << j + 1 << ": discarded " << nsoft
+                    << " soft root(s) < " << arnoldi_soft_floor
+                    << " MeV (lowest soft=" << eigval(0) << ")" << std::endl;
+      }
+
+      energy_history.push_back(e);
+      if ((int)energy_history.size() > stable_window)
+        energy_history.erase(energy_history.begin());
+
+      bool energy_stable = false;
+      double delta_window = 0.0;
+      if ((int)energy_history.size() >= stable_window)
+      {
+        const arma::vec &e_old = energy_history.front();
+        const arma::vec &e_new = energy_history.back();
+        if (e_old.n_elem == e_new.n_elem)
+        {
+          delta_window = arma::max(arma::abs(e_new - e_old));
+          energy_stable = (delta_window < arnoldi_energy_tol);
+        }
+      }
+      const bool resid_ok = (max_resid < arnoldi_resid_tol);
+
+      if ((j + 1) % 5 == 0 || (energy_stable && resid_ok))
+      {
+        std::cout << "arnoldi @ step " << j + 1 << ":";
+        for (int k = 0; k < nwant; ++k)
+          std::cout << " E" << k << "=" << e(k)
+                    << " (r=" << residuals(k) << ")";
+        std::cout << "  dE_win=" << delta_window
+                  << "  max_ortho=" << max_ortho_seen << std::endl;
         if (arnoldi_check_expectation)
-          report_expectation_check(eigval, eigvec, j + 1,
-                                   std::min(state_want, (int)eigval.n_elem),
+          report_expectation_check(e, vs, hall_dim, nwant,
                                    "arnoldi expectation check:");
         if (j + 1 == 100)
         {
-          write_ritz_vectors(eigvec, j + 1,
-                             std::min(state_want, (int)eigval.n_elem),
+          write_ritz_vectors(vs, hall_dim, nwant,
                              "output/arnoldi_step100_state");
           std::cout << "wrote Ritz wavefunctions at step 100 to output/arnoldi_step100_state*.op"
                     << std::endl;
         }
       }
 
-      if (prev_e_valid && prev_e.n_elem == e.n_elem)
+      if (stop_reason == "ortho_lost")
+        break;
+
+      if (energy_stable && resid_ok)
       {
-        double delta = arma::max(arma::abs(e - prev_e));
-        double scale = std::max(1.0, arma::max(arma::abs(e)));
-        if (delta < tol || delta / scale < tol)
-        {
-          std::cout << "Arnoldi converged at step " << j + 1 << std::endl;
-          break;
-        }
+        std::cout << "Arnoldi converged at step " << j + 1
+                  << "  (dE_window=" << delta_window
+                  << " < " << arnoldi_energy_tol
+                  << ", max_resid=" << max_resid
+                  << " < " << arnoldi_resid_tol << ")" << std::endl;
+        converged_flag = true;
+        stop_reason = "converged";
+        break;
       }
-      prev_e       = e;
-      prev_e_valid = true;
+    }
+    else if (stop_reason == "ortho_lost")
+    {
+      break;
     }
   }
 
-  // Final eigensolution on the filled projected subspace only.
-  // A newly appended boundary vector does not have its own hall row/column
-  // until the next iteration, so using lanczos_vector.size() can add a
-  // spurious zero row/column and distort the final Ritz values.
   {
     int nb_cur = (int)h1v_cache.size();
     if (nb_cur == 0)
@@ -2478,30 +2990,54 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
     timer = Clock::now();
     eigensolve_sub(nb_cur, eigval_f, eigvec_f);
     time_eigensolve += elapsed(timer);
-    e  = eigval_f.head(std::min(state_want, (int)eigval_f.n_elem));
-    vs = eigvec_f;
+    pick_physical_roots(eigval_f, eigvec_f, -1, 0.0, e, vs, residuals);
   }
 
-  std::cout << "Arnoldi finished with " << j_final + 1 << " steps" << std::endl;
+  std::cout << "Arnoldi finished with " << j_final + 1 << " steps"
+            << "  reason=" << stop_reason
+            << "  max_ortho=" << max_ortho_seen << std::endl;
   if (arnoldi_check_expectation)
     report_expectation_check(e, vs, (int)vs.n_rows,
                              std::min(state_want, (int)e.n_elem),
                              "final arnoldi expectation check:");
   for (int k = 0; k < (int)e.n_elem; ++k)
-    std::cout << "E(" << k << ") = " << e(k) << std::endl;
+  {
+    std::cout << "E(" << k << ") = " << e(k);
+    if (k < (int)residuals.n_elem)
+      std::cout << "  resid~" << residuals(k);
+    std::cout << std::endl;
+  }
 
-  // Build Ritz vectors.
   timer = Clock::now();
   std::vector<Operator> ritz_vecs;
-  int nb = (int)lanczos_vector.size();
+  int nb_ritz = (int)h1v_cache.size();
+  if (nb_ritz == 0)
+    nb_ritz = std::min((int)lanczos_vector.size(), 1);
+  nb_ritz = std::min(nb_ritz, (int)lanczos_vector.size());
   for (int k = 0; k < (int)e.n_elem; ++k)
   {
     Operator vec = lanczos_vector[0] * 0.0;
-    for (int m = 0; m < std::min(nb, (int)vs.n_rows); ++m)
+    for (int m = 0; m < std::min(nb_ritz, (int)vs.n_rows); ++m)
       vec = vec + (double)vs(m, k) * lanczos_vector[m];
     ritz_vecs.push_back(vec);
   }
   time_ritz += elapsed(timer);
+
+  // H3 first-order PT on physical (H2) Ritz vectors — not mixed into Hall.
+  if (!arnoldi_use_h3)
+  {
+    std::cout << "H3 first-order PT on physical Ritz (Hall was H2-only):" << std::endl;
+    for (int k = 0; k < (int)ritz_vecs.size(); ++k)
+    {
+      double nrm = ComputeNorm(ritz_vecs[k], ritz_vecs[k]);
+      double h3 = DcomMultiref(Hs, ritz_vecs[k]);
+      double h3n = (std::abs(nrm) < 1e-30) ? 0.0 : h3 / nrm;
+      std::cout << "  state " << k
+                << ": E_H2=" << e(k)
+                << "  H3/N=" << h3n
+                << "  E_H2+H3=" << (e(k) + h3n) << std::endl;
+    }
+  }
 
   if (arnoldi_print_timing)
   {
@@ -2536,7 +3072,467 @@ EOM::ArnoldiSolve(Operator &vi, int max_iter, int state_want)
   int hall_dim = (int)h1v_cache.size();
   if (hall_dim == 0)
     hall_dim = std::min((int)lanczos_vector.size(), 1);
-  result.hall     = hall.submat(0, 0, hall_dim - 1, hall_dim - 1);
+  result.hall      = hall.submat(0, 0, hall_dim - 1, hall_dim - 1);
+  result.residuals = residuals;
+  result.max_ortho = max_ortho_seen;
+  result.steps = j_final + 1;
+  result.converged = converged_flag;
+  result.stop_reason = stop_reason;
+  return result;
+}
+
+// ============================================================
+//  ArnoldiSolveH2
+//  Arnoldi on the *full* decoupled H (no H_PP / H_QQ split):
+//
+//  Physical kernel is the double commutator quadratic form
+//      Q(χ) = <χ|[H,χ]_2> + <χ|[H,χ]_3>  =  Htc + Dcom.
+//  Only the 2b piece yields a new χ′ in the operator space, so:
+//      Krylov matvec = HtcMultiref(Hs_full, ·)     // generate subspace
+//      Hall_ab = 1/2 (Htc_ab + Htc_ba)              // hermitized H2
+//              + Dcom polarization                  // H3 (default on)
+//  Rayleigh–Ritz on Hall then matches ExpectationValue = Q/N.
+//  No EraseValence, no E_val N shift.  Eigenvalues are Delta E.
+// ============================================================
+EOM::ArnoldiResult
+EOM::ArnoldiSolveH2(Operator &vi, int max_iter, int state_want)
+{
+  using Clock = std::chrono::steady_clock;
+  auto elapsed = [](Clock::time_point start) {
+    return std::chrono::duration<double>(Clock::now() - start).count();
+  };
+  auto total_start = Clock::now();
+  double time_h1_action = 0.0;
+  double time_hall_h1 = 0.0;
+  double time_hall_norm = 0.0;
+  double time_gs = 0.0;
+  double time_eigensolve = 0.0;
+  double time_ritz = 0.0;
+
+  // Working Hamiltonian: full decoupled H (vv kept). Do not EraseValence.
+  if (!have_Hs_full)
+  {
+    force_decouple(Hs);
+    Hs_full = Hs;
+    have_Hs_full = true;
+  }
+  Operator &Hwork = Hs_full;
+
+  const double bj_tol   = 1e-4;
+  const double null_tol = 1e-4;
+  const int    min_iter = state_want + 1;
+  const int    stable_window = std::max(1, arnoldi_stable_window);
+
+  std::vector<Operator> lanczos_vector;
+  std::vector<Operator> h1v_cache; // Htc(v_i), reused for <v_j|Htc(v_i)>
+  std::vector<double>   h3_diag;   // Dcom(Hwork, v_i) when arnoldi_use_h3
+  arma::mat hall(max_iter, max_iter, arma::fill::zeros);
+  double time_hall_h3 = 0.0;
+  double time_h3_diag = 0.0;
+  int h3_cross_calls = 0;
+  int h3_diag_calls = 0;
+
+  double nn = ComputeNorm(vi, vi);
+  Operator v0 = vi / std::sqrt(nn);
+  lanczos_vector.push_back(v0);
+  const double cn0 = ComputeNorm(v0, v0);
+
+  {
+    auto timer = Clock::now();
+    h3_diag.push_back(arnoldi_use_h3 ? DcomMultiref(Hwork, v0) : 0.0);
+    time_h3_diag += elapsed(timer);
+    ++h3_diag_calls;
+  }
+
+  arma::vec e(state_want, arma::fill::zeros);
+  arma::mat vs(1, 1, arma::fill::zeros);
+  arma::vec residuals(state_want, arma::fill::zeros);
+  std::vector<arma::vec> energy_history;
+  double max_ortho_seen = 0.0;
+  bool   converged_flag = false;
+  std::string stop_reason = "max_iter";
+  int       j_final      = 0;
+
+  auto eigensolve_sub = [&hall](int dim, arma::vec &ev, arma::mat &evec)
+  {
+    arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
+    // enforce Hermitian numerically before eig_sym
+    sub = arma::symmatu(0.5 * (sub + sub.t()));
+    arma::eig_sym(ev, evec, sub);
+  };
+
+  auto report_expectation_check =
+      [this, &hall, &lanczos_vector, &Hwork](const arma::vec &ev, const arma::mat &evec,
+                              int dim, int nshow, const std::string &tag)
+  {
+    std::cout << tag << std::endl;
+    arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
+    sub = arma::symmatu(0.5 * (sub + sub.t()));
+    for (int k = 0; k < nshow; ++k)
+    {
+      Operator ritz = lanczos_vector[0] * 0.0;
+      for (int m = 0; m < dim; ++m)
+        ritz = ritz + evec(m, k) * lanczos_vector[m];
+
+      arma::vec coeff = evec.col(k).head(dim);
+      double hall_expect = arma::as_scalar(coeff.t() * sub * coeff);
+      double nrm = ComputeNorm(ritz, ritz);
+      Operator h1ritz = HtcMultiref(Hwork, ritz);
+      double h1exp = ComputeNorm(ritz, h1ritz);
+      double h3exp = arnoldi_use_h3 ? DcomMultiref(Hwork, ritz) : 0.0;
+      double direct_num = h1exp + h3exp;
+      double direct_quotient = (std::abs(nrm) < 1e-30) ? 0.0 : direct_num / nrm;
+      std::cout << "  state " << k
+                << ": diag=" << ev(k)
+                << "  hall=<c|H|c>=" << hall_expect
+                << "  norm=" << nrm
+                << "  H2=" << h1exp
+                << "  H3=" << h3exp
+                << "  direct_E=" << direct_quotient
+                << "  delta_num=" << (direct_num - hall_expect)
+                << "  delta_E=" << (direct_quotient - ev(k)) << std::endl;
+    }
+  };
+
+  auto gram_offdiag_max = [this, &lanczos_vector]() -> double
+  {
+    double mx = 0.0;
+    const int n = (int)lanczos_vector.size();
+    for (int i = 0; i < n; ++i)
+      for (int jj = i + 1; jj < n; ++jj)
+        mx = std::max(mx, std::abs(ComputeNorm(lanczos_vector[i], lanczos_vector[jj])));
+    return mx;
+  };
+
+  std::cout << "ArnoldiSolveH2: Krylov=Htc(2b), Hall=(Htc_ab+Htc_ba)/2"
+            << (arnoldi_use_h3 ? " + Dcom(H3) [= ExpectationValue kernel]"
+                               : " (H3 OFF — debug; ExpectationValue will differ)")
+            << "  (no E_val shift)" << std::endl;
+
+  for (int j = 0; j < max_iter - 1; ++j)
+  {
+    j_final = j;
+    auto timer = Clock::now();
+
+    Operator h1v_j = HtcMultiref(Hwork, lanczos_vector[j]);
+    time_h1_action += elapsed(timer);
+    h1v_cache.push_back(h1v_j);
+
+    // Fill Hall column/row j: hermitized Htc + optional Dcom polarization.
+    for (int i = 0; i <= j; ++i)
+    {
+      timer = Clock::now();
+      double h2_sym;
+      double h3_sym;
+      if (i == j)
+      {
+        h2_sym = ComputeNorm(lanczos_vector[j], h1v_j);
+        h3_sym = h3_diag[j];
+      }
+      else
+      {
+        double hij = ComputeNorm(lanczos_vector[i], h1v_j);
+        double hji = ComputeNorm(lanczos_vector[j], h1v_cache[i]);
+        h2_sym = 0.5 * (hij + hji);
+        if (arnoldi_use_h3)
+        {
+          Operator v_sum = lanczos_vector[i] + lanczos_vector[j];
+          auto t3 = Clock::now();
+          double h3_cross = DcomMultiref(Hwork, v_sum);
+          time_hall_h3 += elapsed(t3);
+          ++h3_cross_calls;
+          h3_sym = 0.5 * (h3_cross - h3_diag[i] - h3_diag[j]);
+        }
+        else
+        {
+          h3_sym = 0.0;
+        }
+      }
+      time_hall_h1 += elapsed(timer);
+
+      // No E_val / E_0 shift — full H already yields Delta E.
+      hall(i, j) = hall(j, i) = h2_sym + h3_sym;
+    }
+
+    timer = Clock::now();
+    Operator w = h1v_j * 1.0;
+    if (arnoldi_use_projection)
+      ProjectOprator(w);
+    auto gs_pass = [&]() {
+      for (int i = 0; i <= j; ++i)
+      {
+        double cij = ComputeNorm(lanczos_vector[i], w);
+        w = w - cij * lanczos_vector[i];
+      }
+      if (arnoldi_use_projection)
+        ProjectOprator(w);
+    };
+    gs_pass();
+    gs_pass();
+
+    double bj = ComputeNorm(w, w);
+    time_gs += elapsed(timer);
+    double bj_kernel = bj;
+
+    if (std::abs(bj_kernel) < null_tol * cn0)
+    {
+      std::cout << "arnoldiH2: null vector (breakdown) at step " << j + 1
+                << " (ComputeNorm=" << bj_kernel << "), stopping." << std::endl;
+      arma::vec ev; arma::mat evec;
+      timer = Clock::now();
+      eigensolve_sub(j + 1, ev, evec);
+      time_eigensolve += elapsed(timer);
+      e  = ev.head(std::min(state_want, (int)ev.n_elem));
+      vs = evec;
+      stop_reason = "null_breakdown";
+      break;
+    }
+    if (std::abs(bj) < bj_tol)
+    {
+      std::cout << "arnoldiH2: exact breakdown at step " << j + 1
+                << ", stopping." << std::endl;
+      arma::vec ev; arma::mat evec;
+      timer = Clock::now();
+      eigensolve_sub(j + 1, ev, evec);
+      time_eigensolve += elapsed(timer);
+      e  = ev.head(std::min(state_want, (int)ev.n_elem));
+      vs = evec;
+      stop_reason = "exact_breakdown";
+      break;
+    }
+    if (bj < 0.0)
+    {
+      std::cout << "arnoldiH2: bj=" << bj << " < 0 at step " << j + 1
+                << " (indefinite metric), stopping." << std::endl;
+      arma::vec ev; arma::mat evec;
+      timer = Clock::now();
+      eigensolve_sub(j + 1, ev, evec);
+      time_eigensolve += elapsed(timer);
+      e  = ev.head(std::min(state_want, (int)ev.n_elem));
+      vs = evec;
+      stop_reason = "indefinite_metric";
+      break;
+    }
+
+    const double beta = std::sqrt(bj);
+    Operator new_vec = w / beta;
+
+    if (arnoldi_monitor_ortho)
+    {
+      double max_ov = 0.0;
+      for (int i = 0; i <= j; ++i)
+        max_ov = std::max(max_ov, std::abs(ComputeNorm(lanczos_vector[i], new_vec)));
+      if (max_ov > arnoldi_ortho_warn)
+      {
+        for (int pass = 0; pass < 2; ++pass)
+        {
+          for (int i = 0; i <= j; ++i)
+          {
+            double cij = ComputeNorm(lanczos_vector[i], new_vec);
+            new_vec = new_vec - cij * lanczos_vector[i];
+          }
+          if (arnoldi_use_projection)
+            ProjectOprator(new_vec);
+        }
+        double nn_new = ComputeNorm(new_vec, new_vec);
+        if (nn_new <= 0.0)
+        {
+          std::cout << "arnoldiH2: reortho produced non-positive norm at step "
+                    << j + 1 << ", stopping." << std::endl;
+          stop_reason = "reortho_breakdown";
+          arma::vec ev; arma::mat evec;
+          eigensolve_sub(j + 1, ev, evec);
+          e  = ev.head(std::min(state_want, (int)ev.n_elem));
+          vs = evec;
+          break;
+        }
+        new_vec = new_vec / std::sqrt(nn_new);
+        max_ov = 0.0;
+        for (int i = 0; i <= j; ++i)
+          max_ov = std::max(max_ov, std::abs(ComputeNorm(lanczos_vector[i], new_vec)));
+      }
+      max_ortho_seen = std::max(max_ortho_seen, max_ov);
+      if (max_ov > arnoldi_ortho_warn)
+        std::cout << "arnoldiH2: ortho warn at step " << j + 1
+                  << "  max|<v_i|v_new>|=" << max_ov << std::endl;
+      if (max_ov > arnoldi_ortho_fail)
+      {
+        std::cout << "arnoldiH2: orthogonality lost at step " << j + 1
+                  << "  max|<v_i|v_new>|=" << max_ov
+                  << " > fail tol " << arnoldi_ortho_fail
+                  << " — stopping (Ritz unreliable)." << std::endl;
+        stop_reason = "ortho_lost";
+      }
+    }
+
+    lanczos_vector.push_back(new_vec);
+    {
+      auto t3 = Clock::now();
+      h3_diag.push_back(arnoldi_use_h3 ? DcomMultiref(Hwork, new_vec) : 0.0);
+      time_h3_diag += elapsed(t3);
+      ++h3_diag_calls;
+    }
+
+    if (arnoldi_monitor_ortho && ((j + 1) % 5 == 0))
+    {
+      double gmax = gram_offdiag_max();
+      max_ortho_seen = std::max(max_ortho_seen, gmax);
+      std::cout << "arnoldiH2: Gram offdiag max @ step " << j + 1
+                << " = " << gmax << std::endl;
+      if (gmax > arnoldi_ortho_fail)
+      {
+        std::cout << "arnoldiH2: full Gram orthogonality lost — stopping."
+                  << std::endl;
+        stop_reason = "ortho_lost";
+      }
+    }
+
+    if (j + 1 >= min_iter)
+    {
+      const int hall_dim = j + 1;
+      arma::vec eigval; arma::mat eigvec;
+      timer = Clock::now();
+      eigensolve_sub(hall_dim, eigval, eigvec);
+      time_eigensolve += elapsed(timer);
+
+      const int nwant = std::min(state_want, (int)eigval.n_elem);
+      e  = eigval.head(nwant);
+      vs = eigvec;
+
+      residuals.set_size(nwant);
+      double max_resid = 0.0;
+      for (int k = 0; k < nwant; ++k)
+      {
+        residuals(k) = beta * std::abs(eigvec(j, k));
+        max_resid = std::max(max_resid, residuals(k));
+      }
+
+      energy_history.push_back(e);
+      if ((int)energy_history.size() > stable_window)
+        energy_history.erase(energy_history.begin());
+
+      bool energy_stable = false;
+      double delta_window = 0.0;
+      if ((int)energy_history.size() >= stable_window)
+      {
+        const arma::vec &e_old = energy_history.front();
+        const arma::vec &e_new = energy_history.back();
+        if (e_old.n_elem == e_new.n_elem)
+        {
+          delta_window = arma::max(arma::abs(e_new - e_old));
+          energy_stable = (delta_window < arnoldi_energy_tol);
+        }
+      }
+      const bool resid_ok = (max_resid < arnoldi_resid_tol);
+
+      if ((j + 1) % 5 == 0 || (energy_stable && resid_ok))
+      {
+        std::cout << "arnoldiH2 @ step " << j + 1 << ":";
+        for (int k = 0; k < nwant; ++k)
+          std::cout << " E" << k << "=" << e(k)
+                    << " (r=" << residuals(k) << ")";
+        std::cout << "  dE_win=" << delta_window
+                  << "  max_ortho=" << max_ortho_seen << std::endl;
+        if (arnoldi_check_expectation)
+          report_expectation_check(eigval, eigvec, hall_dim, nwant,
+                                   "arnoldiH2 expectation check:");
+      }
+
+      if (stop_reason == "ortho_lost")
+        break;
+
+      if (energy_stable && resid_ok)
+      {
+        std::cout << "ArnoldiSolveH2 converged at step " << j + 1
+                  << "  (dE_window=" << delta_window
+                  << " < " << arnoldi_energy_tol
+                  << ", max_resid=" << max_resid
+                  << " < " << arnoldi_resid_tol << ")" << std::endl;
+        converged_flag = true;
+        stop_reason = "converged";
+        break;
+      }
+    }
+    else if (stop_reason == "ortho_lost")
+    {
+      break;
+    }
+  }
+
+  {
+    int nb_cur = (int)h1v_cache.size();
+    if (nb_cur == 0)
+      nb_cur = std::min((int)lanczos_vector.size(), 1);
+    arma::vec eigval_f; arma::mat eigvec_f;
+    auto timer = Clock::now();
+    eigensolve_sub(nb_cur, eigval_f, eigvec_f);
+    time_eigensolve += elapsed(timer);
+    const int nwant = std::min(state_want, (int)eigval_f.n_elem);
+    e  = eigval_f.head(nwant);
+    vs = eigvec_f;
+    if ((int)residuals.n_elem != nwant)
+      residuals = arma::vec(nwant, arma::fill::zeros);
+  }
+
+  std::cout << "ArnoldiSolveH2 finished with " << j_final + 1 << " steps"
+            << "  reason=" << stop_reason
+            << "  max_ortho=" << max_ortho_seen << std::endl;
+  if (arnoldi_check_expectation)
+    report_expectation_check(e, vs, (int)vs.n_rows,
+                             std::min(state_want, (int)e.n_elem),
+                             "final arnoldiH2 expectation check:");
+  for (int k = 0; k < (int)e.n_elem; ++k)
+  {
+    std::cout << "E(" << k << ") = " << e(k);
+    if (k < (int)residuals.n_elem)
+      std::cout << "  resid~" << residuals(k);
+    std::cout << std::endl;
+  }
+
+  auto timer = Clock::now();
+  std::vector<Operator> ritz_vecs;
+  int nb_ritz = (int)h1v_cache.size();
+  if (nb_ritz == 0)
+    nb_ritz = std::min((int)lanczos_vector.size(), 1);
+  nb_ritz = std::min(nb_ritz, (int)lanczos_vector.size());
+  for (int k = 0; k < (int)e.n_elem; ++k)
+  {
+    Operator vec = lanczos_vector[0] * 0.0;
+    for (int m = 0; m < std::min(nb_ritz, (int)vs.n_rows); ++m)
+      vec = vec + (double)vs(m, k) * lanczos_vector[m];
+    ritz_vecs.push_back(vec);
+  }
+  time_ritz += elapsed(timer);
+
+  if (arnoldi_print_timing)
+  {
+    double total_time = elapsed(total_start);
+    std::cout << "\nArnoldiSolveH2 timing summary (seconds):" << std::endl;
+    std::cout << "  total                 " << total_time << std::endl;
+    std::cout << "  HtcMultiref actions    " << time_h1_action << std::endl;
+    std::cout << "  hall Htc products      " << time_hall_h1 << std::endl;
+    std::cout << "  hall H3 Dcom cross     " << time_hall_h3
+              << "  calls=" << h3_cross_calls << std::endl;
+    std::cout << "  H3 Dcom diagonals      " << time_h3_diag
+              << "  calls=" << h3_diag_calls << std::endl;
+    std::cout << "  Gram-Schmidt/project   " << time_gs << std::endl;
+    std::cout << "  eigensolves            " << time_eigensolve << std::endl;
+    std::cout << "  Ritz vector build      " << time_ritz << std::endl;
+  }
+
+  ArnoldiResult result;
+  result.energies = e;
+  result.eigvecs  = vs;
+  result.ritz     = ritz_vecs;
+  int hall_dim = (int)h1v_cache.size();
+  if (hall_dim == 0)
+    hall_dim = std::min((int)lanczos_vector.size(), 1);
+  result.hall      = hall.submat(0, 0, hall_dim - 1, hall_dim - 1);
+  result.residuals = residuals;
+  result.max_ortho = max_ortho_seen;
+  result.steps = j_final + 1;
+  result.converged = converged_flag;
+  result.stop_reason = stop_reason;
   return result;
 }
 
@@ -2596,8 +3592,7 @@ EOM::ArnoldiSolve_old(Operator &vi, int max_iter, int state_want)
       double h2_cross = DcomMultiref(Hs, v_sum);
       double h2_sym   = 0.5 * (h2_cross - h2_diag[i] - h2_diag[j]);
 
-      double norm_ij = ComputeNorm(lanczos_vector[i], lanczos_vector[j]);
-      hall(i, j) = hall(j, i) = h1_sym + h2_sym - GetReferenceEnergyShift() * norm_ij;
+      hall(i, j) = hall(j, i) = h1_sym + h2_sym;
     }
 
     // double-pass classical Gram-Schmidt orthogonalization
@@ -2794,8 +3789,10 @@ EOM::CompareArnoldiHallBuild(Operator &vi, int max_iter, double tol)
 
       double norm_new = ComputeNorm(lanczos_new[i], lanczos_new[j]);
       double norm_old = ComputeNorm(lanczos_old[i], lanczos_old[j]);
-      double hall_new = h1_sym_new + h2_sym_new - GetReferenceEnergyShift() * norm_new;
-      double hall_old = h1_sym_old + h2_sym_old - GetReferenceEnergyShift() * norm_old;
+      (void)norm_new;
+      (void)norm_old;
+      double hall_new = h1_sym_new + h2_sym_new;
+      double hall_old = h1_sym_old + h2_sym_old;
       double abs_diff = std::abs(hall_new - hall_old);
       double rel_diff = abs_diff / (std::abs(hall_old) + 1e-30);
       result.max_abs_diff = std::max(result.max_abs_diff, abs_diff);
@@ -3014,6 +4011,7 @@ Operator EOM::ReadTdm(const std::string &tdm_file)
       // Since orbits are added to rdm_modelspace in file order,
       // 1-based index k maps to rdm orbit index k-1, so a<=b<=c (1-based)
       // is equivalent to (a-1)<=(b-1)<=(c-1) which is p<=q<=r canonical.
+      // Stored always; contractions gated by use_rdm3 (default false).
       {
         std::istringstream sn(lines[lidx++]);
         int n_3btd;
@@ -3211,7 +4209,7 @@ void EOM::WriteTdm(const Operator &op, const std::string &filename) const
 //  Run
 //  Mirrors lines 133-173 of run/mr_eom.py:
 //    ConstructConfigs / ConstructNormMatrix / ConstructProjectMatrix
-//    compute eref, build random projected initial vector, run ArnoldiSolve.
+//    compute eref, build random projected initial vector, run ArnoldiSolveH2.
 // ============================================================
 
 EOM::RunResult EOM::Run(int max_iter, int state_want)
@@ -3260,20 +4258,22 @@ EOM::RunResult EOM::RunSR(int max_iter, int state_want)
 }
 
 // ---------------------------------------------------------------------------
-// MR solve: mirrors run/mr_eom.py lines 133-173
-//   ConstructConfigs → NormMatrix → ProjectMatrix
-//   → random projected initial vector → ArnoldiSolve (MR)
+// MR solve: ConstructConfigs → NormMatrix → ProjectMatrix
+//   → random projected initial vector → ArnoldiSolveH2 (full H)
+// No EraseValence / E_val·N shift; eigenvalues are Delta E.
 // ---------------------------------------------------------------------------
 EOM::RunResult EOM::RunMR(int max_iter, int state_want)
 {
-  // --- (1) Prepare Hamiltonian and reference shift ---
+  // --- (1) Prepare Hamiltonian (full decoupled H; keep vv) ---
   force_decouple(Hs);
+  Hs_full = Hs;
+  have_Hs_full = true;
+  ClearReferenceEnergyShift();
   double eref = GetVSEOM_Overlap_multiref(Hs);
-  SetReferenceEnergyShift(eref);
-  std::cout << "  E_ref (valence) = " << eref-Hs.ZeroBody
-            << "   ZeroBody = " << Hs.ZeroBody
-            << "   E_ref total = " << eref << " MeV" << std::endl;
-  EraseValence(Hs);
+  std::cout << "  E_ref (<H>_RDM) = " << eref
+            << "   ZeroBody = " << Hs.ZeroBody << " MeV" << std::endl;
+  std::cout << "  Arnoldi on full H (no EraseValence / E_val·N shift)"
+            << std::endl;
 
   // --- (2) Setup ---
   ConstructConfigs();
@@ -3282,18 +4282,19 @@ EOM::RunResult EOM::RunMR(int max_iter, int state_want)
 
   // --- (3) Random projected initial vector ---
   UnitTest unt(*modelspace);
-  Operator h_rand = unt.RandomOp(*modelspace, 0, 0, 0, 2, 1); // now we can only deal with scaler
+  Operator h_rand = unt.RandomOp(*modelspace, 0, 0, 0, 2, 1); // scalar only for now
   Operator chi_b  = GetVSEOM_ladder_multiref(h_rand, 1);
   ProjectOprator(chi_b);
-  std::cout << "Initial vector norm before projection: " << NormMultiref(chi_b, chi_b) << std::endl;
-
-  
+  double n0 = ComputeNorm(chi_b, chi_b);
+  std::cout << "Initial vector N-norm after projection: " << n0 << std::endl;
+  if (n0 <= 0.0)
+    throw std::runtime_error("EOM::RunMR: initial vector has non-positive N-norm");
 
   // --- (4) Solve ---
-  ArnoldiResult ar = ArnoldiSolve(chi_b, max_iter, state_want);
+  ArnoldiResult ar = ArnoldiSolveH2(chi_b, max_iter, state_want);
 
   // --- (5) Print summary ---
-  std::cout << "\n  MR EOM eigenvalues (Arnoldi):" << std::endl;
+  std::cout << "\n  MR EOM eigenvalues (ArnoldiSolveH2):" << std::endl;
   std::cout << "  E_ref = " << eref << " MeV" << std::endl;
   for (int k = 0; k < (int)ar.energies.n_elem; ++k)
     std::cout << "    E(" << k << "): excitation=" << ar.energies(k)

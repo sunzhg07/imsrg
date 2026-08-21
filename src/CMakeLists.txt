@@ -420,6 +420,23 @@ target_link_libraries(
     PhysicalConstants
     AngMom
 )
+
+add_library(
+    evc OBJECT
+    evc.hh evc.cc
+)
+target_link_libraries(
+    evc
+    PUBLIC
+    ModelSpace
+    Operator
+    PRIVATE
+    Commutator
+    AngMom
+    ReferenceImplementations
+    OpenMP::OpenMP_CXX
+)
+
 add_library(
     RPA OBJECT
     RPA.hh RPA.cc
@@ -472,6 +489,7 @@ target_link_libraries(
     AngMom
     OpenMP::OpenMP_CXX
     ReferenceImplementations
+    evc
 )
 
 add_library(
@@ -508,6 +526,7 @@ target_link_libraries(
     PhysicalConstants
     RPA
     EOM
+    evc
 )
 set_target_properties(IMSRG PROPERTIES SUFFIX ".so")
 set_target_properties(IMSRG PROPERTIES LINKER_LANGUAGE CXX)

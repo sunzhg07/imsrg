@@ -3,8 +3,13 @@
 #include "ModelSpace.hh"
 #include "PhysicalConstants.hh"
 #include "AngMom.hh"
+#include <array>
+#include <cmath>
 #include <deque>
 #include <iostream>
+#include <omp.h>
+#include <utility>
+#include <vector>
 
 
 /// Straightforward implementation of J-coupled commutator expressions
@@ -5296,6 +5301,5018 @@ namespace ReferenceImplementations
       }
     }
     Z.profiler.timer[ "ReferenceImplementations::" + std::string(__func__)] += omp_get_wtime() - t_start;
+  }
+
+
+  // Tensor-eta double commutator one-body piece (trusted).
+  // Physics: factorized_code_analyze.tex §unfact; angular factors: learn/amc_tts/output/f*.tex
+  void comm223_231_tts_fI(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int hZ = hGamma;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    int max_J = 0;
+    for (auto x : Z.modelspace->all_orbits)
+    {
+      Orbit &ox = Z.modelspace->GetOrbit(x);
+      max_j2 = std::max(max_j2, ox.j2);
+    }
+    max_J = max_j2;
+
+    auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
+
+    // Case 2: Ω tensor (reduced); Γ reduced (AMC reduce=true); store Z as IMSRG unreduced (÷Ĵ)
+    // Source: learn/amc_tts/output/case2_reduced/f1.tex
+    Operator Gred = Gamma;
+    if (not Gred.IsReduced())
+      Gred.MakeReduced();
+
+    // ####################################################################################
+    //   f^I
+    //   Source: learn/amc_tts/output/f1.tex
+    // ####################################################################################
+    for (auto &p : Z.modelspace->all_orbits)
+    {
+      Orbit &op = Z.modelspace->GetOrbit(p);
+      double jp = op.j2 / 2.0;
+      for (auto q : Z.modelspace->all_orbits)
+      {
+        if (q > p)
+          continue;
+        Orbit &oq = Z.modelspace->GetOrbit(q);
+        if (oq.j2 != op.j2)
+          continue;
+        double zij = 0.0;
+        for (auto &a : Z.modelspace->all_orbits)
+        {
+          Orbit &oa = Z.modelspace->GetOrbit(a);
+          double n_a = oa.occ;
+          double nbar_a = 1.0 - n_a;
+          for (auto &b : Z.modelspace->all_orbits)
+          {
+            Orbit &ob = Z.modelspace->GetOrbit(b);
+            double n_b = ob.occ;
+            double nbar_b = 1.0 - n_b;
+            for (auto &c : Z.modelspace->all_orbits)
+            {
+              Orbit &oc = Z.modelspace->GetOrbit(c);
+              double n_c = oc.occ;
+              double nbar_c = 1.0 - n_c;
+              for (auto &d : Z.modelspace->all_orbits)
+              {
+                Orbit &od = Z.modelspace->GetOrbit(d);
+                double n_d = od.occ;
+                double nbar_d = 1.0 - n_d;
+                for (auto &e : Z.modelspace->all_orbits)
+                {
+                  Orbit &oe = Z.modelspace->GetOrbit(e);
+                  if (oe.j2 != od.j2)
+                    continue;
+                  double occfactor = nbar_a * nbar_b * n_c * n_d - n_a * n_b * nbar_c * nbar_d;
+                  if (std::abs(occfactor) < 1e-6)
+                    continue;
+
+                  for (int J0 = 0; J0 <= max_J; ++J0)
+                  for (int J1 = 0; J1 <= max_J; ++J1)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J0, J1, c, d, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J1, J0, a, b, c, e);
+                    if (std::abs(eta1 * eta2) < 1e-14)
+                      continue;
+                    double phase = Z.modelspace->phase(J0 + J1 + lambda);
+                    for (int J2 = 0; J2 <= max_J; ++J2)
+                    {
+                      double gamma = Gred.TwoBody.GetTBME_J(J2, J2, e, p, d, q)
+                                   + Gred.TwoBody.GetTBME_J(J2, J2, d, p, e, q);
+                      if (std::abs(gamma) < 1e-14)
+                        continue;
+                      zij += phase * hat(J2) / (od.j2 + 1.0) * hat_lambda_inv
+                           * occfactor * eta1 * eta2 * gamma;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        Z.OneBody(p, q) += 0.5 * zij / (op.j2 + 1.0);
+        if (p != q)
+          Z.OneBody(q, p) += 0.5 * hZ * hZ * zij / (op.j2 + 1.0);
+      }
+    }
+    Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  }
+
+
+  void comm223_231_tts_fII(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int hZ = hGamma;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    int max_J = 0;
+    for (auto x : Z.modelspace->all_orbits)
+    {
+      Orbit &ox = Z.modelspace->GetOrbit(x);
+      max_j2 = std::max(max_j2, ox.j2);
+    }
+    max_J = max_j2;
+
+    auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
+
+    // Case 2 TTS: Ω tensor reduced; Γ scalar MakeReduced; Z stored unreduced (÷ĵ²)
+    // Source: learn/amc_tts/output/case2_reduced/f2a.tex, f2b.tex
+    // hats: drop Ĵ0 vs Case1 (absorbed in G_red); body ÷(2j+1) ≡ ÷ĵ then MakeNotReduced
+    Operator Gred = Gamma;
+    if (not Gred.IsReduced())
+      Gred.MakeReduced();
+
+    // ####################################################################################
+    //   f^II = f2a + hGamma * f2b
+    // ####################################################################################
+    for (auto &p : Z.modelspace->all_orbits)
+    {
+      Orbit &op = Z.modelspace->GetOrbit(p);
+      double jp = op.j2 / 2.0;
+      for (auto q : Z.modelspace->all_orbits)
+      {
+        if (q > p)
+          continue;
+        Orbit &oq = Z.modelspace->GetOrbit(q);
+        if (oq.j2 != op.j2)
+          continue;
+        double zij = 0.0;
+        for (auto &a : Z.modelspace->all_orbits)
+        {
+          Orbit &oa = Z.modelspace->GetOrbit(a);
+          double ja = oa.j2 / 2.0;
+          double n_a = oa.occ;
+          double nbar_a = 1.0 - n_a;
+          for (auto &b : Z.modelspace->all_orbits)
+          {
+            Orbit &ob = Z.modelspace->GetOrbit(b);
+            double jb = ob.j2 / 2.0;
+            double n_b = ob.occ;
+            double nbar_b = 1.0 - n_b;
+            for (auto &c : Z.modelspace->all_orbits)
+            {
+              Orbit &oc = Z.modelspace->GetOrbit(c);
+              double jc = oc.j2 / 2.0;
+              double n_c = oc.occ;
+              double nbar_c = 1.0 - n_c;
+              for (auto &d : Z.modelspace->all_orbits)
+              {
+                Orbit &od = Z.modelspace->GetOrbit(d);
+                double jd = od.j2 / 2.0;
+                for (auto &e : Z.modelspace->all_orbits)
+                {
+                  Orbit &oe = Z.modelspace->GetOrbit(e);
+                  double je = oe.j2 / 2.0;
+                  double n_e = oe.occ;
+                  double nbar_e = 1.0 - n_e;
+                  double occfactor = n_a * n_b * nbar_c * nbar_e - nbar_a * nbar_b * n_c * n_e;
+                  if (std::abs(occfactor) < 1e-6)
+                    continue;
+
+                  for (int J0 = 0; J0 <= max_J; ++J0)
+                  for (int J1 = 0; J1 <= max_J; ++J1)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  {
+                    double gamma = Gred.TwoBody.GetTBME_J(J0, J0, c, d, a, b);
+                    double eta1 = Eta.TwoBody.GetTBME_J(J0, J1, a, b, c, e);
+                    double eta2a = Eta.TwoBody.GetTBME_J(J3, J4, e, p, d, q);
+                    double eta2b = Eta.TwoBody.GetTBME_J(J3, J4, e, q, d, p);
+                    if (std::abs(gamma * eta1) < 1e-14)
+                      continue;
+                    double sixj = AngMom::SixJ(lambda, J1, J0, jc, jd, je);
+                    sixj *= AngMom::SixJ(J4, lambda, J3, je, jp, jd);
+                    if (std::abs(sixj) < 1e-14)
+                      continue;
+                    // AMC case2_reduced/f2a: (−1)^{J0+λ+J4+jc+jd+je} in the sum.
+                    // Separate AMC (−1)^{j_i} is applied once after the loops
+                    // (not inside combined with jd — that belongs to the
+                    // factorized χ×Ω fold). Integer form: phase((jp2+1)/2).
+                    double phase = Z.modelspace->phase((oc.j2 + od.j2 + oe.j2) / 2 + J0 + lambda + J4);
+                    double hats = hat(J1) * hat_lambda_inv * hat(J3) * hat(J4);
+                    zij += 0.5 * phase * hats * sixj * occfactor * gamma * eta1
+                         * (eta2a + hGamma * eta2b);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // AMC (−1)^{j_i}; loop phase above has jc+jd+je only.
+        zij *= Z.modelspace->phase((op.j2 + 1) / 2);
+        Z.OneBody(p, q) += zij / (op.j2 + 1.0);
+        if (p != q)
+          Z.OneBody(q, p) += hZ * hZ * zij / (op.j2 + 1.0);
+      }
+    }
+    Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  }
+
+
+  void comm223_231_tts_fIIIa(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    // Gold: m-scheme f3a + [Ω×Ω]_0 ≡ AMC χ^γ DIRECT (5×6j) + ladder.
+    // NOT Neithan TT→0: Neithan ≠ m/AMC (~λ̂ overall). See
+    //   learn/amc_tts/factored_fIIIa/OMEGA_TT_TO_SCALAR.md
+    // Packaging: Ω reduced; χ unreduced (= AMC reduce=true χ_red/Ĵ); Γ unreduced;
+    // f stored unreduced. j0 must extend past max orbit j (couples to jb,J3/J4).
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int hZ = hGamma;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    for (auto x : Z.modelspace->all_orbits)
+      max_j2 = std::max(max_j2, Z.modelspace->GetOrbit(x).j2);
+    int max_J = max_j2;
+    int max_j0_2 = 2 * (max_J + lambda + 2);
+
+    std::vector<index_t> allorb(Z.modelspace->all_orbits.begin(),
+                                Z.modelspace->all_orbits.end());
+    const int n_orb = (int)allorb.size();
+    const int n_J = max_J + 1;
+    const int n_j0 = max_j0_2 + 1;
+
+    const size_t w_s_j0 = 1;
+    const size_t w_s_J6 = (size_t)n_j0 * w_s_j0;
+    const size_t w_s_b = (size_t)n_J * w_s_J6;
+    const size_t w_s_k = (size_t)n_orb * w_s_b;
+    const size_t w_s_j = (size_t)n_orb * w_s_k;
+    const size_t w_s_a = (size_t)n_orb * w_s_j;
+    const size_t w_size = (size_t)n_orb * w_s_a;
+    std::vector<double> W1(w_size, 0.0), W2(w_size, 0.0);
+    auto w_index = [&](index_t a, index_t j, index_t k, index_t b, int J6,
+                       int j02) -> size_t {
+      return (size_t)a * w_s_a + (size_t)j * w_s_j + (size_t)k * w_s_k +
+             (size_t)b * w_s_b + (size_t)J6 * w_s_J6 + (size_t)j02 * w_s_j0;
+    };
+    auto oidx = [&](index_t o) -> int {
+      for (int i = 0; i < n_orb; ++i)
+        if (allorb[i] == o)
+          return i;
+      return -1;
+    };
+
+#pragma omp parallel for schedule(dynamic, 1)
+    for (int ia = 0; ia < n_orb; ++ia) {
+      auto a = allorb[ia];
+      Orbit &oa = Z.modelspace->GetOrbit(a);
+      double ja = oa.j2 / 2.0;
+      for (auto j : Z.modelspace->all_orbits) {
+        Orbit &oj = Z.modelspace->GetOrbit(j);
+        double jj = oj.j2 / 2.0;
+        for (auto k : Z.modelspace->all_orbits) {
+          Orbit &ok = Z.modelspace->GetOrbit(k);
+          double jk = ok.j2 / 2.0;
+          for (auto b : Z.modelspace->all_orbits) {
+            Orbit &ob = Z.modelspace->GetOrbit(b);
+            double jb = ob.j2 / 2.0;
+            int J2min = std::abs(oa.j2 - oj.j2) / 2;
+            int J2max = (oa.j2 + oj.j2) / 2;
+            int J3min = std::abs(ok.j2 - ob.j2) / 2;
+            int J3max = (ok.j2 + ob.j2) / 2;
+            for (int J2 = J2min; J2 <= J2max; ++J2) {
+              for (int J3 = J3min; J3 <= J3max; ++J3) {
+                if (not AngMom::Triangle(J2, J3, lambda))
+                  continue;
+                double o1 = Eta.TwoBody.GetTBME_J(J2, J3, a, j, k, b);
+                if (std::abs(o1) < 1e-14)
+                  continue;
+                double hats23 =
+                    std::sqrt((2.0 * J2 + 1.0) * (2.0 * J3 + 1.0));
+                double phase3 = Z.modelspace->phase(J3);
+                for (int J6 = 0; J6 <= max_J; ++J6) {
+                  for (int j02 = 0; j02 <= max_j0_2; ++j02) {
+                    double j0 = j02 / 2.0;
+                    double sixj =
+                        AngMom::SixJ(J3, lambda, J2, ja, jj, j0);
+                    sixj *= AngMom::SixJ(jj, jk, J6, jb, j0, J3);
+                    if (std::abs(sixj) < 1e-14)
+                      continue;
+                    W1[w_index(oidx(a), oidx(j), oidx(k), oidx(b), J6, j02)] +=
+                        phase3 * hats23 * sixj * o1;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+#pragma omp parallel for schedule(dynamic, 1)
+    for (int ii = 0; ii < n_orb; ++ii) {
+      auto i = allorb[ii];
+      Orbit &oi = Z.modelspace->GetOrbit(i);
+      double ji = oi.j2 / 2.0;
+      for (auto b : Z.modelspace->all_orbits) {
+        Orbit &ob = Z.modelspace->GetOrbit(b);
+        double jb = ob.j2 / 2.0;
+        for (auto a : Z.modelspace->all_orbits) {
+          Orbit &oa = Z.modelspace->GetOrbit(a);
+          double ja = oa.j2 / 2.0;
+          for (auto l : Z.modelspace->all_orbits) {
+            Orbit &ol = Z.modelspace->GetOrbit(l);
+            double jl = ol.j2 / 2.0;
+            int J4min = std::abs(oi.j2 - ob.j2) / 2;
+            int J4max = (oi.j2 + ob.j2) / 2;
+            int J5min = std::abs(oa.j2 - ol.j2) / 2;
+            int J5max = (oa.j2 + ol.j2) / 2;
+            for (int J4 = J4min; J4 <= J4max; ++J4) {
+              for (int J5 = J5min; J5 <= J5max; ++J5) {
+                if (not AngMom::Triangle(J4, J5, lambda))
+                  continue;
+                double o2 = Eta.TwoBody.GetTBME_J(J4, J5, i, b, a, l);
+                if (std::abs(o2) < 1e-14)
+                  continue;
+                double hats45 =
+                    std::sqrt((2.0 * J4 + 1.0) * (2.0 * J5 + 1.0));
+                double phase5 = Z.modelspace->phase(J5);
+                for (int J6 = 0; J6 <= max_J; ++J6) {
+                  for (int j02 = 0; j02 <= max_j0_2; ++j02) {
+                    double j0 = j02 / 2.0;
+                    double sixj =
+                        AngMom::SixJ(J4, lambda, J5, ja, jl, j0);
+                    sixj *= AngMom::SixJ(jl, ji, J6, jb, j0, J4);
+                    if (std::abs(sixj) < 1e-14)
+                      continue;
+                    W2[w_index(oidx(i), oidx(b), oidx(a), oidx(l), J6, j02)] +=
+                        phase5 * hats45 * sixj * o2;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const size_t chi_stride_l = (size_t)n_J;
+    const size_t chi_stride_k = (size_t)n_orb * chi_stride_l;
+    const size_t chi_stride_j = (size_t)n_orb * chi_stride_k;
+    const size_t chi_stride_i = (size_t)n_orb * chi_stride_j;
+    std::vector<double> chi_tab((size_t)n_orb * chi_stride_i, 0.0);
+    auto chi_index = [&](index_t i, index_t j, index_t k, index_t l,
+                         int J0) -> size_t {
+      return (size_t)oidx(i) * chi_stride_i + (size_t)oidx(j) * chi_stride_j +
+             (size_t)oidx(k) * chi_stride_k + (size_t)oidx(l) * chi_stride_l +
+             (size_t)J0;
+    };
+
+    double phase_lambda = Z.modelspace->phase(lambda);
+#pragma omp parallel for schedule(dynamic, 1)
+    for (int ii = 0; ii < n_orb; ++ii) {
+      auto i = allorb[ii];
+      Orbit &oi = Z.modelspace->GetOrbit(i);
+      double ji = oi.j2 / 2.0;
+      for (auto j : Z.modelspace->all_orbits) {
+        Orbit &oj = Z.modelspace->GetOrbit(j);
+        double jj = oj.j2 / 2.0;
+        double n_j = oj.occ, nbar_j = 1.0 - n_j;
+        for (auto k : Z.modelspace->all_orbits) {
+          Orbit &ok = Z.modelspace->GetOrbit(k);
+          double jk = ok.j2 / 2.0;
+          double n_k = ok.occ, nbar_k = 1.0 - n_k;
+          for (auto l : Z.modelspace->all_orbits) {
+            Orbit &ol = Z.modelspace->GetOrbit(l);
+            double jl = ol.j2 / 2.0;
+            double phase_jl = Z.modelspace->phase((oj.j2 + ol.j2) / 2);
+            for (int J0 = 0; J0 <= max_J; ++J0) {
+              if (not AngMom::Triangle(ji, jj, (double)J0))
+                continue;
+              if (not AngMom::Triangle(jk, jl, (double)J0))
+                continue;
+              double chi_phys = 0.0;
+              for (auto a : Z.modelspace->all_orbits) {
+                Orbit &oa = Z.modelspace->GetOrbit(a);
+                double n_a = oa.occ, nbar_a = 1.0 - n_a;
+                for (auto b : Z.modelspace->all_orbits) {
+                  Orbit &ob = Z.modelspace->GetOrbit(b);
+                  double n_b = ob.occ, nbar_b = 1.0 - n_b;
+                  double occ = n_a * nbar_b * n_j * nbar_k -
+                               nbar_a * n_b * nbar_j * n_k;
+                  if (std::abs(occ) < 1e-6)
+                    continue;
+                  for (int J6 = 0; J6 <= max_J; ++J6) {
+                    double sixj_f =
+                        AngMom::SixJ(jk, jl, J0, ji, jj, J6);
+                    if (std::abs(sixj_f) < 1e-14)
+                      continue;
+                    double hatJ6_sq = (2.0 * J6 + 1.0);
+                    for (int j02 = 0; j02 <= max_j0_2; ++j02) {
+                      double w1 = W1[w_index(oidx(a), oidx(j), oidx(k), oidx(b),
+                                            J6, j02)];
+                      double w2 = W2[w_index(oidx(i), oidx(b), oidx(a), oidx(l),
+                                            J6, j02)];
+                      if (std::abs(w1 * w2) < 1e-20)
+                        continue;
+                      chi_phys -= phase_jl * phase_lambda * hat_lambda_inv *
+                                  hatJ6_sq * (j02 + 1.0) * sixj_f * occ * w1 *
+                                  w2;
+                    }
+                  }
+                }
+              }
+              chi_tab[chi_index(i, j, k, l, J0)] = chi_phys;
+            }
+          }
+        }
+      }
+    }
+
+    // Ladder: ĵ^{-2} Σ Ĵ² (Γ_cpab χ_abcq − χ_pcab Γ_abqc)
+#pragma omp parallel for schedule(dynamic, 1)
+    for (int ip = 0; ip < n_orb; ++ip) {
+      auto p = allorb[ip];
+      Orbit &op = Z.modelspace->GetOrbit(p);
+      for (auto q : Z.modelspace->all_orbits) {
+        if (q > p)
+          continue;
+        Orbit &oq = Z.modelspace->GetOrbit(q);
+        if (oq.j2 != op.j2)
+          continue;
+        double zpq = 0.0;
+        for (auto &c : Z.modelspace->all_orbits)
+          for (auto &a : Z.modelspace->all_orbits)
+            for (auto &b : Z.modelspace->all_orbits)
+              for (int J0 = 0; J0 <= max_J; ++J0) {
+                double g1 = Gamma.TwoBody.GetTBME_J(J0, J0, c, p, a, b);
+                double g2 = Gamma.TwoBody.GetTBME_J(J0, J0, a, b, q, c);
+                if (std::abs(g1) < 1e-14 && std::abs(g2) < 1e-14)
+                  continue;
+                zpq += (2.0 * J0 + 1.0) *
+                       (g1 * chi_tab[chi_index(a, b, c, q, J0)] -
+                        chi_tab[chi_index(p, c, a, b, J0)] * g2);
+              }
+        Z.OneBody(p, q) += zpq / (op.j2 + 1.0);
+        if (p != q)
+          Z.OneBody(q, p) += hZ * zpq / (op.j2 + 1.0);
+      }
+    }
+    Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  }
+
+
+  void comm223_231_tts_fIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int hZ = hGamma;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    int max_J = 0;
+    for (auto x : Z.modelspace->all_orbits)
+    {
+      Orbit &ox = Z.modelspace->GetOrbit(x);
+      max_j2 = std::max(max_j2, ox.j2);
+    }
+    max_J = max_j2;
+
+    auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
+
+    // Case 2: Ω tensor reduced; Γ MakeReduced (×Ĵ); AMC Ĵ^{-1}*G_red ≡ G_unred;
+    // store Z unreduced via ÷(2j+1) ≡ ÷ĵ after reduced ĵ^{-1} body.
+    // Source: learn/amc_tts/output/case2_reduced/f3b.tex
+    Operator Gred = Gamma;
+    if (not Gred.IsReduced())
+      Gred.MakeReduced();
+
+    // ####################################################################################
+    //   f^III_b
+    // ####################################################################################
+    for (auto &p : Z.modelspace->all_orbits)
+    {
+      Orbit &op = Z.modelspace->GetOrbit(p);
+      double jp = op.j2 / 2.0;
+      for (auto q : Z.modelspace->all_orbits)
+      {
+        if (q > p)
+          continue;
+        Orbit &oq = Z.modelspace->GetOrbit(q);
+        if (oq.j2 != op.j2)
+          continue;
+        double zij = 0.0;
+        for (auto &a : Z.modelspace->all_orbits)
+        {
+          Orbit &oa = Z.modelspace->GetOrbit(a);
+          double n_a = oa.occ;
+          double nbar_a = 1.0 - n_a;
+          for (auto &b : Z.modelspace->all_orbits)
+          {
+            Orbit &ob = Z.modelspace->GetOrbit(b);
+            double n_b = ob.occ;
+            double nbar_b = 1.0 - n_b;
+            for (auto &c : Z.modelspace->all_orbits)
+            {
+              Orbit &oc = Z.modelspace->GetOrbit(c);
+              double n_c = oc.occ;
+              double nbar_c = 1.0 - n_c;
+              for (auto &d : Z.modelspace->all_orbits)
+              {
+                Orbit &od = Z.modelspace->GetOrbit(d);
+                double n_d = od.occ;
+                double nbar_d = 1.0 - n_d;
+                for (auto &e : Z.modelspace->all_orbits)
+                {
+                  Orbit &oe = Z.modelspace->GetOrbit(e);
+                  double occfactor = nbar_a * nbar_b * n_c * n_d - n_a * n_b * nbar_c * nbar_d;
+                  if (std::abs(occfactor) < 1e-6)
+                    continue;
+
+                  for (int J0 = 0; J0 <= max_J; ++J0)
+                  for (int J1 = 0; J1 <= max_J; ++J1)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J0, J1, a, b, c, d);
+                    if (std::abs(eta1) < 1e-14)
+                      continue;
+                    double phase = Z.modelspace->phase(J0 + J1 + lambda);
+                    double eta2t1 = Eta.TwoBody.GetTBME_J(J1, J0, c, d, e, q);
+                    // G_red/Ĵ ≡ G_unred (IMSRG MakeReduced multiplies by Ĵ)
+                    double gamma1 = Gred.TwoBody.GetTBME_J(J0, J0, e, p, a, b);
+                    double eta2t2 = Eta.TwoBody.GetTBME_J(J1, J0, e, p, a, b);
+                    double gamma2 = Gred.TwoBody.GetTBME_J(J1, J1, c, d, e, q);
+                    zij += phase * hat_lambda_inv * occfactor * eta1
+                         * (eta2t1 * gamma1 / hat(J0) - eta2t2 * gamma2 / hat(J1));
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        Z.OneBody(p, q) += 0.25 * zij / (op.j2 + 1.0);
+        if (p != q)
+          Z.OneBody(q, p) += 0.25 * hZ * zij / (op.j2 + 1.0);
+      }
+    }
+    Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  }
+
+
+  void comm223_231_tts(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int hZ = hGamma;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    int max_J = 0;
+    for (auto x : Z.modelspace->all_orbits)
+    {
+      Orbit &ox = Z.modelspace->GetOrbit(x);
+      max_j2 = std::max(max_j2, ox.j2);
+    }
+    max_J = max_j2;
+
+    auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
+
+    // ####################################################################################
+    //   f^I
+    //   Source: learn/amc_tts/output/f1.tex
+    // ####################################################################################
+    for (auto &p : Z.modelspace->all_orbits)
+    {
+      Orbit &op = Z.modelspace->GetOrbit(p);
+      double jp = op.j2 / 2.0;
+      for (auto q : Z.modelspace->all_orbits)
+      {
+        if (q > p)
+          continue;
+        Orbit &oq = Z.modelspace->GetOrbit(q);
+        if (oq.j2 != op.j2)
+          continue;
+        double zij = 0.0;
+        for (auto &a : Z.modelspace->all_orbits)
+        {
+          Orbit &oa = Z.modelspace->GetOrbit(a);
+          double n_a = oa.occ;
+          double nbar_a = 1.0 - n_a;
+          for (auto &b : Z.modelspace->all_orbits)
+          {
+            Orbit &ob = Z.modelspace->GetOrbit(b);
+            double n_b = ob.occ;
+            double nbar_b = 1.0 - n_b;
+            for (auto &c : Z.modelspace->all_orbits)
+            {
+              Orbit &oc = Z.modelspace->GetOrbit(c);
+              double n_c = oc.occ;
+              double nbar_c = 1.0 - n_c;
+              for (auto &d : Z.modelspace->all_orbits)
+              {
+                Orbit &od = Z.modelspace->GetOrbit(d);
+                double n_d = od.occ;
+                double nbar_d = 1.0 - n_d;
+                for (auto &e : Z.modelspace->all_orbits)
+                {
+                  Orbit &oe = Z.modelspace->GetOrbit(e);
+                  if (oe.j2 != od.j2)
+                    continue;
+                  double occfactor = nbar_a * nbar_b * n_c * n_d - n_a * n_b * nbar_c * nbar_d;
+                  if (std::abs(occfactor) < 1e-6)
+                    continue;
+
+                  for (int J0 = 0; J0 <= max_J; ++J0)
+                  for (int J1 = 0; J1 <= max_J; ++J1)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J0, J1, c, d, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J1, J0, a, b, c, e);
+                    if (std::abs(eta1 * eta2) < 1e-14)
+                      continue;
+                    double phase = Z.modelspace->phase(J0 + J1 + lambda);
+                    for (int J2 = 0; J2 <= max_J; ++J2)
+                    {
+                      double gamma = Gamma.TwoBody.GetTBME_J(J2, J2, e, p, d, q)
+                                   + Gamma.TwoBody.GetTBME_J(J2, J2, d, p, e, q);
+                      if (std::abs(gamma) < 1e-14)
+                        continue;
+                      zij += phase * (2 * J2 + 1.0) / (od.j2 + 1.0) * hat_lambda_inv
+                           * occfactor * eta1 * eta2 * gamma;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        Z.OneBody(p, q) += 0.5 * zij / (op.j2 + 1.0);
+        if (p != q)
+          Z.OneBody(q, p) += 0.5 * hZ * hZ * zij / (op.j2 + 1.0);
+      }
+    }
+
+    // f^II: Case-2 TTS reference (factorized DGEMM is ethS use_TypeII_1b)
+    comm223_231_tts_fII(Eta, Gamma, Z);
+
+    // f^III_a: Case-2 TTS reference (factorized: ethS Pandya→RME DGEMM→inv)
+    comm223_231_tts_fIIIa(Eta, Gamma, Z);
+
+    // f^III_b: Case-2 TTS reference (factorized DGEMM is ethS use_TypeIII_1b)
+    comm223_231_tts_fIIIb(Eta, Gamma, Z);
+
+    Z.profiler.timer["ReferenceImplementations::" + std::string(__func__)] += omp_get_wtime() - t_start;
+  }
+
+
+  // Tensor-eta double commutator two-body piece (trusted).
+  // Physics: factorized_code_analyze.tex §unfact; angular factors: learn/amc_tts/output/G*.tex
+  void comm223_232_tts_GI(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    int max_J = 0;
+    for (auto x : Z.modelspace->all_orbits)
+    {
+      Orbit &ox = Z.modelspace->GetOrbit(x);
+      max_j2 = std::max(max_j2, ox.j2);
+    }
+    max_J = max_j2;
+
+    auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
+
+    // Case 2: Ω tensor (reduced); Γ reduced (AMC reduce=true); store Z as IMSRG unreduced (÷Ĵ)
+    // Source: learn/amc_tts/output/case2_reduced/G1.tex (hats unchanged)
+    Operator Gred = Gamma;
+    if (not Gred.IsReduced())
+      Gred.MakeReduced();
+    auto &Z2 = Z.TwoBody;
+
+    std::vector<size_t> ch_bra_list, ch_ket_list;
+    for (auto &iter : Z.TwoBody.MatEl)
+    {
+      ch_bra_list.push_back(iter.first[0]);
+      ch_ket_list.push_back(iter.first[1]);
+    }
+    int nch = ch_bra_list.size();
+
+    // ####################################################################################
+    //   Gamma^I
+    //   Source: learn/amc_tts/output/G1.tex
+    //   overall +1/2; (1-P_ij) term1, (1-P_kl) term2
+    //   occ: nbar_a nbar_b n_c + n_a n_b nbar_c
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_c + n_a * n_b * nbar_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  if (od.j2 == op.j2)
+                  {
+                    for (int J2 = 0; J2 <= max_J; ++J2)
+                    for (int J3 = 0; J3 <= max_J; ++J3)
+                    {
+                      double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, p, a, b);
+                      double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, a, b, c, d);
+                      double gamma = Gred.TwoBody.GetTBME_J(J0, J0, d, g, q, h);
+                      if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                        continue;
+                      double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                      zpgqh += 0.5 * phase * hat_lambda_inv * occfactor * eta1 * eta2 * gamma / (op.j2 + 1.0);
+                    }
+                  }
+                  if (od.j2 == og.j2)
+                  {
+                    for (int J2 = 0; J2 <= max_J; ++J2)
+                    for (int J3 = 0; J3 <= max_J; ++J3)
+                    {
+                      double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, g, a, b);
+                      double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, a, b, c, d);
+                      double gamma = Gred.TwoBody.GetTBME_J(J0, J0, d, p, q, h);
+                      if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                        continue;
+                      double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                      zpgqh += 0.5 * phase_pg * phase * hat_lambda_inv * occfactor * eta1 * eta2 * gamma / (og.j2 + 1.0);
+                    }
+                  }
+                  if (od.j2 == oh.j2)
+                  {
+                    for (int J2 = 0; J2 <= max_J; ++J2)
+                    for (int J3 = 0; J3 <= max_J; ++J3)
+                    {
+                      double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, d, a, b);
+                      double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, a, b, c, h);
+                      double gamma = Gred.TwoBody.GetTBME_J(J0, J0, p, g, q, d);
+                      if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                        continue;
+                      double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                      zpgqh += 0.5 * phase * hat_lambda_inv * occfactor * eta1 * eta2 * gamma / (oh.j2 + 1.0);
+                    }
+                  }
+                  if (od.j2 == oq.j2)
+                  {
+                    for (int J2 = 0; J2 <= max_J; ++J2)
+                    for (int J3 = 0; J3 <= max_J; ++J3)
+                    {
+                      double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, d, a, b);
+                      double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, a, b, c, q);
+                      double gamma = Gred.TwoBody.GetTBME_J(J0, J0, p, g, d, h);
+                      if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                        continue;
+                      double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                      zpgqh += 0.5 * phase_qh * phase * hat_lambda_inv * occfactor * eta1 * eta2 * gamma / (oq.j2 + 1.0);
+                    }
+                  }
+
+                }
+              }
+            }
+          }
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh / hat(J0)); // Case2 reduced → IMSRG unreduced
+        }
+      }
+    }
+    Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  }
+
+
+  void comm223_232_tts_GII(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    int max_J = 0;
+    for (auto x : Z.modelspace->all_orbits)
+    {
+      Orbit &ox = Z.modelspace->GetOrbit(x);
+      max_j2 = std::max(max_j2, ox.j2);
+    }
+    max_J = max_j2;
+
+    auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
+
+    // Case 2: Ω tensor (reduced); Γ reduced (AMC reduce=true); store Z as IMSRG unreduced (÷Ĵ)
+    // Source: learn/amc_tts/output/case2_reduced/G2.tex
+    Operator Gred = Gamma;
+    if (not Gred.IsReduced())
+      Gred.MakeReduced();
+    auto &Z2 = Z.TwoBody;
+
+    std::vector<size_t> ch_bra_list, ch_ket_list;
+    for (auto &iter : Z.TwoBody.MatEl)
+    {
+      ch_bra_list.push_back(iter.first[0]);
+      ch_ket_list.push_back(iter.first[1]);
+    }
+    int nch = ch_bra_list.size();
+
+    // ####################################################################################
+    //   Gamma^II
+    //   Source: learn/amc_tts/output/G2.tex
+    //   overall -1/2 from analyze (AMC tensor overall sign unreliable)
+    //   occ: nbar_a nbar_b n_c + nbar_c n_a n_b
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_c + nbar_c * n_a * n_b;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, g, a, b);
+                    double gamma = Gred.TwoBody.GetTBME_J(J3, J3, a, b, c, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J5, J1, p, d, q, h);
+                    if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                      continue;
+                    double sixj = AngMom::SixJ(J2, J3, lambda, jd, jg, jc);
+                    sixj *= AngMom::SixJ(J1, J5, lambda, jd, jg, jp);
+                    if (std::abs(sixj) < 1e-14)
+                      continue;
+                    double phase = AngMom::phase(jp + J2 + lambda + J5 + jc);
+                    zpgqh -= 0.5 * phase * hat(J2) * hat_lambda_inv * hat(J5)
+                           * sixj * occfactor * eta1 * gamma * eta2;
+                    eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, p, a, b);
+                    eta2 = Eta.TwoBody.GetTBME_J(J5, J1, g, d, q, h);
+                    if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                      continue;
+                    sixj = AngMom::SixJ(J2, J3, lambda, jd, jp, jc);
+                    sixj *= AngMom::SixJ(J1, J5, lambda, jd, jp, jg);
+                    if (std::abs(sixj) < 1e-14)
+                      continue;
+                    zpgqh -= 0.5 * phase_pg * phase * hat(J2) * hat_lambda_inv * hat(J5)
+                           * sixj * occfactor * eta1 * gamma * eta2;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  {
+                    double gamma = Gred.TwoBody.GetTBME_J(J2, J2, c, d, a, b);
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, c, h);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J0, J4, p, g, q, d);
+                    if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                      continue;
+                    double sixj = AngMom::SixJ(lambda, J3, J2, jc, jd, jh);
+                    sixj *= AngMom::SixJ(J0, J4, lambda, jd, jh, jq);
+                    if (std::abs(sixj) < 1e-14)
+                      continue;
+                    double phase = AngMom::phase(J0 + jq + J2 + jc + lambda);
+                    zpgqh -= 0.5 * phase * hat(J3) * hat(J4) * hat_lambda_inv
+                           * sixj * occfactor * gamma * eta1 * eta2;
+                    eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, c, q);
+                    eta2 = Eta.TwoBody.GetTBME_J(J0, J4, p, g, d, h);
+                    if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                      continue;
+                    sixj = AngMom::SixJ(lambda, J3, J2, jc, jd, jq);
+                    sixj *= AngMom::SixJ(J0, J4, lambda, jd, jq, jh);
+                    if (std::abs(sixj) < 1e-14)
+                      continue;
+                    zpgqh -= 0.5 * phase_qh * phase * hat(J3) * hat(J4) * hat_lambda_inv
+                           * sixj * occfactor * gamma * eta1 * eta2;
+                  }
+
+                }
+              }
+            }
+          }
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh / hat(J0)); // Case2 reduced → IMSRG unreduced
+        }
+      }
+    }
+    Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  }
+
+
+  void comm223_232_tts_GIIIa(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    int max_J = 0;
+    for (auto x : Z.modelspace->all_orbits)
+    {
+      Orbit &ox = Z.modelspace->GetOrbit(x);
+      max_j2 = std::max(max_j2, ox.j2);
+    }
+    max_J = max_j2;
+
+    auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
+
+    // Case 2: Ω tensor (reduced); Γ reduced (AMC reduce=true); store Z as IMSRG unreduced (÷Ĵ)
+    // Source: learn/amc_tts/output/case2_reduced/G3a.tex (hats unchanged)
+    Operator Gred = Gamma;
+    if (not Gred.IsReduced())
+      Gred.MakeReduced();
+    auto &Z2 = Z.TwoBody;
+
+    std::vector<size_t> ch_bra_list, ch_ket_list;
+    for (auto &iter : Z.TwoBody.MatEl)
+    {
+      ch_bra_list.push_back(iter.first[0]);
+      ch_ket_list.push_back(iter.first[1]);
+    }
+    int nch = ch_bra_list.size();
+
+    // ####################################################################################
+    //   Gamma^III_a
+    //   Source: learn/amc_tts/output/G3a.tex
+    //   overall -1 from analyze (AMC drops leading minus)
+    //   occ: nbar_c nbar_d n_a + nbar_a n_c n_d
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_c * nbar_d * n_a + nbar_a * n_c * n_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, g, c, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, p, d, a, b);
+                    double gamma = Gred.TwoBody.GetTBME_J(J0, J0, c, b, q, h);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, ja, jg, j0)
+                                * AngMom::SixJ(J4, lambda, J5, ja, jb, j0)
+                                * AngMom::SixJ(jg, jc, J6, jd, j0, J3)
+                                * AngMom::SixJ(jb, jp, J6, jd, j0, J4)
+                                * AngMom::SixJ(jg, jp, J0, jb, jc, J6);
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) >= 1e-14) {
+                      double phase = AngMom::phase(jg + J3 + J5 + jb + lambda);
+                      zpgqh -= phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                    }
+                    eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, p, c, d);
+                    eta2 = Eta.TwoBody.GetTBME_J(J4, J5, g, d, a, b);
+                    sixj = AngMom::SixJ(J3, lambda, J2, ja, jp, j0)
+                         * AngMom::SixJ(J4, lambda, J5, ja, jb, j0)
+                         * AngMom::SixJ(jp, jc, J6, jd, j0, J3)
+                         * AngMom::SixJ(jb, jg, J6, jd, j0, J4)
+                         * AngMom::SixJ(jp, jg, J0, jb, jc, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) >= 1e-14) {
+                      double phase = AngMom::phase(jp + J3 + J5 + jb + lambda);
+                      zpgqh -= phase_pg * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                    }
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, d, q, a);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, a, c, h);
+                    double gamma = Gred.TwoBody.GetTBME_J(J0, J0, p, g, b, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jh, j0)
+                                * AngMom::SixJ(jd, jq, J6, ja, j0, J3)
+                                * AngMom::SixJ(jh, jb, J6, ja, j0, J4)
+                                * AngMom::SixJ(jq, jh, J0, jb, jd, J6);
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) >= 1e-14) {
+                      double phase = AngMom::phase(jh + J3 + J5 + jd + lambda);
+                      zpgqh -= phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                    }
+                    eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, d, h, a);
+                    eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, a, c, q);
+                    sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                         * AngMom::SixJ(J4, lambda, J5, jc, jq, j0)
+                         * AngMom::SixJ(jd, jh, J6, ja, j0, J3)
+                         * AngMom::SixJ(jq, jb, J6, ja, j0, J4)
+                         * AngMom::SixJ(jh, jq, J0, jb, jd, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) >= 1e-14) {
+                      double phase = AngMom::phase(jq + J3 + J5 + jd + lambda);
+                      zpgqh -= phase_qh * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                    }
+                  }
+
+                }
+              }
+            }
+          }
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh / hat(J0)); // Case2 reduced → IMSRG unreduced
+        }
+      }
+    }
+    Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  }
+
+
+  void comm223_232_tts_GIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    int max_J = 0;
+    for (auto x : Z.modelspace->all_orbits)
+    {
+      Orbit &ox = Z.modelspace->GetOrbit(x);
+      max_j2 = std::max(max_j2, ox.j2);
+    }
+    max_J = max_j2;
+
+    auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
+
+    // Case 2: Ω tensor (reduced); Γ reduced (AMC reduce=true); store Z as IMSRG unreduced (÷Ĵ)
+    // Source: learn/amc_tts/output/case2_reduced/G3b.tex
+    Operator Gred = Gamma;
+    if (not Gred.IsReduced())
+      Gred.MakeReduced();
+    auto &Z2 = Z.TwoBody;
+
+    std::vector<size_t> ch_bra_list, ch_ket_list;
+    for (auto &iter : Z.TwoBody.MatEl)
+    {
+      ch_bra_list.push_back(iter.first[0]);
+      ch_ket_list.push_back(iter.first[1]);
+    }
+    int nch = ch_bra_list.size();
+
+    // ####################################################################################
+    //   Gamma^III_b
+    //   Source: learn/amc_tts/output/G3b.tex
+    //   overall -1; (1-P_ij)(1-P_kl)
+    //   occ: nbar_b n_c n_d + n_b nbar_c nbar_d
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          // direct
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_b * n_c * n_d + n_b * nbar_c * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, d, c, b, q);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, p, a, c);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, g, a, h, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, ja, j0)
+                                * AngMom::SixJ(jd, jq, J7, jb, j0, J3)
+                                * AngMom::SixJ(ja, jp, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jh, jq)
+                                * AngMom::SixJ(J0, J6, J7, ja, jp, jg);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J2 + J4 + ja + jd + lambda);
+                    zpgqh -= 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, g, c, b, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, a, h, c);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, d, p, a, q);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jg, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jh, j0)
+                                * AngMom::SixJ(jg, jd, J7, jb, j0, J3)
+                                * AngMom::SixJ(jh, ja, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jp, jg)
+                                * AngMom::SixJ(J7, J6, J0, jq, jh, ja);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jg + jh + J2 + J4 + lambda);
+                    zpgqh -= 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_b * n_c * n_d + n_b * nbar_c * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, d, c, b, h);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, p, a, c);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, g, a, q, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, ja, j0)
+                                * AngMom::SixJ(jd, jh, J7, jb, j0, J3)
+                                * AngMom::SixJ(ja, jp, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jq, jh)
+                                * AngMom::SixJ(J0, J6, J7, ja, jp, jg);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J2 + J4 + ja + jd + lambda);
+                    zpgqh -= phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, g, c, b, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, a, q, c);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, d, p, a, h);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jg, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jq, j0)
+                                * AngMom::SixJ(jg, jd, J7, jb, j0, J3)
+                                * AngMom::SixJ(jq, ja, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jp, jg)
+                                * AngMom::SixJ(J7, J6, J0, jh, jq, ja);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jg + jq + J2 + J4 + lambda);
+                    zpgqh -= phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_b * n_c * n_d + n_b * nbar_c * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, d, c, b, q);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, g, a, c);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, p, a, h, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, ja, j0)
+                                * AngMom::SixJ(jd, jq, J7, jb, j0, J3)
+                                * AngMom::SixJ(ja, jg, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jh, jq)
+                                * AngMom::SixJ(J0, J6, J7, ja, jg, jp);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J2 + J4 + ja + jd + lambda);
+                    zpgqh -= phase_pg * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, p, c, b, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, a, h, c);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, d, g, a, q);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jp, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jh, j0)
+                                * AngMom::SixJ(jp, jd, J7, jb, j0, J3)
+                                * AngMom::SixJ(jh, ja, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jg, jp)
+                                * AngMom::SixJ(J7, J6, J0, jq, jh, ja);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jp + jh + J2 + J4 + lambda);
+                    zpgqh -= phase_pg * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g and q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_b * n_c * n_d + n_b * nbar_c * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, d, c, b, h);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, g, a, c);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, p, a, q, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, ja, j0)
+                                * AngMom::SixJ(jd, jh, J7, jb, j0, J3)
+                                * AngMom::SixJ(ja, jg, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jq, jh)
+                                * AngMom::SixJ(J0, J6, J7, ja, jg, jp);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J2 + J4 + ja + jd + lambda);
+                    zpgqh -= phase_pg * phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, p, c, b, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, a, q, c);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, d, g, a, h);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jp, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jq, j0)
+                                * AngMom::SixJ(jp, jd, J7, jb, j0, J3)
+                                * AngMom::SixJ(jq, ja, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jg, jp)
+                                * AngMom::SixJ(J7, J6, J0, jh, jq, ja);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jp + jq + J2 + J4 + lambda);
+                    zpgqh -= phase_pg * phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh / hat(J0)); // Case2 reduced → IMSRG unreduced
+        }
+      }
+    }
+    Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  }
+
+
+  // Γ^{III_c} DIRECT: AMC reduced χ^θ (χ_red = S/Ĵ from χ_k+χ_j strips) +
+  // reduced Γ + Case-2 9j (hats Ĵ0 Ĵ2 Ĵ3), write Z_unred via ÷Ĵ0.
+  //   Z = -1/2 (1-Pij)(1-Pkl) Σ_ab χ^θ_iabl Γ_bjka
+  // Source: factored_GIIIc/output/G3c_from_chi_reduced_ninej.tex
+  // which_term: 0=χ_k+χ_j, 1=χ_k only, 2=χ_j only.
+  void comm223_232_tts_GIIIc(const Operator &Eta, const Operator &Gamma, Operator &Z,
+                             int which_term)
+  {
+    // Case 2 standard: reduced Γ/χ fold (AMC reduce=true), store Z unreduced
+    // See learn/amc_tts/output/G3c_chi_theta_reduced_gamma_ninej.tex
+    comm223_232_tts_GIIIc_tensor_red(Eta, Gamma, Z, which_term);
+}
+
+  void comm223_232_tts_GIIIc_term1(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    comm223_232_tts_GIIIc(Eta, Gamma, Z, 1);
+  }
+
+  void comm223_232_tts_GIIIc_term2(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    comm223_232_tts_GIIIc(Eta, Gamma, Z, 2);
+  }
+
+  // Tensor-convention DIRECT for Γ^{III_c} (Case 2):
+  //   - Ω is reduced (tensor); Γ is MakeReduced (AMC reduce=true)
+  //   - χ^θ = χ_k + χ_j left as reduced (no MakeNotReduced on χ)
+  //   - AMC reduced 9j (G3c_chi_theta_reduced_gamma_ninej.tex): hats Ĵ0 Ĵ2 Ĵ3
+  //   - only diagonal channels J_bra = J_ket (λ_Z = 0)
+  //   - store IMSRG unreduced via ÷Ĵ0 at AddToTBME (additive-safe)
+  void comm223_232_tts_GIIIc_tensor_red(const Operator &Eta, const Operator &Gamma,
+                                        Operator &Z, int which_term)
+  {
+    double t_start = omp_get_wtime();
+    ModelSpace &ms = *Z.modelspace;
+    ms.PreCalculateSixJ();
+    ms.PreCalculateNineJ();
+
+    const int lambda = Eta.GetJRank();
+    const double hat_lambda_inv =
+        1.0 / std::sqrt(2.0 * std::max(lambda, 0) + 1.0);
+    int max_J = 0;
+    for (auto x : ms.all_orbits)
+      max_J = std::max(max_J, ms.GetOrbit(x).j2);
+
+    // ---- (1) reduced χ strips from reduced Ω (do NOT MakeNotReduced) ----
+    auto build_chi_strip_reduced = [&](int occ_side) {
+      Operator Chi(ms, 0, 0, 0, 2);
+      Chi.SetNonHermitian();
+      Chi.Erase();
+      const int nch = ms.GetNumberTwoBodyChannels();
+      for (int ch = 0; ch < nch; ++ch)
+      {
+        TwoBodyChannel &tbc = ms.GetTwoBodyChannel(ch);
+        const int J0 = tbc.J;
+        const int nk = tbc.GetNumberKets();
+        if (nk < 1)
+          continue;
+        arma::mat &M = Chi.TwoBody.GetMatrix(ch, ch);
+        for (int ib = 0; ib < nk; ++ib)
+        {
+          Ket &bra = tbc.GetKet(ib);
+          const index_t i = bra.p, j = bra.q;
+          Orbit &oi = ms.GetOrbit(i);
+          Orbit &oj = ms.GetOrbit(j);
+          const double ji = oi.j2 / 2.0, jj = oj.j2 / 2.0;
+          const double n_j = oj.occ, nbar_j = 1.0 - n_j;
+          for (int ik = 0; ik < nk; ++ik)
+          {
+            Ket &ket = tbc.GetKet(ik);
+            const index_t k = ket.p, l = ket.q;
+            Orbit &ok = ms.GetOrbit(k);
+            Orbit &ol = ms.GetOrbit(l);
+            const double jk = ok.j2 / 2.0, jl = ol.j2 / 2.0;
+            if (not AngMom::Triangle(ji, jj, (double)J0))
+              continue;
+            if (not AngMom::Triangle(jk, jl, (double)J0))
+              continue;
+            const double n_k = ok.occ, nbar_k = 1.0 - n_k;
+            double chi_phys = 0.0;
+            for (auto a : ms.all_orbits)
+            {
+              Orbit &oa = ms.GetOrbit(a);
+              const double n_a = oa.occ, nbar_a = 1.0 - n_a;
+              for (auto b : ms.all_orbits)
+              {
+                Orbit &ob = ms.GetOrbit(b);
+                const double n_b = ob.occ, nbar_b = 1.0 - n_b;
+                double occ;
+                if (occ_side == 0)
+                  occ = n_a * n_b * nbar_k + nbar_a * nbar_b * n_k;
+                else
+                  occ = n_a * n_b * nbar_j + nbar_a * nbar_b * n_j;
+                if (std::abs(occ) < 1e-9)
+                  continue;
+                for (int J2 = 0; J2 <= max_J; ++J2)
+                {
+                  if (not AngMom::Triangle(J0, J2, lambda))
+                    continue;
+                  const double o1 = Eta.TwoBody.GetTBME_J(J0, J2, i, j, a, b);
+                  const double o2 = Eta.TwoBody.GetTBME_J(J2, J0, a, b, k, l);
+                  if (std::abs(o1 * o2) < 1e-14)
+                    continue;
+                  chi_phys += occ * ms.phase(J0 + J2 + lambda) * hat_lambda_inv *
+                              o1 * o2;
+                }
+              }
+            }
+            double nrm = 1.0;
+            if (i == j)
+              nrm *= PhysConst::SQRT2;
+            if (k == l)
+              nrm *= PhysConst::SQRT2;
+            // AMC reduce=true: χ_red = S/Ĵ0 with S = Σ (−1)^{J0+J2+λ} λ̂^{-1} ΩΩ
+            // (bare ChiTab / chi_phys is S). See factored_GIIIc/output/chi_theta_reduced.tex
+            const double hat_J0 = std::sqrt(2.0 * J0 + 1.0);
+            M(ib, ik) = chi_phys / (nrm * hat_J0);
+          }
+        }
+      }
+      // AMC reduced scalar (χ_red = S/Ĵ)
+      Chi.is_reduced = true;
+      return Chi;
+    };
+
+    Operator Chi_theta(ms, 0, 0, 0, 2);
+    Chi_theta.SetNonHermitian();
+    Chi_theta.Erase();
+    Chi_theta.is_reduced = true;
+    if (which_term != 2)
+      Chi_theta += build_chi_strip_reduced(0);
+    if (which_term != 1)
+      Chi_theta += build_chi_strip_reduced(1);
+
+    // ---- (2) Γ reduced (scalar with reduce=true convention) ----
+    Operator Gred = Gamma;
+    if (not Gred.IsReduced())
+      Gred.MakeReduced();
+
+    // ---- (3) AMC reduced 9j on diagonal channels only (J_bra == J_ket) ----
+    // hats: Ĵ0 * Ĵ2 * Ĵ3  (not Ĵ2² Ĵ3²)
+    auto &Z2 = Z.TwoBody;
+    std::vector<size_t> ch_bra_list, ch_ket_list;
+    for (auto &iter : Z.TwoBody.MatEl)
+    {
+      ch_bra_list.push_back(iter.first[0]);
+      ch_ket_list.push_back(iter.first[1]);
+    }
+    const int nch = (int)ch_bra_list.size();
+
+#pragma omp parallel for schedule(dynamic, 1)
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      const size_t ch_bra = ch_bra_list[ch];
+      const size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = ms.GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = ms.GetTwoBodyChannel(ch_ket);
+      // diagonal channel only (λ_Z = 0 ⇒ equal J)
+      if (tbc_ket.J != tbc_bra.J)
+        continue;
+      const int J0 = tbc_bra.J;
+      const double hat_J0 = std::sqrt(2.0 * J0 + 1.0);
+      const size_t nbras = tbc_bra.GetNumberKets();
+      const size_t nkets = tbc_ket.GetNumberKets();
+
+      for (size_t ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        const size_t p = bra.p, g = bra.q;
+        const int phase_pg = bra.Phase(J0);
+        const double jp = bra.op->j2 / 2.0, jg = bra.oq->j2 / 2.0;
+        const size_t ketmin = (ch_bra == ch_ket) ? ibra : 0;
+
+        for (size_t iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          const size_t q = ket.p, h = ket.q;
+          const int phase_qh = ket.Phase(J0);
+          const double jq = ket.op->j2 / 2.0, jh = ket.oq->j2 / 2.0;
+
+          double zpgqh = 0.0;
+          auto add_block = [&](size_t P, size_t G, size_t Q, size_t H,
+                               double jP, double jG, double jQ, double jH,
+                               double exch_phase) {
+            for (auto a : ms.all_orbits)
+            {
+              Orbit &oa = ms.GetOrbit(a);
+              const double ja = oa.j2 / 2.0;
+              for (auto b : ms.all_orbits)
+              {
+                Orbit &ob = ms.GetOrbit(b);
+                const double jb = ob.j2 / 2.0;
+                for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  {
+                    const double x =
+                        Chi_theta.TwoBody.GetTBME_J(J2, P, a, b, H);
+                    const double gamma =
+                        Gred.TwoBody.GetTBME_J(J3, b, G, Q, a);
+                    const double nj = AngMom::NineJ(
+                        jP, ja, (double)J2, jG, (double)J3, jb, (double)J0, jQ,
+                        jH);
+                    if (std::abs(x * gamma * nj) < 1e-14)
+                      continue;
+                    // AMC reduce=true: Ĵ0 Ĵ2 Ĵ3
+                    const double hats = hat_J0 * std::sqrt(2.0 * J2 + 1.0) *
+                                        std::sqrt(2.0 * J3 + 1.0);
+                    zpgqh -= exch_phase * 0.5 * hats * nj * x * gamma;
+                  }
+              }
+            }
+          };
+
+          add_block(p, g, q, h, jp, jg, jq, jh, 1.0);
+          add_block(p, g, h, q, jp, jg, jh, jq, (double)phase_qh);
+          add_block(g, p, q, h, jg, jp, jq, jh, (double)phase_pg);
+          add_block(g, p, h, q, jg, jp, jh, jq,
+                    (double)(phase_pg * phase_qh));
+
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh / hat_J0); // reduced → unreduced
+        }
+      }
+    }
+    // Z stored unreduced via ÷Ĵ0 at AddToTBME (additive-safe)
+
+    Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  }
+
+
+  void comm223_232_tts_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    int max_J = 0;
+    for (auto x : Z.modelspace->all_orbits)
+    {
+      Orbit &ox = Z.modelspace->GetOrbit(x);
+      max_j2 = std::max(max_j2, ox.j2);
+    }
+    max_J = max_j2;
+
+    auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
+
+    // Case 2: Ω tensor (reduced); Γ reduced (AMC reduce=true); store Z as IMSRG unreduced (÷Ĵ)
+    // Source: learn/amc_tts/output/case2_reduced/G4a.tex
+    Operator Gred = Gamma;
+    if (not Gred.IsReduced())
+      Gred.MakeReduced();
+    auto &Z2 = Z.TwoBody;
+
+    std::vector<size_t> ch_bra_list, ch_ket_list;
+    for (auto &iter : Z.TwoBody.MatEl)
+    {
+      ch_bra_list.push_back(iter.first[0]);
+      ch_ket_list.push_back(iter.first[1]);
+    }
+    int nch = ch_bra_list.size();
+
+    // ####################################################################################
+    //   Gamma^IV_a
+    //   Source: learn/amc_tts/output/G4a.tex
+    //   overall -1 from analyze; (1-P_ij) term1, (1-P_kl) term2
+    //   occ: nbar_c nbar_d n_a + n_c n_d nbar_a
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_c * nbar_d * n_a + n_c * n_d * nbar_a;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, p, c, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J1, d, b, q, h);
+                    double gamma = Gred.TwoBody.GetTBME_J(J5, J5, g, c, b, a);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jp, ja, j0)
+                                * AngMom::SixJ(J4, lambda, J1, jp, jg, j0)
+                                * AngMom::SixJ(ja, jc, J6, jd, j0, J3)
+                                * AngMom::SixJ(jg, jb, J6, jd, j0, J4)
+                                * AngMom::SixJ(ja, jb, J5, jg, jc, J6);
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jp + J2 + J3 + J4 + J5 + jb + jc + jd + lambda);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) >= 1e-14)
+                      zpgqh -= phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                    eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, g, c, d);
+                    eta2 = Eta.TwoBody.GetTBME_J(J4, J1, d, b, q, h);
+                    sixj = AngMom::SixJ(J3, lambda, J2, jg, ja, j0)
+                         * AngMom::SixJ(J4, lambda, J1, jg, jp, j0)
+                         * AngMom::SixJ(ja, jc, J6, jd, j0, J3)
+                         * AngMom::SixJ(jp, jb, J6, jd, j0, J4)
+                         * AngMom::SixJ(ja, jb, J5, jp, jc, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) >= 1e-14)
+                      zpgqh -= phase_pg * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                            for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, d, c, a, q);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J0, J4, p, g, c, b);
+                    double gamma = Gred.TwoBody.GetTBME_J(J5, J5, b, a, h, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                                * AngMom::SixJ(J0, lambda, J4, jc, jb, j0)
+                                * AngMom::SixJ(jd, jq, J6, ja, j0, J3)
+                                * AngMom::SixJ(J0, J5, J6, ja, j0, jb)
+                                * AngMom::SixJ(J6, J5, J0, jh, jq, jd);
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J2 + J4 + jb + jc + jd + j0 + lambda);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) >= 1e-14)
+                      zpgqh -= phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                    eta1 = Eta.TwoBody.GetTBME_J(J2, J3, d, c, a, h);
+                    eta2 = Eta.TwoBody.GetTBME_J(J0, J4, p, g, c, b);
+                    sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                         * AngMom::SixJ(J0, lambda, J4, jc, jb, j0)
+                         * AngMom::SixJ(jd, jh, J6, ja, j0, J3)
+                         * AngMom::SixJ(J0, J5, J6, ja, j0, jb)
+                         * AngMom::SixJ(J6, J5, J0, jq, jh, jd);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) >= 1e-14)
+                      zpgqh -= phase_qh * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh / hat(J0)); // Case2 reduced → IMSRG unreduced
+        }
+      }
+    }
+    Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  }
+
+
+
+  void comm223_232_tts_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    int max_J = 0;
+    for (auto x : Z.modelspace->all_orbits)
+    {
+      Orbit &ox = Z.modelspace->GetOrbit(x);
+      max_j2 = std::max(max_j2, ox.j2);
+    }
+    max_J = max_j2;
+
+    auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
+
+    // Case 2: Ω tensor (reduced); Γ reduced (AMC reduce=true); store Z as IMSRG unreduced (÷Ĵ)
+    // Source: learn/amc_tts/output/case2_reduced/G4b.tex
+    Operator Gred = Gamma;
+    if (not Gred.IsReduced())
+      Gred.MakeReduced();
+    auto &Z2 = Z.TwoBody;
+
+    std::vector<size_t> ch_bra_list, ch_ket_list;
+    for (auto &iter : Z.TwoBody.MatEl)
+    {
+      ch_bra_list.push_back(iter.first[0]);
+      ch_ket_list.push_back(iter.first[1]);
+    }
+    int nch = ch_bra_list.size();
+
+    // ####################################################################################
+    //   Gamma^IV_b
+    //   Source: learn/amc_tts/output/G4b.tex
+    //   overall +1; (1-P_ij)(1-P_kl)
+    //   occ: nbar_a n_b nbar_c + n_a nbar_b n_c
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          // direct
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * n_b * nbar_c + n_a * nbar_b * n_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, b, p, c, a);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, g, c, h, d);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, d, a, b, q);
+                    double sixj = AngMom::SixJ(J6, J2, J7, jp, jq, jb)
+                                * AngMom::SixJ(jh, jg, J7, jp, jq, J0)
+                                * AngMom::SixJ(J2, lambda, J3, jc, ja, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jc, jg, j0)
+                                * AngMom::SixJ(J7, J6, J2, ja, j0, jd)
+                                * AngMom::SixJ(jg, jh, J7, jd, j0, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jh + J2 + J3 + J4 + J5 + J6 + jb + jc + j0 + lambda);
+                    zpgqh += 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, a, b, q);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, g, d, h, c);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, b, p, d, a);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, ja, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jh, j0)
+                                * AngMom::SixJ(ja, jb, J7, jq, j0, J3)
+                                * AngMom::SixJ(J4, J0, J7, jq, j0, jh)
+                                * AngMom::SixJ(jd, jp, J7, jb, ja, J6)
+                                * AngMom::SixJ(J4, J7, J0, jp, jg, jd);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jh + J3 + J4 + ja + jc + j0 + lambda);
+                    zpgqh += 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * n_b * nbar_c + n_a * nbar_b * n_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, b, p, c, a);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, g, c, q, d);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, d, a, b, h);
+                    double sixj = AngMom::SixJ(J6, J2, J7, jp, jh, jb)
+                                * AngMom::SixJ(jq, jg, J7, jp, jh, J0)
+                                * AngMom::SixJ(J2, lambda, J3, jc, ja, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jc, jg, j0)
+                                * AngMom::SixJ(J7, J6, J2, ja, j0, jd)
+                                * AngMom::SixJ(jg, jq, J7, jd, j0, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jq + J2 + J3 + J4 + J5 + J6 + jb + jc + j0 + lambda);
+                    zpgqh += phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, a, b, h);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, g, d, q, c);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, b, p, d, a);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, ja, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jq, j0)
+                                * AngMom::SixJ(ja, jb, J7, jh, j0, J3)
+                                * AngMom::SixJ(J4, J0, J7, jh, j0, jq)
+                                * AngMom::SixJ(jd, jp, J7, jb, ja, J6)
+                                * AngMom::SixJ(J4, J7, J0, jp, jg, jd);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jq + J3 + J4 + ja + jc + j0 + lambda);
+                    zpgqh += phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * n_b * nbar_c + n_a * nbar_b * n_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, b, g, c, a);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, p, c, h, d);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, d, a, b, q);
+                    double sixj = AngMom::SixJ(J6, J2, J7, jg, jq, jb)
+                                * AngMom::SixJ(jh, jp, J7, jg, jq, J0)
+                                * AngMom::SixJ(J2, lambda, J3, jc, ja, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jc, jp, j0)
+                                * AngMom::SixJ(J7, J6, J2, ja, j0, jd)
+                                * AngMom::SixJ(jp, jh, J7, jd, j0, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jh + J2 + J3 + J4 + J5 + J6 + jb + jc + j0 + lambda);
+                    zpgqh += phase_pg * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, a, b, q);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, p, d, h, c);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, b, g, d, a);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, ja, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jh, j0)
+                                * AngMom::SixJ(ja, jb, J7, jq, j0, J3)
+                                * AngMom::SixJ(J4, J0, J7, jq, j0, jh)
+                                * AngMom::SixJ(jd, jg, J7, jb, ja, J6)
+                                * AngMom::SixJ(J4, J7, J0, jg, jp, jd);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jh + J3 + J4 + ja + jc + j0 + lambda);
+                    zpgqh += phase_pg * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g and q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * n_b * nbar_c + n_a * nbar_b * n_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, b, g, c, a);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, p, c, q, d);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, d, a, b, h);
+                    double sixj = AngMom::SixJ(J6, J2, J7, jg, jh, jb)
+                                * AngMom::SixJ(jq, jp, J7, jg, jh, J0)
+                                * AngMom::SixJ(J2, lambda, J3, jc, ja, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jc, jp, j0)
+                                * AngMom::SixJ(J7, J6, J2, ja, j0, jd)
+                                * AngMom::SixJ(jp, jq, J7, jd, j0, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jq + J2 + J3 + J4 + J5 + J6 + jb + jc + j0 + lambda);
+                    zpgqh += phase_pg * phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, a, b, h);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, p, d, q, c);
+                    double gamma = Gred.TwoBody.GetTBME_J(J6, J6, b, g, d, a);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, ja, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jq, j0)
+                                * AngMom::SixJ(ja, jb, J7, jh, j0, J3)
+                                * AngMom::SixJ(J4, J0, J7, jh, j0, jq)
+                                * AngMom::SixJ(jd, jg, J7, jb, ja, J6)
+                                * AngMom::SixJ(J4, J7, J0, jg, jp, jd);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J3) * hat(J4) * hat(J5) * hat(J6) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jq + J3 + J4 + ja + jc + j0 + lambda);
+                    zpgqh += phase_pg * phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh / hat(J0)); // Case2 reduced → IMSRG unreduced
+        }
+      }
+    }
+    Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  }
+
+
+
+  void comm223_232_tts_GIVc(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    int max_J = 0;
+    for (auto x : Z.modelspace->all_orbits)
+    {
+      Orbit &ox = Z.modelspace->GetOrbit(x);
+      max_j2 = std::max(max_j2, ox.j2);
+    }
+    max_J = max_j2;
+
+    auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
+
+    // Case 2: Ω tensor (reduced); Γ reduced (AMC reduce=true); store Z as IMSRG unreduced (÷Ĵ)
+    // Source: learn/amc_tts/output/case2_reduced/G4c.tex
+    Operator Gred = Gamma;
+    if (not Gred.IsReduced())
+      Gred.MakeReduced();
+    auto &Z2 = Z.TwoBody;
+
+    std::vector<size_t> ch_bra_list, ch_ket_list;
+    for (auto &iter : Z.TwoBody.MatEl)
+    {
+      ch_bra_list.push_back(iter.first[0]);
+      ch_ket_list.push_back(iter.first[1]);
+    }
+    int nch = ch_bra_list.size();
+
+    // ####################################################################################
+    //   Gamma^IV_c
+    //   Source: learn/amc_tts/output/G4c.tex
+    //   overall +1/2; (1-P_ij)(1-P_kl)
+    //   occ: nbar_a nbar_b n_d + n_a n_b nbar_d
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          // direct
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_d + n_a * n_b * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, h, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, d, g, c, q);
+                    double gamma = Gred.TwoBody.GetTBME_J(J2, J2, g, c, a, b);
+                    double sixj = AngMom::SixJ(J2, lambda, J3, jd, jh, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jd, jg, j0)
+                                * AngMom::SixJ(J2, J5, J6, jg, jh, j0)
+                                * AngMom::SixJ(J2, J5, J6, jq, jp, jc)
+                                * AngMom::SixJ(jq, jh, J0, jg, jp, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jh + jp + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, p, d, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, c, g, d, q);
+                    double gamma = Gred.TwoBody.GetTBME_J(J3, J3, a, b, h, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jd, jp, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jd, jq, j0)
+                                * AngMom::SixJ(J3, J4, J6, jq, jp, j0)
+                                * AngMom::SixJ(J3, J4, J6, jg, jh, jc)
+                                * AngMom::SixJ(jh, jq, J0, jp, jg, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J0 + jg + jq + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_d + n_a * n_b * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, q, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, d, g, c, h);
+                    double gamma = Gred.TwoBody.GetTBME_J(J2, J2, g, c, a, b);
+                    double sixj = AngMom::SixJ(J2, lambda, J3, jd, jq, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jd, jg, j0)
+                                * AngMom::SixJ(J2, J5, J6, jg, jq, j0)
+                                * AngMom::SixJ(J2, J5, J6, jh, jp, jc)
+                                * AngMom::SixJ(jh, jq, J0, jg, jp, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jq + jp + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += phase_qh * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, p, d, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, c, g, d, h);
+                    double gamma = Gred.TwoBody.GetTBME_J(J3, J3, a, b, q, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jd, jp, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jd, jh, j0)
+                                * AngMom::SixJ(J3, J4, J6, jh, jp, j0)
+                                * AngMom::SixJ(J3, J4, J6, jg, jq, jc)
+                                * AngMom::SixJ(jq, jh, J0, jp, jg, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J0 + jg + jh + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += phase_qh * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_d + n_a * n_b * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, h, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, d, p, c, q);
+                    double gamma = Gred.TwoBody.GetTBME_J(J2, J2, p, c, a, b);
+                    double sixj = AngMom::SixJ(J2, lambda, J3, jd, jh, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jd, jp, j0)
+                                * AngMom::SixJ(J2, J5, J6, jp, jh, j0)
+                                * AngMom::SixJ(J2, J5, J6, jq, jg, jc)
+                                * AngMom::SixJ(jq, jh, J0, jp, jg, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jh + jg + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += phase_pg * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, g, d, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, c, p, d, q);
+                    double gamma = Gred.TwoBody.GetTBME_J(J3, J3, a, b, h, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jd, jg, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jd, jq, j0)
+                                * AngMom::SixJ(J3, J4, J6, jq, jg, j0)
+                                * AngMom::SixJ(J3, J4, J6, jp, jh, jc)
+                                * AngMom::SixJ(jh, jq, J0, jg, jp, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J0 + jp + jq + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += phase_pg * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g and q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_d + n_a * n_b * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, q, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, d, p, c, h);
+                    double gamma = Gred.TwoBody.GetTBME_J(J2, J2, p, c, a, b);
+                    double sixj = AngMom::SixJ(J2, lambda, J3, jd, jq, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jd, jp, j0)
+                                * AngMom::SixJ(J2, J5, J6, jp, jq, j0)
+                                * AngMom::SixJ(J2, J5, J6, jh, jg, jc)
+                                * AngMom::SixJ(jh, jq, J0, jp, jg, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jq + jg + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += phase_pg * phase_qh * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, g, d, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, c, p, d, h);
+                    double gamma = Gred.TwoBody.GetTBME_J(J3, J3, a, b, q, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jd, jg, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jd, jh, j0)
+                                * AngMom::SixJ(J3, J4, J6, jh, jg, j0)
+                                * AngMom::SixJ(J3, J4, J6, jp, jq, jc)
+                                * AngMom::SixJ(jq, jh, J0, jg, jp, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J0) * hat(J2) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J0 + jp + jh + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += phase_pg * phase_qh * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh / hat(J0)); // Case2 reduced → IMSRG unreduced
+        }
+      }
+    }
+    Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  }
+
+
+
+  void comm223_232_tts(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  {
+    double t_start = omp_get_wtime();
+    Z.modelspace->PreCalculateSixJ();
+
+    int hGamma = Gamma.IsHermitian() ? 1 : -1;
+    int lambda = Eta.GetJRank();
+    double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+    int max_j2 = 0;
+    int max_J = 0;
+    for (auto x : Z.modelspace->all_orbits)
+    {
+      Orbit &ox = Z.modelspace->GetOrbit(x);
+      max_j2 = std::max(max_j2, ox.j2);
+    }
+    max_J = max_j2;
+
+    auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
+    auto &Z2 = Z.TwoBody;
+
+    std::vector<size_t> ch_bra_list, ch_ket_list;
+    for (auto &iter : Z.TwoBody.MatEl)
+    {
+      ch_bra_list.push_back(iter.first[0]);
+      ch_ket_list.push_back(iter.first[1]);
+    }
+    int nch = ch_bra_list.size();
+
+    // ####################################################################################
+    //   Gamma^I
+    //   Source: learn/amc_tts/output/G1.tex
+    //   overall +1/2; (1-P_ij) term1, (1-P_kl) term2
+    //   occ: nbar_a nbar_b n_c + n_a n_b nbar_c
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_c + n_a * n_b * nbar_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  if (od.j2 == op.j2)
+                  {
+                    for (int J2 = 0; J2 <= max_J; ++J2)
+                    for (int J3 = 0; J3 <= max_J; ++J3)
+                    {
+                      double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, p, a, b);
+                      double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, a, b, c, d);
+                      double gamma = Gamma.TwoBody.GetTBME_J(J0, J0, d, g, q, h);
+                      if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                        continue;
+                      double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                      zpgqh += 0.5 * phase * hat_lambda_inv * occfactor * eta1 * eta2 * gamma / (op.j2 + 1.0);
+                    }
+                  }
+                  if (od.j2 == og.j2)
+                  {
+                    for (int J2 = 0; J2 <= max_J; ++J2)
+                    for (int J3 = 0; J3 <= max_J; ++J3)
+                    {
+                      double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, g, a, b);
+                      double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, a, b, c, d);
+                      double gamma = Gamma.TwoBody.GetTBME_J(J0, J0, d, p, q, h);
+                      if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                        continue;
+                      double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                      zpgqh += 0.5 * phase_pg * phase * hat_lambda_inv * occfactor * eta1 * eta2 * gamma / (og.j2 + 1.0);
+                    }
+                  }
+                  if (od.j2 == oh.j2)
+                  {
+                    for (int J2 = 0; J2 <= max_J; ++J2)
+                    for (int J3 = 0; J3 <= max_J; ++J3)
+                    {
+                      double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, d, a, b);
+                      double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, a, b, c, h);
+                      double gamma = Gamma.TwoBody.GetTBME_J(J0, J0, p, g, q, d);
+                      if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                        continue;
+                      double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                      zpgqh += 0.5 * phase * hat_lambda_inv * occfactor * eta1 * eta2 * gamma / (oh.j2 + 1.0);
+                    }
+                  }
+                  if (od.j2 == oq.j2)
+                  {
+                    for (int J2 = 0; J2 <= max_J; ++J2)
+                    for (int J3 = 0; J3 <= max_J; ++J3)
+                    {
+                      double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, d, a, b);
+                      double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, a, b, c, q);
+                      double gamma = Gamma.TwoBody.GetTBME_J(J0, J0, p, g, d, h);
+                      if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                        continue;
+                      double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                      zpgqh += 0.5 * phase_qh * phase * hat_lambda_inv * occfactor * eta1 * eta2 * gamma / (oq.j2 + 1.0);
+                    }
+                  }
+
+                }
+              }
+            }
+          }
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh);
+        }
+      }
+    }
+
+    // ####################################################################################
+    //   Gamma^II
+    //   Source: learn/amc_tts/output/G2.tex
+    //   overall -1/2 from analyze (AMC tensor overall sign unreliable)
+    //   occ: nbar_a nbar_b n_c + nbar_c n_a n_b
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_c + nbar_c * n_a * n_b;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, g, a, b);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J3, J3, a, b, c, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J5, J1, p, d, q, h);
+                    if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                      continue;
+                    double sixj = AngMom::SixJ(J2, J3, lambda, jd, jg, jc);
+                    sixj *= AngMom::SixJ(J1, J5, lambda, jd, jg, jp);
+                    if (std::abs(sixj) < 1e-14)
+                      continue;
+                    double phase = AngMom::phase(jp + J2 + lambda + J5 + jc);
+                    zpgqh -= 0.5 * phase * hat(J2) * hat(J3) * hat_lambda_inv * hat(J5)
+                           * sixj * occfactor * eta1 * gamma * eta2 / hat(J1);
+                    eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, p, a, b);
+                    eta2 = Eta.TwoBody.GetTBME_J(J5, J1, g, d, q, h);
+                    if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                      continue;
+                    sixj = AngMom::SixJ(J2, J3, lambda, jd, jp, jc);
+                    sixj *= AngMom::SixJ(J1, J5, lambda, jd, jp, jg);
+                    if (std::abs(sixj) < 1e-14)
+                      continue;
+                    zpgqh -= 0.5 * phase_pg * phase * hat(J2) * hat(J3) * hat_lambda_inv * hat(J5)
+                           * sixj * occfactor * eta1 * gamma * eta2 / hat(J1);
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  {
+                    double gamma = Gamma.TwoBody.GetTBME_J(J2, J2, c, d, a, b);
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, c, h);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J0, J4, p, g, q, d);
+                    if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                      continue;
+                    double sixj = AngMom::SixJ(lambda, J3, J2, jc, jd, jh);
+                    sixj *= AngMom::SixJ(J0, J4, lambda, jd, jh, jq);
+                    if (std::abs(sixj) < 1e-14)
+                      continue;
+                    double phase = AngMom::phase(J0 + jq + J2 + jc + lambda);
+                    zpgqh -= 0.5 * phase * hat(J2) * hat(J3) * hat(J4) * hat_lambda_inv
+                           * sixj * occfactor * gamma * eta1 * eta2 / hat(J0);
+                    eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, c, q);
+                    eta2 = Eta.TwoBody.GetTBME_J(J0, J4, p, g, d, h);
+                    if (std::abs(eta1 * eta2 * gamma) < 1e-14)
+                      continue;
+                    sixj = AngMom::SixJ(lambda, J3, J2, jc, jd, jq);
+                    sixj *= AngMom::SixJ(J0, J4, lambda, jd, jq, jh);
+                    if (std::abs(sixj) < 1e-14)
+                      continue;
+                    zpgqh -= 0.5 * phase_qh * phase * hat(J2) * hat(J3) * hat(J4) * hat_lambda_inv
+                           * sixj * occfactor * gamma * eta1 * eta2 / hat(J0);
+                  }
+
+                }
+              }
+            }
+          }
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh);
+        }
+      }
+    }
+
+    // ####################################################################################
+    //   Gamma^III_a
+    //   Source: learn/amc_tts/output/G3a.tex
+    //   overall -1 from analyze (AMC drops leading minus)
+    //   occ: nbar_c nbar_d n_a + nbar_a n_c n_d
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_c * nbar_d * n_a + nbar_a * n_c * n_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, g, c, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, p, d, a, b);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J0, J0, c, b, q, h);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, ja, jg, j0)
+                                * AngMom::SixJ(J4, lambda, J5, ja, jb, j0)
+                                * AngMom::SixJ(jg, jc, J6, jd, j0, J3)
+                                * AngMom::SixJ(jb, jp, J6, jd, j0, J4)
+                                * AngMom::SixJ(jg, jp, J0, jb, jc, J6);
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) >= 1e-14) {
+                      double phase = AngMom::phase(jg + J3 + J5 + jb + lambda);
+                      zpgqh -= phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                    }
+                    eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, p, c, d);
+                    eta2 = Eta.TwoBody.GetTBME_J(J4, J5, g, d, a, b);
+                    sixj = AngMom::SixJ(J3, lambda, J2, ja, jp, j0)
+                         * AngMom::SixJ(J4, lambda, J5, ja, jb, j0)
+                         * AngMom::SixJ(jp, jc, J6, jd, j0, J3)
+                         * AngMom::SixJ(jb, jg, J6, jd, j0, J4)
+                         * AngMom::SixJ(jp, jg, J0, jb, jc, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) >= 1e-14) {
+                      double phase = AngMom::phase(jp + J3 + J5 + jb + lambda);
+                      zpgqh -= phase_pg * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                    }
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, d, q, a);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, a, c, h);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J0, J0, p, g, b, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jh, j0)
+                                * AngMom::SixJ(jd, jq, J6, ja, j0, J3)
+                                * AngMom::SixJ(jh, jb, J6, ja, j0, J4)
+                                * AngMom::SixJ(jq, jh, J0, jb, jd, J6);
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) >= 1e-14) {
+                      double phase = AngMom::phase(jh + J3 + J5 + jd + lambda);
+                      zpgqh -= phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                    }
+                    eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, d, h, a);
+                    eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, a, c, q);
+                    sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                         * AngMom::SixJ(J4, lambda, J5, jc, jq, j0)
+                         * AngMom::SixJ(jd, jh, J6, ja, j0, J3)
+                         * AngMom::SixJ(jq, jb, J6, ja, j0, J4)
+                         * AngMom::SixJ(jh, jq, J0, jb, jd, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) >= 1e-14) {
+                      double phase = AngMom::phase(jq + J3 + J5 + jd + lambda);
+                      zpgqh -= phase_qh * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                    }
+                  }
+
+                }
+              }
+            }
+          }
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh);
+        }
+      }
+    }
+
+    // ####################################################################################
+    //   Gamma^III_b
+    //   Source: learn/amc_tts/output/G3b.tex
+    //   overall -1; (1-P_ij)(1-P_kl)
+    //   occ: nbar_b n_c n_d + n_b nbar_c nbar_d
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          // direct
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_b * n_c * n_d + n_b * nbar_c * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, d, c, b, q);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, p, a, c);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, g, a, h, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, ja, j0)
+                                * AngMom::SixJ(jd, jq, J7, jb, j0, J3)
+                                * AngMom::SixJ(ja, jp, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jh, jq)
+                                * AngMom::SixJ(J0, J6, J7, ja, jp, jg);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J2 + J4 + ja + jd + lambda);
+                    zpgqh -= 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, g, c, b, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, a, h, c);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, d, p, a, q);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jg, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jh, j0)
+                                * AngMom::SixJ(jg, jd, J7, jb, j0, J3)
+                                * AngMom::SixJ(jh, ja, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jp, jg)
+                                * AngMom::SixJ(J7, J6, J0, jq, jh, ja);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jg + jh + J2 + J4 + lambda);
+                    zpgqh -= 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_b * n_c * n_d + n_b * nbar_c * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, d, c, b, h);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, p, a, c);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, g, a, q, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, ja, j0)
+                                * AngMom::SixJ(jd, jh, J7, jb, j0, J3)
+                                * AngMom::SixJ(ja, jp, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jq, jh)
+                                * AngMom::SixJ(J0, J6, J7, ja, jp, jg);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J2 + J4 + ja + jd + lambda);
+                    zpgqh -= phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, g, c, b, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, a, q, c);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, d, p, a, h);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jg, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jq, j0)
+                                * AngMom::SixJ(jg, jd, J7, jb, j0, J3)
+                                * AngMom::SixJ(jq, ja, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jp, jg)
+                                * AngMom::SixJ(J7, J6, J0, jh, jq, ja);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jg + jq + J2 + J4 + lambda);
+                    zpgqh -= phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_b * n_c * n_d + n_b * nbar_c * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, d, c, b, q);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, g, a, c);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, p, a, h, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, ja, j0)
+                                * AngMom::SixJ(jd, jq, J7, jb, j0, J3)
+                                * AngMom::SixJ(ja, jg, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jh, jq)
+                                * AngMom::SixJ(J0, J6, J7, ja, jg, jp);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J2 + J4 + ja + jd + lambda);
+                    zpgqh -= phase_pg * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, p, c, b, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, a, h, c);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, d, g, a, q);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jp, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jh, j0)
+                                * AngMom::SixJ(jp, jd, J7, jb, j0, J3)
+                                * AngMom::SixJ(jh, ja, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jg, jp)
+                                * AngMom::SixJ(J7, J6, J0, jq, jh, ja);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jp + jh + J2 + J4 + lambda);
+                    zpgqh -= phase_pg * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g and q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_b * n_c * n_d + n_b * nbar_c * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, d, c, b, h);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, g, a, c);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, p, a, q, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, ja, j0)
+                                * AngMom::SixJ(jd, jh, J7, jb, j0, J3)
+                                * AngMom::SixJ(ja, jg, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jq, jh)
+                                * AngMom::SixJ(J0, J6, J7, ja, jg, jp);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J2 + J4 + ja + jd + lambda);
+                    zpgqh -= phase_pg * phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, p, c, b, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, b, a, q, c);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, d, g, a, h);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jp, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jq, j0)
+                                * AngMom::SixJ(jp, jd, J7, jb, j0, J3)
+                                * AngMom::SixJ(jq, ja, J7, jb, j0, J4)
+                                * AngMom::SixJ(J0, J7, J6, jd, jg, jp)
+                                * AngMom::SixJ(J7, J6, J0, jh, jq, ja);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jp + jq + J2 + J4 + lambda);
+                    zpgqh -= phase_pg * phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh);
+        }
+      }
+    }
+
+    // ####################################################################################
+    //   Gamma^III_c
+    //   Source: learn/amc_tts/output/G3c.tex
+    //   overall -1/2; (1-P_ij)(1-P_kl)
+    //   occ: nbar_a nbar_b n_c + n_a n_b nbar_c
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          // direct
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_c + n_a * n_b * nbar_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, c, h);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, p, d, a, b);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J4, J4, c, g, q, d);
+                    double sixj = AngMom::SixJ(jp, jh, J5, jc, jd, J3)
+                                * AngMom::SixJ(jq, jg, J5, jc, jd, J4)
+                                * AngMom::SixJ(jh, jq, J0, jg, jp, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = (2 * J4 + 1.0) * (2 * J5 + 1.0);
+                    double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                    zpgqh -= 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, p, c, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, a, b, d, h);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J4, J4, d, g, q, c);
+                    double sixj = AngMom::SixJ(jh, jp, J5, jc, jd, J2)
+                                * AngMom::SixJ(jg, jq, J5, jc, jd, J4)
+                                * AngMom::SixJ(jh, jq, J0, jp, jg, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = (2 * J4 + 1.0) * (2 * J5 + 1.0);
+                    double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                    zpgqh -= 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_c + n_a * n_b * nbar_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, c, q);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, p, d, a, b);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J4, J4, c, g, h, d);
+                    double sixj = AngMom::SixJ(jp, jq, J5, jc, jd, J3)
+                                * AngMom::SixJ(jh, jg, J5, jc, jd, J4)
+                                * AngMom::SixJ(jq, jh, J0, jg, jp, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = (2 * J4 + 1.0) * (2 * J5 + 1.0);
+                    double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                    zpgqh -= phase_qh * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, p, c, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, a, b, d, q);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J4, J4, d, g, h, c);
+                    double sixj = AngMom::SixJ(jq, jp, J5, jc, jd, J2)
+                                * AngMom::SixJ(jg, jh, J5, jc, jd, J4)
+                                * AngMom::SixJ(jq, jh, J0, jp, jg, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = (2 * J4 + 1.0) * (2 * J5 + 1.0);
+                    double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                    zpgqh -= phase_qh * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_c + n_a * n_b * nbar_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, c, h);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, g, d, a, b);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J4, J4, c, p, q, d);
+                    double sixj = AngMom::SixJ(jg, jh, J5, jc, jd, J3)
+                                * AngMom::SixJ(jq, jp, J5, jc, jd, J4)
+                                * AngMom::SixJ(jh, jq, J0, jp, jg, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = (2 * J4 + 1.0) * (2 * J5 + 1.0);
+                    double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                    zpgqh -= phase_pg * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, g, c, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, a, b, d, h);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J4, J4, d, p, q, c);
+                    double sixj = AngMom::SixJ(jh, jg, J5, jc, jd, J2)
+                                * AngMom::SixJ(jp, jq, J5, jc, jd, J4)
+                                * AngMom::SixJ(jh, jq, J0, jg, jp, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = (2 * J4 + 1.0) * (2 * J5 + 1.0);
+                    double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                    zpgqh -= phase_pg * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g and q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_c + n_a * n_b * nbar_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, c, q);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, g, d, a, b);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J4, J4, c, p, h, d);
+                    double sixj = AngMom::SixJ(jg, jq, J5, jc, jd, J3)
+                                * AngMom::SixJ(jh, jp, J5, jc, jd, J4)
+                                * AngMom::SixJ(jq, jh, J0, jp, jg, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = (2 * J4 + 1.0) * (2 * J5 + 1.0);
+                    double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                    zpgqh -= phase_pg * phase_qh * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  {
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, g, c, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J3, J2, a, b, d, q);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J4, J4, d, p, h, c);
+                    double sixj = AngMom::SixJ(jq, jg, J5, jc, jd, J2)
+                                * AngMom::SixJ(jp, jh, J5, jc, jd, J4)
+                                * AngMom::SixJ(jq, jh, J0, jg, jp, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = (2 * J4 + 1.0) * (2 * J5 + 1.0);
+                    double phase = Z.modelspace->phase(J2 + J3 + lambda);
+                    zpgqh -= phase_pg * phase_qh * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh);
+        }
+      }
+    }
+
+    // ####################################################################################
+    //   Gamma^IV_a
+    //   Source: learn/amc_tts/output/G4a.tex
+    //   overall -1 from analyze; (1-P_ij) term1, (1-P_kl) term2
+    //   occ: nbar_c nbar_d n_a + n_c n_d nbar_a
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_c * nbar_d * n_a + n_c * n_d * nbar_a;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, p, c, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J1, d, b, q, h);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J5, J5, g, c, b, a);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jp, ja, j0)
+                                * AngMom::SixJ(J4, lambda, J1, jp, jg, j0)
+                                * AngMom::SixJ(ja, jc, J6, jd, j0, J3)
+                                * AngMom::SixJ(jg, jb, J6, jd, j0, J4)
+                                * AngMom::SixJ(ja, jb, J5, jg, jc, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * (2 * J5 + 1.0) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jp + J2 + J3 + J4 + J5 + jb + jc + jd + lambda);
+                    zpgqh -= phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma / hat(J1);
+                    eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, g, c, d);
+                    eta2 = Eta.TwoBody.GetTBME_J(J4, J1, d, b, q, h);
+                    sixj = AngMom::SixJ(J3, lambda, J2, jg, ja, j0)
+                         * AngMom::SixJ(J4, lambda, J1, jg, jp, j0)
+                         * AngMom::SixJ(ja, jc, J6, jd, j0, J3)
+                         * AngMom::SixJ(jp, jb, J6, jd, j0, J4)
+                         * AngMom::SixJ(ja, jb, J5, jp, jc, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    zpgqh -= phase_pg * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma / hat(J1);
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, d, c, a, q);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J0, J4, p, g, c, b);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J5, J5, b, a, h, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                                * AngMom::SixJ(J0, lambda, J4, jc, jb, j0)
+                                * AngMom::SixJ(jd, jq, J6, ja, j0, J3)
+                                * AngMom::SixJ(J0, J5, J6, ja, j0, jb)
+                                * AngMom::SixJ(J6, J5, J0, jh, jq, jd);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * (2 * J5 + 1.0) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J2 + J4 + jb + jc + jd + j0 + lambda);
+                    zpgqh -= phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma / hat(J0);
+                    eta1 = Eta.TwoBody.GetTBME_J(J2, J3, d, c, a, h);
+                    eta2 = Eta.TwoBody.GetTBME_J(J0, J4, p, g, c, b);
+                    sixj = AngMom::SixJ(J3, lambda, J2, jc, jd, j0)
+                         * AngMom::SixJ(J0, lambda, J4, jc, jb, j0)
+                         * AngMom::SixJ(jd, jh, J6, ja, j0, J3)
+                         * AngMom::SixJ(J0, J5, J6, ja, j0, jb)
+                         * AngMom::SixJ(J6, J5, J0, jq, jh, jd);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    zpgqh -= phase_qh * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma / hat(J0);
+                  }
+
+                }
+              }
+            }
+          }
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh);
+        }
+      }
+    }
+
+    // ####################################################################################
+    //   Gamma^IV_b
+    //   Source: learn/amc_tts/output/G4b.tex
+    //   overall +1; (1-P_ij)(1-P_kl)
+    //   occ: nbar_a n_b nbar_c + n_a nbar_b n_c
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          // direct
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * n_b * nbar_c + n_a * nbar_b * n_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, b, p, c, a);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, g, c, h, d);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, d, a, b, q);
+                    double sixj = AngMom::SixJ(J6, J2, J7, jp, jq, jb)
+                                * AngMom::SixJ(jh, jg, J7, jp, jq, J0)
+                                * AngMom::SixJ(J2, lambda, J3, jc, ja, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jc, jg, j0)
+                                * AngMom::SixJ(J7, J6, J2, ja, j0, jd)
+                                * AngMom::SixJ(jg, jh, J7, jd, j0, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jh + J2 + J3 + J4 + J5 + J6 + jb + jc + j0 + lambda);
+                    zpgqh += 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, a, b, q);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, g, d, h, c);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, b, p, d, a);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, ja, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jh, j0)
+                                * AngMom::SixJ(ja, jb, J7, jq, j0, J3)
+                                * AngMom::SixJ(J4, J0, J7, jq, j0, jh)
+                                * AngMom::SixJ(jd, jp, J7, jb, ja, J6)
+                                * AngMom::SixJ(J4, J7, J0, jp, jg, jd);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jh + J3 + J4 + ja + jc + j0 + lambda);
+                    zpgqh += 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * n_b * nbar_c + n_a * nbar_b * n_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, b, p, c, a);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, g, c, q, d);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, d, a, b, h);
+                    double sixj = AngMom::SixJ(J6, J2, J7, jp, jh, jb)
+                                * AngMom::SixJ(jq, jg, J7, jp, jh, J0)
+                                * AngMom::SixJ(J2, lambda, J3, jc, ja, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jc, jg, j0)
+                                * AngMom::SixJ(J7, J6, J2, ja, j0, jd)
+                                * AngMom::SixJ(jg, jq, J7, jd, j0, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jq + J2 + J3 + J4 + J5 + J6 + jb + jc + j0 + lambda);
+                    zpgqh += phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, a, b, h);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, g, d, q, c);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, b, p, d, a);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, ja, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jq, j0)
+                                * AngMom::SixJ(ja, jb, J7, jh, j0, J3)
+                                * AngMom::SixJ(J4, J0, J7, jh, j0, jq)
+                                * AngMom::SixJ(jd, jp, J7, jb, ja, J6)
+                                * AngMom::SixJ(J4, J7, J0, jp, jg, jd);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jq + J3 + J4 + ja + jc + j0 + lambda);
+                    zpgqh += phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * n_b * nbar_c + n_a * nbar_b * n_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, b, g, c, a);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, p, c, h, d);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, d, a, b, q);
+                    double sixj = AngMom::SixJ(J6, J2, J7, jg, jq, jb)
+                                * AngMom::SixJ(jh, jp, J7, jg, jq, J0)
+                                * AngMom::SixJ(J2, lambda, J3, jc, ja, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jc, jp, j0)
+                                * AngMom::SixJ(J7, J6, J2, ja, j0, jd)
+                                * AngMom::SixJ(jp, jh, J7, jd, j0, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jh + J2 + J3 + J4 + J5 + J6 + jb + jc + j0 + lambda);
+                    zpgqh += phase_pg * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, a, b, q);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, p, d, h, c);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, b, g, d, a);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, ja, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jh, j0)
+                                * AngMom::SixJ(ja, jb, J7, jq, j0, J3)
+                                * AngMom::SixJ(J4, J0, J7, jq, j0, jh)
+                                * AngMom::SixJ(jd, jg, J7, jb, ja, J6)
+                                * AngMom::SixJ(J4, J7, J0, jg, jp, jd);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jh + J3 + J4 + ja + jc + j0 + lambda);
+                    zpgqh += phase_pg * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g and q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * n_b * nbar_c + n_a * nbar_b * n_c;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, b, g, c, a);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, p, c, q, d);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, d, a, b, h);
+                    double sixj = AngMom::SixJ(J6, J2, J7, jg, jh, jb)
+                                * AngMom::SixJ(jq, jp, J7, jg, jh, J0)
+                                * AngMom::SixJ(J2, lambda, J3, jc, ja, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jc, jp, j0)
+                                * AngMom::SixJ(J7, J6, J2, ja, j0, jd)
+                                * AngMom::SixJ(jp, jq, J7, jd, j0, J5);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jq + J2 + J3 + J4 + J5 + J6 + jb + jc + j0 + lambda);
+                    zpgqh += phase_pg * phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int J7 = 0; J7 <= max_J; ++J7)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, c, a, b, h);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, p, d, q, c);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J6, J6, b, g, d, a);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jc, ja, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jc, jq, j0)
+                                * AngMom::SixJ(ja, jb, J7, jh, j0, J3)
+                                * AngMom::SixJ(J4, J0, J7, jh, j0, jq)
+                                * AngMom::SixJ(jd, jg, J7, jb, ja, J6)
+                                * AngMom::SixJ(J4, J7, J0, jg, jp, jd);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (2 * J7 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(jq + J3 + J4 + ja + jc + j0 + lambda);
+                    zpgqh += phase_pg * phase_qh * 1.0 *  phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh);
+        }
+      }
+    }
+
+    // ####################################################################################
+    //   Gamma^IV_c
+    //   Source: learn/amc_tts/output/G4c.tex
+    //   overall +1/2; (1-P_ij)(1-P_kl)
+    //   occ: nbar_a nbar_b n_d + n_a n_b nbar_d
+    // ####################################################################################
+#pragma omp parallel for
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      size_t ch_bra = ch_bra_list[ch];
+      size_t ch_ket = ch_ket_list[ch];
+      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+
+      size_t nbras = tbc_bra.GetNumberKets();
+      size_t nkets = tbc_ket.GetNumberKets();
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J1 != J0)
+        continue;
+
+      for (int ibra = 0; ibra < nbras; ++ibra)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t p = bra.p;
+        size_t g = bra.q;
+        Orbit &op = *(bra.op);
+        Orbit &og = *(bra.oq);
+        int phase_pg = bra.Phase(J0);
+
+        int ketmin = 0;
+        if (ch_bra == ch_ket)
+          ketmin = ibra;
+        for (int iket = ketmin; iket < nkets; ++iket)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t q = ket.p;
+          size_t h = ket.q;
+          Orbit &oq = *(ket.op);
+          Orbit &oh = *(ket.oq);
+          int phase_qh = ket.Phase(J0);
+
+          double jp = op.j2 / 2.0;
+          double jg = og.j2 / 2.0;
+          double jq = oq.j2 / 2.0;
+          double jh = oh.j2 / 2.0;
+
+          double zpgqh = 0.0;
+          // direct
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_d + n_a * n_b * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, h, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, d, g, c, q);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J2, J2, g, c, a, b);
+                    double sixj = AngMom::SixJ(J2, lambda, J3, jd, jh, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jd, jg, j0)
+                                * AngMom::SixJ(J2, J5, J6, jg, jh, j0)
+                                * AngMom::SixJ(J2, J5, J6, jq, jp, jc)
+                                * AngMom::SixJ(jq, jh, J0, jg, jp, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jh + jp + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, p, d, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, c, g, d, q);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J3, J3, a, b, h, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jd, jp, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jd, jq, j0)
+                                * AngMom::SixJ(J3, J4, J6, jq, jp, j0)
+                                * AngMom::SixJ(J3, J4, J6, jg, jh, jc)
+                                * AngMom::SixJ(jh, jq, J0, jp, jg, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J0 + jg + jq + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_d + n_a * n_b * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, q, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, d, g, c, h);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J2, J2, g, c, a, b);
+                    double sixj = AngMom::SixJ(J2, lambda, J3, jd, jq, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jd, jg, j0)
+                                * AngMom::SixJ(J2, J5, J6, jg, jq, j0)
+                                * AngMom::SixJ(J2, J5, J6, jh, jp, jc)
+                                * AngMom::SixJ(jh, jq, J0, jg, jp, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jq + jp + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += phase_qh * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, p, d, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, c, g, d, h);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J3, J3, a, b, q, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jd, jp, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jd, jh, j0)
+                                * AngMom::SixJ(J3, J4, J6, jh, jp, j0)
+                                * AngMom::SixJ(J3, J4, J6, jg, jq, jc)
+                                * AngMom::SixJ(jq, jh, J0, jp, jg, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J0 + jg + jh + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += phase_qh * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_d + n_a * n_b * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, h, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, d, p, c, q);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J2, J2, p, c, a, b);
+                    double sixj = AngMom::SixJ(J2, lambda, J3, jd, jh, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jd, jp, j0)
+                                * AngMom::SixJ(J2, J5, J6, jp, jh, j0)
+                                * AngMom::SixJ(J2, J5, J6, jq, jg, jc)
+                                * AngMom::SixJ(jq, jh, J0, jp, jg, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jh + jg + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += phase_pg * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, g, d, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, c, p, d, q);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J3, J3, a, b, h, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jd, jg, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jd, jq, j0)
+                                * AngMom::SixJ(J3, J4, J6, jq, jg, j0)
+                                * AngMom::SixJ(J3, J4, J6, jp, jh, jc)
+                                * AngMom::SixJ(jh, jq, J0, jg, jp, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J0 + jp + jq + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += phase_pg * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          // exchange p<->g and q<->h
+          for (auto &a : Z.modelspace->all_orbits)
+          {
+            Orbit &oa = Z.modelspace->GetOrbit(a);
+            double ja = oa.j2 / 2.0;
+            double n_a = oa.occ;
+            double nbar_a = 1.0 - n_a;
+            for (auto &b : Z.modelspace->all_orbits)
+            {
+              Orbit &ob = Z.modelspace->GetOrbit(b);
+              double jb = ob.j2 / 2.0;
+              double n_b = ob.occ;
+              double nbar_b = 1.0 - n_b;
+              for (auto &c : Z.modelspace->all_orbits)
+              {
+                Orbit &oc = Z.modelspace->GetOrbit(c);
+                double jc = oc.j2 / 2.0;
+                double n_c = oc.occ;
+                double nbar_c = 1.0 - n_c;
+                for (auto &d : Z.modelspace->all_orbits)
+                {
+                  Orbit &od = Z.modelspace->GetOrbit(d);
+                  double jd = od.j2 / 2.0;
+                  double n_d = od.occ;
+                  double nbar_d = 1.0 - n_d;
+                  double occfactor = nbar_a * nbar_b * n_d + n_a * n_b * nbar_d;
+                  if (std::abs(occfactor) < 1e-7)
+                    continue;
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, a, b, q, d);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, d, p, c, h);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J2, J2, p, c, a, b);
+                    double sixj = AngMom::SixJ(J2, lambda, J3, jd, jq, j0)
+                                * AngMom::SixJ(J5, lambda, J4, jd, jp, j0)
+                                * AngMom::SixJ(J2, J5, J6, jp, jq, j0)
+                                * AngMom::SixJ(J2, J5, J6, jh, jg, jc)
+                                * AngMom::SixJ(jh, jq, J0, jp, jg, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J1 + jq + jg + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += phase_pg * phase_qh * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+                  for (int J2 = 0; J2 <= max_J; ++J2)
+                  for (int J3 = 0; J3 <= max_J; ++J3)
+                  for (int J4 = 0; J4 <= max_J; ++J4)
+                  for (int J5 = 0; J5 <= max_J; ++J5)
+                  for (int J6 = 0; J6 <= max_J; ++J6)
+                  for (int j02 = 0; j02 <= max_j2; ++j02)
+                  {
+                    double j0 = j02 / 2.0;
+                    double eta1 = Eta.TwoBody.GetTBME_J(J2, J3, g, d, a, b);
+                    double eta2 = Eta.TwoBody.GetTBME_J(J4, J5, c, p, d, h);
+                    double gamma = Gamma.TwoBody.GetTBME_J(J3, J3, a, b, q, d);
+                    double sixj = AngMom::SixJ(J3, lambda, J2, jd, jg, j0)
+                                * AngMom::SixJ(J4, lambda, J5, jd, jh, j0)
+                                * AngMom::SixJ(J3, J4, J6, jh, jg, j0)
+                                * AngMom::SixJ(J3, J4, J6, jp, jq, jc)
+                                * AngMom::SixJ(jq, jh, J0, jg, jp, J6);
+                    if (std::abs(eta1 * eta2 * gamma * sixj) < 1e-14)
+                      continue;
+                    double hats = hat(J2) * hat(J3) * hat(J4) * hat(J5) * (2 * J6 + 1.0) * (j02 + 1.0);
+                    double phase = AngMom::phase(J0 + jp + jh + J2 + J5 + jd + j0 + lambda);
+                    zpgqh += phase_pg * phase_qh * 1.0 *  0.5 * phase * hats * hat_lambda_inv * sixj * occfactor * eta1 * eta2 * gamma;
+                  }
+
+                }
+              }
+            }
+          }
+
+          if (p == g)
+            zpgqh /= PhysConst::SQRT2;
+          if (q == h)
+            zpgqh /= PhysConst::SQRT2;
+
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zpgqh);
+        }
+      }
+    }
+
+    Z.profiler.timer["ReferenceImplementations::" + std::string(__func__)] += omp_get_wtime() - t_start;
   }
 
 
@@ -18159,89 +23176,8 @@ namespace ReferenceImplementations
 
 
 
-  //////////////////////////////////////////////////
-  // Equation B5b from PRC 110 044317
-  // Note that equation B6b for the intermediate has a typo.
-  // It should have i <-> j swapped. It is fixed in this routine.
-  void comm223_231_fII(const Operator &Eta, const Operator &Gamma, Operator &Z)
-  {
-
-    double t_start = omp_get_wtime();
-     // Build intermediate chi_ij equation B6b.
-     arma::mat chi_beta = 0* Z.OneBody;
-     for (auto i : Z.modelspace->all_orbits )
-     {
-        Orbit& oi = Z.modelspace->GetOrbit(i);
-        for ( auto j : Gamma.GetOneBodyChannel(oi.l,oi.j2,oi.tz2)  )
-        {
-          Orbit& oj = Z.modelspace->GetOrbit(j);
-          double chi_ij = 0;
-          for (auto a : Z.modelspace->all_orbits)
-          {
-             Orbit& oa = Z.modelspace->GetOrbit(a);
-             for (auto b : Z.modelspace->all_orbits)
-             {
-                Orbit& ob = Z.modelspace->GetOrbit(b);
-                for (auto c : Z.modelspace->all_orbits)
-                {
-                   Orbit& oc = Z.modelspace->GetOrbit(c);
-                   int Jmin = AngMom::Jmin({ {oa.j2,ob.j2}, {oi.j2,oc.j2}  })/2;
-                   int Jmax = AngMom::Jmax({ {oa.j2,ob.j2}, {oi.j2,oc.j2}  })/2;
-                   for (int J=Jmin; J<=Jmax; J++)
-                   {
-                      double Omega_cjab = Eta.TwoBody.GetTBME_J(J,J,c,j,a,b);
-                      double Gamma_abci = Gamma.TwoBody.GetTBME_J(J,J,a,b,c,i);
-                      double occfactor = (1-oa.occ)*(1-ob.occ)*oc.occ*oj.occ - oa.occ*ob.occ*(1-oc.occ)*(1-oj.occ);
-                      chi_ij += (2*J+1)/(oi.j2+1.0) * occfactor * Omega_cjab * Gamma_abci;
-                   }// for J
-                }// for c
-             }// for b
-          }// for a
-        chi_beta(i,j) = chi_ij;
-        }// for j
-     }// for i
-    std::cout << "chi_beta = " << std::endl << chi_beta << std::endl;
-
-     // Done making intermediate chi_ij.
-     arma::mat fII = 0*Z.OneBody;
-     
-     for (auto i : Z.modelspace->all_orbits )
-     {
-        Orbit& oi = Z.modelspace->GetOrbit(i);
-        for ( auto j : Z.GetOneBodyChannel(oi.l,oi.j2,oi.tz2)  )
-        {
-          Orbit& oj = Z.modelspace->GetOrbit(j);
-          double fII_ij = 0;
-          for (auto a : Z.modelspace->all_orbits)
-          {
-             Orbit& oa = Z.modelspace->GetOrbit(a);
-             for (auto b : Z.modelspace->all_orbits)
-             {
-                Orbit& ob = Z.modelspace->GetOrbit(b);
-                int Jmin = AngMom::Jmin({ {oa.j2,oj.j2}, {oi.j2,ob.j2}  })/2;
-                int Jmax = AngMom::Jmax({ {oa.j2,oj.j2}, {oi.j2,ob.j2}  })/2;
-                for (int J=Jmin; J<=Jmax; J++)
-                {
-                   double Omega_biaj = Eta.TwoBody.GetTBME_J(J,J, b,i,a,j);
-                   fII_ij += 0.5*(2*J+1)/(oi.j2+1.) * ( chi_beta(a,b) - chi_beta(b,a) ) * Omega_biaj;  
-                }// for J
-             }// for b
-          }// for a
-          Z.OneBody(i,j) += fII_ij;
-          fII(i,j) = fII_ij;
-        }// for j
-     }// for i
-
-    std::cout << "fII : " << std::endl << fII << std::endl;
-//    std::cout << "fII : " << std::endl << Z.OneBody << std::endl;
-
-    Z.profiler.timer[ "ReferenceImplementations::" + std::string(__func__)] += omp_get_wtime() - t_start;
-    return;
-  }
-
-
-
-  ////
+  
+////
   //// Eq B5c, with intermediate defined in B6c.
   void comm223_231_fIIIa(const Operator &Eta, const Operator &Gamma, Operator &Z)
   {
@@ -18479,110 +23415,511 @@ namespace ReferenceImplementations
   }
 
 
-
- //// Eq B5d, with intermediate defined in B6d.
-  void comm223_231_fIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z)
+  namespace
   {
-    double t_start = omp_get_wtime();
-
-    // The intermediate has the symmetry of Eta*Eta, so it should be a scalar, with positive parity
-    // The intermediate is non-hermitian because of the occupation factors.
-
-    TwoBodyME chi_d( Z.modelspace, 0,0,0);
-    chi_d.SetNonHermitian();
-    size_t nch = Z.modelspace->GetNumberTwoBodyChannels();
-    for (size_t ch=0; ch<nch; ch++)
+    double EVCMscheme1b(const Operator &op, int p, int mp, int q, int mq)
     {
-       TwoBodyChannel& tbc = Z.modelspace->GetTwoBodyChannel(ch);
-       int J = tbc.J;
-       size_t nkets = tbc.GetNumberKets();
-       for (size_t ij=0; ij<nkets; ij++)
-       {
-          Ket& ketij = tbc.GetKet(ij);
-          for (size_t kl=0; kl<nkets; kl++)
-          {
-            Ket& ketkl = tbc.GetKet(kl);
-            double nk = ketkl.op->occ;
-            double nl = ketkl.oq->occ;
-
-            double chi_ijkl = 0;
-            // we loop over a<=b, so we need a factor 2 to account for a>b
-            // the case a==b is handled automatically because we're using normalized matrix elements
-            for (size_t ab=0; ab<nkets; ab++)
-            {
-               Ket& ketab = tbc.GetKet(ab);
-               double na = ketab.op->occ;
-               double nb = ketab.oq->occ;
-//               double occ_factor = na*nb*(1-nk)*(1-nl) - (1-na)*(1-nb)*nk*nl;
-               double occ_factor = na*nb*(1-nk)*(1-nl) - (1-na)*(1-nb)*nk*nl;
-               double Omega_ijab = Eta.TwoBody.GetTBME_norm(ch,ch,ij,ab);
-               double Omega_abkl = Eta.TwoBody.GetTBME_norm(ch,ch,ab,kl);
-               chi_ijkl += 2 * (2*J+1) / 4.0 * occ_factor * Omega_ijab * Omega_abkl; // the extra factor of 2 is for a>b.
-            }
-            double normalization = 1.0;
-            if (ketij.p == ketij.q) normalization /= PhysConst::SQRT2;
-            if (ketkl.p == ketkl.q) normalization /= PhysConst::SQRT2;
-            chi_d.SetTBME(ch,ch,ij,kl, chi_ijkl * normalization );
-            if ( J==0 and ketkl.p==0 and ketkl.q==0  )
-            {
-              std::cout << "      building chid   " << ketij.p << " " << ketij.q << " " << ketkl.p << " " << ketkl.q << "   " << chi_ijkl << std::endl;
-            }
-
-          }// for iket
-       }// for ibra
-    }//for ch
-
-
-    arma::mat fIIIb = 0*Z.OneBody;
-    for ( auto i : Z.modelspace->all_orbits )
-    {
-      Orbit& oi = Z.modelspace->GetOrbit(i);
-      for ( auto j : Z.OneBodyChannels.at({oi.l,oi.j2,oi.tz2}) )
+      if (mp != mq)
       {
-        double fIIIb_ij = 0;
-        for ( auto a : Z.modelspace->all_orbits )
+        return 0.0;
+      }
+      return op.OneBody(p, q);
+    }
+
+    double EVCMscheme2b(const Operator &op, int a, int ma, int b, int mb, int c, int mc, int d, int md)
+    {
+      if (a == b and ma == mb)
+      {
+        return 0.0;
+      }
+      if (c == d and mc == md)
+      {
+        return 0.0;
+      }
+      if ((ma + mb) != (mc + md))
+      {
+        return 0.0;
+      }
+
+      const Orbit &oa = op.modelspace->GetOrbit(a);
+      const Orbit &ob = op.modelspace->GetOrbit(b);
+      const Orbit &oc = op.modelspace->GetOrbit(c);
+      const Orbit &od = op.modelspace->GetOrbit(d);
+      const int Jmin = std::max(std::abs(oa.j2 - ob.j2), std::abs(oc.j2 - od.j2)) / 2;
+      const int Jmax = std::min(oa.j2 + ob.j2, oc.j2 + od.j2) / 2;
+      const int M = (ma + mb) / 2;
+      double matel = 0.0;
+      for (int J = Jmin; J <= Jmax; ++J)
+      {
+        const double clebsch_ab = AngMom::CG(0.5 * oa.j2, 0.5 * ma, 0.5 * ob.j2, 0.5 * mb, J, M);
+        const double clebsch_cd = AngMom::CG(0.5 * oc.j2, 0.5 * mc, 0.5 * od.j2, 0.5 * md, J, M);
+        matel += clebsch_ab * clebsch_cd * op.TwoBody.GetTBME_J(J, a, b, c, d);
+      }
+      return matel;
+    }
+
+    bool EVCSameOneBodyChannel(const Orbit &oa, const Orbit &ob)
+    {
+      return oa.j2 == ob.j2 and oa.tz2 == ob.tz2 and ((oa.l + ob.l) % 2 == 0);
+    }
+
+    double EVCZ1ResidualMscheme(const Operator &t, const Operator &z,
+                                int a, int ma, int i, int mi,
+                                const std::vector<index_t> &holes,
+                                const std::vector<index_t> &particles)
+    {
+      double r = 0.0;
+
+      for (auto j : holes)
+      {
+        const Orbit &oj = t.modelspace->GetOrbit(static_cast<int>(j));
+        for (auto b : particles)
         {
-           Orbit& oa = Z.modelspace->GetOrbit(a);
-           for ( auto b : Z.modelspace->all_orbits )
-           {
-              Orbit& ob = Z.modelspace->GetOrbit(b);
-              for ( auto c : Z.modelspace->all_orbits )
+          const Orbit &ob = t.modelspace->GetOrbit(static_cast<int>(b));
+          if (not EVCSameOneBodyChannel(ob, oj))
+          {
+            continue;
+          }
+          const double t1 = t.OneBody(b, j);
+          if (std::abs(t1) < 1e-16)
+          {
+            continue;
+          }
+          for (int mj = -oj.j2; mj <= oj.j2; mj += 2)
+          {
+            r += t1 * EVCMscheme2b(z, a, ma, static_cast<int>(b), mj, i, mi, static_cast<int>(j), mj);
+          }
+        }
+      }
+
+      for (auto j : holes)
+      {
+        const Orbit &oj = t.modelspace->GetOrbit(static_cast<int>(j));
+        for (auto b : particles)
+        {
+          const Orbit &ob = t.modelspace->GetOrbit(static_cast<int>(b));
+          if (not EVCSameOneBodyChannel(ob, oj))
+          {
+            continue;
+          }
+          const double t1 = t.OneBody(b, j);
+          const double z_bi = z.OneBody(b, i);
+          const double z_aj = z.OneBody(a, j);
+          if (std::abs(t1 * z_bi * z_aj) < 1e-16)
+          {
+            continue;
+          }
+          for (int mj = -oj.j2; mj <= oj.j2; mj += 2)
+          {
+            r -= t1 * EVCMscheme1b(z, static_cast<int>(b), mj, i, mi) * EVCMscheme1b(z, a, ma, static_cast<int>(j), mj);
+          }
+        }
+      }
+
+      for (auto j : holes)
+      {
+        const Orbit &oj = t.modelspace->GetOrbit(static_cast<int>(j));
+        for (auto k : holes)
+        {
+          const Orbit &ok = t.modelspace->GetOrbit(static_cast<int>(k));
+          for (auto b : particles)
+          {
+            const Orbit &ob = t.modelspace->GetOrbit(static_cast<int>(b));
+            for (auto c : particles)
+            {
+              const Orbit &oc = t.modelspace->GetOrbit(static_cast<int>(c));
+              for (int mj = -oj.j2; mj <= oj.j2; mj += 2)
               {
-                Orbit& oc = Z.modelspace->GetOrbit(c);
-                int Jmin = AngMom::Jmin({ {oa.j2,ob.j2}, {oi.j2,oc.j2}}) /2;
-                int Jmax = AngMom::Jmax({ {oa.j2,ob.j2}, {oi.j2,oc.j2}}) /2;
-                for (int J=Jmin; J<=Jmax; J++)
+                for (int mk = -ok.j2; mk <= ok.j2; mk += 2)
                 {
-                   double chi_ciab = chi_d.GetTBME_J(J,J,c,i,a,b);
-                   double chi_cjab = chi_d.GetTBME_J(J,J,c,j,a,b);
-//                   double chi_abcj = chi_d.GetTBME_J(J,J,a,b,c,j);
-                   double Gamma_abcj = Gamma.TwoBody.GetTBME_J(J,J,a,b,c,j);
-//                   double Gamma_ciab = Gamma.TwoBody.GetTBME_J(J,J,c,j,a,b);
-                   double Gamma_abci = Gamma.TwoBody.GetTBME_J(J,J,a,b,c,i);
-////                   fIIIb_ij += 1/(oi.j2+1.0) * (chi_ciab * Gamma_abcj - chi_abcj * Gamma_ciab);
-//                   fIIIb_ij += 1/(oi.j2+1.0) * (chi_ciab * Gamma_abcj + chi_cjab * Gamma_abci);
-                   fIIIb_ij += 1/(oi.j2+1.0) * (chi_ciab * Gamma_abcj );
-                    if (i==0 and j==0 and std::abs(Gamma_abcj)>1e-6 and a==0 and b==0 and c==0 and J==0)
+                  for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
+                  {
+                    for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
                     {
-                        std::cout << "** abcJ = " << a << " " << b << " " << c << " " << J << " Gamma = " << Gamma_abcj << "  chi = " << chi_ciab <<  "    zij = " << fIIIb_ij << std::endl;
+                      if ((mb + mc) != (mj + mk))
+                      {
+                        continue;
+                      }
+                      const double t2 = EVCMscheme2b(t, static_cast<int>(b), mb, static_cast<int>(c), mc, static_cast<int>(j), mj, static_cast<int>(k), mk);
+                      if (std::abs(t2) < 1e-16)
+                      {
+                        continue;
+                      }
+                      const double z1_bj = EVCMscheme1b(z, static_cast<int>(b), mb, static_cast<int>(j), mj);
+                      const double z1_bi = EVCMscheme1b(z, static_cast<int>(b), mb, i, mi);
+                      const double z1_aj = EVCMscheme1b(z, a, ma, static_cast<int>(j), mj);
+                      const double z1_ck = EVCMscheme1b(z, static_cast<int>(c), mc, static_cast<int>(k), mk);
+                      r += t2 * z1_bj * EVCMscheme2b(z, static_cast<int>(c), mc, a, ma, static_cast<int>(k), mk, i, mi);
+                      r += 0.5 * t2 * z1_bi * EVCMscheme2b(z, static_cast<int>(c), mc, a, ma, static_cast<int>(j), mj, static_cast<int>(k), mk);
+                      r += 0.5 * t2 * z1_aj * EVCMscheme2b(z, static_cast<int>(b), mb, static_cast<int>(c), mc, static_cast<int>(k), mk, i, mi);
+                      r -= t2 * z1_bi * z1_aj * z1_ck;
                     }
-                }// for J
-              }// for c
-           }// for b
-        }// for a
-        Z.OneBody(i,j) += fIIIb_ij;
-        fIIIb(i,j) = fIIIb_ij;
-      }// for j
-    }// for i
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
 
-    std::cout << "fIIIb : " << std::endl << fIIIb << std::endl;
-//    std::cout << "fIIIb : " << std::endl << Z.OneBody << std::endl;
+      return r;
+    }
 
-    Z.profiler.timer[ "ReferenceImplementations::" + std::string(__func__)] += omp_get_wtime() - t_start;
-    return;
+    double EVCZ2ResidualMscheme(const Operator &t, const Operator &z,
+                                int a, int ma, int b, int mb, int i, int mi, int j, int mj,
+                                const std::vector<index_t> &holes,
+                                const std::vector<index_t> &particles)
+    {
+      if ((ma + mb) != (mi + mj))
+      {
+        return 0.0;
+      }
+      if (a == b and ma == mb)
+      {
+        return 0.0;
+      }
+      if (i == j and mi == mj)
+      {
+        return 0.0;
+      }
+
+      double r = 0.0;
+
+      // A: -P(i/j) t_k^c z_i^c z_kj^ab
+      // B: -P(a/b) t_k^c z_k^a z_ij^cb
+      for (auto k : holes)
+      {
+        const Orbit &ok = t.modelspace->GetOrbit(static_cast<int>(k));
+        for (auto c : particles)
+        {
+          const Orbit &oc = t.modelspace->GetOrbit(static_cast<int>(c));
+          if (not EVCSameOneBodyChannel(oc, ok))
+          {
+            continue;
+          }
+          const double t1 = t.OneBody(c, k);
+          if (std::abs(t1) < 1e-16)
+          {
+            continue;
+          }
+          for (int mk = -ok.j2; mk <= ok.j2; mk += 2)
+          {
+            const int mc = mk;
+            r -= t1 * EVCMscheme1b(z, static_cast<int>(c), mc, i, mi)
+                 * EVCMscheme2b(z, a, ma, b, mb, static_cast<int>(k), mk, j, mj);
+            r += t1 * EVCMscheme1b(z, static_cast<int>(c), mc, j, mj)
+                 * EVCMscheme2b(z, a, ma, b, mb, static_cast<int>(k), mk, i, mi);
+            r -= t1 * EVCMscheme1b(z, a, ma, static_cast<int>(k), mk)
+                 * EVCMscheme2b(z, static_cast<int>(c), mc, b, mb, i, mi, j, mj);
+            r += t1 * EVCMscheme1b(z, b, mb, static_cast<int>(k), mk)
+                 * EVCMscheme2b(z, static_cast<int>(c), mc, a, ma, i, mi, j, mj);
+          }
+        }
+      }
+
+      for (auto k : holes)
+      {
+        const Orbit &ok = t.modelspace->GetOrbit(static_cast<int>(k));
+        for (auto l : holes)
+        {
+          const Orbit &ol = t.modelspace->GetOrbit(static_cast<int>(l));
+          for (auto c : particles)
+          {
+            const Orbit &oc = t.modelspace->GetOrbit(static_cast<int>(c));
+            for (auto d : particles)
+            {
+              const Orbit &od = t.modelspace->GetOrbit(static_cast<int>(d));
+              for (int mk = -ok.j2; mk <= ok.j2; mk += 2)
+              {
+                for (int ml = -ol.j2; ml <= ol.j2; ml += 2)
+                {
+                  for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
+                  {
+                    for (int md = -od.j2; md <= od.j2; md += 2)
+                    {
+                      if ((mc + md) != (mk + ml))
+                      {
+                        continue;
+                      }
+                      const double t2 = EVCMscheme2b(t, static_cast<int>(c), mc, static_cast<int>(d), md,
+                                                     static_cast<int>(k), mk, static_cast<int>(l), ml);
+                      if (std::abs(t2) < 1e-16)
+                      {
+                        continue;
+                      }
+                      const double z_ci = EVCMscheme1b(z, static_cast<int>(c), mc, i, mi);
+                      const double z_cj = EVCMscheme1b(z, static_cast<int>(c), mc, j, mj);
+                      const double z_ak = EVCMscheme1b(z, a, ma, static_cast<int>(k), mk);
+                      const double z_bk = EVCMscheme1b(z, b, mb, static_cast<int>(k), mk);
+                      const double z_dj = EVCMscheme1b(z, static_cast<int>(d), md, j, mj);
+                      const double z_di = EVCMscheme1b(z, static_cast<int>(d), md, i, mi);
+                      const double z_bl = EVCMscheme1b(z, b, mb, static_cast<int>(l), ml);
+                      const double z_al = EVCMscheme1b(z, a, ma, static_cast<int>(l), ml);
+                      const double z_dk = EVCMscheme1b(z, static_cast<int>(d), md, static_cast<int>(k), mk);
+                      const double z_cl = EVCMscheme1b(z, static_cast<int>(c), mc, static_cast<int>(l), ml);
+
+                      const double zabik = EVCMscheme2b(z, a, ma, b, mb, i, mi, static_cast<int>(k), mk);
+                      const double zabjk = EVCMscheme2b(z, a, ma, b, mb, j, mj, static_cast<int>(k), mk);
+                      const double zacij = EVCMscheme2b(z, a, ma, static_cast<int>(c), mc, i, mi, j, mj);
+                      const double zbcij = EVCMscheme2b(z, b, mb, static_cast<int>(c), mc, i, mi, j, mj);
+                      const double zacik = EVCMscheme2b(z, a, ma, static_cast<int>(c), mc, i, mi, static_cast<int>(k), mk);
+                      const double zbcik = EVCMscheme2b(z, b, mb, static_cast<int>(c), mc, i, mi, static_cast<int>(k), mk);
+                      const double zacjk = EVCMscheme2b(z, a, ma, static_cast<int>(c), mc, j, mj, static_cast<int>(k), mk);
+                      const double zbcjk = EVCMscheme2b(z, b, mb, static_cast<int>(c), mc, j, mj, static_cast<int>(k), mk);
+                      const double zdblj = EVCMscheme2b(z, static_cast<int>(d), md, b, mb, static_cast<int>(l), ml, j, mj);
+                      const double zdali = EVCMscheme2b(z, static_cast<int>(d), md, a, ma, static_cast<int>(l), ml, i, mi);
+                      const double zdbli = EVCMscheme2b(z, static_cast<int>(d), md, b, mb, static_cast<int>(l), ml, i, mi);
+                      const double zdalj = EVCMscheme2b(z, static_cast<int>(d), md, a, ma, static_cast<int>(l), ml, j, mj);
+                      const double zcdij = EVCMscheme2b(z, static_cast<int>(c), mc, static_cast<int>(d), md, i, mi, j, mj);
+                      const double zabkl = EVCMscheme2b(z, a, ma, b, mb, static_cast<int>(k), mk, static_cast<int>(l), ml);
+                      const double zablj = EVCMscheme2b(z, a, ma, b, mb, static_cast<int>(l), ml, j, mj);
+                      const double zabli = EVCMscheme2b(z, a, ma, b, mb, static_cast<int>(l), ml, i, mi);
+                      const double zdbij = EVCMscheme2b(z, static_cast<int>(d), md, b, mb, i, mi, j, mj);
+                      const double zdaij = EVCMscheme2b(z, static_cast<int>(d), md, a, ma, i, mi, j, mj);
+                      const double zcdlj = EVCMscheme2b(z, static_cast<int>(c), mc, static_cast<int>(d), md, static_cast<int>(l), ml, j, mj);
+                      const double zcdli = EVCMscheme2b(z, static_cast<int>(c), mc, static_cast<int>(d), md, static_cast<int>(l), ml, i, mi);
+                      const double zdbkl = EVCMscheme2b(z, static_cast<int>(d), md, b, mb, static_cast<int>(k), mk, static_cast<int>(l), ml);
+                      const double zdakl = EVCMscheme2b(z, static_cast<int>(d), md, a, ma, static_cast<int>(k), mk, static_cast<int>(l), ml);
+
+                      // C: 1/2 P(i/j) t z_ik^ab z_lj^cd
+                      r += 0.5 * t2 * (zabik * zcdlj - zabjk * zcdli);
+                      // D: 1/2 P(a/b) t z_ij^ac z_kl^db
+                      r += 0.5 * t2 * (zacij * zdbkl - zbcij * zdakl);
+                      // E: 1/2 P(ab)P(ij) t z_ik^ac z_lj^db
+                      r += 0.5 * t2 * (zacik * zdblj - zacjk * zdbli - zbcik * zdalj + zbcjk * zdali);
+                      // F: 1/4 t z_ij^cd z_kl^ab
+                      r += 0.25 * t2 * zcdij * zabkl;
+                      // G: P(i/j) t z_i^c z_k^d z_lj^ab
+                      r += t2 * z_ci * z_dk * zablj;
+                      r -= t2 * z_cj * z_dk * zabli;
+                      // H: P(a/b) t z_k^a z_l^c z_ij^db
+                      r += t2 * z_ak * z_cl * zdbij;
+                      r -= t2 * z_bk * z_cl * zdaij;
+                      // I: 1/4 P(i/j) t z_i^c z_j^d z_kl^ab
+                      r += 0.25 * t2 * z_ci * z_dj * zabkl;
+                      r -= 0.25 * t2 * z_cj * z_di * zabkl;
+                      // J: -P(a/b)P(i/j) t z_i^c z_k^a z_lj^db
+                      r -= t2 * (z_ci * z_ak * zdblj - z_ci * z_bk * zdalj - z_cj * z_ak * zdbli + z_cj * z_bk * zdali);
+                      // K: 1/4 P(a/b) t z_k^a z_l^b z_ij^cd
+                      r += 0.25 * t2 * z_ak * z_bl * zcdij;
+                      r -= 0.25 * t2 * z_bk * z_al * zcdij;
+                      // L: 1/4 P(a/b)P(i/j) t z_i^c z_j^d z_k^a z_l^b
+                      r += 0.25 * t2 * (z_ci * z_dj * z_ak * z_bl - z_cj * z_di * z_ak * z_bl
+                                        - z_ci * z_dj * z_bk * z_al + z_cj * z_di * z_bk * z_al);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      return r;
+    }
+  } // namespace
+
+  double evc_z0_mscheme(const Operator &t, const Operator &z)
+  {
+    ModelSpace &ms = *t.modelspace;
+    const std::vector<index_t> holes(ms.holes.begin(), ms.holes.end());
+    const std::vector<index_t> particles(ms.particles.begin(), ms.particles.end());
+    double r = 0.0;
+
+    for (auto i : holes)
+    {
+      const Orbit &oi = ms.GetOrbit(static_cast<int>(i));
+      for (auto a : particles)
+      {
+        const Orbit &oa = ms.GetOrbit(static_cast<int>(a));
+        if (not EVCSameOneBodyChannel(oa, oi))
+        {
+          continue;
+        }
+        const double t1 = t.OneBody(a, i);
+        const double z1 = z.OneBody(a, i);
+        for (int m = -oa.j2; m <= oa.j2; m += 2)
+        {
+          r += t1 * z1;
+        }
+      }
+    }
+
+    for (auto k : holes)
+    {
+      const Orbit &ok = ms.GetOrbit(static_cast<int>(k));
+      for (auto l : holes)
+      {
+        const Orbit &ol = ms.GetOrbit(static_cast<int>(l));
+        for (auto c : particles)
+        {
+          const Orbit &oc = ms.GetOrbit(static_cast<int>(c));
+          for (auto d : particles)
+          {
+            const Orbit &od = ms.GetOrbit(static_cast<int>(d));
+            for (int mk = -ok.j2; mk <= ok.j2; mk += 2)
+            {
+              for (int ml = -ol.j2; ml <= ol.j2; ml += 2)
+              {
+                for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
+                {
+                  for (int md = -od.j2; md <= od.j2; md += 2)
+                  {
+                    if ((mc + md) != (mk + ml))
+                    {
+                      continue;
+                    }
+                    const double t2 = EVCMscheme2b(t, static_cast<int>(c), mc, static_cast<int>(d), md,
+                                                   static_cast<int>(k), mk, static_cast<int>(l), ml);
+                    if (std::abs(t2) < 1e-16)
+                    {
+                      continue;
+                    }
+                    const double z2 = EVCMscheme2b(z, static_cast<int>(c), mc, static_cast<int>(d), md,
+                                                   static_cast<int>(k), mk, static_cast<int>(l), ml);
+                    r += 0.25 * t2 * z2;
+                    r += 0.5 * t2 * EVCMscheme1b(z, static_cast<int>(c), mc, static_cast<int>(k), mk)
+                         * EVCMscheme1b(z, static_cast<int>(d), md, static_cast<int>(l), ml);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return -r;
   }
 
+  /// Unreduced m-scheme gold for the CCSD-like EVC Z1 residual.
+  /// AMC J-scheme: run/evc/amc/output/z1_terms.tex
+  void evc_z1_mscheme(const Operator &t, const Operator &z, Operator &dz)
+  {
+    double t_start = omp_get_wtime();
+    dz.SetNonHermitian();
+    dz.EraseOneBody();
 
+    ModelSpace &ms = *t.modelspace;
+    const std::vector<index_t> holes(ms.holes.begin(), ms.holes.end());
+    const std::vector<index_t> particles(ms.particles.begin(), ms.particles.end());
+
+    std::vector<std::pair<index_t, index_t>> pairs;
+    for (auto i : holes)
+    {
+      const Orbit &oi = ms.GetOrbit(static_cast<int>(i));
+      for (auto a : particles)
+      {
+        const Orbit &oa = ms.GetOrbit(static_cast<int>(a));
+        if (EVCSameOneBodyChannel(oa, oi))
+        {
+          pairs.emplace_back(a, i);
+        }
+      }
+    }
+
+    const int npairs = static_cast<int>(pairs.size());
+#pragma omp parallel for schedule(dynamic)
+    for (int ip = 0; ip < npairs; ++ip)
+    {
+      const index_t a = pairs[ip].first;
+      const index_t i = pairs[ip].second;
+      const Orbit &oa = ms.GetOrbit(static_cast<int>(a));
+      const int m = oa.j2;
+      const double r = EVCZ1ResidualMscheme(t, z, static_cast<int>(a), m, static_cast<int>(i), m, holes, particles);
+      dz.OneBody(a, i) = -r;
+    }
+
+    t.profiler.timer["ReferenceImplementations::" + std::string(__func__)] += omp_get_wtime() - t_start;
+  }
+
+  /// Unreduced m-scheme gold for the CCSD-like EVC Z2 residual.
+  /// AMC J-scheme: run/evc/amc_eqs/output/z2_terms.tex
+  /// dz.TwoBody pp-hh is d z_{ij}^{ab} / dλ = -R (unreduced GetTBME_J).
+  void evc_z2_mscheme(const Operator &t, const Operator &z, Operator &dz)
+  {
+    double t_start = omp_get_wtime();
+    dz.SetNonHermitian();
+    dz.EraseTwoBody();
+
+    ModelSpace &ms = *t.modelspace;
+    const std::vector<index_t> holes(ms.holes.begin(), ms.holes.end());
+    const std::vector<index_t> particles(ms.particles.begin(), ms.particles.end());
+
+    std::vector<std::array<int, 3>> jobs;
+    const int nch = ms.GetNumberTwoBodyChannels();
+    for (int ch = 0; ch < nch; ++ch)
+    {
+      TwoBodyChannel &tbc = ms.GetTwoBodyChannel(ch);
+      const auto &pp = tbc.GetKetIndex_pp();
+      const auto &hh = tbc.GetKetIndex_hh();
+      for (arma::uword ib = 0; ib < pp.n_rows; ++ib)
+      {
+        for (arma::uword ik = 0; ik < hh.n_rows; ++ik)
+        {
+          jobs.push_back({ch, static_cast<int>(pp(ib)), static_cast<int>(hh(ik))});
+        }
+      }
+    }
+
+    const int njob = static_cast<int>(jobs.size());
+#pragma omp parallel for schedule(dynamic)
+    for (int ij = 0; ij < njob; ++ij)
+    {
+      const int ch = jobs[ij][0];
+      const int ibra = jobs[ij][1];
+      const int iket = jobs[ij][2];
+      TwoBodyChannel &tbc = ms.GetTwoBodyChannel(ch);
+      const int J = tbc.J;
+      const Ket &bra = tbc.GetKet(ibra);
+      const Ket &ket = tbc.GetKet(iket);
+      const int a = bra.p;
+      const int b = bra.q;
+      const int i = ket.p;
+      const int j = ket.q;
+      const Orbit &oa = ms.GetOrbit(a);
+      const Orbit &ob = ms.GetOrbit(b);
+      const Orbit &oi = ms.GetOrbit(i);
+      const Orbit &oj = ms.GetOrbit(j);
+
+      double me = 0.0;
+      for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+      {
+        for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
+        {
+          const int M2 = ma + mb;
+          if (std::abs(M2) > 2 * J)
+          {
+            continue;
+          }
+          const double cg_ab = AngMom::CG(0.5 * oa.j2, 0.5 * ma, 0.5 * ob.j2, 0.5 * mb, J, 0.5 * M2);
+          if (std::abs(cg_ab) < 1e-16)
+          {
+            continue;
+          }
+          for (int mi = -oi.j2; mi <= oi.j2; mi += 2)
+          {
+            const int mj = M2 - mi;
+            if (mj < -oj.j2 or mj > oj.j2 or ((mj + oj.j2) % 2 != 0))
+            {
+              continue;
+            }
+            const double cg_ij = AngMom::CG(0.5 * oi.j2, 0.5 * mi, 0.5 * oj.j2, 0.5 * mj, J, 0.5 * M2);
+            if (std::abs(cg_ij) < 1e-16)
+            {
+              continue;
+            }
+            const double rm = EVCZ2ResidualMscheme(t, z, a, ma, b, mb, i, mi, j, mj, holes, particles);
+            me += cg_ab * cg_ij * rm;
+          }
+        }
+      }
+      // Unreduced inverse: X^J = (2J+1)^{-1} sum_M CG CG X(m). Summing M without the hat
+      // leaves a fake Ĵ^{2} relative to AMC / GetTBME_J.
+      const double nrm = (bra.delta_pq() ? PhysConst::SQRT2 : 1.0) * (ket.delta_pq() ? PhysConst::SQRT2 : 1.0);
+      dz.TwoBody.SetTBME_J(J, a, b, i, j, -me / ((2 * J + 1.0) * nrm));
+    }
+
+    t.profiler.timer["ReferenceImplementations::" + std::string(__func__)] += omp_get_wtime() - t_start;
+  }
 
 } // namespace ReferenceImplementations
 ////////////////////////////////////////////////////////////////////

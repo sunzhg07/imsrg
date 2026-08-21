@@ -41,4 +41,5 @@
 #include "PhysicalConstants.hh"
 #include "RPA.hh"
 #include "EOM.hh"
+#include "evc.hh"
 #include "ReferenceImplementations.hh"

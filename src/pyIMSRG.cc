@@ -121,9 +121,15 @@ PYBIND11_MODULE(pyIMSRG, m) {
 
       py::class_<TwoBodyChannel_CC>(m, "TwoBodyChannel_CC")
           .def(py::init<>())
-          .def_readwrite("J", &TwoBodyChannel::J)
-          .def_readwrite("parity", &TwoBodyChannel::parity)
-          .def_readwrite("Tz", &TwoBodyChannel::Tz);
+          .def("GetNumberKets", &TwoBodyChannel_CC::GetNumberKets)
+          .def("GetKet", [](TwoBodyChannel_CC &self, int i)
+               { return self.GetKet(i); })
+          .def("GetLocalIndex",
+               [](TwoBodyChannel_CC &self, int p, int q)
+               { return self.GetLocalIndex(p, q); })
+          .def_readwrite("J", &TwoBodyChannel_CC::J)
+          .def_readwrite("parity", &TwoBodyChannel_CC::parity)
+          .def_readwrite("Tz", &TwoBodyChannel_CC::Tz);
 
       py::class_<ThreeBodyChannel>(m, "ThreeBodyChannel")
           .def(py::init<>())
@@ -194,6 +200,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
           .def("GetTwoBodyChannelIndex", &ModelSpace::GetTwoBodyChannelIndex)
           .def("GetTwoBodyChannel", [](ModelSpace &self, int ch)
                { return self.GetTwoBodyChannel(ch); })
+          .def("GetTwoBodyChannel_CC", [](ModelSpace &self, int ch)
+               { return self.GetTwoBodyChannel_CC(ch); })
           .def("GetThreeBodyChannel", &ModelSpace::GetThreeBodyChannel)
           .def("GetThreeBodyChannelIndex", &ModelSpace::GetThreeBodyChannelIndex, py::arg("twoJ"), py::arg("parity"), py::arg("twoTz"))
           .def("Index2String", &ModelSpace::Index2String)
@@ -1021,6 +1029,9 @@ PYBIND11_MODULE(pyIMSRG, m) {
        "comm223_231_st",
        &Commutator::FactorizedDoubleCommutator_eths::comm223_231_st);
   FactorizedDoubleCommutator_eths.def(
+       "comm223_231_chi1b_tensor",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_231_chi1b_tensor);
+  FactorizedDoubleCommutator_eths.def(
        "comm223_232",
        &Commutator::FactorizedDoubleCommutator_eths::comm223_232);
   FactorizedDoubleCommutator_eths.def(
@@ -1029,6 +1040,69 @@ PYBIND11_MODULE(pyIMSRG, m) {
   FactorizedDoubleCommutator_eths.def(
        "SetUse_2b_Intermediates",
        &Commutator::FactorizedDoubleCommutator_eths::SetUse_2b_Intermediates);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeI_1b",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeI_1b);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeII_1b",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeII_1b);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeIII_1b",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeIII_1b);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeIIIa_1b",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeIIIa_1b);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeGI_2b",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeGI_2b);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeGII_2b",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeGII_2b);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeGIIIa_2b",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeGIIIa_2b);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeGIIIb_2b",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeGIIIb_2b);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeGIIIc_2b",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeGIIIc_2b);
+  FactorizedDoubleCommutator_eths.def(
+       "DebugChiPandyaHermiticity",
+       &Commutator::FactorizedDoubleCommutator_eths::DebugChiPandyaHermiticity);
+  FactorizedDoubleCommutator_eths.def(
+       "DebugTensorPandyaRoundTrip",
+       &Commutator::FactorizedDoubleCommutator_eths::DebugTensorPandyaRoundTrip);
+  FactorizedDoubleCommutator_eths.def(
+       "ForceScalarMakeNotReduced",
+       &Commutator::FactorizedDoubleCommutator_eths::ForceScalarMakeNotReduced);
+  FactorizedDoubleCommutator_eths.def(
+       "comm223_232_GIIIa",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_232_GIIIa);
+  FactorizedDoubleCommutator_eths.def(
+       "comm223_232_GIIIb",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_232_GIIIb);
+  FactorizedDoubleCommutator_eths.def(
+       "comm223_232_GIIIc",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_232_GIIIc);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeGIVa_2b",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeGIVa_2b);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeGIVb_2b",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeGIVb_2b);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeGIVc_2b",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeGIVc_2b);
+  FactorizedDoubleCommutator_eths.def(
+       "comm223_232_GIVa",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_232_GIVa);
+  FactorizedDoubleCommutator_eths.def(
+       "comm223_232_GIVb",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_232_GIVb);
+  FactorizedDoubleCommutator_eths.def(
+       "comm223_232_GIVc",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_232_GIVc);
   FactorizedDoubleCommutator.def(
       "SetUse_GT_TypeI_2b",
       &Commutator::FactorizedDoubleCommutator::SetUse_GT_TypeI_2b);
@@ -1149,6 +1223,51 @@ PYBIND11_MODULE(pyIMSRG, m) {
                                &ReferenceImplementations::comm223_231);
   ReferenceImplementations.def("comm223_232",
                                &ReferenceImplementations::comm223_232);
+  ReferenceImplementations.def("comm223_231_tts",
+                               &ReferenceImplementations::comm223_231_tts);
+  ReferenceImplementations.def("comm223_231_tts_fI",
+                               &ReferenceImplementations::comm223_231_tts_fI);
+  ReferenceImplementations.def("comm223_231_tts_fII",
+                               &ReferenceImplementations::comm223_231_tts_fII);
+  ReferenceImplementations.def("comm223_231_tts_fIIIa",
+                               &ReferenceImplementations::comm223_231_tts_fIIIa);
+  ReferenceImplementations.def("comm223_231_tts_fIIIb",
+                               &ReferenceImplementations::comm223_231_tts_fIIIb);
+  ReferenceImplementations.def("comm223_232_tts",
+                               &ReferenceImplementations::comm223_232_tts);
+  ReferenceImplementations.def("comm223_232_tts_GI",
+                               &ReferenceImplementations::comm223_232_tts_GI);
+  ReferenceImplementations.def("comm223_232_tts_GII",
+                               &ReferenceImplementations::comm223_232_tts_GII);
+  ReferenceImplementations.def("comm223_232_tts_GIIIa",
+                               &ReferenceImplementations::comm223_232_tts_GIIIa);
+  ReferenceImplementations.def("comm223_232_tts_GIIIb",
+                               &ReferenceImplementations::comm223_232_tts_GIIIb);
+  ReferenceImplementations.def("comm223_232_tts_GIIIc",
+                               &ReferenceImplementations::comm223_232_tts_GIIIc,
+                               py::arg("Eta"), py::arg("Gamma"), py::arg("Z"),
+                               py::arg("which_term") = 0);
+  ReferenceImplementations.def("comm223_232_tts_GIIIc_term1",
+                               &ReferenceImplementations::comm223_232_tts_GIIIc_term1);
+  ReferenceImplementations.def("comm223_232_tts_GIIIc_term2",
+                               &ReferenceImplementations::comm223_232_tts_GIIIc_term2);
+  ReferenceImplementations.def(
+      "comm223_232_tts_GIIIc_tensor_red",
+      &ReferenceImplementations::comm223_232_tts_GIIIc_tensor_red,
+      py::arg("Eta"), py::arg("Gamma"), py::arg("Z"),
+      py::arg("which_term") = 0);
+  ReferenceImplementations.def("comm223_232_tts_GIVa",
+                               &ReferenceImplementations::comm223_232_tts_GIVa);
+  ReferenceImplementations.def("comm223_232_tts_GIVb",
+                               &ReferenceImplementations::comm223_232_tts_GIVb);
+  ReferenceImplementations.def("comm223_232_tts_GIVc",
+                               &ReferenceImplementations::comm223_232_tts_GIVc);
+  ReferenceImplementations.def(
+      "comm223_231_tts_BruteForce",
+      &ReferenceImplementations::comm223_231_tts_BruteForce);
+  ReferenceImplementations.def(
+      "comm223_232_tts_BruteForce",
+      &ReferenceImplementations::comm223_232_tts_BruteForce);
      ReferenceImplementations.def("comm223_132",
                                                                             &ReferenceImplementations::comm223_132);
      ReferenceImplementations.def("comm223_132_ladder",
@@ -1157,6 +1276,12 @@ PYBIND11_MODULE(pyIMSRG, m) {
                                                                             &ReferenceImplementations::comm223_132_cross);
      ReferenceImplementations.def("comm223_132_onebody",
                                                                             &ReferenceImplementations::comm223_132_onebody);
+  ReferenceImplementations.def("evc_z1_mscheme",
+                               &ReferenceImplementations::evc_z1_mscheme);
+  ReferenceImplementations.def("evc_z2_mscheme",
+                               &ReferenceImplementations::evc_z2_mscheme);
+  ReferenceImplementations.def("evc_z0_mscheme",
+                               &ReferenceImplementations::evc_z0_mscheme);
 
   ReferenceImplementations.def("comm331st",
                                &ReferenceImplementations::comm331st);
@@ -1215,7 +1340,18 @@ PYBIND11_MODULE(pyIMSRG, m) {
                .def_property_readonly("ritz",
                           [](const EOM::ArnoldiResult &r) {
                                return r.ritz;
-                          });
+                          })
+               .def_property_readonly("residuals",
+                          [](const EOM::ArnoldiResult &r) {
+                               std::vector<double> v(r.residuals.n_elem);
+                               for (size_t i = 0; i < r.residuals.n_elem; ++i)
+                                    v[i] = r.residuals(i);
+                               return v;
+                          })
+               .def_readonly("max_ortho", &EOM::ArnoldiResult::max_ortho)
+               .def_readonly("steps", &EOM::ArnoldiResult::steps)
+               .def_readonly("converged", &EOM::ArnoldiResult::converged)
+               .def_readonly("stop_reason", &EOM::ArnoldiResult::stop_reason);
 
      py::class_<EOM::ArnoldiTraceDiffResult>(m, "ArnoldiTraceDiffResult")
                .def_readonly("found", &EOM::ArnoldiTraceDiffResult::found)
@@ -1256,6 +1392,21 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("max_iter") = 200, py::arg("state_want") = 6)
       // MR setup — must be called before operator-level methods in MR mode
       .def("ComputeNorm", &EOM::ComputeNorm, py::arg("Op1"), py::arg("Op2"))
+      .def("FlattenOperator", [](const EOM &self, Operator &Op) {
+            arma::vec v = self.FlattenOperator(Op);
+            return py::array_t<double>({(py::ssize_t)v.n_elem}, v.memptr());
+          }, py::arg("Op"))
+      .def("UnflattenOperator", [](const EOM &self, Operator &Op,
+                                   py::array_t<double, py::array::c_style | py::array::forcecast> arr) {
+            py::buffer_info info = arr.request();
+            if (info.ndim != 1)
+              throw std::runtime_error("UnflattenOperator: need 1-D array");
+            arma::vec v(info.shape[0], arma::fill::zeros);
+            const double *p = static_cast<double *>(info.ptr);
+            for (py::ssize_t i = 0; i < info.shape[0]; ++i)
+              v((arma::uword)i) = p[i];
+            self.UnflattenOperator(Op, v);
+          }, py::arg("Op"), py::arg("v"))
       .def("ConstructConfigs",       &EOM::ConstructConfigs)
       .def("ConstructNormMatrix",    &EOM::ConstructNormMatrix)
       .def("ConstructProjectMatrix", &EOM::ConstructProjectMatrix)
@@ -1265,6 +1416,27 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("check_expectation"))
       .def("SetArnoldiPrintTiming", &EOM::SetArnoldiPrintTiming,
            py::arg("print_timing"))
+      .def("SetArnoldiMonitorOrtho", &EOM::SetArnoldiMonitorOrtho,
+           py::arg("monitor"))
+      .def("SetArnoldiUseH3", &EOM::SetArnoldiUseH3, py::arg("use_h3"))
+      .def("SetUseRdm3", &EOM::SetUseRdm3, py::arg("use"),
+           "Include valence ρ₃ (TRBTD) in N / overlap; default false")
+      .def("GetUseRdm3", &EOM::GetUseRdm3)
+      .def("SetIncludeConfigs", &EOM::SetIncludeConfigs,
+           py::arg("qv"), py::arg("ph"), py::arg("ppvv"), py::arg("pphv"),
+           py::arg("pphh"),
+           "Select EOM config blocks (qv,ph,ppvv,pphv,pphh); call before ConstructConfigs")
+      .def("PrintIncludeConfigs", &EOM::PrintIncludeConfigs)
+      .def("SetArnoldiPreferPositive", &EOM::SetArnoldiPreferPositive,
+           py::arg("prefer"),
+           "Prefer ΔE >= soft_floor when packing returned roots")
+      .def("SetArnoldiSoftFloor", &EOM::SetArnoldiSoftFloor, py::arg("floor_mev"),
+           "Soft-mode floor (MeV) for prefer-positive selection")
+      .def("SetArnoldiEnergyTol", &EOM::SetArnoldiEnergyTol, py::arg("tol"))
+      .def("SetArnoldiResidTol", &EOM::SetArnoldiResidTol, py::arg("tol"))
+      .def("SetArnoldiOrthoWarn", &EOM::SetArnoldiOrthoWarn, py::arg("tol"))
+      .def("SetArnoldiOrthoFail", &EOM::SetArnoldiOrthoFail, py::arg("tol"))
+      .def("SetArnoldiStableWindow", &EOM::SetArnoldiStableWindow, py::arg("n"))
       .def("SetReferenceEnergyShift", &EOM::SetReferenceEnergyShift,
            py::arg("energy"))
       .def("ClearReferenceEnergyShift", &EOM::ClearReferenceEnergyShift)
@@ -1274,7 +1446,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("force_decouple",            &EOM::force_decouple,
            py::arg("H"))
       .def("EraseValence",             &EOM::EraseValence,
-           py::arg("H"))
+           py::arg("H"),
+           "DISABLED no-op: dropping vv + E_val*N is incorrect for MR-EOM")
       .def("EraseQspace",              &EOM::EraseQspace,
            py::arg("H"))
       .def("ProjectOprator",            &EOM::ProjectOprator,
@@ -1292,9 +1465,28 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("DcomMultiref",             &EOM::DcomMultiref,
            py::arg("haml"), py::arg("chi"))
       .def("ExpectationValue",         &EOM::ExpectationValue,
-           py::arg("Psi"))
+           py::arg("Psi"),
+           "Delta E from full decoupled Hs (vv kept); no E_val shift")
+      .def("ExpectationValueFull",     &EOM::ExpectationValueFull,
+           py::arg("Psi"), py::arg("use_rdm_norm") = false,
+           "Delta E from Hs_full (vv kept); no E_val shift. "
+           "Dcom already includes the S vs chi 1/2.")
+      .def("HaveHsFull",               &EOM::HaveHsFull)
+      .def("GetHsFull",                &EOM::GetHsFull,
+           py::return_value_policy::reference_internal)
       .def("ArnoldiSolve",     &EOM::ArnoldiSolve,
            py::arg("vi"), py::arg("max_iter"), py::arg("state_want"))
+      .def("BuildCanonicalTransform", &EOM::BuildCanonicalTransform,
+           py::arg("eps") = 1e-8,
+           "Canonical ortho X=U s^{-1/2} of Nkernel; returns M retained")
+      .def("SolveGEPCanonical", &EOM::SolveGEPCanonical,
+           py::arg("state_want"), py::arg("eps") = 1e-8,
+           py::arg("n_h2_subspace") = 50,
+           "Dense GEP: canon. ortho; if UseH3, H2 then H2+H3 in n_h2_subspace")
+      .def("ArnoldiSolveH2",   &EOM::ArnoldiSolveH2,
+           py::arg("vi"), py::arg("max_iter"), py::arg("state_want"),
+           "Arnoldi on full decoupled H (no H_PP/H_QQ split, no E_val shift); "
+           "Hall = (Htc_ab+Htc_ba)/2 + Dcom (default; matches ExpectationValue)")
       .def("ArnoldiSolve_old", &EOM::ArnoldiSolve_old,
            py::arg("vi"), py::arg("max_iter"), py::arg("state_want"))
       .def("CompareArnoldiHallBuild", &EOM::CompareArnoldiHallBuild,
@@ -1387,6 +1579,34 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("PrintB", [](RPA &self) { std::cout << self.B << std::endl; })
       .def("GetEgs", &RPA::GetEgs);
 
+  py::class_<EVC> evc(m, "EVC");
+  py::class_<EVC::ClusterAmplitudes>(evc, "ClusterAmplitudes")
+      .def_readwrite("z0", &EVC::ClusterAmplitudes::z0)
+      .def_readwrite("z", &EVC::ClusterAmplitudes::z);
+  py::class_<EVC::RHS>(evc, "RHS")
+      .def_readwrite("dz0", &EVC::RHS::dz0)
+      .def_readwrite("dz", &EVC::RHS::dz);
+  evc.def(py::init<ModelSpace &>())
+      .def("SetEulerSteps", &EVC::SetEulerSteps)
+      .def("SetUseRK4", &EVC::SetUseRK4)
+      .def("ExtractExcitationPart", &EVC::ExtractExcitationPart)
+      .def("ExtractTFromOmega", &EVC::ExtractTFromOmega)
+      .def("BuildZ0RHS", &EVC::BuildZ0RHS)
+      .def("BuildZ1RHS", &EVC::BuildZ1RHS)
+      .def("BuildZ2RHS", &EVC::BuildZ2RHS)
+      .def("BuildRHS", &EVC::BuildRHS)
+      .def("Solve", &EVC::Solve, py::arg("t"), py::arg("lambda_max") = 1.0)
+      .def("SolveFromOmega", &EVC::SolveFromOmega, py::arg("omega"), py::arg("lambda_max") = 1.0)
+      .def("SolveEuler", &EVC::SolveEuler, py::arg("t"), py::arg("tdagger"), py::arg("lambda_max") = 1.0)
+      .def("CoupledClusterEnergy", &EVC::CoupledClusterEnergy)
+      .def("HamiltonianKernel", &EVC::HamiltonianKernel)
+      .def("NormKernel", &EVC::NormKernel)
+      .def("EvaluateKernels", [](EVC &self, const Operator &h0, const Operator &omega_i, const Operator &omega_k)
+           {
+             const auto kn = self.EvaluateKernels(h0, omega_i, omega_k);
+             return py::make_tuple(kn[0], kn[1]);
+           });
+
   py::class_<UnitTest>(m, "UnitTest")
       //      .def(py::init<>())
       .def(py::init<ModelSpace &>())
@@ -1412,6 +1632,12 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("TestFactorizedDoubleCommutators",
            &UnitTest::TestFactorizedDoubleCommutators)
       .def("TestPerturbativeTriples", &UnitTest::TestPerturbativeTriples)
+      .def("Test_evc_rhs_ccsd", &UnitTest::Test_evc_rhs_ccsd)
+      .def("Test_evc_z1_jscheme", &UnitTest::Test_evc_z1_jscheme)
+      .def("Test_evc_z2_jscheme", &UnitTest::Test_evc_z2_jscheme)
+      .def("Test_evc_z0_jscheme", &UnitTest::Test_evc_z0_jscheme)
+      .def("Test_evc_ode", &UnitTest::Test_evc_ode)
+      .def("Test_evc_kernels", &UnitTest::Test_evc_kernels)
       .def("Test_comm110ss", &UnitTest::Test_comm110ss)
       .def("Test_comm220ss", &UnitTest::Test_comm220ss)
       .def("Test_comm111ss", &UnitTest::Test_comm111ss)

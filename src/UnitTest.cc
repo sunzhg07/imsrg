@@ -2,6 +2,8 @@
 #include "UnitTest.hh"
 #include "AngMom.hh"
 #include <armadillo>
+#include <array>
+#include <cmath>
 #include <random>
 #include <string>
 #include "Commutator.hh"
@@ -11,6 +13,7 @@
 #include "imsrg_util.hh"
 #include "version.hh"
 #include "ReferenceImplementations.hh" // for commutators
+#include "evc.hh"
 #include "IMSRGSolver.hh"              // for Perturbative Triples
 
 #include <omp.h>
@@ -1762,6 +1765,388 @@ bool UnitTest::Test_comm333_ppp_hhhst(const Operator &X, const Operator &Y)
 bool UnitTest::Test_comm333_pph_hhpst(const Operator &X, const Operator &Y)
 {
   return Test_against_ref_impl(X, Y, Commutator::comm333_pph_hhpst, ReferenceImplementations::comm333_pph_hhpst, "comm333_pph_hhpst");
+}
+
+bool UnitTest::Test_evc_rhs_ccsd(const Operator &Tdagger, const Operator &Z)
+{
+  struct RHSDiagrams
+  {
+    double dz0 = 0.0;
+    Operator c1;
+    Operator c2;
+    Operator c3;
+    Operator c4;
+
+    RHSDiagrams(ModelSpace &ms)
+        : c1(ms, 0, 0, 0, 2), c2(ms, 0, 0, 0, 2), c3(ms, 0, 0, 0, 2), c4(ms, 0, 0, 0, 2)
+    {
+      c1.SetNonHermitian();
+      c2.SetNonHermitian();
+      c3.SetNonHermitian();
+      c4.SetNonHermitian();
+    }
+  };
+
+  auto project_excitation = [&](Operator &op)
+  {
+    Operator projected(*modelspace, op.GetJRank(), op.GetTRank(), op.GetParity(), std::max(2, op.GetParticleRank()));
+    projected.SetNonHermitian();
+    projected.ZeroBody = op.ZeroBody;
+    for (auto i : modelspace->holes)
+    {
+      for (auto a : modelspace->particles)
+      {
+        projected.OneBody(a, i) = op.OneBody(a, i);
+      }
+    }
+    for (auto &iter : op.TwoBody.MatEl)
+    {
+      const size_t ch_bra = iter.first[0];
+      const size_t ch_ket = iter.first[1];
+      const TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(ch_bra);
+      const TwoBodyChannel &tbc_ket = modelspace->GetTwoBodyChannel(ch_ket);
+      arma::mat &dst = projected.TwoBody.GetMatrix(ch_bra, ch_ket);
+      const arma::mat &src = iter.second;
+      for (auto ibra : tbc_bra.GetKetIndex_pp())
+      {
+        for (auto iket : tbc_ket.GetKetIndex_hh())
+        {
+          dst(ibra, iket) = src(ibra, iket);
+        }
+      }
+    }
+    op = std::move(projected);
+  };
+
+  auto only_one_body = [&](const Operator &src)
+  {
+    Operator tmp(src);
+    tmp.EraseZeroBody();
+    tmp.EraseTwoBody();
+    tmp.SetNonHermitian();
+    return tmp;
+  };
+
+  auto only_two_body = [&](const Operator &src)
+  {
+    Operator tmp(src);
+    tmp.EraseZeroBody();
+    tmp.EraseOneBody();
+    tmp.SetNonHermitian();
+    return tmp;
+  };
+
+  auto build_commutator = [&](const Operator &X, const Operator &Y)
+  {
+    Operator X1 = only_one_body(X);
+    Operator X2 = only_two_body(X);
+    Operator Y1 = only_one_body(Y);
+    Operator Y2 = only_two_body(Y);
+    Operator out(*modelspace, 0, 0, 0, 2);
+    out.SetNonHermitian();
+    out.Erase();
+
+    ReferenceImplementations::comm110ss(X1, Y1, out);
+    ReferenceImplementations::comm220ss(X2, Y2, out);
+
+    ReferenceImplementations::comm111ss(X1, Y1, out);
+    ReferenceImplementations::comm121ss(X1, Y2, out);
+
+    Operator tmp_21(*modelspace, 0, 0, 0, 2);
+    tmp_21.SetNonHermitian();
+    tmp_21.Erase();
+    ReferenceImplementations::comm121ss(Y1, X2, tmp_21);
+    out -= tmp_21;
+
+    tmp_21.Erase();
+    ReferenceImplementations::comm122ss(X1, Y2, out);
+    ReferenceImplementations::comm122ss(Y1, X2, tmp_21);
+    out -= tmp_21;
+
+    ReferenceImplementations::comm221ss(X2, Y2, out);
+    ReferenceImplementations::comm222_pp_hhss(X2, Y2, out);
+    ReferenceImplementations::comm222_phss(X2, Y2, out);
+
+    project_excitation(out);
+    return out;
+  };
+
+  RHSDiagrams ref(*modelspace);
+  EVC evc(*modelspace);
+  auto opt = evc.BuildRHSDiagrams(Tdagger, Z);
+
+  Operator c1 = build_commutator(Tdagger, Z);
+  Operator c2 = build_commutator(c1, Z);
+  Operator c3 = build_commutator(c2, Z);
+  Operator c4 = build_commutator(c3, Z);
+
+  ref.c1 = c1 * -1.0;
+  ref.c2 = c2 * -0.5;
+  ref.c3 = c3 * -(1.0 / 6.0);
+  ref.c4 = c4 * -(1.0 / 24.0);
+  ref.dz0 = -(Tdagger.ZeroBody + c1.ZeroBody + 0.5 * c2.ZeroBody + (1.0 / 6.0) * c3.ZeroBody + (1.0 / 24.0) * c4.ZeroBody);
+
+  double summed_error = std::abs(opt.dz0 - ref.dz0)
+                      + std::abs((opt.c1 - ref.c1).Norm() + (opt.c2 - ref.c2).Norm() + (opt.c3 - ref.c3).Norm() + (opt.c4 - ref.c4).Norm());
+  bool passed = summed_error < 1e-6;
+  std::string passfail = passed ? "PASS " : "FAIL";
+  std::cout << "   evc_rhs_ccsd  sum_ref, sum_opt = " << (ref.c1.Norm() + ref.c2.Norm() + ref.c3.Norm() + ref.c4.Norm()) << " " << (opt.c1.Norm() + opt.c2.Norm() + opt.c3.Norm() + opt.c4.Norm())
+            << "    summed error = " << summed_error << "  => " << passfail << std::endl;
+  return passed;
+}
+
+bool UnitTest::Test_evc_z1_jscheme(const Operator &T, const Operator &Z)
+{
+  EVC evc(*modelspace);
+  Operator t = evc.ExtractExcitationPart(T);
+  Operator z = evc.ExtractExcitationPart(Z);
+
+  const double t_j = omp_get_wtime();
+  Operator dz_j = evc.BuildZ1RHS(t, z);
+  const double dt_j = omp_get_wtime() - t_j;
+
+  Operator dz_m(*modelspace, 0, 0, 0, 2);
+  dz_m.SetNonHermitian();
+  dz_m.Erase();
+  const double t_m = omp_get_wtime();
+  ReferenceImplementations::evc_z1_mscheme(t, z, dz_m);
+  const double dt_m = omp_get_wtime() - t_m;
+
+  double max_abs = 0.0;
+  double max_rel = 0.0;
+  int ncmp = 0;
+  int nfail = 0;
+  std::array<int, 5> hat_bin = {0, 0, 0, 0, 0}; // ~1, ~ĵ^{±2}, ~ĵ^{±4}, unused, other
+  for (auto i : modelspace->holes)
+  {
+    const Orbit &oi = modelspace->GetOrbit(i);
+    for (auto a : modelspace->particles)
+    {
+      const Orbit &oa = modelspace->GetOrbit(a);
+      if (oa.j2 != oi.j2 or oa.tz2 != oi.tz2 or ((oa.l + oi.l) % 2 != 0))
+      {
+        continue;
+      }
+      const double mj = dz_j.OneBody(a, i);
+      const double mm = dz_m.OneBody(a, i);
+      const double abserr = std::abs(mj - mm);
+      max_abs = std::max(max_abs, abserr);
+      ++ncmp;
+      if (std::abs(mm) < 1e-10 and std::abs(mj) < 1e-10)
+      {
+        continue;
+      }
+      if (abserr > 1e-6)
+      {
+        ++nfail;
+        if (nfail <= 8)
+        {
+          std::cout << "     ME a=" << a << " i=" << i << " j2=" << oa.j2
+                    << "  J=" << mj << "  m=" << mm << "  J/m=" << (mj / mm)
+                    << "  1/(2j+1)=" << 1.0 / (oa.j2 + 1.0) << std::endl;
+        }
+      }
+      if (std::abs(mm) > 1e-10)
+      {
+        const double ratio = mj / mm;
+        max_rel = std::max(max_rel, std::abs(ratio - 1.0));
+        const double invhat2 = 1.0 / (oa.j2 + 1.0);
+        const double invhat4 = invhat2 * invhat2;
+        if (std::abs(ratio - 1.0) < 0.05)
+        {
+          hat_bin[0]++;
+        }
+        else if (std::abs(ratio - invhat2) < 0.05 * std::abs(invhat2) or std::abs(ratio - (oa.j2 + 1.0)) < 0.05 * (oa.j2 + 1.0))
+        {
+          hat_bin[1]++;
+        }
+        else if (std::abs(ratio - invhat4) < 0.05 * invhat4 or std::abs(ratio - 1.0 / invhat4) < 0.05 / invhat4)
+        {
+          hat_bin[2]++;
+        }
+        else
+        {
+          hat_bin[4]++;
+        }
+      }
+    }
+  }
+
+  const bool passed = (ncmp > 0) and (max_abs < 1e-6);
+  const std::string passfail = passed ? "PASS " : "FAIL";
+  std::cout << "   evc_z1_jscheme  ||J||_1b=" << dz_j.OneBodyNorm()
+            << "  ||m||_1b=" << dz_m.OneBodyNorm()
+            << "  max|J-m|=" << max_abs
+            << "  max|J/m-1|=" << max_rel
+            << "  n=" << ncmp << " nfail=" << nfail
+            << "  t_J=" << dt_j << "s t_m=" << dt_m << "s"
+            << "  => " << passfail << std::endl;
+  if (not passed)
+  {
+    std::cout << "     ratio bins: ~1=" << hat_bin[0]
+              << "  ~ĵ^{±2}=" << hat_bin[1]
+              << "  ~ĵ^{±4}=" << hat_bin[2]
+              << "  other=" << hat_bin[4]
+              << "  (cluster at ĵ^{±2} => packaging, not AM)" << std::endl;
+  }
+  return passed;
+}
+
+bool UnitTest::Test_evc_z2_jscheme(const Operator &T, const Operator &Z)
+{
+  EVC evc(*modelspace);
+  Operator t = evc.ExtractExcitationPart(T);
+  Operator z = evc.ExtractExcitationPart(Z);
+
+  const double t_j = omp_get_wtime();
+  Operator dz_j = evc.BuildZ2RHS(t, z);
+  const double dt_j = omp_get_wtime() - t_j;
+
+  Operator dz_m(*modelspace, 0, 0, 0, 2);
+  dz_m.SetNonHermitian();
+  dz_m.Erase();
+  const double t_m = omp_get_wtime();
+  ReferenceImplementations::evc_z2_mscheme(t, z, dz_m);
+  const double dt_m = omp_get_wtime() - t_m;
+
+  double max_abs = 0.0;
+  double max_rel = 0.0;
+  int ncmp = 0;
+  int nfail = 0;
+  const int nch = modelspace->GetNumberTwoBodyChannels();
+  for (int ch = 0; ch < nch; ++ch)
+  {
+    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(ch);
+    const auto &pp = tbc.GetKetIndex_pp();
+    const auto &hh = tbc.GetKetIndex_hh();
+    for (arma::uword ib = 0; ib < pp.n_rows; ++ib)
+    {
+      const int ibra = static_cast<int>(pp(ib));
+      const Ket &bra = tbc.GetKet(ibra);
+      for (arma::uword ik = 0; ik < hh.n_rows; ++ik)
+      {
+        const int iket = static_cast<int>(hh(ik));
+        const Ket &ket = tbc.GetKet(iket);
+        const double mj = dz_j.TwoBody.GetTBME_J(tbc.J, bra.p, bra.q, ket.p, ket.q);
+        const double mm = dz_m.TwoBody.GetTBME_J(tbc.J, bra.p, bra.q, ket.p, ket.q);
+        const double abserr = std::abs(mj - mm);
+        max_abs = std::max(max_abs, abserr);
+        ++ncmp;
+        if (std::abs(mm) > 1e-10)
+        {
+          max_rel = std::max(max_rel, std::abs(mj / mm - 1.0));
+        }
+        if (abserr > 1e-6)
+        {
+          ++nfail;
+          if (nfail <= 8)
+          {
+            std::cout << "     ME J=" << tbc.J << " abij=" << bra.p << " " << bra.q << " " << ket.p << " " << ket.q
+                      << "  J=" << mj << "  m=" << mm << "  J/m=" << (mj / mm) << std::endl;
+          }
+        }
+      }
+    }
+  }
+
+  const bool passed = (ncmp > 0) and (max_abs < 1e-6);
+  const std::string passfail = passed ? "PASS " : "FAIL";
+  std::cout << "   evc_z2_jscheme  ||J||_2b=" << dz_j.TwoBodyNorm()
+            << "  ||m||_2b=" << dz_m.TwoBodyNorm()
+            << "  max|J-m|=" << max_abs
+            << "  max|J/m-1|=" << max_rel
+            << "  n=" << ncmp << " nfail=" << nfail
+            << "  t_J=" << dt_j << "s t_m=" << dt_m << "s"
+            << "  => " << passfail << std::endl;
+  return passed;
+}
+
+bool UnitTest::Test_evc_z0_jscheme(const Operator &T, const Operator &Z)
+{
+  EVC evc(*modelspace);
+  Operator t = evc.ExtractExcitationPart(T);
+  Operator z = evc.ExtractExcitationPart(Z);
+
+  const double mj = evc.BuildZ0RHS(t, z);
+  const double mm = ReferenceImplementations::evc_z0_mscheme(t, z);
+  const double abserr = std::abs(mj - mm);
+  const bool passed = abserr < 1e-6;
+  std::cout << "   evc_z0_jscheme  J=" << mj << "  m=" << mm
+            << "  |J-m|=" << abserr
+            << "  J/m=" << (std::abs(mm) > 1e-12 ? mj / mm : 0.0)
+            << "  => " << (passed ? "PASS" : "FAIL") << std::endl;
+  return passed;
+}
+
+bool UnitTest::Test_evc_ode(const Operator &T)
+{
+  EVC evc(*modelspace);
+  Operator t = evc.ExtractExcitationPart(T);
+
+  evc.SetEulerSteps(0);
+  auto zic = evc.Solve(t, 1.0);
+  Operator dic = zic.z - t;
+  dic.SetNonHermitian();
+  const double ic_err = std::abs(zic.z0) + std::abs(dic.OneBodyNorm()) + std::abs(dic.TwoBodyNorm());
+  const bool ic_ok = ic_err < 1e-12;
+
+  const double h = 0.01;
+  evc.SetUseRK4(false);
+  evc.SetEulerSteps(1);
+  auto zj = evc.Solve(t, h);
+
+  EVC::ClusterAmplitudes ic(*modelspace);
+  ic.z = t;
+  ic.z0 = 0.0;
+  EVC::RHS rhs_j = evc.BuildRHS(t, ic);
+  Operator expect_j = t + h * rhs_j.dz;
+  expect_j.SetNonHermitian();
+  const double expect0_j = h * rhs_j.dz0;
+  Operator dj = zj.z - expect_j;
+  dj.SetNonHermitian();
+  const double err_j = std::abs(zj.z0 - expect0_j) + std::abs(dj.OneBodyNorm()) + std::abs(dj.TwoBodyNorm());
+  const bool euler_ok = err_j < 1e-10;
+
+  Operator dz1_m(*modelspace, 0, 0, 0, 2);
+  Operator dz2_m(*modelspace, 0, 0, 0, 2);
+  dz1_m.SetNonHermitian();
+  dz2_m.SetNonHermitian();
+  dz1_m.Erase();
+  dz2_m.Erase();
+  ReferenceImplementations::evc_z1_mscheme(t, t, dz1_m);
+  ReferenceImplementations::evc_z2_mscheme(t, t, dz2_m);
+  Operator dz_m = dz1_m;
+  dz_m.TwoBody += dz2_m.TwoBody;
+  const double dz0_m = ReferenceImplementations::evc_z0_mscheme(t, t);
+  Operator expect_m = t + h * dz_m;
+  expect_m.SetNonHermitian();
+  const double expect0_m = h * dz0_m;
+  Operator dm = zj.z - expect_m;
+  dm.SetNonHermitian();
+  const double err_m = std::abs(zj.z0 - expect0_m) + std::abs(dm.OneBodyNorm()) + std::abs(dm.TwoBodyNorm());
+  const bool m_ok = err_m < 1e-6;
+
+  const bool passed = ic_ok and euler_ok and m_ok;
+  std::cout << "   evc_ode  IC |Z-T|=" << ic_err
+            << "  Euler vs J-RHS=" << err_j
+            << "  Euler vs m-RHS=" << err_m
+            << "  => " << (passed ? "PASS" : "FAIL") << std::endl;
+  return passed;
+}
+
+bool UnitTest::Test_evc_kernels(const Operator &H)
+{
+  EVC evc(*modelspace);
+  Operator omega(*modelspace, 0, 0, 0, 2);
+  omega.SetAntiHermitian();
+  const auto kn = evc.EvaluateKernels(H, omega, omega);
+  const double err_h = std::abs(kn[0] - H.ZeroBody);
+  const double err_n = std::abs(kn[1] - 1.0);
+  const bool passed = (err_h < 1e-8) and (err_n < 1e-8);
+  std::cout << "   evc_kernels  Ω=0  H=" << kn[0] << " H0=" << H.ZeroBody
+            << "  |H-H0|=" << err_h << "  N=" << kn[1]
+            << "  => " << (passed ? "PASS" : "FAIL") << std::endl;
+  return passed;
 }
 
 
@@ -6067,9 +6452,8 @@ bool UnitTest::TestFactorizedDoubleCommutators( Operator& eta, Operator& H )
 //  ReferenceImplementations::comm223_232_BruteForce(eta, H, OpOut_factorized);
 //  OpOut_factorized.EraseOneBody();
 //  ReferenceImplementations::comm223_231_fI(eta, H, OpOut_factorized);
-//  ReferenceImplementations::comm223_231_fII(eta, H, OpOut_factorized);
+//  ReferenceImplementations::comm223_231_tts_fII(eta, H, OpOut_factorized);
 //  ReferenceImplementations::comm223_231_fIIIa(eta, H, OpOut_factorized);
-//  ReferenceImplementations::comm223_231_fIIIb(eta, H, OpOut_factorized);
 //  ReferenceImplementations::comm223_231(eta, H, OpOut_factorized);
 //  ReferenceImplementations::comm223_232(eta, H, OpOut_factorized);
 

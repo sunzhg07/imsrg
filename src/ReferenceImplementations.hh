@@ -101,6 +101,29 @@ namespace ReferenceImplementations
   void comm223_232_BruteForce(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_231_tts_BruteForce(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_232_tts_BruteForce(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_231_tts(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_232_tts(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_232_tts_GI(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_232_tts_GII(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_232_tts_GIIIa(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_232_tts_GIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  /// which_term: 0=both, 1=G3c Term1 (χ_k), 2=G3c Term2 (χ_j)
+  void comm223_232_tts_GIIIc(const Operator &Eta, const Operator &Gamma, Operator &Z,
+                             int which_term = 0);
+  void comm223_232_tts_GIIIc_term1(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_232_tts_GIIIc_term2(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  /// Tensor-convention DIRECT: MakeReduced(Γ), reduced χ^θ, AMC reduced 9j on
+  /// diagonal (λ_Z=0) channels only, then MakeNotReduced → scalar Z.
+  /// AMC: learn/amc_tts/output/G3c_chi_theta_reduced_gamma_ninej.tex
+  void comm223_232_tts_GIIIc_tensor_red(const Operator &Eta, const Operator &Gamma,
+                                        Operator &Z, int which_term = 0);
+  void comm223_232_tts_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_232_tts_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_232_tts_GIVc(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_231_tts_fI(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_231_tts_fII(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_231_tts_fIIIa(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  void comm223_231_tts_fIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_231sst(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_232sst(const Operator &Eta, const Operator &Gamma, Operator &Z);
 
@@ -113,9 +136,12 @@ namespace ReferenceImplementations
 
   double TriplesGuess(const Operator &Omega, const Operator &H);
   void comm223_231_fI(const Operator &Eta, const Operator &Gamma, Operator &Z);
-  void comm223_231_fII(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_231_fIIIa(const Operator &Eta, const Operator &Gamma, Operator &Z);
-  void comm223_231_fIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z);
+
+  // EVC Z1 m-scheme gold (unreduced). t,z excitation-stored. dz.OneBody(a,i) = d z_i^a / dλ.
+  void evc_z1_mscheme(const Operator &t, const Operator &z, Operator &dz);
+  void evc_z2_mscheme(const Operator &t, const Operator &z, Operator &dz);
+  double evc_z0_mscheme(const Operator &t, const Operator &z);
 
 } // namespace ReferenceImplementations
 

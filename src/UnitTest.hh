@@ -3,6 +3,7 @@
 
 #include "ModelSpace.hh"
 #include "Operator.hh"
+#include "evc.hh"
 //#include "Commutator.hh"
 
 class UnitTest
@@ -105,6 +106,13 @@ class UnitTest
   bool Test_comm233_phst( const Operator& X, const Operator& Y ) ;
   bool Test_comm333_ppp_hhhst( const Operator& X, const Operator& Y ) ;
   bool Test_comm333_pph_hhpst( const Operator& X, const Operator& Y ) ;
+
+  bool Test_evc_rhs_ccsd( const Operator& Tdagger, const Operator& Z );
+  bool Test_evc_z1_jscheme( const Operator& T, const Operator& Z );
+  bool Test_evc_z2_jscheme( const Operator& T, const Operator& Z );
+  bool Test_evc_z0_jscheme( const Operator& T, const Operator& Z );
+  bool Test_evc_ode( const Operator& T );
+  bool Test_evc_kernels( const Operator& H );
 
   bool Mscheme_Test_comm330ss( const Operator& X, const Operator& Y );
   bool Mscheme_Test_comm331ss( const Operator& X, const Operator& Y );

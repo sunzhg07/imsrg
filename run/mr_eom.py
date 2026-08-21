@@ -160,19 +160,19 @@ nm = eom.ComputeNorm(chi_b, chi_a)
 print("original c++ ba: ", nm)
 
 
-print("enorm before: ", chi_a.Norm())
-
-eom.ProjectOprator(chi_a)
-eom.ProjectOprator(chi_b)
-nm = eom.ComputeNorm(chi_a, chi_b)
-print("original c++ ab proj : ", nm)
-nm = norm_multiref(eom, chi_a, chi_b)
-print("python ab proj : ", nm)
-
-print("enorm after: ", chi_a.Norm())
-
-
-# nm=eom.ComputeNorm(chi_b,chi_a)
+#print("enorm before: ", chi_a.Norm())
+#
+#eom.ProjectOprator(chi_a)
+#eom.ProjectOprator(chi_b)
+#nm = eom.ComputeNorm(chi_a, chi_b)
+#print("original c++ ab proj : ", nm)
+#nm = norm_multiref(eom, chi_a, chi_b)
+#print("python ab proj : ", nm)
+#
+#print("enorm after: ", chi_a.Norm())
+#
+#
+## nm=eom.ComputeNorm(chi_b,chi_a)
 # print('original c++ ba: ', nm)
 #
 ##
