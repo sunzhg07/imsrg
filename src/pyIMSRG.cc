@@ -296,6 +296,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
           .def("DoIsospinAveraging", &Operator::DoIsospinAveraging)
           .def("Norm", &Operator::Norm)
           .def("OneBodyNorm", &Operator::OneBodyNorm)
+          .def("OneLegNorm", &Operator::OneLegNorm)
           .def("TwoBodyNorm", &Operator::TwoBodyNorm)
           .def("ThreeBodyNorm", &Operator::ThreeBodyNorm)
           .def("SetHermitian", &Operator::SetHermitian)
@@ -323,6 +324,13 @@ PYBIND11_MODULE(pyIMSRG, m) {
           .def("GetTRank", &Operator::GetTRank)
           .def("GetParity", &Operator::GetParity)
           .def("GetNumberLegs", &Operator::GetNumberLegs)
+          .def("SetNumberLegs", &Operator::SetNumberLegs, py::arg("legs"))
+          .def("SetQSpaceOrbit", &Operator::SetQSpaceOrbit, py::arg("q"))
+          .def("GetQSpaceOrbit", &Operator::GetQSpaceOrbit)
+          .def("IsNumberConserving", &Operator::IsNumberConserving)
+          .def("ThreeLegNorm", &Operator::ThreeLegNorm)
+          .def("EraseThreeLeg", &Operator::EraseThreeLeg)
+          .def_readwrite("ThreeLeg", &Operator::ThreeLeg)
 //          .def("GetE3max", &Operator::GetE3max)
 //          .def("SetE3max", &Operator::SetE3max)
           .def("PrintTimes", &Operator::PrintTimes)
@@ -347,6 +355,21 @@ PYBIND11_MODULE(pyIMSRG, m) {
               py::arg("filename"))
           //      .def("IsospinProject", &Operator::IsospinProject)
           ;
+
+      py::class_<ThreeLegME>(m, "ThreeLegME")
+          .def(py::init<>())
+          .def("GetME", &ThreeLegME::GetME, py::arg("ch"), py::arg("a"), py::arg("b"), py::arg("c"))
+          .def("GetME_norm", &ThreeLegME::GetME_norm, py::arg("ch"), py::arg("a"), py::arg("b"), py::arg("c"))
+          .def("GetME_J", &ThreeLegME::GetME_J, py::arg("J"), py::arg("a"), py::arg("b"), py::arg("c"))
+          .def("SetME", &ThreeLegME::SetME, py::arg("ch"), py::arg("a"), py::arg("b"), py::arg("c"), py::arg("me"))
+          .def("AddToME", &ThreeLegME::AddToME, py::arg("ch"), py::arg("a"), py::arg("b"), py::arg("c"), py::arg("me"))
+          .def("AddToME_J", &ThreeLegME::AddToME_J, py::arg("J"), py::arg("a"), py::arg("b"), py::arg("c"), py::arg("me"))
+          .def("Norm", &ThreeLegME::Norm)
+          .def("Erase", &ThreeLegME::Erase)
+          .def("Allocate", &ThreeLegME::Allocate)
+          .def("GetMatrix", [](ThreeLegME &self, size_t ch) -> arma::mat &
+               { return self.GetMatrix(ch); },
+               py::arg("ch"), py::return_value_policy::reference_internal);
 
   py::class_<arma::mat>(m, "ArmaMat")
       .def(py::init<>())
@@ -883,6 +906,12 @@ PYBIND11_MODULE(pyIMSRG, m) {
   Commutator.def("Commutator", &Commutator::Commutator);
   Commutator.def("CommutatorScalarScalar", &Commutator::CommutatorScalarScalar);
   Commutator.def("CommutatorScalarTensor", &Commutator::CommutatorScalarTensor);
+  Commutator.def("CommutatorScalarDagger", &Commutator::CommutatorScalarDagger);
+  Commutator.def("comm211sd", &Commutator::comm211sd);
+  Commutator.def("comm231sd", &Commutator::comm231sd);
+  Commutator.def("comm413_233sd", &Commutator::comm413_233sd);
+  Commutator.def("comm433_pp_hh_431sd", &Commutator::comm433_pp_hh_431sd);
+  Commutator.def("comm433sd_ph", &Commutator::comm433sd_ph);
   Commutator.def("SetUseIMSRG3", &Commutator::SetUseIMSRG3);
   Commutator.def("SetUseIMSRG3N7", &Commutator::SetUseIMSRG3N7);
   Commutator.def("SetUseIMSRG3N7_Tensor", &Commutator::SetUseIMSRG3N7_Tensor);
@@ -1053,6 +1082,9 @@ PYBIND11_MODULE(pyIMSRG, m) {
   FactorizedDoubleCommutator_eths.def(
        "SetUse_TypeIIIa_1b",
        &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeIIIa_1b);
+  FactorizedDoubleCommutator_eths.def(
+       "SetUse_TypeIIIa_slow",
+       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeIIIa_slow);
   FactorizedDoubleCommutator_eths.def(
        "SetUse_TypeGI_2b",
        &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeGI_2b);
@@ -1376,7 +1408,19 @@ PYBIND11_MODULE(pyIMSRG, m) {
   // EOM::RunResult — returned by EOM.Run()
   py::class_<EOM::RunResult>(m, "RunResult")
       .def_readonly("eref",    &EOM::RunResult::eref)
-      .def_readonly("arnoldi", &EOM::RunResult::arnoldi);
+      .def_readonly("arnoldi", &EOM::RunResult::arnoldi)
+      .def_readonly("Q_orbit", &EOM::RunResult::Q_orbit,
+           "PA/PR: attached particle or removed hole orbit index (-1 if N/A)")
+      .def_readonly("spe", &EOM::RunResult::spe,
+           "Hs OneBody(Q,Q) in the PA/PR channel")
+      .def_readonly("rayleigh_1h", &EOM::RunResult::rayleigh_1h,
+           "PR: 1h Rayleigh quotient on -[H,a†] (≈ -SPE)");
+
+  py::enum_<EOM::SREOMMode>(m, "SREOMMode")
+      .value("Excitation", EOM::SREOMMode::Excitation)
+      .value("ParticleAttached", EOM::SREOMMode::ParticleAttached)
+      .value("ParticleRemoved", EOM::SREOMMode::ParticleRemoved)
+      .export_values();
 
   py::class_<EOM>(m, "EOM")
       // constructors
@@ -1386,9 +1430,23 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("Hs"), py::arg("tdm_file"), py::arg("J2"), py::arg("parity"), py::arg("itz"))
       .def(py::init<Operator &, int, int, int>(),
            py::arg("Hs"), py::arg("J2"), py::arg("parity"), py::arg("itz"))
+      .def(py::init<Operator &, int, int, int, EOM::SREOMMode>(),
+           py::arg("Hs"), py::arg("J2"), py::arg("parity"), py::arg("itz"),
+           py::arg("sr_mode"),
+           "Single-reference EOM; sr_mode = Excitation | ParticleAttached | ParticleRemoved")
       // high-level entry point: init + solve in one call
       .def("Run", &EOM::Run,
-           py::arg("max_iter") = 200, py::arg("state_want") = 6)
+           py::arg("max_iter") = 200, py::arg("state_want") = 6,
+           "Solve: dispatches on is_multiref and sr_mode set at construction or via SetSREOMMode")
+      .def("RunSR", &EOM::RunSR, py::arg("max_iter") = 200, py::arg("state_want") = 6,
+           "SR same-A excitation EOM (1p1h ⊕ 2p2h)")
+      .def("RunPA", &EOM::RunPA, py::arg("max_iter") = 200, py::arg("state_want") = 6,
+           "SR 1-particle-attached EOM (A+1); ω = E(A+1) - E(A)")
+      .def("RunPR", &EOM::RunPR, py::arg("max_iter") = 200, py::arg("state_want") = 6,
+           "SR 1-particle-removed EOM (A-1); ω = E(A-1) - E(A)")
+      .def("SetSREOMMode", &EOM::SetSREOMMode, py::arg("mode"),
+           "SR only: Excitation (default), ParticleAttached, ParticleRemoved")
+      .def("GetSREOMMode", &EOM::GetSREOMMode)
       // MR setup — must be called before operator-level methods in MR mode
       .def("ComputeNorm", &EOM::ComputeNorm, py::arg("Op1"), py::arg("Op2"))
       .def("FlattenOperator", [](const EOM &self, Operator &Op) {
@@ -1610,6 +1668,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
       //      .def(py::init<>())
       .def(py::init<ModelSpace &>())
       .def("SetRandomSeed", &UnitTest::SetRandomSeed)
+      .def("RandomDaggerOp", &UnitTest::RandomDaggerOp, py::arg("modelspace"),
+           py::arg("Q"))
       .def("RandomOp", &UnitTest::RandomOp, py::arg("modelspace"),
            py::arg("jrank"), py::arg("tz"), py::arg("parity"),
            py::arg("particle_rank"), py::arg("hermitian"))
@@ -1623,6 +1683,13 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("TestNormalOrdering", &UnitTest::TestNormalOrdering)
       .def("TestDaggerCommutators", &UnitTest::TestDaggerCommutators)
       .def("TestDaggerCommutatorsAlln", &UnitTest::TestDaggerCommutatorsAlln)
+      .def("Test_comm211sd", &UnitTest::Test_comm211sd)
+      .def("Test_comm231sd", &UnitTest::Test_comm231sd)
+      .def("Test_comm431sd", &UnitTest::Test_comm431sd)
+      .def("Test_comm413sd", &UnitTest::Test_comm413sd)
+      .def("Test_comm233sd", &UnitTest::Test_comm233sd)
+      .def("Test_comm433_pp_hh_sd", &UnitTest::Test_comm433_pp_hh_sd)
+      .def("Test_comm433sd_ph", &UnitTest::Test_comm433sd_ph)
       .def("Test3BodyAntisymmetry", &UnitTest::Test3BodyAntisymmetry)
       .def("Test3BodyHermiticity", &UnitTest::Test3BodyHermiticity)
       .def("TestRPAEffectiveCharge", &UnitTest::TestRPAEffectiveCharge,

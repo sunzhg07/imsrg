@@ -32,7 +32,9 @@ namespace Commutator
   // But this is so far from being the bottleneck that it makes more sense to be clear.
   void comm211sd(const Operator &X, const Operator &Y, Operator &Z)
   {
-    Z.OneBody += X.OneBody * Y.OneBody;
+    // Prefer assign-add: arma in-place += with a norb×1 dagger column
+    // has thrown Mat::operator() OOB in practice.
+    Z.OneBody = Z.OneBody + X.OneBody * Y.OneBody;
   }
 
   //*****************************************************************************************
@@ -138,7 +140,10 @@ namespace Commutator
           Orbit &ok = Z.modelspace->GetOrbit(k);
           //           if (not tbc.CheckChannel_ket(&ok,&oQ)) continue;
           //           if ( ( (ok.tz2+oQ.tz2)!=2*tbc.Tz ) or ( (ok.l+oQ.l)%2!=tbc.parity ) or ( (ok.j2+oQ.j2)<2*tbc.J) or ( std::abs(ok.j2-oQ.j2)>2*tbc.J) ) continue;
-          if (((ok.tz2 - oQ.tz2) != 2 * tbc.Tz) or ((ok.l + oQ.l) % 2 != tbc.parity) or ((ok.j2 + oQ.j2) < 2 * tbc.J) or (std::abs(ok.j2 - oQ.j2) > 2 * tbc.J))
+          // |kQ> must lie in the same two-body channel as bra |ij> (standard Tz = (tz_k+tz_Q)/2).
+          // A prior (tz_k - tz_Q) check matched Pandya time-reversed Q but made GetTBME(i,j,k,a)
+          // always vanish for the [4,1]→3 piece — so [H2, a†] produced no 2p1h.
+          if (((ok.tz2 + oQ.tz2) != 2 * tbc.Tz) or ((ok.l + oQ.l) % 2 != tbc.parity) or ((ok.j2 + oQ.j2) < 2 * tbc.J) or (std::abs(ok.j2 - oQ.j2) > 2 * tbc.J))
             continue;
 
           //           double norm_kQ = (k==Qorbit) ? PhysConst::INVSQRT2 : 1.0;
@@ -340,8 +345,8 @@ namespace Commutator
         {
           Orbit &ok = Z.modelspace->GetOrbit(k);
           //            if ( not tbc.CheckChannel_ket(&ok,&oQ) ) continue;
-          //            if ( ( (ok.tz2+oQ.tz2)!=2*tbc.Tz) or ( (ok.l+oQ.l)%2!=tbc.parity) or ( (ok.j2+oQ.j2)<2*tbc.J) or ( std::abs(ok.j2-oQ.j2)>2*tbc.J) ) continue; // if |kQ> doesn't live in this channel, move along.
-          if (((ok.tz2 - oQ.tz2) != 2 * tbc.Tz) or ((ok.l + oQ.l) % 2 != tbc.parity) or ((ok.j2 + oQ.j2) < 2 * tbc.J) or (std::abs(ok.j2 - oQ.j2) > 2 * tbc.J))
+          // |kQ> in same std two-body channel as bra |ij> (tz_k+tz_Q), not Pandya (tz_k-tz_Q).
+          if (((ok.tz2 + oQ.tz2) != 2 * tbc.Tz) or ((ok.l + oQ.l) % 2 != tbc.parity) or ((ok.j2 + oQ.j2) < 2 * tbc.J) or (std::abs(ok.j2 - oQ.j2) > 2 * tbc.J))
             continue; // if |kQ> doesn't live in this channel, move along.
           double zijk = 0.;
           //            double norm_kQ = (k==Q) ? PhysConst::INVSQRT2 : 1.0;
@@ -542,7 +547,7 @@ namespace Commutator
         PhaseMat.row(iket) *= -1;
       }
       arma::uvec phkets = arma::join_cols(tbc_cc.GetKetIndex_hh(), tbc_cc.GetKetIndex_ph());
-      auto PhaseMatX = PhaseMat.rows(phkets) * hx;
+      arma::mat PhaseMatX = PhaseMat.rows(phkets) * hx;
 
       //                                           [      |     ]
       //     create full Y matrix from the half:   [  Yhp | Y'ph]   where the prime indicates multiplication by (-1)^(i+j+k+l) h_x
@@ -693,8 +698,8 @@ namespace Commutator
         {
           Orbit &ok = Z.modelspace->GetOrbit(k);
           //          if ( not tbc.CheckChannel_ket(&ok, &oQ) ) continue; // if |kQ> doesn't live in this channel, move along.
-          //          if ( ( (ok.tz2+oQ.tz2)!=2*tbc.Tz) or ( (ok.l+oQ.l)%2!=tbc.parity) or ( (ok.j2+oQ.j2)<2*tbc.J) or ( std::abs(ok.j2-oQ.j2)>2*tbc.J) ) continue; // if |kQ> doesn't live in this channel, move along.
-          if (((ok.tz2 - oQ.tz2) != 2 * tbc.Tz) or ((ok.l + oQ.l) % 2 != tbc.parity) or ((ok.j2 + oQ.j2) < 2 * tbc.J) or (std::abs(ok.j2 - oQ.j2) > 2 * tbc.J))
+          // |kQ> membership in std channel uses tz_k+tz_Q (same fix as comm413_233sd).
+          if (((ok.tz2 + oQ.tz2) != 2 * tbc.Tz) or ((ok.l + oQ.l) % 2 != tbc.parity) or ((ok.j2 + oQ.j2) < 2 * tbc.J) or (std::abs(ok.j2 - oQ.j2) > 2 * tbc.J))
             continue; // if |kQ> doesn't live in this channel, move along.
 
           double jk = ok.j2 / 2.;
@@ -729,7 +734,11 @@ namespace Commutator
               TwoBodyChannel_CC &tbc_cc = Z.modelspace->GetTwoBodyChannel_CC(ch_cc);
               int nkets_cc = tbc_cc.GetNumberKets();
               size_t indx_iQ = i;
-              size_t indx_kj = tbc_cc.GetLocalIndex(std::min(j, k), std::max(j, k)) + (k > j ? nkets_cc : 0);
+              int indx_kj_raw = tbc_cc.GetLocalIndex(std::min(j, k), std::max(j, k));
+              // (j,k) may fail channel membership (parity/Tz/Pauli) even when sixj is allowed
+              if (indx_kj_raw < 0)
+                continue;
+              size_t indx_kj = static_cast<size_t>(indx_kj_raw) + (k > j ? nkets_cc : 0);
               double me1 = Zbar.at(ch_cc)(indx_iQ, indx_kj);
               commijk -= (2 * Jprime + 1.) * sixj * me1 * Pij;
             }

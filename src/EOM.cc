@@ -52,6 +52,13 @@ EOM::EOM(Operator &Hs, int J2,  int parity, int itz)
   BuildOrbMap();
 };
 
+EOM::EOM(Operator &Hs, int J2, int parity, int itz, SREOMMode mode)
+    : modelspace(Hs.modelspace), Hs(Hs), J2(J2), parity(parity),
+      itz(itz), is_multiref(false), sr_mode(mode) {
+  rdm_ms = modelspace;
+  BuildOrbMap();
+};
+
 void EOM::BuildOrbMap() {
   size_t norbits = modelspace->norbits;
   hs_to_rdm_orb.assign(norbits, -1);
@@ -4206,6 +4213,363 @@ void EOM::WriteTdm(const Operator &op, const std::string &filename) const
 }
 
 // ============================================================
+//  SR dagger EOM (1-PA / 1-PR) — ladder on odd-leg operators
+// ============================================================
+
+index_t EOM::PickQOrbitParticle(int J2, int parity, int itz) const
+{
+  int pick = -1;
+  for (auto i : modelspace->all_orbits)
+  {
+    Orbit &o = modelspace->GetOrbit(i);
+    if (o.j2 != J2 or (o.l % 2) != parity or o.tz2 != itz)
+      continue;
+    if (modelspace->holes.count(i))
+      continue;
+    if (pick < 0)
+      pick = (int)i;
+  }
+  if (pick < 0)
+  {
+    std::ostringstream oss;
+    oss << "EOM::PickQOrbitParticle: no particle orbit for J2=" << J2
+        << " parity=" << parity << " tz2=" << itz
+        << " (all_orbits=" << modelspace->all_orbits.size()
+        << " holes=" << modelspace->holes.size()
+        << " particles=" << modelspace->particles.size() << ")";
+    throw std::runtime_error(oss.str());
+  }
+  return (index_t)pick;
+}
+
+index_t EOM::PickQOrbitHole(int J2, int parity, int itz) const
+{
+  int pick = -1;
+  int best_n = 9999;
+  for (auto i : modelspace->all_orbits)
+  {
+    Orbit &o = modelspace->GetOrbit(i);
+    if (o.j2 != J2 or (o.l % 2) != parity or o.tz2 != itz)
+      continue;
+    if (!modelspace->holes.count(i))
+      continue;
+    if ((int)o.n < best_n)
+    {
+      best_n = (int)o.n;
+      pick = (int)i;
+    }
+  }
+  if (pick < 0)
+  {
+    std::ostringstream oss;
+    oss << "EOM::PickQOrbitHole: no hole orbit for J2=" << J2
+        << " parity=" << parity << " tz2=" << itz
+        << " (all_orbits=" << modelspace->all_orbits.size()
+        << " holes=" << modelspace->holes.size() << ")";
+    throw std::runtime_error(oss.str());
+  }
+  return (index_t)pick;
+}
+
+Operator EOM::MakeEmptyDagger(index_t Q) const
+{
+  Operator R(*modelspace);
+  R.SetNumberLegs(3);
+  R.SetQSpaceOrbit(Q);
+  R.SetNonHermitian();
+  R.EraseOneBody();
+  R.EraseThreeLeg();
+  return R;
+}
+
+Operator EOM::LadderPA(const Operator &R) const
+{
+  index_t Q = R.GetQSpaceOrbit();
+  Orbit &oQ = modelspace->GetOrbit(Q);
+  Operator out = MakeEmptyDagger(Q);
+
+  for (auto p : R.GetOneBodyChannel(oQ.l, oQ.j2, oQ.tz2))
+  {
+    if (modelspace->holes.count(p))
+      continue;
+    out.OneBody(p, 0) = R.OneBody(p, 0);
+  }
+
+  for (size_t ch = 0; ch < modelspace->GetNumberTwoBodyChannels(); ++ch)
+  {
+    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(ch);
+    auto &pp = tbc.GetKetIndex_pp();
+    if (pp.empty())
+      continue;
+    auto &mat_in = R.ThreeLeg.GetMatrix(ch);
+    auto &mat_out = out.ThreeLeg.GetMatrix(ch);
+    for (auto ibra : pp)
+    {
+      for (auto h : modelspace->holes)
+        mat_out(ibra, h) = mat_in(ibra, h);
+    }
+  }
+  return out;
+}
+
+Operator EOM::LadderPR(const Operator &R) const
+{
+  index_t Q = R.GetQSpaceOrbit();
+  Orbit &oQ = modelspace->GetOrbit(Q);
+  Operator out = MakeEmptyDagger(Q);
+
+  for (auto h : R.GetOneBodyChannel(oQ.l, oQ.j2, oQ.tz2))
+  {
+    if (!modelspace->holes.count(h))
+      continue;
+    out.OneBody(h, 0) = R.OneBody(h, 0);
+  }
+
+  for (size_t ch = 0; ch < modelspace->GetNumberTwoBodyChannels(); ++ch)
+  {
+    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(ch);
+    auto &hh = tbc.GetKetIndex_hh();
+    if (hh.empty())
+      continue;
+    auto &mat_in = R.ThreeLeg.GetMatrix(ch);
+    auto &mat_out = out.ThreeLeg.GetMatrix(ch);
+    for (auto ibra : hh)
+    {
+      for (auto p : modelspace->particles)
+        mat_out(ibra, p) = mat_in(ibra, p);
+    }
+  }
+  return out;
+}
+
+double EOM::OverlapPA(const Operator &R1, const Operator &R2) const
+{
+  index_t Q = R1.GetQSpaceOrbit();
+  Orbit &oQ = modelspace->GetOrbit(Q);
+  double ov = 0.0;
+
+  for (auto p : R1.GetOneBodyChannel(oQ.l, oQ.j2, oQ.tz2))
+  {
+    if (modelspace->holes.count(p))
+      continue;
+    ov += R1.OneBody(p, 0) * R2.OneBody(p, 0);
+  }
+
+  for (size_t ch = 0; ch < modelspace->GetNumberTwoBodyChannels(); ++ch)
+  {
+    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(ch);
+    auto &pp = tbc.GetKetIndex_pp();
+    if (pp.empty())
+      continue;
+    auto &m1 = R1.ThreeLeg.GetMatrix(ch);
+    auto &m2 = R2.ThreeLeg.GetMatrix(ch);
+    for (auto ibra : pp)
+      for (auto h : modelspace->holes)
+        ov += m1(ibra, h) * m2(ibra, h);
+  }
+  return ov;
+}
+
+double EOM::OverlapPR(const Operator &R1, const Operator &R2) const
+{
+  index_t Q = R1.GetQSpaceOrbit();
+  Orbit &oQ = modelspace->GetOrbit(Q);
+  double ov = 0.0;
+
+  for (auto h : R1.GetOneBodyChannel(oQ.l, oQ.j2, oQ.tz2))
+  {
+    if (!modelspace->holes.count(h))
+      continue;
+    ov += R1.OneBody(h, 0) * R2.OneBody(h, 0);
+  }
+
+  for (size_t ch = 0; ch < modelspace->GetNumberTwoBodyChannels(); ++ch)
+  {
+    TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(ch);
+    auto &hh = tbc.GetKetIndex_hh();
+    if (hh.empty())
+      continue;
+    auto &m1 = R1.ThreeLeg.GetMatrix(ch);
+    auto &m2 = R2.ThreeLeg.GetMatrix(ch);
+    for (auto ibra : hh)
+      for (auto p : modelspace->particles)
+        ov += m1(ibra, p) * m2(ibra, p);
+  }
+  return ov;
+}
+
+Operator EOM::HtcPA(const Operator &R) const
+{
+  return LadderPA(Commutator::Commutator(Hs, R));
+}
+
+Operator EOM::HtcPR(const Operator &R) const
+{
+  Operator Rp = LadderPR(Commutator::Commutator(Hs, R));
+  Rp *= -1.0;
+  return Rp;
+}
+
+Operator EOM::PureAdagSeed(index_t Q) const
+{
+  Operator R = MakeEmptyDagger(Q);
+  R.OneBody(Q, 0) = 1.0;
+  return LadderPA(R);
+}
+
+std::pair<arma::vec, std::vector<Operator>>
+EOM::LanczosDaggerSolve(Operator &vi, int max_iter, int state_want, bool particle_removed)
+{
+  std::vector<Operator> basis;
+  arma::mat hall(max_iter, max_iter, arma::fill::zeros);
+
+  double nn = particle_removed ? OverlapPR(vi, vi) : OverlapPA(vi, vi);
+  if (nn <= 0.0)
+    throw std::runtime_error("EOM::LanczosDaggerSolve: initial vector has non-positive norm");
+  basis.push_back(vi / std::sqrt(nn));
+
+  int j_final = 0;
+  double bj = 0.0;
+
+  for (int j = 0; j < max_iter; ++j)
+  {
+    j_final = j;
+    Operator w = particle_removed ? HtcPR(basis[j]) : HtcPA(basis[j]);
+    double ai = particle_removed ? OverlapPR(w, basis[j]) : OverlapPA(w, basis[j]);
+    hall(j, j) = ai;
+
+    w = w - ai * basis[j];
+    if (j > 0)
+      w = w - bj * basis[j - 1];
+
+    for (int i = 0; i <= j; ++i)
+    {
+      double cij = particle_removed ? OverlapPR(w, basis[i]) : OverlapPA(w, basis[i]);
+      w = w - cij * basis[i];
+    }
+
+    bj = particle_removed ? OverlapPR(w, w) : OverlapPA(w, w);
+    if (bj < 0.0 && std::abs(bj) < 1e-14)
+      bj = 0.0;
+    if (bj < 0.0)
+      throw std::runtime_error("EOM::LanczosDaggerSolve: negative beta^2");
+    bj = std::sqrt(bj);
+
+    if (bj < 1e-14 || j == max_iter - 1)
+      break;
+
+    hall(j, j + 1) = bj;
+    hall(j + 1, j) = bj;
+    basis.push_back(w / bj);
+  }
+
+  int m = j_final + 1;
+  arma::vec eigval;
+  arma::mat eigvec;
+  arma::eig_sym(eigval, eigvec, hall.submat(0, 0, m - 1, m - 1));
+  int nret = std::min(state_want, (int)eigval.n_elem);
+  arma::vec e = eigval.head(nret);
+
+  index_t Q = vi.GetQSpaceOrbit();
+  std::vector<Operator> ritz;
+  for (int k = 0; k < nret; ++k)
+  {
+    Operator rk = MakeEmptyDagger(Q);
+    for (int i = 0; i < m; ++i)
+      rk += eigvec(i, k) * basis[i];
+    double nr = particle_removed ? OverlapPR(rk, rk) : OverlapPA(rk, rk);
+    if (nr > 0.0)
+      rk = rk / std::sqrt(nr);
+    ritz.push_back(std::move(rk));
+  }
+
+  std::cout << "Lanczos (dagger) finished with " << m << " steps" << std::endl;
+  return {e, ritz};
+}
+
+EOM::RunResult EOM::RunPA(int max_iter, int state_want)
+{
+  index_t Q = PickQOrbitParticle(J2, parity, itz);
+  Orbit &oQ = modelspace->GetOrbit(Q);
+  std::cout << "1-PA-EOM  J2=" << J2 << " parity=" << parity << " Tz=" << itz
+            << "  Q=" << Q << " (n=" << oQ.n << " l=" << oQ.l << " j=" << oQ.j2 / 2.
+            << " tz=" << oQ.tz2 << ")" << std::endl;
+
+  Operator v0 = PureAdagSeed(Q);
+  double n0 = OverlapPA(v0, v0);
+  std::cout << "  initial N-norm = " << n0 << "  (seed=a†_Q)" << std::endl;
+
+  auto lr = LanczosDaggerSolve(v0, max_iter, state_want, false);
+  double eref = Hs.ZeroBody;
+
+  std::cout << "\n  1-PA-EOM eigenvalues (Lanczos):" << std::endl;
+  std::cout << "  ZeroBody (eref) = " << eref << " MeV" << std::endl;
+  for (int k = 0; k < (int)lr.first.n_elem; ++k)
+    std::cout << "    ω(" << k << "): attachment=" << lr.first(k)
+              << "  absolute=" << lr.first(k) + eref << " MeV" << std::endl;
+
+  std::cout << "\n  Hs 1b SPE (particles in Q channel):" << std::endl;
+  for (auto p : Hs.GetOneBodyChannel(oQ.l, oQ.j2, oQ.tz2))
+  {
+    if (modelspace->holes.count(p))
+      continue;
+    std::cout << "    orbit " << p << ": n=" << modelspace->GetOrbit(p).n
+              << "  ε=" << Hs.OneBody(p, p) << " MeV" << std::endl;
+  }
+
+  ArnoldiResult ar;
+  ar.energies = lr.first;
+  ar.ritz = std::move(lr.second);
+  RunResult out{eref, ar, (int)Q, Hs.OneBody(Q, Q), 0.0};
+  return out;
+}
+
+EOM::RunResult EOM::RunPR(int max_iter, int state_want)
+{
+  index_t Q = PickQOrbitHole(J2, parity, itz);
+  Orbit &oQ = modelspace->GetOrbit(Q);
+  std::cout << "1-PR-EOM  J2=" << J2 << " parity=" << parity << " Tz=" << itz
+            << "  Q=" << Q << " (n=" << oQ.n << " l=" << oQ.l << " j=" << oQ.j2 / 2.
+            << " tz=" << oQ.tz2 << ") [hole]" << std::endl;
+
+  Operator R1 = MakeEmptyDagger(Q);
+  R1.OneBody(Q, 0) = 1.0;
+  Operator v0 = LadderPR(R1);
+  double n0 = OverlapPR(v0, v0);
+  std::cout << "  initial N-norm = " << n0 << "  (seed=a†_Q hole)" << std::endl;
+
+  Operator w1 = HtcPR(R1);
+  double ray = OverlapPR(w1, R1) / OverlapPR(R1, R1);
+  double spe = Hs.OneBody(Q, Q);
+  std::cout << "  Koopmans: SPE=" << spe << "  Rayleigh(-[H,a†])=" << ray
+            << "  (want ≈ -SPE)" << std::endl;
+
+  auto lr = LanczosDaggerSolve(v0, max_iter, state_want, true);
+  double eref = Hs.ZeroBody;
+
+  std::cout << "\n  1-PR-EOM eigenvalues (Lanczos):" << std::endl;
+  std::cout << "  ZeroBody (eref) = " << eref << " MeV" << std::endl;
+  for (int k = 0; k < (int)lr.first.n_elem; ++k)
+    std::cout << "    ω(" << k << "): removal=" << lr.first(k)
+              << "  E(A-1)=" << lr.first(k) + eref << " MeV" << std::endl;
+
+  std::cout << "\n  Hs 1b SPE (holes in Q channel):" << std::endl;
+  for (auto h : Hs.GetOneBodyChannel(oQ.l, oQ.j2, oQ.tz2))
+  {
+    if (!modelspace->holes.count(h))
+      continue;
+    std::cout << "    orbit " << h << ": n=" << modelspace->GetOrbit(h).n
+              << "  ε=" << Hs.OneBody(h, h) << " MeV" << std::endl;
+  }
+
+  ArnoldiResult ar;
+  ar.energies = lr.first;
+  ar.ritz = std::move(lr.second);
+  RunResult out{eref, ar, (int)Q, spe, ray};
+  return out;
+}
+
+// ============================================================
 //  Run
 //  Mirrors lines 133-173 of run/mr_eom.py:
 //    ConstructConfigs / ConstructNormMatrix / ConstructProjectMatrix
@@ -4216,8 +4580,15 @@ EOM::RunResult EOM::Run(int max_iter, int state_want)
 {
   if (is_multiref)
     return RunMR(max_iter, state_want);
-  else
+  switch (sr_mode)
+  {
+  case SREOMMode::ParticleAttached:
+    return RunPA(max_iter, state_want);
+  case SREOMMode::ParticleRemoved:
+    return RunPR(max_iter, state_want);
+  default:
     return RunSR(max_iter, state_want);
+  }
 }
 
 // ---------------------------------------------------------------------------

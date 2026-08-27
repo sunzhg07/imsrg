@@ -3,7 +3,7 @@
 **Date:** 2026-08-27 (G^{III_c} / G^{IV_c} extracts locked: m ≡ AMC-direct ≡ Path B)  
 **Scope:** Tensor factorized double commutator in `FactorizedDoubleCommutator_eths`, locked against m-scheme and AMC-direct J-scheme.
 
-**C++ snapshot (this commit):** `FactorizedDoubleCommutator_eths.cc` is the Aug 21 tree: \(f\) / \(\Gamma^{\mathrm{I,II}}\) Path B, \(\Gamma^{\mathrm{III}_c}\) `FillChiThetaG3c_DGEMM`, \(\Gamma^{\mathrm{IV}_c}\) Path B (χ still an orbit nest). \(\Gamma^{\mathrm{III}_a}\) in C++ is still Factorized IIa/IIc; \(\Gamma^{\mathrm{III}_b}\) extract is the older CC/RC path. The locked G^{III_a}/G^{III_b} Path B helpers (`BuildChiEtaPathB` / `InvChiEtaRed`) and `FillChiLambdaG4c_DGEMM` were in an uncommitted working tree that was reset — gold tests and the equations below still stand; re-extract C++ from them if needed. \(\Gamma^{\mathrm{IV}_{a,b}}\) remain OPEN in C++.
+**C++ snapshot:** \(\Gamma^{\mathrm{III}_a}/\Gamma^{\mathrm{III}_b}\) Path B is restored (`BuildChiEtaPathB` / `InvChiEtaRed`, 2n×2n scalar \(\chi^\eta\)). \(\Gamma^{\mathrm{IV}_a}\) Path B is any λ (\(W\) by DGEMM). \(\Gamma^{\mathrm{IV}_b}\) C++ is still Factorized λ=0 only.
 
 **Three layers**
 
@@ -17,7 +17,7 @@
 
 | Status | Meaning |
 |---|---|
-| **LOCKED** | A ≡ B ≡ C confirmed by a live bench (four \(f\) diagrams, \(\Gamma^{\mathrm{I,II}}\), \(\Gamma^{\mathrm{III}_{a,b,c}}\), \(\Gamma^{\mathrm{IV}_c}\) as of 2026-08-27). Layer B is the AMC/Path-B formula that matches m — **not** automatically `tts_*` (\(\Gamma^{\mathrm{III}_{a,b}}\), \(\Gamma^{\mathrm{IV}_c}\)). \(\Gamma^{\mathrm{III}_c}\) is the exception: `tts_GIIIc` DIRECT **is** gold |
+| **LOCKED** | A ≡ B ≡ C confirmed by a live bench (four \(f\) diagrams, \(\Gamma^{\mathrm{I,II}}\), \(\Gamma^{\mathrm{III}_{a,b,c}}\), \(\Gamma^{\mathrm{IV}_{a,c}}\) as of 2026-08-27). Layer B is the AMC/Path-B formula that matches m — **not** automatically `tts_*`. \(\Gamma^{\mathrm{III}_c}\) is the exception: `tts_GIIIc` DIRECT **is** gold |
 | **PARTIAL** | Some links verified; missing a direct A↔B, A↔C, or B↔C, or production not wired to the clean extract |
 | **OPEN / FAIL** | Known disagreement or no live bench |
 | **DEAD BENCH** | Test exists but dies on a missing pybind toggle (`SetUse_Type*_slow` etc.) |
@@ -41,7 +41,7 @@ Line numbers refer to the tree as of this write. Re-grep if the file moves.
 | \(\Gamma^{\mathrm{III}_a}\) | \(\chi^\eta\) | **4338–4440** `comm223_232_GIIIa`; `chi2b` calls it when `use_TypeGIIIa_2b` | AMC `G3a_from_chi` / Chi_AS (not a `tts_*` twin) | `test_chi_eta_mscheme.py`, `test_GIIIa_ladder_mscheme.py`, `test_tts_GIIIa.py` | **LOCKED** |
 | \(\Gamma^{\mathrm{III}_b}\) | \(\chi^\eta\)→RC | **4441–4790** `comm223_232_GIIIb` | fold / Path B pack (not `tts_GIIIb`) | `test_tts_GIIIb.py`, `test_G3b_normal_to_RC.py`, `test_G3b_pathB_*` | **LOCKED** (extract; production flag unused) |
 | \(\Gamma^{\mathrm{III}_c}\) | \(\chi^\theta\) | **4791–5119** `comm223_232_GIIIc` | **6804 / 6828** `tts_GIIIc` DIRECT (gold) | `test_chi_theta_mscheme.py`, `test_tts_GIIIc_mscheme.py` | **LOCKED** (extract; production flag unused) |
-| \(\Gamma^{\mathrm{IV}_a}\) | \(\chi^\kappa\) | extract **5549–6321** | **7224** | `test_G4a_pathB_mscheme.py`, `test_tts_GIVa*.py`, `test_chi_kappa_*` | **PARTIAL** (Pandya `scale` convention issue at λ≠0) |
+| \(\Gamma^{\mathrm{IV}_a}\) | \(\chi^\kappa\) | Path B `comm223_232_GIVa` (any λ) | AMC analyze / Wbra (not `tts_GIVa`) | `test_chi_kappa_*`, `test_G4a_pathB_mscheme.py`, `test_tts_GIVa_eths_vs_pathB.py` | **LOCKED** (extract) |
 | \(\Gamma^{\mathrm{IV}_b}\) | \(\chi^\iota\) | extract **6322–6670** (λ≠0 no-op) | **7412** | `test_tts_GIVb.py`, `test_chi_iota_*`, `test_G4b_*` | **PARTIAL** / **DEAD** benches |
 | \(\Gamma^{\mathrm{IV}_c}\) | \(\chi^\lambda\) | Path B **6671–6974** / wrapper **6979** (λ=0 no-op) | ring fold / AMC `G4c` (not `tts_GIVc`) | `test_chi_lambda_mscheme.py`, `test_tts_GIVc_mscheme.py`, `test_tts_GIVc_pathB.py` | **LOCKED** (extract; λ≠0; production flag unused) |
 
@@ -283,15 +283,31 @@ Fold: \(Z=-\tfrac12(1-P_{ij})(1-P_{kl})\sum\chi_{iabl}\Gamma_{bjka}\).
 
 **Status: LOCKED** (extract) — m ≡ AMC-direct ≡ Path B. Production `chi2b` is not redirected to this extract.
 
-### \(\Gamma^{\mathrm{IV}_a}\) / \(\chi^\kappa\)
+### \(\Gamma^{\mathrm{IV}_a}\) / \(\chi^\kappa\)  — LOCKED (extract)
 
-| Piece | Location |
-|---|---|
-| Extract | **5549–6321** `comm223_232_GIVa` (λ=0 Factorized; λ≠0 different Path-B branch) |
-| AMC-direct | **7224** |
+χ^κ is tensor (\(T\times S\to T\)). Gold chain (any λ, including 0):
 
-**Benches:** `test_G4a_pathB_mscheme.py`, `test_tts_GIVa_eths_vs_pathB.py`, `test_chi_kappa_*` (χ A≡B PASS).  
-**Status: PARTIAL** — Pandya at λ≠0 omits the `scale` factor that makes the universal kernel reduce to scalar (see `run/test_pandya_lambda0_reduction.py`).
+**m-scheme ≡ AMC analyze ≡ Path B** (Pandya → VI_II DGEMM → invPlus → \(W=-\chi\Omega\) pair-channel DGEMM → \((1-P)\) on W).
+
+Ω is **WE-reduced at every λ** (λ=0 is the equal-\(J\) limit, not a Factorized CHI_VI fork). **Do not use `tts_GIVa` as layer B.**
+
+**Path B** in `comm223_232_GIVa`:
+
+1. Scalar Pandya Γ (6j) + tensor Pandya Ω (9j, IMSRG `adcb`, **no extra `scale`**).
+2. **DGEMM** \(\bar\chi^{J_0 J_1}=h_\Omega(-1)^{J_0+J_1}(\mathrm{occ}_{ABbarD}\odot\bar\Omega^{J_1 J_0})^{T}\bar\Gamma^{J_1}\).
+3. InvPlus (AMC Eq4 **without** printed leading minus).
+4. \(W_{\mathrm{red}}=-\,(-1)^{J_0}\hat J_0^{-1}\hat\lambda^{-1}\sum_{J_2}\chi^{J_0 J_2}\Omega^{J_2 J_0}(db;kl)\) as pair-channel DGEMM; \((1-P)\) **on W only**; Hermitian \(W+W_{klij}\) (no extra \(h_\Omega\)). Store \(Z_{\mathrm{unred}}=Z_{\mathrm{red}}/\hat J\).
+
+**Benches (2026-08-27, emax=1 seed=11)**
+
+| Test | Check | Result |
+|---|---|---|
+| `run/test_chi_kappa_m_vs_amc.py` | χ: m ≡ AMC | PASS |
+| `run/test_chi_kappa_pathB_vs_direct.py` | χ: Path B ≡ AMC | PASS all λ |
+| `run/test_G4a_pathB_mscheme.py` | m ≡ Path B full Z | PASS |
+| `run/test_tts_GIVa_eths_vs_pathB.py` | ethS ≡ Path B | PASS (~7e-15 @ λ=2; ~1e-14 @ λ=0) |
+
+**Status: LOCKED** (extract) — m ≡ AMC-direct ≡ Path B, any λ. Production `chi2b` is not redirected to this extract.
 
 ### \(\Gamma^{\mathrm{IV}_b}\) / \(\chi^\iota\)
 

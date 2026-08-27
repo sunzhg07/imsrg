@@ -24,13 +24,6 @@ lam = int(sys.argv[2]) if len(sys.argv) > 2 else 2
 tol = 1e-5
 seed = 11
 
-if lam == 0:
-    print(
-        "SKIP — λ=0 uses Factorized scalar CHI_VI (not rectangular Path B).\n"
-        "       Compare λ≠0, or use test_chi_kappa_pandya_dgemm.py for λ=0 twin."
-    )
-    sys.exit(0)
-
 ms = ModelSpace(emax, "He4", "He4")
 ms.SetHbarOmega(20.0)
 ms.PreCalculateSixJ()

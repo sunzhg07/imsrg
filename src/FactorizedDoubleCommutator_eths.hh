@@ -38,12 +38,13 @@ extern bool use_TypeI_1b;
 extern bool use_TypeII_1b;
 extern bool use_TypeIII_1b;
 extern bool use_TypeIIIa_1b;
+extern bool use_TypeIIIa_slow; // f^III_a oracle: AMC-direct W1/W2 chi + ladder
 extern bool use_TypeGI_2b;  // Gamma^I via chi^epsilon (scalar 1b)
 extern bool use_TypeGII_2b; // Gamma^II via chi^zeta (λ_Ω=0 / scalar path)
-extern bool use_TypeGIIIa_2b; // Gamma^III_a Factorized IIa/IIc (λ=0)
-extern bool use_TypeGIIIb_2b; // Gamma^III_b via chi^eta CC/RC path
+extern bool use_TypeGIIIa_2b; // Gamma^III_a Path B (Pandya/inv χ^η → Chi_AS×Γ)
+extern bool use_TypeGIIIb_2b; // Gamma^III_b Path B: χ^η → Fac Pandya → RC → Γ̄
 extern bool use_TypeGIIIc_2b; // Gamma^III_c Factorized IIe/IIf (λ=0)
-extern bool use_TypeGIVa_2b;  // Gamma^IV_a via chi^kappa (tensor Omega x Gamma)
+extern bool use_TypeGIVa_2b;  // Gamma^IV_a Path B χ^κ (any λ; Pandya/DGEMM/inv)
 extern bool use_TypeGIVb_2b;  // Gamma^IV_b via chi^iota
 extern bool use_TypeGIVc_2b;  // Gamma^IV_c via chi^lambda
 extern bool use_TypeII_2b;
@@ -63,6 +64,7 @@ void SetUse_TypeI_1b(bool tf);
 void SetUse_TypeII_1b(bool tf);
 void SetUse_TypeIII_1b(bool tf);
 void SetUse_TypeIIIa_1b(bool tf);
+void SetUse_TypeIIIa_slow(bool tf);
 void SetUse_TypeGI_2b(bool tf);
 void SetUse_TypeGII_2b(bool tf);
 void SetUse_TypeGIIIa_2b(bool tf);

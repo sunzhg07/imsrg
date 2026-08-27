@@ -41,6 +41,17 @@ public:
   int parity = 0;
   int itz = 0;
 
+  /// Which single-reference EOM variant to run (only when !is_multiref).
+  enum class SREOMMode {
+    Excitation,        ///< same-A 1p1h ⊕ 2p2h (default SR-EOM)
+    ParticleAttached,  ///< A+1: dagger 1p ⊕ 2p1h, matvec [H,R]
+    ParticleRemoved    ///< A-1: S† storage 1h ⊕ 2h1p, matvec -[H,R]
+  };
+
+  SREOMMode sr_mode = SREOMMode::Excitation;
+  void SetSREOMMode(SREOMMode mode) { sr_mode = mode; }
+  SREOMMode GetSREOMMode() const { return sr_mode; }
+
   /// true when an rdm / tdm_file was supplied at construction (MR mode).
   /// false for plain single-reference EOM.
   bool is_multiref = false;
@@ -120,6 +131,8 @@ public:
   EOM(Operator &Hs, Operator &rdm, int J2, int parity, int itz);
   EOM(Operator &Hs, const std::string &tdm_file, int J2, int parity, int itz);
   EOM(Operator &Hs, int J2, int parity, int itz);
+  /// Single-reference EOM; sr_mode selects excitation / attach / remove.
+  EOM(Operator &Hs, int J2, int parity, int itz, SREOMMode mode);
 
   void EraseValence(Operator &H); ///< DISABLED no-op (do not drop vv)
   void EraseQspace(Operator &H);
@@ -317,18 +330,26 @@ public:
   double RdmThreeBody_J(int Jab, size_t a_hs, size_t b_hs, size_t c_hs,
                         int Jed, size_t d_hs, size_t e_hs, size_t f_hs, int twoJ) const;
 
-  /// Convenience result bundle returned by Run().
+  /// Convenience result bundle returned by Run() / RunPA() / RunPR() / RunSR().
   struct RunResult {
     double      eref;    ///< reference-state energy = <Hs>_RDM (MR) or ZeroBody (SR)
     ArnoldiResult arnoldi; ///< full Arnoldi output (energies, Ritz vecs, ...)
+    int         Q_orbit = -1;     ///< PA/PR: index of attached particle / removed hole orbit
+    double      spe = 0.0;        ///< Hs OneBody(Q,Q) in the PA/PR channel
+    double      rayleigh_1h = 0.0; ///< PR: Rayleigh quotient on 1h seed (≈ -SPE)
   };
 
-  /// Unified EOM solve — dispatches on is_multiref:
+  /// Unified EOM solve — dispatches on is_multiref and sr_mode:
   ///
-  ///  SR (is_multiref == false, mirrors run/sr_eom.py):
-  ///    Calls force_decouple, builds a random single-ref initial vector,
-  ///    then runs LanczosSolve with HtcSingle / NormSingle.
-  ///    RunResult::eref = Hs.ZeroBody.
+  ///  SR Excitation (is_multiref == false, sr_mode == Excitation):
+  ///    Random single-ref initial vector, LanczosSolve with HtcSingle.
+  ///    RunResult::eref = Hs.ZeroBody; ω = excitation energy.
+  ///
+  ///  SR ParticleAttached (sr_mode == ParticleAttached):
+  ///    Dagger ladder 1p ⊕ 2p1h, Lanczos on [H,R].  ω = E(A+1) - E(A).
+  ///
+  ///  SR ParticleRemoved (sr_mode == ParticleRemoved):
+  ///    Dagger storage of S† (1h ⊕ 2h1p), Lanczos on -[H,R].  ω = E(A-1) - E(A).
   ///
   ///  MR (is_multiref == true):
   ///    force_decouple only (no EraseValence / E_val·N), then
@@ -340,13 +361,30 @@ public:
   /// @param state_want number of lowest eigenvalues to target (default 6)
   RunResult Run(int max_iter = 200, int state_want = 6);
 
+  /// Explicit SR solves (respect sr_mode only for logging; call matching variant).
+  RunResult RunSR(int max_iter = 200, int state_want = 6);
+  RunResult RunPA(int max_iter = 200, int state_want = 6);
+  RunResult RunPR(int max_iter = 200, int state_want = 6);
+
 private:
   static double Norm_abc(size_t p, size_t q, size_t r);
   double ThreeBody_Diagram_Entries_Internal(size_t a, size_t b, size_t c,
                                             size_t d, size_t e, size_t f,
                                             size_t g, double j0, double j2);
-  RunResult RunSR(int max_iter, int state_want);  ///< called by Run() when !is_multiref
-  RunResult RunMR(int max_iter, int state_want);  ///< called by Run() when  is_multiref
+  RunResult RunMR(int max_iter, int state_want);
+
+  index_t PickQOrbitParticle(int J2, int parity, int itz) const;
+  index_t PickQOrbitHole(int J2, int parity, int itz) const;
+  Operator MakeEmptyDagger(index_t Q) const;
+  Operator LadderPA(const Operator &R) const;
+  Operator LadderPR(const Operator &R) const;
+  double OverlapPA(const Operator &R1, const Operator &R2) const;
+  double OverlapPR(const Operator &R1, const Operator &R2) const;
+  Operator HtcPA(const Operator &R) const;
+  Operator HtcPR(const Operator &R) const;
+  Operator PureAdagSeed(index_t Q) const;
+  std::pair<arma::vec, std::vector<Operator>>
+  LanczosDaggerSolve(Operator &vi, int max_iter, int state_want, bool particle_removed);
 };
 
 #endif
