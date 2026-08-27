@@ -1,0 +1,37 @@
+# χ^λ = T×S + S×T → tensor rank λ (analyze eq:chilambda).
+# Packaging: χ is tensor (always WE-reduced in IMSRG). Γ default unreduced scalar.
+# m: χ(m) = Σ_ab [w_l Γ_ijab Ω_abkl + w_j Ω_ijab Γ_abkl]  (no [T×T]^(0) CG)
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\lambda}",
+    scalar=false
+}
+
+Chi_ijkl = sum_ab(
+    (nbar_a*nbar_b*n_l + n_a*n_b*nbar_l) * Gamma_ijab * Omega_abkl
+  + (nbar_a*nbar_b*n_j + n_a*n_b*nbar_j) * Omega_ijab * Gamma_abkl);

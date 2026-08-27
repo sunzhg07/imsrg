@@ -1,0 +1,10 @@
+# Step 3a (m-scheme): Pandya → CC scheme change (AMC RC), same labels
+# This is the angular skeleton of code RC WITHOUT the ad↔bc swap sum.
+# Code RC also multiplies (barChi_bcad + barChi_adbc); see 03b/03c.
+declare barChi {
+    mode=4, latex="\\bar{\\chi}^{\\eta}", scalar=true, scheme=((1,-4),(3,-2))
+}
+declare dbarChi {
+    mode=4, latex="\\overline{\\overline{\\chi}}^{\\eta}", scalar=true, scheme=((1,-3),(4,-2))
+}
+dbarChi_ijkl = barChi_ijkl;

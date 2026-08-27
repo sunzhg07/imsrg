@@ -1,0 +1,15 @@
+# Inverse Pandya for SCALAR chi^gamma (after product in Pandya space)
+declare barChi {
+    mode=4,
+    latex="\\bar{\\chi}^{\\gamma}",
+    scalar=true
+}
+
+declare chi {
+    mode=4,
+    latex="\\chi^{\\gamma}",
+    scalar=true
+}
+
+# Inverse of bar O_abcd = O_adcb  =>  O_abcd = bar O_adcb
+chi_abcd = barChi_adcb;

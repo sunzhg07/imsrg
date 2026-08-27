@@ -1,0 +1,12 @@
+# Code RC comment (L1752), permute stripped:
+#   barX^J_ijkl = sum (2J'+1) (-1)^{j+k+J'} {i j J; k l J'} barX^{J'}_iljk
+# Strip iljk→ijkl; encode coupling change via AMC schemes.
+declare Xin {
+    mode=4, latex="\\bar{\\chi}^{\\mathrm{in}}", scalar=true,
+    scheme=((1,-4),(2,-3))
+}
+declare Xout {
+    mode=4, latex="\\bar{\\chi}^{\\mathrm{RC}}", scalar=true,
+    scheme=((1,-2),(3,-4))
+}
+Xout_ijkl = Xin_ijkl;

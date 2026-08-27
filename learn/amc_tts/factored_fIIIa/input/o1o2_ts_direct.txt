@@ -1,0 +1,4 @@
+declare Omega1 { mode=4, latex="\\Omega^{(1)}", scalar=false }
+declare Omega2 { mode=4, latex="\\Omega^{(2)}", scalar=true, reduce=true }
+declare chi    { mode=4, latex="\\chi", scalar=false }
+chi_ijkl = sum_ab(Omega1_ibal * Omega2_ajkb);

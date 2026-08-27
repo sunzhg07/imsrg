@@ -1,0 +1,12 @@
+# Combined IIb+IId = Γ^{III_b} as coded in BruteForce (P stripped)
+# IIb occ: n̄_b n_c n_d + n̄_c n̄_d n_b
+# IId occ: n̄_c n_b n_d + n̄_b n̄_d n_c   (≠ shared analyze occ)
+declare Omega { mode=4, latex="\\Omega" }
+declare Gamma { mode=4, latex="\\Gamma" }
+declare n { mode=2, diagonal=true, latex="n" }
+declare nbar { mode=2, diagonal=true, latex="\\bar{n}" }
+declare G3b { mode=4, latex="\\Gamma^{(III_b)}" }
+G3b_ijkl = -1 * sum_abcd(
+    (nbar_b*n_c*n_d + nbar_c*nbar_d*n_b) * Omega_dcbk * Omega_biac * Gamma_jald
+  + (nbar_c*n_b*n_d + nbar_b*nbar_d*n_c) * Omega_jcbd * Omega_balc * Gamma_diak
+);

@@ -1,0 +1,18 @@
+# Path A: tensor × tensor → tensor χ (no occ)
+# χ_ijkl = Σ_ab Ω1_ajkb · Ω2_ibal
+declare Omega1 {
+    mode=4,
+    latex="\\Omega^{(1)}",
+    scalar=false
+}
+declare Omega2 {
+    mode=4,
+    latex="\\Omega^{(2)}",
+    scalar=false
+}
+declare chi {
+    mode=4,
+    latex="\\chi",
+    scalar=false
+}
+chi_ijkl = sum_ab(Omega1_ajkb * Omega2_ibal);

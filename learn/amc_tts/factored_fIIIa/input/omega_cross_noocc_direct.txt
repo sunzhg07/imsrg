@@ -1,0 +1,14 @@
+# Path A: chi_ijkl = sum_ab Omega_ajkb * Omega_ibal  (no occ)
+# Omega: tensor (always reduced). chi: scalar reduced.
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare chi {
+    mode=4,
+    latex="\\chi",
+    scalar=true,
+    reduce=true
+}
+chi_ijkl = sum_ab(Omega_ajkb * Omega_ibal);

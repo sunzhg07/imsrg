@@ -1,0 +1,8 @@
+# Contrast: standard InvPandya (used e.g. for chi^eta → normal in IIa path)
+declare W {
+    mode=4, latex="W", scheme=((1,-4),(3,-2))
+}
+declare Z {
+    mode=4, latex="Z^{\\mathrm{std}}"
+}
+Z_ijkl = - W_ijkl;

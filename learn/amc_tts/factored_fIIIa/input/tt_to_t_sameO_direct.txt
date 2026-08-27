@@ -1,0 +1,12 @@
+# Same as tt_to_t_direct but identical Ω×Ω → tensor χ
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare chi {
+    mode=4,
+    latex="\\chi",
+    scalar=false
+}
+chi_ijkl = sum_ab(Omega_ajkb * Omega_ibal);

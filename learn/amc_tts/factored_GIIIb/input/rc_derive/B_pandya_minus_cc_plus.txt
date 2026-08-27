@@ -1,0 +1,9 @@
+declare Chi { mode=4, latex="\\chi" }
+declare barChi {
+    mode=4, latex="\\bar{\\chi}", scalar=true, scheme=((1,-4),(3,-2))
+}
+declare dbarChi {
+    mode=4, latex="\\overline{\\overline{\\chi}}", scalar=true, scheme=((1,-3),(4,-2))
+}
+barChi_ijkl = - Chi_ijkl;
+dbarChi_ijkl = Chi_ijkl;

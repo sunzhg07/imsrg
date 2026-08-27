@@ -2581,6 +2581,187 @@ namespace Commutator
     X.profiler.timer[__func__] += omp_get_wtime() - tstart;
   } // comm232st
 
+  // Tensor-tensor to scalar two-body commutator (AMC comm232tts_unred.tex).
+  // Z^{J0 J1 0} = delta_{J0,J1} * sum_abc N_abc * (Eq1 + Eq2 + Eq3 + Eq4)
+  // Each AMC equation carries a leading minus; threebody adds 1/2 and (1-P_ij) on [1,3], (1-P_kl) on [2,4].
+  // Index map: AMC J0 = bra/ket J; J2,J3 = intermediate J sums; j0,j1 = summed j.
+  void comm232tts(const Operator &X, const Operator &Y, Operator &Z)
+  {
+    if (Z.GetJRank() != 0)
+      return;
+    if (X.GetJRank() != Y.GetJRank())
+      return;
+
+    auto &X2 = X.TwoBody;
+    auto &X3 = X.ThreeBody;
+    auto &Y2 = Y.TwoBody;
+    auto &Y3 = Y.ThreeBody;
+    auto &Z2 = Z.TwoBody;
+    const int lambda0 = X.GetJRank();
+
+    Z.modelspace->PreCalculateSixJ();
+    double tstart = omp_get_wtime();
+    std::vector<std::array<size_t, 2>> channels;
+    for (auto &iter : Z.TwoBody.MatEl)
+      channels.push_back(iter.first);
+
+    #pragma omp parallel for schedule(dynamic, 1)
+    for (size_t ich = 0; ich < channels.size(); ich++)
+    {
+      size_t ch_bra = channels[ich][0];
+      size_t ch_ket = channels[ich][1];
+      auto &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+      auto &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+      int J0 = tbc_bra.J;
+      int J1 = tbc_ket.J;
+      if (J0 != J1)
+        continue;
+
+      int nbras = tbc_bra.GetNumberKets();
+      int nkets = tbc_ket.GetNumberKets();
+      for (int ibra = 0; ibra < nbras; ibra++)
+      {
+        Ket &bra = tbc_bra.GetKet(ibra);
+        size_t i = bra.p;
+        size_t j = bra.q;
+        Orbit &oi = Z.modelspace->GetOrbit(i);
+        Orbit &oj = Z.modelspace->GetOrbit(j);
+        int ket_min = (ch_bra == ch_ket) ? ibra : 0;
+        for (int iket = ket_min; iket < nkets; iket++)
+        {
+          Ket &ket = tbc_ket.GetKet(iket);
+          size_t k = ket.p;
+          size_t l = ket.q;
+          Orbit &ok = Z.modelspace->GetOrbit(k);
+          Orbit &ol = Z.modelspace->GetOrbit(l);
+
+          double zijkl = 0.0;
+          // Eq1/3: -1/2 (-1)^ji / hat(J0);  Eq2/4: +1/2 (-1)^jk / hat(J0)  (threebody tex)
+          double outer_ij = -0.5 * AngMom::phase(oi.j2 / 2) / (2.0 * J0 + 1.0);
+          double outer_kl = +0.5 * AngMom::phase(ok.j2 / 2) / (2.0 * J0 + 1.0);
+
+          for (size_t c : Z.modelspace->all_orbits)
+          {
+            Orbit &oc = Z.modelspace->GetOrbit(c);
+            for (size_t a : Z.modelspace->all_orbits)
+            {
+              Orbit &oa = Z.modelspace->GetOrbit(a);
+              for (size_t b : Z.modelspace->all_orbits)
+              {
+                Orbit &ob = Z.modelspace->GetOrbit(b);
+                double occfactor = oa.occ * ob.occ * (1. - oc.occ) + (1. - oa.occ) * (1. - ob.occ) * oc.occ;
+                if (std::abs(occfactor) < 1e-8)
+                  continue;
+                if (a == b)
+                  occfactor *= 0.5;
+
+                int J2min = std::abs(oc.j2 - oj.j2) / 2;
+                int J2max = (oc.j2 + oj.j2) / 2;
+                int J3min = std::abs(oa.j2 - ob.j2) / 2;
+                int J3max = (oa.j2 + ob.j2) / 2;
+
+                for (int J2 = J2min; J2 <= J2max; J2++)
+                {
+                  for (int J3 = J3min; J3 <= J3max; J3++)
+                  {
+                    if (a == b and J3 % 2 > 0)
+                      continue;
+
+                    int twoj0min = AngMom::Jmin({ {2 * J3, oi.j2}, {2 * lambda0, 2 * J2} });
+                    int twoj0max = AngMom::Jmax({ {2 * J3, oi.j2}, {2 * lambda0, 2 * J2} });
+                    int twoj1min = AngMom::Jmin({ {2 * J2, oi.j2}, {2 * J0, 2 * J3} });
+                    int twoj1max = AngMom::Jmax({ {2 * J2, oi.j2}, {2 * J0, 2 * J3} });
+
+                    for (int twoj0 = twoj0min; twoj0 <= twoj0max; twoj0 += 2)
+                    {
+                      for (int twoj1 = twoj1min; twoj1 <= twoj1max; twoj1 += 2)
+                      {
+                        if (not AngMom::Triangle(twoj0, twoj1, 2 * lambda0))
+                          continue;
+
+                        int phase_inner = AngMom::phase(J2 + twoj1 / 2);
+                        double hatfactor = std::sqrt((2 * J2 + 1.0) * (twoj0 + 1.0) * (twoj1 + 1.0) / (2.0 * lambda0 + 1.0));
+                        double sixj1 = Z.modelspace->GetSixJ(oc.j2 / 2., oj.j2 / 2., J2,
+                                                            oi.j2 / 2., twoj1 / 2., J0);
+                        double sixj2 = Z.modelspace->GetSixJ(J3, lambda0, J2,
+                                                            twoj1 / 2., oi.j2 / 2., twoj0 / 2.);
+                        if (std::abs(sixj1 * sixj2) < 1e-14)
+                          continue;
+                        double pref_ij = occfactor * phase_inner * hatfactor * sixj1 * sixj2;
+
+                        // Eq1 / Eq3: (1-P_ij) on X2*Y3 and Y2*X3
+                        double x2_cjab = X2.GetTBME_J(J2, J3, c, j, a, b);
+                        double y3_abiklc = Y3.GetME_pn(J3, twoj0, J0, twoj1, a, b, i, k, l, c);
+                        zijkl += outer_ij * pref_ij * x2_cjab * y3_abiklc;
+
+                        double x2_ciab = X2.GetTBME_J(J2, J3, c, i, a, b);
+                        double y3_abjklc = Y3.GetME_pn(J3, twoj0, J0, twoj1, a, b, j, k, l, c);
+                        zijkl -= outer_ij * pref_ij * x2_ciab * y3_abjklc;
+
+                        double y2_cjab = Y2.GetTBME_J(J2, J3, c, j, a, b);
+                        double x3_abiklc = X3.GetME_pn(J3, twoj0, J0, twoj1, a, b, i, k, l, c);
+                        zijkl += outer_ij * pref_ij * y2_cjab * x3_abiklc;
+
+                        double y2_ciab = Y2.GetTBME_J(J2, J3, c, i, a, b);
+                        double x3_abjklc = X3.GetME_pn(J3, twoj0, J0, twoj1, a, b, j, k, l, c);
+                        zijkl -= outer_ij * pref_ij * y2_ciab * x3_abjklc;
+                      }
+                    }
+
+                    // Eq2 / Eq4: (1-P_kl) — separate j windows (AMC eq 2,4 sixj)
+                    int twoj0_kl_min = AngMom::Jmin({ {2 * J3, ok.j2}, {2 * lambda0, 2 * J2} });
+                    int twoj0_kl_max = AngMom::Jmax({ {2 * J3, ok.j2}, {2 * lambda0, 2 * J2} });
+                    int twoj1_kl_min = AngMom::Jmin({ {2 * J2, ok.j2}, {2 * J0, 2 * J3} });
+                    int twoj1_kl_max = AngMom::Jmax({ {2 * J2, ok.j2}, {2 * J0, 2 * J3} });
+                    for (int twoj0 = twoj0_kl_min; twoj0 <= twoj0_kl_max; twoj0 += 2)
+                    {
+                      for (int twoj1 = twoj1_kl_min; twoj1 <= twoj1_kl_max; twoj1 += 2)
+                      {
+                        if (not AngMom::Triangle(twoj0, twoj1, 2 * lambda0))
+                          continue;
+
+                        int phase_inner = AngMom::phase(J2 + twoj1 / 2);
+                        double hatfactor = std::sqrt((2 * J3 + 1.0) * (twoj0 + 1.0) * (twoj1 + 1.0) / (2.0 * lambda0 + 1.0));
+                        double sixj1 = Z.modelspace->GetSixJ(oc.j2 / 2., ol.j2 / 2., J3,
+                                                            ok.j2 / 2., twoj0 / 2., J0);
+                        double sixj2 = Z.modelspace->GetSixJ(J3, J2, lambda0,
+                                                            twoj1 / 2., twoj0 / 2., ok.j2 / 2.);
+                        if (std::abs(sixj1 * sixj2) < 1e-14)
+                          continue;
+                        double pref_kl = occfactor * phase_inner * hatfactor * sixj1 * sixj2;
+
+                        double y3_ijcabk = Y3.GetME_pn(J0, twoj0, J2, twoj1, i, j, c, a, b, k);
+                        double x2_abcl = X2.GetTBME_J(J2, J3, a, b, c, l);
+                        zijkl += outer_kl * pref_kl * y3_ijcabk * x2_abcl;
+
+                        double y3_ijcabl = Y3.GetME_pn(J0, twoj0, J2, twoj1, i, j, c, a, b, l);
+                        double x2_abck = X2.GetTBME_J(J2, J3, a, b, c, k);
+                        zijkl -= outer_kl * pref_kl * y3_ijcabl * x2_abck;
+
+                        double x3_ijcabk = X3.GetME_pn(J0, twoj0, J2, twoj1, i, j, c, a, b, k);
+                        double y2_abcl = Y2.GetTBME_J(J2, J3, a, b, c, l);
+                        zijkl += outer_kl * pref_kl * x3_ijcabk * y2_abcl;
+
+                        double x3_ijcabl = X3.GetME_pn(J0, twoj0, J2, twoj1, i, j, c, a, b, l);
+                        double y2_abck = Y2.GetTBME_J(J2, J3, a, b, c, k);
+                        zijkl -= outer_kl * pref_kl * x3_ijcabl * y2_abck;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          zijkl /= std::sqrt((1. + bra.delta_pq()) * (1. + ket.delta_pq()));
+          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zijkl);
+        }
+      }
+    }
+
+    X.profiler.timer[__func__] += omp_get_wtime() - tstart;
+  } // comm232tts
+
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///
   /// Expression:    Z^(J1j1, J2j2)Lamda_ijklmn =   PJ3(ij/k) sum_a  ( X_ka Y^(J1j1, J2j2)Lamda_ijalmn 
@@ -2909,6 +3090,7 @@ namespace Commutator
   //       * hat(j0)hat(j1)/hat(lambda0) {ja jb lambda0; j0 j1 J0}
   //       * ( X_ab^{lambda0} Y_ijbkla^{J0 j0 J0 j1 lambda0}
   //          -Y_ab^{lambda0} X_ijbkla^{J0 j0 J0 j1 lambda0} ).
+  // Y_ijbkla: bra (ij b) => j0 couples J0 with jb; ket (kl a) => j1 couples J0 with ja.
   void comm132tts(const Operator &X, const Operator &Y, Operator &Z)
   {
     if (Z.GetJRank() != 0)
@@ -2952,7 +3134,6 @@ namespace Commutator
         Ket &bra = tbc_bra.GetKet(ibra);
         size_t i = bra.p;
         size_t j = bra.q;
-        Orbit &oi = Z.modelspace->GetOrbit(i);
         int ket_min = (ch_bra == ch_ket) ? ibra : 0;
         for (int iket = ket_min; iket < nkets; iket++)
         {
@@ -2964,9 +3145,17 @@ namespace Commutator
           for (size_t a : Z.modelspace->all_orbits)
           {
             Orbit &oa = Z.modelspace->GetOrbit(a);
-            for (size_t b : X.GetOneBodyChannel(oa.l, oa.j2, oa.tz2))
+            for (size_t b : Z.modelspace->all_orbits)
             {
               Orbit &ob = Z.modelspace->GetOrbit(b);
+              // Tensor 1b: ja, jb, λ must form a triangle (not same-j OneBodyChannel).
+              if (not AngMom::Triangle(oa.j2, ob.j2, 2 * lambda0))
+                continue;
+              if (((oa.l + ob.l + X.GetParity()) % 2 > 0) and ((oa.l + ob.l + Y.GetParity()) % 2 > 0))
+                continue;
+              if ((std::abs(oa.tz2 - ob.tz2) != 2 * X.GetTRank()) and (std::abs(oa.tz2 - ob.tz2) != 2 * Y.GetTRank()))
+                continue;
+
               double occfactor = oa.occ - ob.occ;
               if (std::abs(occfactor) < 1e-8)
                 continue;
@@ -2976,10 +3165,11 @@ namespace Commutator
               if (std::abs(xab) < 1e-8 and std::abs(yab) < 1e-8)
                 continue;
 
-              int twoj0min = std::abs(2 * J0 - oi.j2);
-              int twoj0max = 2 * J0 + oi.j2;
-              int twoj1min = std::abs(2 * J0 - ob.j2);
-              int twoj1max = 2 * J0 + ob.j2;
+              // j0 from bra (ij b): couple J0 with jb; j1 from ket (kl a): couple J0 with ja.
+              int twoj0min = std::abs(2 * J0 - ob.j2);
+              int twoj0max = 2 * J0 + ob.j2;
+              int twoj1min = std::abs(2 * J0 - oa.j2);
+              int twoj1max = 2 * J0 + oa.j2;
               for (int twoj0 = twoj0min; twoj0 <= twoj0max; twoj0 += 2)
               {
                 for (int twoj1 = twoj1min; twoj1 <= twoj1max; twoj1 += 2)
@@ -2992,9 +3182,11 @@ namespace Commutator
                   if (std::abs(sixj) < 1e-12)
                     continue;
 
-                  int phase = AngMom::phase(J0 + (ob.j2 + twoj0) / 2);
-                  double hatfactor = std::sqrt((twoj0 + 1.0) * (twoj1 + 1.0)) / ((2.0 * J0 + 1.0) * std::sqrt(2.0 * lambda0 + 1.0));
-                  double prefactor = occfactor * phase * hatfactor * sixj;
+                  // AMC: delta_J0J1 (-1)^J0 / hat(J0)^2 * (n_a-n_b) (-1)^{j_b+j_0} hat(j0)hat(j1)/hat(lambda) 6j
+                  int phase = AngMom::phase((ob.j2 + twoj0) / 2);
+                  double channel_factor = AngMom::phase(J0) / std::pow(2.0 * J0 + 1.0, 2);
+                  double hatfactor = std::sqrt((twoj0 + 1.0) * (twoj1 + 1.0)) / std::sqrt(2.0 * lambda0 + 1.0);
+                  double prefactor = channel_factor * occfactor * phase * hatfactor * sixj;
 
                   double yijbkla = Y3.GetME_pn(J0, twoj0, J0, twoj1, i, j, b, k, l, a);
                   double xijbkla = X3.GetME_pn(J0, twoj0, J0, twoj1, i, j, b, k, l, a);
@@ -4376,11 +4568,16 @@ namespace Commutator
                   {
                     if (c == d and J1 % 2 > 0)
                       continue;
+                    if (not AngMom::Triangle(2 * J0, 2 * J1, 2 * lambda0))
+                      continue;
 
-                    int j0min = std::abs(2 * J0 - oi.j2);
-                    int j0max = 2 * J0 + oi.j2;
-                    int j1min = std::abs(2 * J1 - oj.j2);
-                    int j1max = 2 * J1 + oj.j2;
+                    // AMC Y_cdiabj^{J1 j0, J0 j1}: bra (cd i) has J1,j0 → j0 couples J1 with ji;
+                    // ket (ab j) has J0,j1 → j1 couples J0 with jj. (Same ranges for Term 2
+                    // Y_abicdj^{J1 j0, J0 j1} with particle order swapped.)
+                    int j0min = std::abs(2 * J1 - oi.j2);
+                    int j0max = 2 * J1 + oi.j2;
+                    int j1min = std::abs(2 * J0 - oj.j2);
+                    int j1max = 2 * J0 + oj.j2;
 
                     for (int j0 = j0min; j0 <= j0max; j0 += 2)
                     {
@@ -4389,10 +4586,14 @@ namespace Commutator
                         if (std::abs(j0 - j1) > 2 * lambda0 || (j0 + j1) < 2 * lambda0)
                           continue;
 
+                        // Literal AMC Wigner formula (unreduced Z): 
+                        // (-1)^{ji} / ĵ_i^2 * ĵ0 ĵ1 / λ̂ * phase * sixj * (XY - XY)
+                        // Overall 1/4 matches UnitTest m AS (AMC input omitted it).
                         double hatfactor = std::sqrt((j0 + 1.0) * (j1 + 1.0) / (2.0 * lambda0 + 1.0));
                         double prefactor = 0.25 * occ_factor * diag_phase * diag_factor * hatfactor;
 
-                        // Equation 1 from the derivation notes.
+                        // Eq1 Term1/2: same AMC superscripts J0,J1 / J1,j0,J0,j1 on both
+                        // particle orders (not a bra-ket J swap of a single ME).
                         double sixj1 = Z.modelspace->GetSixJ(J1, lambda0, J0,
                                                             j1 / 2., oi.j2 / 2., j0 / 2.);
                         int phase1 = AngMom::phase(J0 + j1 / 2);
@@ -4402,7 +4603,7 @@ namespace Commutator
                         double y3_abicdj = Y3.GetME_pn(J1, j0, J0, j1, a, b, i, c, d, j);
                         double term1 = phase1 * sixj1 * (x2_abcd * y3_cdiabj - x2_cdab * y3_abicdj);
 
-                        // Equation 2 from the derivation notes.
+                        // Eq2 Term1/2: AMC X^{J0 j0, J1 j1}, Y^{J1 J0}
                         double sixj2 = Z.modelspace->GetSixJ(lambda0, J0, J1,
                                                             oi.j2 / 2., j1 / 2., j0 / 2.);
                         int phase2 = AngMom::phase(J1 + j1 / 2);

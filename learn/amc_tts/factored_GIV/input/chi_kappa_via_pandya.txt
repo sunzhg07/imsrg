@@ -1,0 +1,55 @@
+# χ^κ Path B AMC sketch — currently still the OLD arxiv AS product.
+# Gold bare χ Path B is Factorized bar_CHI_VI_II (not VI):
+#   bar_CHI_VI_II = hΩ (occ_ABbarD ⊙ Ω̄)^T · Γ̄ → inv_direct ≡ −χ_unred
+# See NOTES.md; bench: run/test_chi_kappa_pathB_vs_m.py
+#
+# This file’s product (barG·barO, occ on k) matches bar_CHI_VI / old arxiv,
+# NOT analyze χ^κ. Rewrite before using as AMC Path B gold.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+barO_ijkl = - Omega_ijkl;
+
+declare barG {
+    mode=4,
+    latex="\\bar{\\Gamma}",
+    scalar=true,
+    scheme=((1,-4),(3,-2))
+}
+barG_ijkl = - Gamma_ijkl;
+
+declare n { mode=2, diagonal=true, latex="n" }
+declare nbar { mode=2, diagonal=true, latex="\\bar{n}" }
+
+declare barChi {
+    mode=4,
+    latex="\\bar{\\chi}^{\\kappa}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+# Occupied weight on Pandya ket index l ↔ Factorized occ_ABbarD family
+# (arxiv weight n_k on free index after map; here k is Pandya-aligned).
+barChi_ijkl = sum_ab(
+    (nbar_a*n_b*n_k + n_a*nbar_b*nbar_k) * barG_ibak * barO_ajlb);
+
+declare chi {
+    mode=4,
+    latex="\\chi^{\\kappa}",
+    scalar=false
+}
+chi_ijkl = barChi_ijkl;

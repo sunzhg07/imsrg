@@ -1,0 +1,31 @@
+# RC via normal: bar → inv Pandya → permute → fwd Pandya
+# Tests whether AMC can express the swap+recouple that code does in one step.
+declare barChi {
+    mode=4,
+    latex="\\bar{\\chi}^{\\eta}",
+    scalar=true,
+    scheme=((1,-4),(3,-2))
+}
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\eta}",
+    scalar=true
+}
+# inv Pandya (scalar sample: chi = +barChi same labels after scheme)
+Chi_ijkl = barChi_ijkl;
+
+declare ChiSwap {
+    mode=4,
+    latex="\\chi^{\\eta,\\mathrm{swap}}",
+    scalar=true
+}
+# ad↔bc swap in normal indices: χ_{b c a d} + χ_{a d b c}
+ChiSwap_abcd = Chi_bcad + Chi_adbc;
+
+declare dbarChi {
+    mode=4,
+    latex="\\overline{\\overline{\\chi}}^{\\eta}",
+    scalar=true,
+    scheme=((1,-4),(3,-2))
+}
+dbarChi_abcd = - ChiSwap_abcd;

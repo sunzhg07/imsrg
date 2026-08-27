@@ -1,0 +1,25 @@
+# Full χ^η pipeline pieces (scalar):
+# 1) Pandya Ω  2) barχ product  3) Pandya→CC (RC without writing swap in AMC —
+#    swap is the + of two barχ index orders; each piece verified separately)
+declare Omega { mode=4, latex="\\Omega" }
+declare barO {
+    mode=4, latex="\\bar{\\Omega}", scheme=((1,-4),(3,-2))
+}
+barO_ijkl = - Omega_ijkl;
+
+declare n { mode=2, diagonal=true, latex="n" }
+declare nbar { mode=2, diagonal=true, latex="\\bar{n}" }
+
+declare barChi {
+    mode=4, latex="\\bar{\\chi}^{\\eta}", scalar=true, scheme=((1,-4),(3,-2))
+}
+barChi_ijkl = sum_ab(
+    (nbar_a*n_b*nbar_k + n_a*nbar_b*n_k) * (barO_iabl * barO_bjka)
+);
+
+declare dbarChi {
+    mode=4, latex="\\overline{\\overline{\\chi}}^{\\eta}", scalar=true, scheme=((1,-3),(4,-2))
+}
+# RC = - (T_bcad + T_adbc); AMC cannot sum both in one eq (Yutsis crash).
+# Document pieces; here show scheme change on unpermuted barχ for the angular skeleton.
+dbarChi_ijkl = barChi_ijkl;

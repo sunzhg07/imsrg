@@ -1,0 +1,13 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Chi0 {
+    mode=4,
+    latex="\\chi^{(0)}",
+    scalar=true
+}
+
+Chi0_abcd = sum_ef(Omega_abef * Omega_efcd);

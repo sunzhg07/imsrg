@@ -1,0 +1,6 @@
+# Ω normal → Pandya. Same labels; leading − as sample Pandya.
+declare Omega { mode=4, latex="\Omega", scalar=true }
+declare barO {
+    mode=4, latex="\bar{\Omega}", scalar=true, scheme=((1,-4),(3,-2))
+}
+barO_ijkl = - Omega_ijkl;

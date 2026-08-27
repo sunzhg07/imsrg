@@ -1,0 +1,10 @@
+# Same as E with overall minus (code eta: XbarIIbd -=)
+declare Xin {
+    mode=4, latex="\\bar{\\chi}^{\\mathrm{in}}", scalar=true,
+    scheme=((1,-4),(2,-3))
+}
+declare Xout {
+    mode=4, latex="\\bar{\\chi}^{\\mathrm{RC}}", scalar=true,
+    scheme=((1,-2),(3,-4))
+}
+Xout_ijkl = - Xin_ijkl;

@@ -1,0 +1,28 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare G4b { mode=4, latex="\Gamma^{(IV_b)}", scalar=true }
+
+G4b_ijkl = sum_abcd((nbar_a*n_b*nbar_c + n_a*nbar_b*n_c)
+    * (Omega_bica*Omega_jcld*Gamma_dabk + Omega_cabk*Omega_jdlc*Gamma_bida));

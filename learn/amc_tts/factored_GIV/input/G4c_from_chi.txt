@@ -1,0 +1,22 @@
+# Path B / fold: Γ^{IV_c} = 1/2 (1-Pij)(1-Pkl) Σ_ab χ^λ_ialb Ω_bjak
+# χ tensor, Ω tensor → scalar Z. Unreduced Z (no reduce=true).
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\lambda}",
+    scalar=false
+}
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare G4c {
+    mode=4,
+    latex="\\Gamma^{(IV_c)}",
+    scalar=true
+}
+
+G4c_ijkl = 1/2 * sum_ab(P(i/j) * P(k/l) * Chi_ialb * Omega_bjak);

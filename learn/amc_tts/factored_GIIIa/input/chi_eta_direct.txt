@@ -1,0 +1,18 @@
+# χ^η Path A (AMC direct): T×T→S ring
+# χ^η_ijkl = Σ_ab (n̄_a n_b n̄_k + n_a n̄_b n_k) Ω_iabl Ω_bjka
+# Packaging: Ω tensor reduced; χ scalar reduce=true
+# Source: learn/factorized_code_analyze.tex eq chi2b / χ^η
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare n { mode=2, diagonal=true, latex="n" }
+declare nbar { mode=2, diagonal=true, latex="\\bar{n}" }
+declare chi {
+    mode=4,
+    latex="\\chi^{\\eta}",
+    scalar=true,
+    reduce=true
+}
+chi_ijkl = sum_ab((nbar_a*n_b*nbar_k + n_a*nbar_b*n_k) * (Omega_iabl * Omega_bjka));

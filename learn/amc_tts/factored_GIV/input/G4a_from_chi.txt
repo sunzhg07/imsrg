@@ -1,0 +1,26 @@
+# Γ^{IV_a} from χ^κ ladder (analyze eq GIVa)
+# Γ^{IV_a} = -Σ_bd { (1-Pij) χ_ijbd Ω_dbkl + (1-Pkl) Ω_ijdb χ_klbd }
+#
+# Packaging: χ^κ tensor reduce=true; Ω reduced tensor; Z reduce=true → Z_red=S/Ĵ.
+# Prefer strip/restore (G4a_Wbra_noperm) for derivation; this file is expand check.
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\kappa}",
+    scalar=false,
+    reduce=true
+}
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare G4a {
+    mode=4,
+    latex="\\Gamma^{(IV_a)}",
+    scalar=true,
+    reduce=true
+}
+G4a_ijkl = -1 * sum_bd(
+    P(i/j) * Chi_ijbd * Omega_dbkl
+  + P(k/l) * Omega_ijdb * Chi_klbd);

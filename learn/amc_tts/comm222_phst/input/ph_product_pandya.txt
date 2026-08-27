@@ -1,0 +1,40 @@
+declare X {
+    mode=4,
+    latex="X",
+    scalar=true
+}
+declare Y {
+    mode=4,
+    latex="Y",
+    scalar=false
+}
+declare barX {
+    mode=4,
+    latex="\\bar{X}",
+    scalar=true,
+    scheme=((1,-4),(3,-2))
+}
+declare barY {
+    mode=4,
+    latex="\\bar{Y}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+barX_ijkl = - X_ijkl;
+barY_ijkl = - Y_ijkl;
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+# Pandya-space product (one term of the commutator structure)
+declare barZ {
+    mode=4,
+    latex="\\bar{Z}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+# Zbar_ilkj ~ sum_ab (n_a-n_b) barX_ilab barY_abkj
+barZ_ilkj = sum_ab((n_a - n_b) * barX_ilab * barY_abkj);

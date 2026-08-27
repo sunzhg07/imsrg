@@ -1,0 +1,28 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true,
+    reduce=true
+}
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare G3a { mode=4, latex="\Gamma^{(III_a)}", scalar=true, reduce=true }
+# Direct only. Occ FIXED to analyze: nbar_c nbar_d n_a + nbar_a n_c n_d
+G3a_ijkl = -1 * sum_abcd((nbar_c*nbar_d*n_a + nbar_a*n_c*n_d)
+    * (Omega_ajcd*Omega_idab*Gamma_cbkl + Omega_cdka*Omega_bacl*Gamma_ijbd));

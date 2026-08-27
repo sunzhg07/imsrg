@@ -946,6 +946,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
   Commutator.def("comm133st", &Commutator::comm133st);
   Commutator.def("comm132st", &Commutator::comm132st);
      Commutator.def("comm132tts", &Commutator::comm132tts);
+     Commutator.def("comm232tts", &Commutator::comm232tts);
 
   //      Commutator.def("comm223_231_Factorization",
   //      &Commutator::comm223_231_Factorization);
@@ -1239,8 +1240,6 @@ PYBIND11_MODULE(pyIMSRG, m) {
                                &ReferenceImplementations::comm223_232_tts_GI);
   ReferenceImplementations.def("comm223_232_tts_GII",
                                &ReferenceImplementations::comm223_232_tts_GII);
-  ReferenceImplementations.def("comm223_232_tts_GIIIa",
-                               &ReferenceImplementations::comm223_232_tts_GIIIa);
   ReferenceImplementations.def("comm223_232_tts_GIIIb",
                                &ReferenceImplementations::comm223_232_tts_GIIIb);
   ReferenceImplementations.def("comm223_232_tts_GIIIc",

@@ -1,0 +1,32 @@
+declare Omega {
+    mode=4,
+    latex="\Omega"
+}
+
+declare Gamma {
+    mode=4,
+    latex="\Gamma"
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\bar{n}"
+}
+
+declare G3c_T2 {
+    mode=4,
+    latex="\Gamma^{(III_c)}_{T2}"
+}
+
+# M-scheme Term2 only → AMC → χ_j strip
+G3c_T2_ijkl = -1/2 * sum_abcd(
+    (nbar_a*nbar_b*n_c + n_a*n_b*nbar_c)
+    * P(i/j) * P(k/l)
+    * Omega_icab*Omega_abdl*Gamma_djkc);

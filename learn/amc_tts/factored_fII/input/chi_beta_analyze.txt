@@ -1,0 +1,32 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare chi {
+    mode=2,
+    latex="\\chi^{\\beta}",
+    scalar=false
+}
+
+# factorized_code_analyze.tex chi^beta
+chi_ij = 1/2 * sum_abc((nbar_a*nbar_b*n_c*n_i - n_a*n_b*nbar_c*nbar_i) * (Omega_ciab*Gamma_abcj));

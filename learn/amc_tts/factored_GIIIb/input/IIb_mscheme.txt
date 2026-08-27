@@ -1,0 +1,13 @@
+# BruteForce diagram IIb → m-scheme (P stripped; restore P_ij P_kl after)
+# Map p,g,q,h → i,j,k,l
+# Z = -Σ_abcd (n̄_b n_c n_d + n̄_c n̄_d n_b) Ω_dcbk Ω_biac Γ_jald
+# Source: ReferenceImplementations.cc comm223_232_BruteForce ~L17301
+declare Omega { mode=4, latex="\\Omega" }
+declare Gamma { mode=4, latex="\\Gamma" }
+declare n { mode=2, diagonal=true, latex="n" }
+declare nbar { mode=2, diagonal=true, latex="\\bar{n}" }
+declare IIb { mode=4, latex="Z^{\\mathrm{IIb}}" }
+IIb_ijkl = -1 * sum_abcd(
+    (nbar_b*n_c*n_d + nbar_c*nbar_d*n_b)
+    * Omega_dcbk * Omega_biac * Gamma_jald
+);

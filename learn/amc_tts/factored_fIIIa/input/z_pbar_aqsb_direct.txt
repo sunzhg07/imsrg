@@ -1,0 +1,14 @@
+# Z_pqsr = sum_ab Omega_pbar * Omega_aqsb
+# Z: reduced scalar; Omega: reduced tensor
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare Z {
+    mode=4,
+    latex="Z",
+    scalar=true,
+    reduce=true
+}
+Z_pqsr = sum_ab(Omega_pbar * Omega_aqsb);

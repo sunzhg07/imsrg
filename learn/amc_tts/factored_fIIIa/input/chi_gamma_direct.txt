@@ -1,0 +1,16 @@
+# Path A: m-scheme → normal J (AMC direct)
+# Packaging locked: Ω tensor reduced; chi scalar reduce=true
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare n { mode=2, diagonal=true, latex="n" }
+declare nbar { mode=2, diagonal=true, latex="\\bar{n}" }
+declare chi {
+    mode=4,
+    latex="\\chi^{\\gamma}",
+    scalar=true,
+    reduce=true
+}
+chi_ijkl = sum_ab((n_a*nbar_b*n_j*nbar_k - nbar_a*n_b*nbar_j*n_k) * (Omega_ajkb*Omega_ibal));

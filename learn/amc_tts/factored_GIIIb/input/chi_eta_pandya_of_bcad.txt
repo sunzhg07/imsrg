@@ -1,0 +1,10 @@
+# Pandya transform applied to χ with free indices (b,c; a,d):
+#   \bar{\barχ}_{ijkl} := Pandya[χ]_{bc,ad} written as output on (i j; k l) = (a b; c d)
+# so RHS uses Chi_jkil (= Chi_bcad when i=a,j=b,k=c,l=d)
+declare Chi {
+    mode=4, latex="\\chi^{\\eta}", scalar=true
+}
+declare dbarChi {
+    mode=4, latex="\\overline{\\overline{\\chi}}^{\\eta(\\mathrm{bcad})}", scalar=true, scheme=((1,-4),(3,-2))
+}
+dbarChi_ijkl = - Chi_jkil;

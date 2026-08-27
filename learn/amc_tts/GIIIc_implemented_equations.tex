@@ -1,0 +1,380 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{hyperref}
+\geometry{margin=1in}
+
+\newcommand{\sixj}[6]{\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \end{Bmatrix}}
+\newcommand{\Jhat}[1]{\widehat{#1}}
+\newcommand{\nbar}{\bar n}
+
+\title{Implemented equations for $\Gamma^{\mathrm{III}_c}$ / $\chi^\theta$\\
+\large AMC DIRECT, fact Path~A (sixj), fact Path~B (Pandya)}
+\author{Code anchors in \texttt{imsrg}\\
+\texttt{ReferenceImplementations.cc}, \texttt{FactorizedDoubleCommutator\_eths.cc}}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Exact equations as implemented for the two-body piece $\Gamma^{\mathrm{III}_c}$
+of $[\Omega,[\Omega,\Gamma]_{3b}]_{2b}$ in the ethS / TTS stack.
+Product ranks: $\Omega$ may be tensor (rank $\lambda$), $\Gamma$ and $Z$ are
+scalar; $\chi^\theta$ is scalar ($T\times T\to S$).
+Ground truth $=$ AMC/TTS DIRECT. Path~A matches DIRECT term-by-term;
+Path~B (IIe Pandya) does not.
+\end{abstract}
+
+\tableofcontents
+
+%----------------------------------------------------------------------
+\section{Notation}
+%----------------------------------------------------------------------
+
+\begin{itemize}
+  \item $\Omega$: anti-Hermitian generator (IMS RG $\eta$), J-rank $\lambda$.
+        Reduced TBMEs via \texttt{GetTBME\_J}.
+  \item $\Gamma$: Hermitian scalar two-body operator.
+  \item $Z$: Hermitian scalar output (additive piece of $\Gamma^{\mathrm{III}_c}$).
+  \item Occupations: $n_a\in[0,1]$, $\nbar_a=1-n_a$.
+  \item $P_{ij}$: fermion exchange on legs $(i,j)$ with the usual phase;
+        code uses ket \texttt{Phase(J)} for $(1-P)$.
+  \item $\Jhat{J}=\sqrt{2J+1}$, $\hat\lambda=\sqrt{2\lambda+1}$.
+  \item Equal-$J$ channels only for scalar $Z$: $\delta_{J_0,J_1}$.
+\end{itemize}
+
+\textbf{Code map}
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Name & Routine & File \\
+\midrule
+DIRECT / TTS & \texttt{comm223\_232\_tts\_GIIIc(..., which\_term)} & \texttt{ReferenceImplementations.cc} \\
+Path A & \texttt{comm223\_232\_GIIIc} (default) & \texttt{FactorizedDoubleCommutator\_eths.cc} \\
+$\chi$ DGEMM & \texttt{FillChiThetaG3c\_DGEMM} & same \\
+$\chi$ loop & \texttt{FillChiThetaG3c} & same \\
+Path B & \texttt{SetUse\_TypeGIIIc\_factorized(true)} & same \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%----------------------------------------------------------------------
+\section{M-scheme (AMC input)}
+%----------------------------------------------------------------------
+
+Occupation factor shared by both seeds:
+\begin{equation}
+  f(a,b,c)
+  =\nbar_a\nbar_b n_c + n_a n_b\nbar_c.
+  \label{eq:occ}
+\end{equation}
+
+Full diagram:
+\begin{equation}
+\begin{aligned}
+\Gamma^{\mathrm{III}_c}_{ijkl}
+&=-\frac12\sum_{abcd} f(a,b,c)\,(1-P_{ij})(1-P_{kl})
+\Bigl(
+\underbrace{\Omega_{abcl}\,\Omega_{idab}\,\Gamma_{cjkd}}_{\mathrm{Term1}}
++\underbrace{\Omega_{icab}\,\Omega_{abdl}\,\Gamma_{djkc}}_{\mathrm{Term2}}
+\Bigr).
+\end{aligned}
+\label{eq:mscheme}
+\end{equation}
+
+Split AMC inputs (also in \texttt{learn/amc\_tts/input/dc\_G3c\_term\{1,2\}.txt}):
+\begin{align}
+\Gamma^{\mathrm{III}_c}_{T1}
+&=-\frac12\sum_{abcd} f(a,b,c)\,P(i/j)\,P(k/l)\,
+\Omega_{abcl}\,\Omega_{idab}\,\Gamma_{cjkd},
+\label{eq:ms-t1}\\
+\Gamma^{\mathrm{III}_c}_{T2}
+&=-\frac12\sum_{abcd} f(a,b,c)\,P(i/j)\,P(k/l)\,
+\Omega_{icab}\,\Omega_{abdl}\,\Gamma_{djkc}.
+\label{eq:ms-t2}
+\end{align}
+
+%----------------------------------------------------------------------
+\section{AMC / DIRECT (J-coupled)}
+\label{sec:direct}
+%----------------------------------------------------------------------
+
+Source: \texttt{learn/amc\_tts/output/G3c.tex}.
+Implemented in \texttt{comm223\_232\_tts\_GIIIc} with
+\texttt{which\_term}$\in\{0,1,2\}$ (both / Term1 / Term2).
+External legs written as $(p,g;q,h)$ with $J_0$; exchanges implement $(1-P_{pg})(1-P_{qh})$.
+
+\subsection{Term1 (maps to $\chi_k$ strip)}
+\begin{equation}
+\begin{aligned}
+Z^{(T1)\,J_0}_{pg,qh}
+&=-\frac12\,\delta_{J_0J_1}\sum_{abcd\,J_2J_3J_4J_5}
+f(a,b,c)\,(-1)^{J_2+J_3+\lambda}\,
+\Jhat{J_4}^{2}\,\Jhat{J_5}^{2}\,\hat\lambda^{-1}\\
+&\quad\times
+\sixj{j_p}{j_h}{J_5}{j_c}{j_d}{J_3}
+\sixj{j_q}{j_g}{J_5}{j_c}{j_d}{J_4}
+\sixj{j_h}{j_q}{J_0}{j_g}{j_p}{J_5}\\
+&\quad\times
+\Omega^{J_2J_3\lambda}_{ab,ch}\,
+\Omega^{J_3J_2\lambda}_{pd,ab}\,
+\Gamma^{J_4}_{cg,qd}
+\;+\;(pg\leftrightarrow\text{exch.}).
+\end{aligned}
+\label{eq:amc-t1}
+\end{equation}
+
+\subsection{Term2 (maps to $\chi_j$ strip)}
+\begin{equation}
+\begin{aligned}
+Z^{(T2)\,J_0}_{pg,qh}
+&=-\frac12\,\delta_{J_0J_1}\sum_{abcd\,J_2J_3J_4J_5}
+f(a,b,c)\,(-1)^{J_2+J_3+\lambda}\,
+\Jhat{J_4}^{2}\,\Jhat{J_5}^{2}\,\hat\lambda^{-1}\\
+&\quad\times
+\sixj{j_h}{j_p}{J_5}{j_c}{j_d}{J_2}
+\sixj{j_g}{j_q}{J_5}{j_c}{j_d}{J_4}
+\sixj{j_h}{j_q}{J_0}{j_p}{j_g}{J_5}\\
+&\quad\times
+\Omega^{J_2J_3\lambda}_{pc,ab}\,
+\Omega^{J_3J_2\lambda}_{ab,dh}\,
+\Gamma^{J_4}_{dg,qc}
+\;+\;(pg\leftrightarrow\text{exch.}).
+\end{aligned}
+\label{eq:amc-t2}
+\end{equation}
+
+\textbf{Note:} Term1 keeps $\chi$-like outer channel at $J_3$ for $(pd;ch)$;
+Term2's unfactored mid-$J$ labels differ ($J_2$ on outer legs of the $\Omega\Omega$ product).
+Both retain independent $J_4$ on $\Gamma$ and bridge $J_5$.
+
+%----------------------------------------------------------------------
+\section{Intermediate $\chi^\theta$ (fact-slow / fact-fast)}
+\label{sec:chi}
+%----------------------------------------------------------------------
+
+Define the mid-$J$ ladder product (AMC packaging; $\Jhat{J}$ absorbed downstream):
+\begin{equation}
+T^{J}_{ij,kl}
+=\sum_{J'}(-1)^{J+J'+\lambda}\,\hat\lambda^{-1}
+\sum_{ab}
+\Omega^{JJ'\lambda}_{ij,ab}\,
+\Omega^{J'J\lambda}_{ab,kl}.
+\label{eq:T}
+\end{equation}
+With occupations on the \emph{internal} pair $(a,b)$ only through the weights
+$W_{pp}(ab)=\nbar_a\nbar_b$, $W_{hh}(ab)=n_a n_b$, one builds
+\begin{align}
+T^{pp,J}_{ij,kl}
+&=\sum_{J'}(-1)^{J+J'+\lambda}\hat\lambda^{-1}
+\sum_{ab} W_{pp}(ab)\,
+\Omega^{JJ'\lambda}_{ij,ab}\,\Omega^{J'J\lambda}_{ab,kl},
+\label{eq:Tpp}\\
+T^{hh,J}_{ij,kl}
+&=\sum_{J'}(-1)^{J+J'+\lambda}\hat\lambda^{-1}
+\sum_{ab} W_{hh}(ab)\,
+\Omega^{JJ'\lambda}_{ij,ab}\,\Omega^{J'J\lambda}_{ab,kl}.
+\label{eq:Thh}
+\end{align}
+DGEMM implements~\eqref{eq:Tpp}--\eqref{eq:Thh}; the orbit loop
+\texttt{FillChiThetaG3c} writes the equivalent sum with $f$ inside.
+
+\subsection{Two strips}
+\begin{align}
+\chi_k^{J}(ij,kl)
+&= n_k\,T^{pp,J}_{ij,kl} + \nbar_k\,T^{hh,J}_{ij,kl}
+=\sum_{ab} f(a,b,k)\,[\Omega\otimes\Omega]^{(0)}_{ij,kl},
+\label{eq:chik}\\
+\chi_j^{J}(ij,kl)
+&= n_j\,T^{pp,J}_{ij,kl} + \nbar_j\,T^{hh,J}_{ij,kl}
+=\sum_{ab} f(a,b,j)\,[\Omega\otimes\Omega]^{(0)}_{ij,kl}.
+\label{eq:chij}
+\end{align}
+So $\chi_k$ weights the \textbf{ket-first} index; $\chi_j$ weights the
+\textbf{bra-second} index.
+
+\subsection{Hermiticity (implemented / verified)}
+For real $\Omega$ (Hermitian or anti-Hermitian),
+\begin{equation}
+\chi_j = \chi_k^{T},
+\qquad
+\chi^\theta \equiv \chi_k+\chi_j = \chi_k+\chi_k^{T}
+\quad\text{(Hermitian)}.
+\label{eq:chi-herm}
+\end{equation}
+Each strip alone is neither Hermitian nor anti-Hermitian.
+Path~B must use the sum; strips cannot be Pandya'd separately under the
+Factorized hermiticity assumptions.
+
+%----------------------------------------------------------------------
+\section{Path A --- fact-slow / production (matches DIRECT)}
+\label{sec:patha}
+%----------------------------------------------------------------------
+
+Same $(1-P_{pg})(1-P_{qh})$ exchanges as DIRECT. After $\chi$ absorbs
+$(a,b)$, $J_2$, phase, and $\hat\lambda^{-1}$:
+
+\subsection{Term1}
+\begin{equation}
+\begin{aligned}
+Z^{(A1)\,J_0}_{pg,qh}
+&=-\frac12\sum_{cd\,J_3J_4J_5}
+\Jhat{J_4}^{2}\,\Jhat{J_5}^{2}\,
+\sixj{j_p}{j_h}{J_5}{j_c}{j_d}{J_3}
+\sixj{j_q}{j_g}{J_5}{j_c}{j_d}{J_4}
+\sixj{j_h}{j_q}{J_0}{j_g}{j_p}{J_5}\\
+&\qquad\times
+\chi_k^{J_3}(p,d,c,h)\,
+\Gamma^{J_4}_{cg,qd}
+\;+\;\text{exchanges}.
+\end{aligned}
+\label{eq:patha-t1}
+\end{equation}
+
+\subsection{Term2}
+\begin{equation}
+\begin{aligned}
+Z^{(A2)\,J_0}_{pg,qh}
+&=-\frac12\sum_{cd\,J_3J_4J_5}
+\Jhat{J_4}^{2}\,\Jhat{J_5}^{2}\,
+\sixj{j_h}{j_p}{J_5}{j_c}{j_d}{J_3}
+\sixj{j_g}{j_q}{J_5}{j_c}{j_d}{J_4}
+\sixj{j_h}{j_q}{J_0}{j_p}{j_g}{J_5}\\
+&\qquad\times
+\chi_j^{J_3}(p,c,d,h)\,
+\Gamma^{J_4}_{dg,qc}
+\;+\;\text{exchanges}.
+\end{aligned}
+\label{eq:patha-t2}
+\end{equation}
+
+\textbf{Verified:} $Z^{(A1)}\equiv Z^{(T1)}$, $Z^{(A2)}\equiv Z^{(T2)}$,
+$Z^{(A1)}+Z^{(A2)}\equiv$ DIRECT (to $\sim 10^{-13}$).
+
+%----------------------------------------------------------------------
+\section{Path B --- AMC $\chi^\theta$ + scalar IIe Pandya (experimental)}
+\label{sec:pathb}
+%----------------------------------------------------------------------
+
+\subsection{Pack Hermitian scalar $\chi$}
+\begin{equation}
+\chi^{\theta,J}_{ij,kl}
+=\chi_k^{J}(ij,kl)+\chi_j^{J}(ij,kl)
+\quad\text{(same slots)},
+\label{eq:chi-sum}
+\end{equation}
+store as reduced-product ME, then \texttt{MakeNotReduced()} for scalar
+Factorized reuse (\texttt{ChiThetaToScalarOperator}).
+
+\subsection{Pandya (same formula as Factorized IIe)}
+\begin{equation}
+\bar X^{J}_{ab,cd}
+=\sum_{J'}(-1)^{j_b+j_c+J'}\,\Jhat{J'}^{2}\,
+\sixj{j_a}{j_b}{J}{j_c}{j_d}{J'}
+X^{J'}_{ad,bc}.
+\label{eq:pandya}
+\end{equation}
+Applied to non-reduced $\chi^\theta$ and $\Gamma$ $\to$ $\bar\chi$, $\bar\Gamma$.
+
+\subsection{CC product and inverse Pandya}
+\begin{equation}
+\bar\chi_\Gamma = \bar\chi\,\bar\Gamma,
+\label{eq:barchiG}
+\end{equation}
+\begin{equation}
+\begin{aligned}
+Z^{(B)\,J}_{ij,kl}
+&=-\frac12(1-P_{ij})(1-P_{kl})
+\sum_{J'}\Jhat{J'}^{2}\,
+\sixj{j_i}{j_j}{J}{j_k}{j_l}{J'}
+(\bar\chi_\Gamma)^{J'}_{il,kj}.
+\end{aligned}
+\label{eq:pathb-z}
+\end{equation}
+(Implementation follows Factorized IIe layout / 2n CC matrices;
+see \texttt{PackChiThetaFactLayout} and the Pandya block in
+\texttt{comm223\_232\_GIIIc} Path~B.)
+
+\textbf{Verified:} $Z^{(B)}\neq$ DIRECT even at $\lambda=0$
+(with Hermitian AMC $\chi_k+\chi_j$).
+
+%----------------------------------------------------------------------
+\section{Contrast: scalar Factorized IIe (different oracle)}
+\label{sec:iie}
+%----------------------------------------------------------------------
+
+Factorized BruteForce IIe (scalar $\eta$), \emph{not} AMC G3c:
+\begin{equation}
+\begin{aligned}
+Z^{\mathrm{IIe},J_0}_{pg,qh}
+&=-\frac12 P_{pg}P_{qh}\sum_{abcd\,J_2J_3J_4}
+\Jhat{J_2}^{2}\Jhat{J_3}^{2}\Jhat{J_4}^{2}
+\bigl(\nbar_b n_a n_c+\nbar_a\nbar_c n_b\bigr)\\
+&\quad\times
+\sixj{j_p}{j_h}{J_4}{j_b}{j_d}{J_2}
+\sixj{j_q}{j_g}{J_4}{j_b}{j_d}{J_3}
+\sixj{j_h}{j_q}{J_0}{j_g}{j_p}{J_4}\\
+&\quad\times
+\eta^{J_2}_{ac,bh}\,\eta^{J_2}_{pd,ac}\,\Gamma^{J_3}_{bg,qd}.
+\end{aligned}
+\label{eq:iie-bf}
+\end{equation}
+Packed $\chi$ uses \emph{outer-leg} occupations:
+\begin{equation}
+\chi^{\mathrm{IV}}
+=\eta\,\eta_{\mathrm{occ},c}+(\eta\,\eta_{\mathrm{occ},d})^{T},
+\label{eq:chi-IV}
+\end{equation}
+then~\eqref{eq:pandya}--\eqref{eq:pathb-z}. That package matches
+\textbf{IIe}, not AMC~\eqref{eq:amc-t1}--\eqref{eq:amc-t2}.
+
+%----------------------------------------------------------------------
+\section{Why Path~A $\neq$ Path~B (same $\chi$)}
+\label{sec:why}
+%----------------------------------------------------------------------
+
+After factoring $\chi_k$ from Term1, Path~A still contracts with
+\begin{equation}
+\sum_{cd\,J_3J_4J_5}
+\Jhat{J_4}^{2}\Jhat{J_5}^{2}\,
+\sixj{\cdots}{J_3}\sixj{\cdots}{J_4}\sixj{\cdots}{J_5}
+\chi_k^{J_3}\,\Gamma^{J_4},
+\label{eq:g3c-kernel}
+\end{equation}
+i.e.\ $\chi$ and $\Gamma$ in \textbf{independent} $J$-channels bridged by $J_5$.
+
+Path~B replaces the whole Term1+Term2 content by a single
+cross-coupled product~\eqref{eq:barchiG}--\eqref{eq:pathb-z}
+(the IIe identity). These are different angular-momentum identities.
+Hermiticity of $\chi_k+\chi_j$ is necessary for~\eqref{eq:pandya} as used
+in Factorized, but not sufficient to reproduce~\eqref{eq:g3c-kernel}.
+
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Object & Equation & Matches DIRECT? \\
+\midrule
+DIRECT Term1/2 & \eqref{eq:amc-t1},\eqref{eq:amc-t2} & (definition) \\
+Path A & \eqref{eq:patha-t1},\eqref{eq:patha-t2} & yes \\
+$\chi_k,\chi_j$ & \eqref{eq:chik},\eqref{eq:chij} & (shared) \\
+Path B & \eqref{eq:chi-sum}--\eqref{eq:pathb-z} & no \\
+Factorized IIe & \eqref{eq:iie-bf}--\eqref{eq:chi-IV} & no (different diagram) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%----------------------------------------------------------------------
+\section{Debug switches}
+%----------------------------------------------------------------------
+
+\begin{verbatim}
+which_term: 0 = both, 1 = Term1 / chi_k, 2 = Term2 / chi_j
+  ReferenceImplementations.comm223_232_tts_GIIIc(Eta,Gamma,Z, which_term)
+  FactorizedDoubleCommutator_eths.SetUse_TypeGIIIc_which_term(t)
+DebugCompareGIIIcTerms(Eta, Gamma)   # Path A + Path B vs DIRECT
+\end{verbatim}
+
+\end{document}

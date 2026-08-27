@@ -1,0 +1,5 @@
+declare Chi { mode=4, latex="\\chi^{\\iota}", scalar=true }
+declare barChi {
+    mode=4, latex="\\bar{\\chi}^{\\iota}", scalar=true, scheme=((1,-4),(3,-2))
+}
+barChi_ijkl = - Chi_ijkl;

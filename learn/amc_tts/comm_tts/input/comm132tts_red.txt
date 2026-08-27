@@ -1,0 +1,55 @@
+# comm132tts REDUCED reference (reduce=true on Z)
+
+declare X {
+    mode=2,
+    latex="X",
+    scalar=false
+}
+
+declare Y {
+    mode=6,
+    latex="Y",
+    scalar=false
+}
+
+declare Z {
+    mode=4,
+    latex="Z",
+    scalar=true,
+    reduce=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+Z_ijkl = sum_ab((n_a-n_b)*X_ab*Y_ijbkla);
+
+declare X {
+    mode=6,
+    latex="X",
+    scalar=false
+}
+
+declare Y {
+    mode=2,
+    latex="Y",
+    scalar=false
+}
+
+declare Z {
+    mode=4,
+    latex="Z",
+    scalar=true,
+    reduce=true
+}
+
+Z_ijkl = sum_ab((n_a-n_b)*Y_ab*X_ijbkla);

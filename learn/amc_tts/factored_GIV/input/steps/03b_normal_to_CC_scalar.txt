@@ -1,0 +1,15 @@
+# χ^ι normal → CC (RC). Input: ordinary χ (from inv Pandya / AMC direct).
+# Output scheme ((1,-3),(4,-2)) — same as Factorized RC layout.
+# Pack (χ_aibk vs χ_akbi) restored by hand in the G^{IV_b} fold, not here.
+declare Chi {
+    mode=4,
+    latex="\chi^{\iota}",
+    scalar=true
+}
+declare dbarChi {
+    mode=4,
+    latex="\overline{\overline{\chi}}^{\iota}",
+    scalar=true,
+    scheme=((1,-3),(4,-2))
+}
+dbarChi_ijkl = Chi_ijkl;

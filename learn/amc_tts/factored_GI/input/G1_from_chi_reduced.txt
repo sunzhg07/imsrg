@@ -1,0 +1,44 @@
+# Case-2: Γ and G1 reduce=true; χ^ε reduce=true. Hats on outer J for Γ/Z.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true,
+    reduce=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare G1 {
+    mode=4,
+    scalar=true,
+    reduce=true,
+    latex="\\Gamma^{(I)}"
+}
+
+declare chiepsilon {
+    mode=2,
+    scalar=true,
+    reduce=true,
+    latex="\\chi^{\\epsilon}"
+}
+
+chiepsilon_ij = 1/2 * sum_abc((nbar_a*nbar_b*n_c + n_a*n_b*nbar_c) * Omega_ciab * Omega_abcj);
+
+G1_ijkl = sum_a(P(i/j) * chiepsilon_ia * Gamma_ajkl + P(k/l) * chiepsilon_ak * Gamma_ijal);

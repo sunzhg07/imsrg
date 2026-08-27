@@ -1,0 +1,22 @@
+# OPTIONAL expand check (P kept) — not the gold derivation path.
+# Prefer strip/restore: G2_Wbra_noperm.txt + G2_Wket_noperm.txt (NOTES.md).
+# χ_ja (not χ_aj): AMC-orientable.
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare G2 {
+    mode=4,
+    scalar=true,
+    latex="\\Gamma^{(II)}"
+}
+
+declare chizeta {
+    mode=2,
+    scalar=false,
+    latex="\\chi^{\\zeta}"
+}
+
+G2_ijkl = sum_a(P(i/j) * chizeta_ja * Omega_iakl - P(k/l) * chizeta_ak * Omega_ijal);

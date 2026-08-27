@@ -1,0 +1,18 @@
+\contentsline {section}{\numberline {1}Notation}{1}{section.1}%
+\contentsline {section}{\numberline {2}M-scheme (AMC input)}{2}{section.2}%
+\contentsline {section}{\numberline {3}AMC / DIRECT (J-coupled)}{2}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Term1 (maps to $\chi _k$ strip)}{3}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Term2 (maps to $\chi _j$ strip)}{3}{subsection.3.2}%
+\contentsline {section}{\numberline {4}Intermediate $\chi ^\theta $ (fact-slow / fact-fast)}{3}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Two strips}{3}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Hermiticity (implemented / verified)}{4}{subsection.4.2}%
+\contentsline {section}{\numberline {5}Path A --- fact-slow / production (matches DIRECT)}{4}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Term1}{4}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Term2}{4}{subsection.5.2}%
+\contentsline {section}{\numberline {6}Path B --- AMC $\chi ^\theta $ + scalar IIe Pandya (experimental)}{4}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Pack Hermitian scalar $\chi $}{4}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Pandya (same formula as Factorized IIe)}{4}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}CC product and inverse Pandya}{4}{subsection.6.3}%
+\contentsline {section}{\numberline {7}Contrast: scalar Factorized IIe (different oracle)}{5}{section.7}%
+\contentsline {section}{\numberline {8}Why Path~A $\neq $ Path~B (same $\chi $)}{5}{section.8}%
+\contentsline {section}{\numberline {9}Debug switches}{5}{section.9}%

@@ -1,0 +1,27 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+# Scalar two-body intermediate (tensor*tensor -> scalar)
+# analyze factorized_code_analyze.tex chi^gamma (ph / Pandya topology)
+declare chi {
+    mode=4,
+    latex="\\chi^{\\gamma}",
+    scalar=true
+}
+
+chi_ijkl = sum_ab((n_a*nbar_b*n_j*nbar_k - nbar_a*n_b*nbar_j*n_k) * (Omega_ajkb*Omega_ibal));

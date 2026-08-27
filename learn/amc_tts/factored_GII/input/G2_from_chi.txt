@@ -1,0 +1,42 @@
+# Γ^II from χ^ζ × Ω. χ^ζ is tensor; product → scalar Γ.
+# Analyze: (1-P_ij) χ_aj Ω_iakl − (1-P_kl) χ_ak Ω_ijal
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare G2 {
+    mode=4,
+    scalar=true,
+    latex="\\Gamma^{(II)}"
+}
+
+declare chizeta {
+    mode=2,
+    scalar=false,
+    latex="\\chi^{\\zeta}"
+}
+
+chizeta_ij = 1/2 * sum_abc((n_a*n_b*nbar_c + nbar_a*nbar_b*n_c) * Gamma_aibc * Omega_bcaj);
+
+G2_ijkl = sum_a(P(i/j) * chizeta_aj * Omega_iakl - P(k/l) * chizeta_ak * Omega_ijal);

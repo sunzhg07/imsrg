@@ -1,0 +1,15 @@
+# Step 5 (m-scheme): InvPandya of W from the IIb product layout
+# Code (~L2721-2723, L2793): reads W_{j l̄, i k̄} (not standard W_{i l̄, k j̄})
+# with extra phases (-1)^{J+ji+jj} (-1)^{J'+ji+jk}
+#
+# M-scheme statement: Z_ijkl obtained from W with free indices permuted to jlik
+# before the scheme-change InvPandya.
+declare W {
+    mode=4, latex="W", scheme=((1,-4),(3,-2))
+}
+declare Z {
+    mode=4, latex="Z^{\\mathrm{IIb}}"
+}
+# Standard InvPandya would be Z_ijkl = - W_ijkl  → reads i l̄, k j̄
+# IIb uses Z_ijkl = - W_jlik           → reads j l̄, i k̄
+Z_ijkl = - W_jlik;

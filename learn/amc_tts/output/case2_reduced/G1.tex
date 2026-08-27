@@ -1,0 +1,48 @@
+
+\documentclass{scrartcl}
+
+\usepackage{expl3}
+\usepackage{xparse}
+\usepackage{amsmath}
+\usepackage{breqn}
+
+\newcommand{\threej}[3]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \end{Bmatrix}\endgroup}
+\newcommand{\sixj}[6]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \end{Bmatrix}\endgroup}
+\newcommand{\ninej}[9]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \\ #7 & #8 & #9 \end{Bmatrix}\endgroup}
+
+\ExplSyntaxOn
+\tl_new:N \l__hatfact_tl
+
+\NewDocumentCommand{\hatfact} {m} { \__hatfact_parse:n #1 }
+
+\cs_new:Nn \__hatfact_parse:n { \tl_set:Nn \l__hatfact_main_tl {#1} \__hatfact_hat: }
+
+\cs_generate_variant:Nn \str_set:Nn {Nx}
+\cs_new:Nn \__hatfact_hat:
+  {
+    \str_set:Nx \l_tmpa_str {\l__hatfact_main_tl}
+    \str_set:Nn \l_tmpb_str {j}
+    \str_if_eq:NNTF \l_tmpa_str \l_tmpb_str {
+      \hat{\jmath}
+    } {
+      \hat \l__hatfact_main_tl
+    }
+  }
+\ExplSyntaxOff
+
+\begin{document}
+
+\section{Equation 1}
+\begin{dmath*}
+\Gamma^{(I)}_{i j k l}^{{J}_{0} {J}_{1} 0} = 
+\end{dmath*}
+\subsection{Term 1}
+\begin{dmath*}
+\frac{1}{2} \* \delta_{{J}_{0},{J}_{1}} \* \hatfact{{j}_{i}^{-2}} \* \sum_{a b c d {J}_{2} {J}_{3} {{\lambda}}_{0}} \* \delta_{{j}_{d},{j}_{i}} \* (\bar{n}_{a} \* \bar{n}_{b} \* n_{c} + n_{a} \* n_{b} \* \bar{n}_{c}) \* (-1)^{{J}_{2}+{J}_{3}+{{\lambda}}_{0}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \Omega_{c i a b}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* \Omega_{a b c d}^{{J}_{3} {J}_{2} {{\lambda}}_{0}} \* \Gamma_{d j k l}^{{J}_{1} {J}_{1} 0}
+\end{dmath*}
+\subsection{Term 2}
+\begin{dmath*}
+\frac{1}{2} \* \delta_{{J}_{1},{J}_{0}} \* \hatfact{{j}_{l}^{-2}} \* \sum_{a b c d {J}_{2} {J}_{3} {{\lambda}}_{0}} \* \delta_{{j}_{d},{j}_{l}} \* (\bar{n}_{a} \* \bar{n}_{b} \* n_{c} + n_{a} \* n_{b} \* \bar{n}_{c}) \* (-1)^{{J}_{2}+{J}_{3}+{{\lambda}}_{0}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \Omega_{c d a b}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* \Omega_{a b c l}^{{J}_{3} {J}_{2} {{\lambda}}_{0}} \* \Gamma_{i j k d}^{{J}_{0} {J}_{0} 0}
+\end{dmath*}
+
+\end{document}

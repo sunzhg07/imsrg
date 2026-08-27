@@ -1,0 +1,13 @@
+# G^{IV_b} GEMM tensor: W_jlik = Σ_ab barΩ_jlab * dbarχ_abik
+# barΩ: Pandya ((1,-4),(3,-2)); dbarχ: CC ((1,-3),(4,-2))
+# Pack restored by hand (term1 probe: dbar only).
+declare barO {
+    mode=4, latex="\bar{\Omega}", scalar=false, scheme=((1,-4),(3,-2))
+}
+declare dbarChi {
+    mode=4, latex="\overline{\overline{\chi}}^{\iota}", scalar=false, scheme=((1,-3),(4,-2))
+}
+declare W {
+    mode=4, latex="W^{\mathrm{IV_b}}", scalar=false, scheme=((1,-4),(3,-2))
+}
+W_jlik = sum_ab(barO_jlab * dbarChi_abik);

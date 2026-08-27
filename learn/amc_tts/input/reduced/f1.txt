@@ -1,0 +1,27 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true,
+    reduce=true
+}
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare f1 { mode=2, latex="f^{(I)}", scalar=true, reduce=true }
+# Unfact f^I from factorized_code_analyze.tex
+f1_ij = 1/2 * sum_abcde((nbar_a*nbar_b*n_c*n_d - n_a*n_b*nbar_c*nbar_d) * (Omega_cdab*Omega_abce*Gamma_eidj + Omega_cdab*Omega_abce*Gamma_diej));

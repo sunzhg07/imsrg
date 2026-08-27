@@ -1,0 +1,20 @@
+# Alternate AMC-orientable fold: χ_ia Ω_ajkl (Γ^I-like legs).
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare G2 {
+    mode=4,
+    scalar=true,
+    latex="\\Gamma^{(II)}"
+}
+
+declare chizeta {
+    mode=2,
+    scalar=false,
+    latex="\\chi^{\\zeta}"
+}
+
+G2_ijkl = sum_a(P(i/j) * chizeta_ia * Omega_ajkl - P(k/l) * chizeta_ak * Omega_ijal);

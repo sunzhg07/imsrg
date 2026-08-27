@@ -1,0 +1,36 @@
+# χ^κ AS-realigned form (same physics as chi_kappa.txt):
+#   Ω_ajbl Γ_ibka = Ω_ajlb Γ_ibak  (AS of both)
+# Occ unchanged. Used to justify Pandya DGEMM Path B.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\kappa}",
+    scalar=false
+}
+
+Chi_ijkl = sum_ab(
+    (nbar_a*n_b*n_k + n_a*nbar_b*nbar_k) * Omega_ajlb * Gamma_ibak);

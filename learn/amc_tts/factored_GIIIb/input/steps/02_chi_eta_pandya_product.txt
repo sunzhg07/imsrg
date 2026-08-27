@@ -1,0 +1,15 @@
+# Step 2 (m-scheme): chi^eta in Pandya = barO * (occ * barO)
+# Code: barCHI_III = bar_Eta * nnnbar_Eta  (~L1349)
+# occ_AbarBC = n̄_a n_b n_c + n_a n̄_b n̄_c on the second Omega's first three CC indices
+# Analyze eq:chi2b uses (n̄_a n_b n̄_k + n_a n̄_b n_k) with barO_iabl * barO_bjka
+declare barO {
+    mode=4, latex="\\bar{\\Omega}", scheme=((1,-4),(3,-2))
+}
+declare n { mode=2, diagonal=true, latex="n" }
+declare nbar { mode=2, diagonal=true, latex="\\bar{n}" }
+declare barChi {
+    mode=4, latex="\\bar{\\chi}^{\\eta}", scalar=true, scheme=((1,-4),(3,-2))
+}
+barChi_ijkl = sum_ab(
+    (nbar_a*n_b*nbar_k + n_a*nbar_b*n_k) * (barO_iabl * barO_bjka)
+);

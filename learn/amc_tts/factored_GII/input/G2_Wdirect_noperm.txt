@@ -1,0 +1,38 @@
+# AMC DIRECT — bra topology, P stripped.
+# Expand of χ_ja Ω_iakl with χ_ja = 1/2 Σ_abc w Γ_ajbc Ω_bcad:
+#   W = 1/2 Σ_abcd w Γ_ajbc Ω_bcad Ω_idkl
+# Restore (1-P_ij) by hand. See NOTES.md.
+# Occ w same as χ^ζ.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare W {
+    mode=4,
+    latex="W",
+    scalar=true
+}
+
+W_ijkl = 1/2 * sum_abcd((n_a*n_b*nbar_c + nbar_a*nbar_b*n_c)
+    * Gamma_ajbc * Omega_bcad * Omega_idkl);

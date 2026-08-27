@@ -1,0 +1,36 @@
+# Same χ^λ with Γ reduce=true (Case-2). χ still tensor.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true,
+    reduce=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\lambda}",
+    scalar=false
+}
+
+Chi_ijkl = sum_ab(
+    (nbar_a*nbar_b*n_l + n_a*n_b*nbar_l) * Gamma_ijab * Omega_abkl
+  + (nbar_a*nbar_b*n_j + n_a*n_b*nbar_j) * Omega_ijab * Gamma_abkl);

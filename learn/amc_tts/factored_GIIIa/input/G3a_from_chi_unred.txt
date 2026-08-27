@@ -1,0 +1,18 @@
+# Same ladder, unreduced Z (no reduce on G3a).
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\eta}",
+    scalar=true,
+    reduce=true
+}
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+declare G3a {
+    mode=4,
+    latex="\\Gamma^{(III_a)}",
+    scalar=true
+}
+G3a_ijkl = -1 * sum_ab(P(i/j) * Chi_ijab * Gamma_abkl + P(k/l) * Gamma_ijab * Chi_klab);

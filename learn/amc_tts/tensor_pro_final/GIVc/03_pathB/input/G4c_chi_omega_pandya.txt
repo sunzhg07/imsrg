@@ -1,0 +1,1 @@
+../../../../factored_GIV/input/G4c_chi_omega_pandya.txt

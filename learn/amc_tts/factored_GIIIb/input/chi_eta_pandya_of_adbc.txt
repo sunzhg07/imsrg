@@ -1,0 +1,7 @@
+declare Chi {
+    mode=4, latex="\\chi^{\\eta}", scalar=true
+}
+declare dbarChi {
+    mode=4, latex="\\overline{\\overline{\\chi}}^{\\eta(\\mathrm{adbc})}", scalar=true, scheme=((1,-4),(3,-2))
+}
+dbarChi_ijkl = - Chi_iljk;

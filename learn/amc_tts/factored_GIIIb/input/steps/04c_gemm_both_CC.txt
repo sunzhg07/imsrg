@@ -1,0 +1,10 @@
+declare barG {
+    mode=4, latex="\\bar{\\Gamma}", scheme=((1,-3),(4,-2))
+}
+declare dbarChi {
+    mode=4, latex="\\overline{\\overline{\\chi}}^{\\eta}", scalar=true, scheme=((1,-3),(4,-2))
+}
+declare W {
+    mode=4, latex="W", scheme=((1,-3),(4,-2))
+}
+W_jlik = sum_ab(barG_jlab * dbarChi_abik);

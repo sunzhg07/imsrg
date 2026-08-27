@@ -1,0 +1,33 @@
+# Case-2 reduce=true. Same strings as G2.txt.
+# Compare via m→Z_red (÷Ĵ), not unreduced 2-CG unpack.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true,
+    reduce=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare G2 { mode=4, latex="\Gamma^{(II)}", scalar=true, reduce=true }
+
+G2_ijkl = 1/2 * sum_abcd((n_a*n_b*nbar_c + nbar_a*nbar_b*n_c)
+    * (P(i/j) * Gamma_ajbc * Omega_bcad * Omega_idkl
+     - P(k/l) * Gamma_adbc * Omega_bcak * Omega_ijdl));

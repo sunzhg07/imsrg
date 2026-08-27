@@ -1,0 +1,1 @@
+../../../../factored_GIV/input/chi_kappa_via_pandya.txt

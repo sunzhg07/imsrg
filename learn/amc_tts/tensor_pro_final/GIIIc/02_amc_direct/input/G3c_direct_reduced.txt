@@ -1,0 +1,1 @@
+../../../../factored_GIIIc/input/G3c_direct_reduced.txt

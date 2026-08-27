@@ -1,0 +1,30 @@
+# Same χ^θ with reduce=true (Case-2). Compare via m→χ_red = Σ CG CG χ(m)/Ĵ.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\theta}",
+    scalar=true,
+    reduce=true
+}
+
+Chi_ijkl = sum_ab((n_a*n_b*nbar_k + nbar_a*nbar_b*n_k
+                 + n_a*n_b*nbar_j + nbar_a*nbar_b*n_j)
+    * Omega_ijab * Omega_abkl);

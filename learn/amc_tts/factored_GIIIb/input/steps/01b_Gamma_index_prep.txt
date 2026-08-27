@@ -1,0 +1,8 @@
+# User index prep for IIb:
+#   Gamma_jbla = - Gamma_bjla   (antisym bra)
+#   barG_{b ā, l j̄} ↔ Gamma_bjla
+# Same-label AMC Pandya already encodes the angular map; this file only
+# records the m-scheme antisym identity used before Pandya (no scheme change).
+declare Gamma { mode=4, latex="\\Gamma" }
+declare Gprep { mode=4, latex="\\Gamma^{\\mathrm{bjla}}" }
+Gprep_bjla = - Gamma_jbla;

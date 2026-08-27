@@ -1,0 +1,22 @@
+# Case-2: Z reduce=true. Same fold.
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\lambda}",
+    scalar=false
+}
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare G4c {
+    mode=4,
+    latex="\\Gamma^{(IV_c)}",
+    scalar=true,
+    reduce=true
+}
+
+G4c_ijkl = 1/2 * sum_ab(P(i/j) * P(k/l) * Chi_ialb * Omega_bjak);

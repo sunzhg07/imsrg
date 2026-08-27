@@ -1,0 +1,56 @@
+
+\documentclass{scrartcl}
+
+\usepackage{expl3}
+\usepackage{xparse}
+\usepackage{amsmath}
+\usepackage{breqn}
+
+\newcommand{\threej}[3]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \end{Bmatrix}\endgroup}
+\newcommand{\sixj}[6]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \end{Bmatrix}\endgroup}
+\newcommand{\ninej}[9]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \\ #7 & #8 & #9 \end{Bmatrix}\endgroup}
+
+\ExplSyntaxOn
+\tl_new:N \l__hatfact_tl
+
+\NewDocumentCommand{\hatfact} {m} { \__hatfact_parse:n #1 }
+
+\cs_new:Nn \__hatfact_parse:n { \tl_set:Nn \l__hatfact_main_tl {#1} \__hatfact_hat: }
+
+\cs_generate_variant:Nn \str_set:Nn {Nx}
+\cs_new:Nn \__hatfact_hat:
+  {
+    \str_set:Nx \l_tmpa_str {\l__hatfact_main_tl}
+    \str_set:Nn \l_tmpb_str {j}
+    \str_if_eq:NNTF \l_tmpa_str \l_tmpb_str {
+      \hat{\jmath}
+    } {
+      \hat \l__hatfact_main_tl
+    }
+  }
+\ExplSyntaxOff
+
+\begin{document}
+
+\section{Equation 1}
+\begin{dmath*}
+\Gamma^{(II)}_{i j k l}^{{J}_{0} {J}_{1} 0} = 
+\end{dmath*}
+\subsection{Term 1}
+\begin{dmath*}
+\delta_{{J}_{1},{J}_{0}} \* (-1)^{{j}_{i}} \* \hatfact{{J}_{0}^{-1}} \* \sum_{a {J}_{2} {{\lambda}}_{0}} \* (-1)^{{J}_{2}+{j}_{a}} \* \hatfact{{J}_{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{0}}{{J}_{2}}{{{\lambda}}_{0}}{{j}_{a}}{{j}_{j}}{{j}_{i}} \* \chi^{\zeta}_{j a}^{{{\lambda}}_{0}} \* \Omega_{i a k l}^{{J}_{2} {J}_{0} {{\lambda}}_{0}}
+\end{dmath*}
+\subsection{Term 2}
+\begin{dmath*}
+\delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}+{j}_{i}} \* \hatfact{{J}_{0}^{-1}} \* \sum_{a {J}_{2} {{\lambda}}_{0}} \* (-1)^{{J}_{2}+{j}_{a}} \* \hatfact{{J}_{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{0}}{{J}_{2}}{{{\lambda}}_{0}}{{j}_{a}}{{j}_{i}}{{j}_{j}} \* \chi^{\zeta}_{i a}^{{{\lambda}}_{0}} \* \Omega_{j a k l}^{{J}_{2} {J}_{0} {{\lambda}}_{0}}
+\end{dmath*}
+\subsection{Term 3}
+\begin{dmath*}
+-\delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}+{j}_{k}+{j}_{l}} \* \hatfact{{J}_{0}^{-1}} \* \sum_{a {J}_{2} {{\lambda}}_{0}} \* \hatfact{{J}_{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{0}}{{J}_{2}}{{{\lambda}}_{0}}{{j}_{a}}{{j}_{l}}{{j}_{k}} \* \chi^{\zeta}_{a l}^{{{\lambda}}_{0}} \* \Omega_{i j k a}^{{J}_{0} {J}_{2} {{\lambda}}_{0}}
+\end{dmath*}
+\subsection{Term 4}
+\begin{dmath*}
+\delta_{{J}_{1},{J}_{0}} \* \hatfact{{J}_{0}^{-1}} \* \sum_{a {J}_{2} {{\lambda}}_{0}} \* \hatfact{{J}_{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{0}}{{J}_{2}}{{{\lambda}}_{0}}{{j}_{a}}{{j}_{k}}{{j}_{l}} \* \chi^{\zeta}_{a k}^{{{\lambda}}_{0}} \* \Omega_{i j l a}^{{J}_{0} {J}_{2} {{\lambda}}_{0}}
+\end{dmath*}
+
+\end{document}

@@ -1,0 +1,1 @@
+../../../../../../run/test_chi_kappa_m_vs_amc.py

@@ -1,0 +1,24 @@
+# Case-2: χ, Γ, Z all reduce=true (hats Ĵ0 Ĵ2 Ĵ3). Current tts_GIIIc_tensor_red.
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\theta}",
+    scalar=true,
+    reduce=true
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true,
+    reduce=true
+}
+
+declare G3c {
+    mode=4,
+    latex="\\Gamma^{(III_c)}",
+    scalar=true,
+    reduce=true
+}
+
+G3c_ijkl = -1/2 * sum_ab(P(i/j) * P(k/l) * Chi_iabl * Gamma_bjka);

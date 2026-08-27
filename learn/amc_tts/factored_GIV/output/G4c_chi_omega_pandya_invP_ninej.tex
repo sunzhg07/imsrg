@@ -1,0 +1,71 @@
+
+\documentclass{scrartcl}
+
+\usepackage{expl3}
+\usepackage{xparse}
+\usepackage{amsmath}
+\usepackage{breqn}
+
+\newcommand{\threej}[3]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \end{Bmatrix}\endgroup}
+\newcommand{\sixj}[6]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \end{Bmatrix}\endgroup}
+\newcommand{\ninej}[9]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \\ #7 & #8 & #9 \end{Bmatrix}\endgroup}
+
+\ExplSyntaxOn
+\tl_new:N \l__hatfact_tl
+
+\NewDocumentCommand{\hatfact} {m} { \__hatfact_parse:n #1 }
+
+\cs_new:Nn \__hatfact_parse:n { \tl_set:Nn \l__hatfact_main_tl {#1} \__hatfact_hat: }
+
+\cs_generate_variant:Nn \str_set:Nn {Nx}
+\cs_new:Nn \__hatfact_hat:
+  {
+    \str_set:Nx \l_tmpa_str {\l__hatfact_main_tl}
+    \str_set:Nn \l_tmpb_str {j}
+    \str_if_eq:NNTF \l_tmpa_str \l_tmpb_str {
+      \hat{\jmath}
+    } {
+      \hat \l__hatfact_main_tl
+    }
+  }
+\ExplSyntaxOff
+
+\begin{document}
+
+\section{Equation 1}
+\begin{dmath*}
+\bar{\chi}^{\lambda}_{i j k l}^{{J}_{0} {J}_{1} {{\lambda}}_{0}} = -(-1)^{{J}_{0}+{j}_{i}+{j}_{k}+{{\lambda}}_{0}} \* \hatfact{{J}_{0}} \* \hatfact{{J}_{1}} \* \sum_{{J}_{2} {J}_{3}} \* (-1)^{{J}_{2}} \* \hatfact{{J}_{2}} \* \hatfact{{J}_{3}} \* \ninej{{{\lambda}}_{0}}{{J}_{0}}{{J}_{1}}{{J}_{3}}{{j}_{l}}{{j}_{k}}{{J}_{2}}{{j}_{i}}{{j}_{j}} \* \chi^{\lambda}_{i j k l}^{{J}_{2} {J}_{3} {{\lambda}}_{0}}
+\end{dmath*}
+
+\section{Equation 2}
+\begin{dmath*}
+\bar{\Omega}_{i j k l}^{{J}_{0} {J}_{1} {{\lambda}}_{0}} = -(-1)^{{J}_{0}+{j}_{i}+{j}_{k}+{{\lambda}}_{0}} \* \hatfact{{J}_{0}} \* \hatfact{{J}_{1}} \* \sum_{{J}_{2} {J}_{3}} \* (-1)^{{J}_{2}} \* \hatfact{{J}_{2}} \* \hatfact{{J}_{3}} \* \ninej{{{\lambda}}_{0}}{{J}_{0}}{{J}_{1}}{{J}_{3}}{{j}_{l}}{{j}_{k}}{{J}_{2}}{{j}_{i}}{{j}_{j}} \* \Omega_{i j k l}^{{J}_{2} {J}_{3} {{\lambda}}_{0}}
+\end{dmath*}
+
+\section{Equation 3}
+\begin{dmath*}
+\bar{\Gamma}^{(IV_c)}_{i j k l}^{{J}_{0} {J}_{1} 0} = \delta_{{J}_{1},{J}_{0}} \* (-1)^{{j}_{i}+{j}_{l}} \* \hatfact{{J}_{0}} \* \sum_{a b {J}_{2} {J}_{3} {J}_{4} {J}_{5} {j}_{0} {{\lambda}}_{0}} \* (-1)^{{J}_{2}+{J}_{3}+{j}_{a}+{j}_{b}} \* \hatfact{{J}_{2}} \* \hatfact{{J}_{3}} \* \hatfact{{J}_{4}} \* \hatfact{{J}_{5}} \* \hatfact{{j}_{0}^{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{{\lambda}}_{0}}{{J}_{3}}{{J}_{2}}{{j}_{i}}{{j}_{b}}{{j}_{0}} \* \sixj{{j}_{i}}{{j}_{l}}{{J}_{0}}{{j}_{a}}{{j}_{0}}{{J}_{3}} \* \sixj{{j}_{a}}{{j}_{j}}{{J}_{5}}{{j}_{k}}{{j}_{0}}{{J}_{0}} \* \sixj{{J}_{5}}{{{\lambda}}_{0}}{{J}_{4}}{{j}_{b}}{{j}_{k}}{{j}_{0}} \* \bar{\chi}^{\lambda}_{i a l b}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* \bar{\Omega}_{b j a k}^{{J}_{4} {J}_{5} {{\lambda}}_{0}}
+\end{dmath*}
+
+\section{Equation 4}
+\begin{dmath*}
+\Gamma^{(IV_c)}_{i j k l}^{{J}_{0} {J}_{1} 0} = 
+\end{dmath*}
+\subsection{Term 1}
+\begin{dmath*}
+\frac{1}{2} \* \delta_{{J}_{1},{J}_{0}} \* \hatfact{{J}_{0}} \* \sum_{{J}_{2}} \* \hatfact{{J}_{2}} \* \sixj{{j}_{l}}{{j}_{k}}{{J}_{0}}{{j}_{j}}{{j}_{i}}{{J}_{2}} \* \bar{\Gamma}^{(IV_c)}_{i j k l}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+\subsection{Term 2}
+\begin{dmath*}
+-\frac{1}{2} \* \delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}+{j}_{k}+{j}_{l}} \* \hatfact{{J}_{0}} \* \sum_{{J}_{2}} \* \hatfact{{J}_{2}} \* \sixj{{j}_{k}}{{j}_{l}}{{J}_{0}}{{j}_{j}}{{j}_{i}}{{J}_{2}} \* \bar{\Gamma}^{(IV_c)}_{i j l k}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+\subsection{Term 3}
+\begin{dmath*}
+-\frac{1}{2} \* \delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}+{j}_{i}+{j}_{j}} \* \hatfact{{J}_{0}} \* \sum_{{J}_{2}} \* \hatfact{{J}_{2}} \* \sixj{{j}_{l}}{{j}_{k}}{{J}_{0}}{{j}_{i}}{{j}_{j}}{{J}_{2}} \* \bar{\Gamma}^{(IV_c)}_{j i k l}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+\subsection{Term 4}
+\begin{dmath*}
+\frac{1}{2} \* \delta_{{J}_{1},{J}_{0}} \* (-1)^{{j}_{i}+{j}_{j}+{j}_{k}+{j}_{l}} \* \hatfact{{J}_{0}} \* \sum_{{J}_{2}} \* \hatfact{{J}_{2}} \* \sixj{{j}_{k}}{{j}_{l}}{{J}_{0}}{{j}_{i}}{{j}_{j}}{{J}_{2}} \* \bar{\Gamma}^{(IV_c)}_{j i l k}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+
+\end{document}

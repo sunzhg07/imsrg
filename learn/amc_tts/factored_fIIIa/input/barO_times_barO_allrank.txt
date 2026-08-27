@@ -1,0 +1,27 @@
+# Omega tensor (reduced); barO = Pandya(Omega)
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+
+# Define Pandya: same indices, different scheme (AMC sample convention)
+barO_ijkl = - Omega_ijkl;
+
+# Product in Pandya space — allow all output ranks
+declare barChi {
+    mode=4,
+    latex="\\bar{\\chi}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+
+# Matrix product topology (Factorized IIa / DGEMM): χ̄_{ab,cd} = Σ_ef Ω̄_{ab,ef} Ω̄_{ef,cd}
+barChi_abcd = sum_ef(barO_abef * barO_efcd);

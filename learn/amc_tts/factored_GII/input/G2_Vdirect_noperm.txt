@@ -1,0 +1,38 @@
+# AMC DIRECT — ket topology, P stripped.
+# Expand of χ_ak Ω_ijal with χ_ak = 1/2 Σ_abc w Γ_adbc Ω_bcak:
+#   V = 1/2 Σ_abcd w Γ_adbc Ω_bcak Ω_ijdl
+# Restore (1-P_kl) by hand. Assemble Γ^II = W − V.
+# See NOTES.md.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare V {
+    mode=4,
+    latex="V",
+    scalar=true
+}
+
+V_ijkl = 1/2 * sum_abcd((n_a*n_b*nbar_c + nbar_a*nbar_b*n_c)
+    * Gamma_adbc * Omega_bcak * Omega_ijdl);

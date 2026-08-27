@@ -1,0 +1,37 @@
+declare Omega {
+    mode=4,
+    latex="\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\Gamma",
+    scalar=true,
+    reduce=false
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\bar{n}"
+}
+
+declare G3c {
+    mode=4,
+    latex="\Gamma^{(III_c)}",
+    scalar=true,
+    reduce=false
+}
+
+# Case 1: Omega tensor (reduced), Gamma scalar non-reduced
+G3c_ijkl = -1/2 * sum_abcd(
+    (nbar_a*nbar_b*n_c + n_a*n_b*nbar_c)
+    * P(i/j) * P(k/l)
+    * (Omega_abcl*Omega_idab*Gamma_cjkd + Omega_icab*Omega_abdl*Gamma_djkc));

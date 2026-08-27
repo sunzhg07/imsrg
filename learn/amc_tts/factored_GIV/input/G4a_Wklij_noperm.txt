@@ -1,0 +1,25 @@
+# Γ^{IV_a} ket via bra kernel with free indices klij (P stripped).
+# Same topology as G4a_Wbra_noperm; AMC accepts this (literal Ω_ijdb*χ fails).
+# Analyze / Factorized: V_ijkl = h_Ω (phase) W_klij  (transpose into Z).
+# Restore (1−P_kl) on V after transpose; never P on χ.
+#
+# χ^κ tensor (reduce=true); Ω reduced tensor; W scalar reduce=true → W_red=S/Ĵ.
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\kappa}",
+    scalar=false,
+    reduce=true
+}
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare W {
+    mode=4,
+    latex="W",
+    scalar=true,
+    reduce=true
+}
+W_klij = -1 * sum_bd(Chi_klbd * Omega_dbij);

@@ -1,0 +1,20 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+barO_ijkl = - Omega_ijkl;
+
+# Result in normal coupling, all ranks — see which λ appear from Ω̄×Ω̄
+declare Chi {
+    mode=4,
+    latex="\\chi",
+    scalar=false
+}
+Chi_abcd = sum_ef(barO_abef * barO_efcd);

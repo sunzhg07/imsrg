@@ -1,0 +1,57 @@
+# comm231tts REDUCED reference (AMC default scalar: reduce=true)
+# Z_red = Ĵ_0 * Z_unred on the scalar 1b channel.
+# Use only to verify packaging; C++ comm231tts stores UNREDUCED.
+
+declare X {
+    mode=4,
+    latex="X",
+    scalar=false
+}
+
+declare Y {
+    mode=6,
+    latex="Y",
+    scalar=false
+}
+
+declare Z {
+    mode=2,
+    latex="Z",
+    scalar=true,
+    reduce=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+Z_ij = sum_abcd((n_a*n_b*nbar_c*nbar_d)*(X_abcd*Y_cdiabj - Y_abicdj*X_cdab));
+
+declare X {
+    mode=6,
+    latex="X",
+    scalar=false
+}
+
+declare Y {
+    mode=4,
+    latex="Y",
+    scalar=false
+}
+
+declare Z {
+    mode=2,
+    latex="Z",
+    scalar=true,
+    reduce=true
+}
+
+Z_ij = sum_abcd((n_a*n_b*nbar_c*nbar_d)*(X_abicdj*Y_cdab - Y_abcd*X_cdiabj));

@@ -1,0 +1,3 @@
+declare X { mode=4, latex="X", scalar=true }
+declare Y { mode=4, latex="Y", scalar=true }
+Y_abcd = X_bcad;

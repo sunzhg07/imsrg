@@ -1,0 +1,45 @@
+# Path B unreduced Z (default scalar). Same Pandya topology as
+# G4c_chi_omega_pandya.txt. AMC: Z_unred = S/Ĵ² vs Z_red = S/Ĵ.
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\lambda}",
+    scalar=false
+}
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare barChi {
+    mode=4,
+    latex="\\bar{\\chi}^{\\lambda}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+barChi_ijkl = - Chi_ijkl;
+
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+barO_ijkl = - Omega_ijkl;
+
+declare barG4c {
+    mode=4,
+    latex="\\bar{\\Gamma}^{(IV_c)}",
+    scalar=true,
+    scheme=((1,-4),(3,-2))
+}
+barG4c_ijkl = 1/2 * sum_ab(P(i/j) * P(k/l) * barChi_ialb * barO_bjak);
+
+declare G4c {
+    mode=4,
+    latex="\\Gamma^{(IV_c)}",
+    scalar=true
+}
+G4c_ijkl = barG4c_ijkl;

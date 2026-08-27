@@ -1,0 +1,25 @@
+# Γ^{IV_a} ladder from χ^κ, P stripped (restore (1-P) by hand).
+# Analyze:
+#   Γ^{IV_a} = -Σ_bd [ (1-P_ij) χ_ijbd Ω_dbkl + (1-P_kl) Ω_ijcb χ'_klcb ]
+# Bare bra topology only here (χ Ω). Ket partner + restore in NOTES / code.
+#
+# χ^κ tensor (reduce=true); Ω reduced tensor; Z scalar reduce=true → Z_red=S/Ĵ.
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\kappa}",
+    scalar=false,
+    reduce=true
+}
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare W {
+    mode=4,
+    latex="W",
+    scalar=true,
+    reduce=true
+}
+W_ijkl = -1 * sum_bd(Chi_ijbd * Omega_dbkl);

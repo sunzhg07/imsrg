@@ -1,0 +1,28 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true,
+    reduce=true
+}
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare G3b { mode=4, latex="\Gamma^{(III_b)}", scalar=true, reduce=true }
+# Direct only (no P_ij P_kl). Will wrap with (1-P_ij)(1-P_kl) after.
+G3b_ijkl = -1 * sum_abcd((nbar_b*n_c*n_d + n_b*nbar_c*nbar_d)
+    * (Omega_dcbk*Omega_biac*Gamma_jald + Omega_jcbd*Omega_balc*Gamma_diak));

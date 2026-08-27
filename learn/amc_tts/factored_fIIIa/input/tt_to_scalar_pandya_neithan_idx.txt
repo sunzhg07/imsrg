@@ -1,0 +1,36 @@
+# TT→scalar ring/ph via Pandya (no occ)
+# χ_ijkl = Σ_ab Ω_ajkb Ω_ibal, λχ=0
+# Path: fwd Pandya → product in Pandya → inv Pandya
+#
+# Neithan-like bar indices: barΩ_pqrs scheme p×(-q), r×(-s); ME from Ω_psrq
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-2),(3,-4))
+}
+barO_pqrs = - Omega_psrq;
+
+# Product in Pandya space (same m-scheme topology as ring: ajkb × ibal)
+declare barChi {
+    mode=4,
+    latex="\\bar{\\chi}",
+    scalar=true,
+    reduce=true,
+    scheme=((1,-2),(3,-4))
+}
+barChi_ijkl = sum_ab(barO_ajkb * barO_ibal);
+
+# Inverse Pandya → ordinary scalar χ
+declare chi {
+    mode=4,
+    latex="\\chi",
+    scalar=true,
+    reduce=true
+}
+chi_ijkl = - barChi_ijkl;

@@ -1,0 +1,1 @@
+../../../../factored_GIIIa/input/G3a_from_chi.txt

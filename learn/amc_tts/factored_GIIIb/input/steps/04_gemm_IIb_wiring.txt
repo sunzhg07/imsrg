@@ -1,0 +1,16 @@
+# Step 4 (m-scheme): channel DGEMM for IIb
+# Code: CHI_III_final = bar_Gamma * barCHI_III_RC  (~L2703)
+# Index wiring (oriented as code InvPandya reads):
+#   W_{j l i k} := Σ_ab barG_{j l a b} * dbarChi_{a b i k}
+# barG: Pandya ((1,-4),(3,-2)); dbarChi: CC ((1,-3),(4,-2))
+# W stored in Pandya channels (same CC storage as code).
+declare barG {
+    mode=4, latex="\\bar{\\Gamma}", scheme=((1,-4),(3,-2))
+}
+declare dbarChi {
+    mode=4, latex="\\overline{\\overline{\\chi}}^{\\eta}", scalar=true, scheme=((1,-3),(4,-2))
+}
+declare W {
+    mode=4, latex="W", scheme=((1,-4),(3,-2))
+}
+W_jlik = sum_ab(barG_jlab * dbarChi_abik);

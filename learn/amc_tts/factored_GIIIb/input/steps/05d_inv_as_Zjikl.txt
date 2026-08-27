@@ -1,0 +1,9 @@
+# Write the InvPandya onto Z_jikl = -W_ijkl, then identify the printed
+# formula's LHS free indices with code's Z_ijkl after P_ij.
+declare W {
+    mode=4, latex="W", scheme=((1,-4),(3,-2))
+}
+declare Z {
+    mode=4, latex="Z"
+}
+Z_jikl = - W_ijkl;

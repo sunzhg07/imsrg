@@ -1,0 +1,10 @@
+declare Omega1 { mode=4, latex="\\Omega^{(1)}", scalar=true, reduce=true }
+declare Omega2 { mode=4, latex="\\Omega^{(2)}", scalar=true, reduce=true }
+declare barO1  { mode=4, latex="\\bar{\\Omega}^{(1)}", scalar=true, reduce=true, scheme=((1,-4),(3,-2)) }
+declare barO2  { mode=4, latex="\\bar{\\Omega}^{(2)}", scalar=true, reduce=true, scheme=((1,-4),(3,-2)) }
+barO1_ijkl = - Omega1_ijkl;
+barO2_ijkl = - Omega2_ijkl;
+declare barChi { mode=4, latex="\\bar{\\chi}", scalar=true, reduce=true, scheme=((1,-4),(3,-2)) }
+barChi_ijkl = sum_ab(barO1_ibal * barO2_ajkb);
+declare chi { mode=4, latex="\\chi", scalar=true, reduce=true }
+chi_ijkl = - barChi_ijkl;

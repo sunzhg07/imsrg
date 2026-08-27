@@ -1,0 +1,6 @@
+declare Omega { mode=4, latex="\\Omega", scalar=false }
+declare dbarO {
+    mode=4, latex="\\overline{\\overline{\\Omega}}", scalar=false,
+    scheme=((1,-3),(4,-2))
+}
+dbarO_ijkl = Omega_ijkl;

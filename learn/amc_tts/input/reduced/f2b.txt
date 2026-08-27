@@ -1,0 +1,28 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true,
+    reduce=true
+}
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare f2b { mode=2, latex="f^{(II)}_b", scalar=true, reduce=true }
+# Bra-ket swap of analyze Omega_diej (= h_Omega * Omega_ejdi in m-scheme).
+# Full f^II = f2a + h_Gamma * f2b  (h_Omega cancels; see NOTES).
+f2b_ij = 1/2 * sum_abcde((n_a*n_b*nbar_c*nbar_e - nbar_a*nbar_b*n_c*n_e) * (Gamma_cdab*Omega_abce*Omega_ejdi));

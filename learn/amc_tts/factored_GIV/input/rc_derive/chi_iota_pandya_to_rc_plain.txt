@@ -1,0 +1,16 @@
+# χ^ι Pandya → RC scheme change (angular skeleton only; no ad↔bc pack)
+# schemes: ((1,-4),(3,-2)) → ((1,-3),(4,-2))   [user: 14^-13^-2 → 13^-14^-2]
+# Tensor (scalar=false). Code also packs (χ̄_adbc − h_Z χ̄_bcad); see NOTES.
+declare barChi {
+    mode=4,
+    latex="\bar{\chi}^{\iota}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+declare dbarChi {
+    mode=4,
+    latex="\overline{\overline{\chi}}^{\iota}",
+    scalar=false,
+    scheme=((1,-3),(4,-2))
+}
+dbarChi_ijkl = barChi_ijkl;

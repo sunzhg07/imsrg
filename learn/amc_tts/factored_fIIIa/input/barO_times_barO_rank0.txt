@@ -1,0 +1,23 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+
+barO_ijkl = - Omega_ijkl;
+
+declare barChi0 {
+    mode=4,
+    latex="\\bar{\\chi}^{(0)}",
+    scalar=true,
+    scheme=((1,-4),(3,-2))
+}
+
+barChi0_abcd = sum_ef(barO_abef * barO_efcd);

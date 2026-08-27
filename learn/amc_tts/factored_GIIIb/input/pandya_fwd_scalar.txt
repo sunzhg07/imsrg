@@ -1,0 +1,14 @@
+# Scalar forward Pandya as FactorizedDoubleCommutator.cc (~L1289):
+#   bar O^J_{a b̄ c d̄} = -Σ_{J'} (2J'+1) {ja jb J; jc jd J'} O^{J'}_{a d c b}
+# AMC: scheme=((1,-4),(3,-2)) + barO_ijkl = - Omega_ijkl
+# (same-label AMC; printed sixj encodes the adcb map)
+declare Omega {
+    mode=4,
+    latex="\\Omega"
+}
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scheme=((1,-4),(3,-2))
+}
+barO_ijkl = - Omega_ijkl;

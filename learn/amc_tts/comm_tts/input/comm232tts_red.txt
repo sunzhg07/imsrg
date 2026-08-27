@@ -1,0 +1,57 @@
+# comm232tts REDUCED reference (reduce=true on Z)
+
+declare X {
+    mode=4,
+    latex="X",
+    scalar=false
+}
+
+declare Y {
+    mode=6,
+    latex="Y",
+    scalar=false
+}
+
+declare Z {
+    mode=4,
+    latex="Z",
+    scalar=true,
+    reduce=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+Z_ijkl = sum_abc((n_a*n_b*nbar_c+nbar_a*nbar_b*n_c)*X_cjab*Y_abiklc);
+Z_ijkl = sum_abc((n_a*n_b*nbar_c+nbar_a*nbar_b*n_c)*Y_ijcabk*X_abcl);
+
+declare X {
+    mode=6,
+    latex="X",
+    scalar=false
+}
+
+declare Y {
+    mode=4,
+    latex="Y",
+    scalar=false
+}
+
+declare Z {
+    mode=4,
+    latex="Z",
+    scalar=true,
+    reduce=true
+}
+
+Z_ijkl = sum_abc((n_a*n_b*nbar_c+nbar_a*nbar_b*n_c)*Y_cjab*X_abiklc);
+Z_ijkl = sum_abc((n_a*n_b*nbar_c+nbar_a*nbar_b*n_c)*X_ijcabk*Y_abcl);

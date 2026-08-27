@@ -1,0 +1,12 @@
+declare X {
+    mode=4,
+    latex="X",
+    scalar=true
+}
+declare barX {
+    mode=4,
+    latex="\\bar{X}",
+    scalar=true,
+    scheme=((1,-4),(3,-2))
+}
+X_ijkl = - barX_ijkl;

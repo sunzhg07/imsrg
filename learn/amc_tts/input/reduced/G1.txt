@@ -1,0 +1,28 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true,
+    reduce=true
+}
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare G1 { mode=4, latex="\Gamma^{(I)}", scalar=true, reduce=true }
+# Direct strings only. Full: (1-P_ij)*term1 + (1-P_kl)*term2
+G1_ijkl = 1/2 * sum_abcd((nbar_a*nbar_b*n_c + n_a*n_b*nbar_c)
+    * (Omega_ciab*Omega_abcd*Gamma_djkl + Omega_cdab*Omega_abcl*Gamma_ijkd));

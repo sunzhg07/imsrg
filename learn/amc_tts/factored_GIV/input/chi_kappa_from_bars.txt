@@ -1,0 +1,32 @@
+# χ^κ: Γ̄, Ω̄ already in Pandya; χ in normal.
+# One equation: normal χ from Pandya-scheme product (inv baked in).
+# Product legs match via_pandya / Factorized Γ·(occ⊙Ω) channel form.
+# (VI_II index rewrite still open; this answers the angular-momentum question.)
+
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+
+declare barG {
+    mode=4,
+    latex="\\bar{\\Gamma}",
+    scalar=true,
+    scheme=((1,-4),(3,-2))
+}
+
+declare n { mode=2, diagonal=true, latex="n" }
+declare nbar { mode=2, diagonal=true, latex="\\bar{n}" }
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\kappa}",
+    scalar=false,
+    reduce=true
+}
+
+# occ on Pandya-aligned k (Factorized occ_ABbarD family after map)
+Chi_ijkl = sum_ab(
+    (nbar_a*n_b*n_k + n_a*nbar_b*nbar_k) * barG_ibak * barO_ajlb);

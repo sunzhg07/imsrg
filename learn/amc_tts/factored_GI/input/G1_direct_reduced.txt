@@ -1,0 +1,36 @@
+# Unfactored Γ^I with Case-2 reduce=true on Γ and G1.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true,
+    reduce=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare G1 {
+    mode=4,
+    latex="\\Gamma^{(I)}",
+    scalar=true,
+    reduce=true
+}
+
+G1_ijkl = 1/2 * sum_abcd((nbar_a*nbar_b*n_c + n_a*n_b*nbar_c)
+    * (Omega_ciab*Omega_abcd*Gamma_djkl + Omega_cdab*Omega_abcl*Gamma_ijkd));

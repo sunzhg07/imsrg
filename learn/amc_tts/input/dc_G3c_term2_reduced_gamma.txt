@@ -1,0 +1,36 @@
+declare Omega {
+    mode=4,
+    latex="\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\Gamma",
+    scalar=true,
+    reduce=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\bar{n}"
+}
+
+declare G3cT2 {
+    mode=4,
+    latex="GIII_{c,2}",
+    scalar=true,
+    reduce=true
+}
+
+G3cT2_ijkl = -1/2 * sum_abcd(
+    (nbar_a*nbar_b*n_c + n_a*n_b*nbar_c)
+    * P(i/j) * P(k/l)
+    * Omega_icab*Omega_abdl*Gamma_djkc);

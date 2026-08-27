@@ -1,0 +1,29 @@
+# χ^ε : Ω^λ × Ω^λ → scalar 1b intermediate (rank 0)
+# m-scheme: χ_ij = 1/2 Σ_abc (n̄_a n̄_b n_c + n_a n_b n̄_c) Ω_ciab Ω_abcj
+# with [Ω×Ω]^(0) when LHS is scalar.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare chiepsilon {
+    mode=2,
+    scalar=true,
+    latex="\\chi^{\\epsilon}"
+}
+
+chiepsilon_ij = 1/2 * sum_abc((nbar_a*nbar_b*n_c + n_a*n_b*nbar_c) * Omega_ciab * Omega_abcj);

@@ -1,0 +1,10 @@
+declare barO {
+    mode=4, latex="\bar{\Omega}", scalar=false, scheme=((1,-4),(3,-2))
+}
+declare dbarChi {
+    mode=4, latex="\overline{\overline{\chi}}^{\iota}", scalar=false, scheme=((1,-3),(4,-2))
+}
+declare W {
+    mode=4, latex="W^{(2)}", scalar=false, scheme=((1,-4),(3,-2))
+}
+W_jlik = sum_ab(barO_jlba * dbarChi_akbi);

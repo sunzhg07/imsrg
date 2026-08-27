@@ -1,0 +1,9 @@
+# InvPandya — PERMUTATION STRIPPED (same as GIIIb 05_inv_noperm)
+# Code reads W at jlik (+ exchanges) with (1−P)^2. AMC: Z_ijkl = −W_ijkl
+declare W {
+    mode=4, latex="W^{\mathrm{IV_b}}", scalar=true, scheme=((1,-4),(3,-2))
+}
+declare Z {
+    mode=4, latex="\Gamma^{\mathrm{IV_b}}", scalar=true
+}
+Z_ijkl = - W_ijkl;

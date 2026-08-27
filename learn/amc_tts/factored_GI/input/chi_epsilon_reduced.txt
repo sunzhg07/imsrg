@@ -1,0 +1,28 @@
+# Same as chi_epsilon.txt but χ declared reduce=true (Case-2 / WE packaging).
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare chiepsilon {
+    mode=2,
+    scalar=true,
+    reduce=true,
+    latex="\\chi^{\\epsilon}"
+}
+
+chiepsilon_ij = 1/2 * sum_abc((nbar_a*nbar_b*n_c + n_a*n_b*nbar_c) * Omega_ciab * Omega_abcj);

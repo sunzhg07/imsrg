@@ -1,0 +1,65 @@
+
+\documentclass{scrartcl}
+
+\usepackage{expl3}
+\usepackage{xparse}
+\usepackage{amsmath}
+\usepackage{breqn}
+
+\newcommand{\threej}[3]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \end{Bmatrix}\endgroup}
+\newcommand{\sixj}[6]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \end{Bmatrix}\endgroup}
+\newcommand{\ninej}[9]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \\ #7 & #8 & #9 \end{Bmatrix}\endgroup}
+
+\ExplSyntaxOn
+\tl_new:N \l__hatfact_tl
+
+\NewDocumentCommand{\hatfact} {m} { \__hatfact_parse:n #1 }
+
+\cs_new:Nn \__hatfact_parse:n { \tl_set:Nn \l__hatfact_main_tl {#1} \__hatfact_hat: }
+
+\cs_generate_variant:Nn \str_set:Nn {Nx}
+\cs_new:Nn \__hatfact_hat:
+  {
+    \str_set:Nx \l_tmpa_str {\l__hatfact_main_tl}
+    \str_set:Nn \l_tmpb_str {j}
+    \str_if_eq:NNTF \l_tmpa_str \l_tmpb_str {
+      \hat{\jmath}
+    } {
+      \hat \l__hatfact_main_tl
+    }
+  }
+\ExplSyntaxOff
+
+\begin{document}
+
+\section{Equation 1}
+\begin{dmath*}
+\bar{\Omega}_{i j k l}^{{J}_{0} {J}_{1} 0} = -\delta_{{J}_{1},{J}_{0}} \* \sum_{{J}_{2}} \* \hatfact{{J}_{2}^{2}} \* \sixj{{j}_{j}}{{j}_{k}}{{J}_{0}}{{j}_{l}}{{j}_{i}}{{J}_{2}} \* \Omega_{i j k l}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+
+\section{Equation 2}
+\begin{dmath*}
+\bar{\Gamma}_{i j k l}^{{J}_{0} {J}_{1} 0} = -\delta_{{J}_{0},{J}_{1}} \* \sum_{{J}_{2}} \* \hatfact{{J}_{2}^{2}} \* \sixj{{j}_{j}}{{j}_{k}}{{J}_{1}}{{j}_{l}}{{j}_{i}}{{J}_{2}} \* \Gamma_{i j k l}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+
+\section{Equation 3}
+\begin{dmath*}
+\bar{\chi}^{\eta}_{i j k l}^{{J}_{0} {J}_{1} 0} = \delta_{{J}_{1},{J}_{0}} \* \sum_{a b} \* (\bar{n}_{a} \* n_{b} \* \bar{n}_{k} + n_{a} \* \bar{n}_{b} \* n_{k}) \* \bar{\Omega}_{i a b l}^{{J}_{0} {J}_{0} 0} \* \bar{\Omega}_{b j k a}^{{J}_{0} {J}_{0} 0}
+\end{dmath*}
+
+\section{Equation 4}
+\begin{dmath*}
+\overline{\overline{\chi}}^{\eta}_{i j k l}^{{J}_{0} {J}_{1} 0} = -\delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}+{j}_{k}+{j}_{l}} \* \sum_{{J}_{2}} \* (-1)^{{J}_{2}} \* \hatfact{{J}_{2}^{2}} \* \sixj{{j}_{l}}{{j}_{j}}{{J}_{0}}{{j}_{k}}{{j}_{i}}{{J}_{2}} \* \bar{\chi}^{\eta}_{i j k l}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+
+\section{Equation 5}
+\begin{dmath*}
+W_{j l i k}^{{J}_{0} {J}_{1} 0} = \delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}+{j}_{j}+{j}_{l}} \* \sum_{a b {J}_{2} {J}_{3}} \* (-1)^{{J}_{2}+{J}_{3}+{j}_{a}+{j}_{b}} \* \hatfact{{J}_{2}^{2}} \* \hatfact{{J}_{3}^{2}} \* \sixj{{J}_{0}}{{J}_{2}}{{J}_{3}}{{j}_{b}}{{j}_{k}}{{j}_{j}} \* \sixj{{J}_{0}}{{J}_{3}}{{J}_{2}}{{j}_{a}}{{j}_{l}}{{j}_{i}} \* \bar{\Gamma}_{j l a b}^{{J}_{2} {J}_{2} 0} \* \overline{\overline{\chi}}^{\eta}_{a b i k}^{{J}_{3} {J}_{3} 0}
+\end{dmath*}
+
+\section{Equation 6}
+\begin{dmath*}
+Z^{\mathrm{IIb}}_{j i k l}^{{J}_{0} {J}_{1} 0} = -\delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}+{j}_{i}+{j}_{j}} \* \sum_{{J}_{2}} \* \hatfact{{J}_{2}^{2}} \* \sixj{{j}_{l}}{{j}_{k}}{{J}_{0}}{{j}_{j}}{{j}_{i}}{{J}_{2}} \* W_{i j k l}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+
+\end{document}

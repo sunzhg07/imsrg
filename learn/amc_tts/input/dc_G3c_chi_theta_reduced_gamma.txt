@@ -1,0 +1,23 @@
+declare Chi {
+    mode=4,
+    latex="\chi",
+    scalar=true,
+    reduce=true
+}
+
+declare Gamma {
+    mode=4,
+    latex="\Gamma",
+    scalar=true,
+    reduce=true
+}
+
+declare G3cchi {
+    mode=4,
+    latex="Z",
+    scalar=true,
+    reduce=true
+}
+
+# All three use reduced MEs (Chi/Gamma/Z via reduce=true; same as tensor convention).
+G3cchi_ijkl = -1/2 * sum_ab(P(i/j) * P(k/l) * Chi_iabl * Gamma_bjka);

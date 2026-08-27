@@ -1,0 +1,33 @@
+# Path B: Pandya → product → inv  (no occ)
+# Omega/barO: tensor (always reduced). barChi/chi: scalar reduced.
+# Corrected inv: chi = + barChi (AMC sample minus → Path B = −direct / m).
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+barO_ijkl = - Omega_ijkl;
+
+declare barChi {
+    mode=4,
+    latex="\\bar{\\chi}",
+    scalar=true,
+    reduce=true,
+    scheme=((1,-4),(3,-2))
+}
+barChi_ijkl = sum_ab(barO_ajkb * barO_ibal);
+
+declare chi {
+    mode=4,
+    latex="\\chi",
+    scalar=true,
+    reduce=true
+}
+# Corrected: drop AMC-sample overall minus (that minus → Path B = −direct/m)
+chi_ijkl = barChi_ijkl;

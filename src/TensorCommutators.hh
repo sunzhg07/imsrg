@@ -52,6 +52,7 @@ namespace Commutator
     void comm231st(const Operator &X, const Operator &Y, Operator &Z);  // PASS the unit test
     void comm231tts(const Operator &X, const Operator &Y, Operator &Z);
     void comm232st(const Operator &X, const Operator &Y, Operator &Z);  // PASS the unit test
+    void comm232tts(const Operator &X, const Operator &Y, Operator &Z);
     void comm133st(const Operator &X, const Operator &Y, Operator &Z);  // PASS the unit test
     void comm132st(const Operator &X, const Operator &Y, Operator &Z);  // PASS the unit test
     void comm132tts(const Operator &X, const Operator &Y, Operator &Z);

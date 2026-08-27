@@ -1,0 +1,9 @@
+declare Xin {
+    mode=4, latex="\\bar{\\chi}", scalar=true,
+    scheme=((1,-4),(3,-2))
+}
+declare Xout {
+    mode=4, latex="\\overline{\\overline{\\chi}}", scalar=true,
+    scheme=((1,-3),(4,-2))
+}
+Xout_ijkl = - Xin_ijkl;

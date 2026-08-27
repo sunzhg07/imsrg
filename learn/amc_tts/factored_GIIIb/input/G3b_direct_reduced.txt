@@ -1,0 +1,25 @@
+# Same as G3b_direct but Γ reduce=true (case-2 TTS packaging).
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true,
+    reduce=true
+}
+declare n { mode=2, diagonal=true, latex="n" }
+declare nbar { mode=2, diagonal=true, latex="\\bar{n}" }
+declare G3b {
+    mode=4,
+    latex="\\Gamma^{(III_b)}",
+    scalar=true,
+    reduce=true
+}
+G3b_ijkl = -1 * sum_abcd(
+    (nbar_b*n_c*n_d + n_b*nbar_c*nbar_d)
+    * P(i/j) * P(k/l)
+    * (Omega_dcbk*Omega_biac*Gamma_jald + Omega_jcbd*Omega_balc*Gamma_diak)
+);

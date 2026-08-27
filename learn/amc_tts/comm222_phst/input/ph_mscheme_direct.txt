@@ -1,0 +1,23 @@
+# Direct m-scheme ph piece (scalar X, tensor Y) — one permutation structure
+# Z_pqrs ~ sum_ab (n_a-n_b) X_pbas Y_abrq   (indices chosen to match Pandya product topology)
+declare X {
+    mode=4,
+    latex="X",
+    scalar=true
+}
+declare Y {
+    mode=4,
+    latex="Y",
+    scalar=false
+}
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+declare Z {
+    mode=4,
+    latex="Z",
+    scalar=false
+}
+Z_pqrs = sum_ab((n_a - n_b) * X_pbas * Y_abrq);

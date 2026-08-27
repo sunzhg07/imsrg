@@ -1,0 +1,7 @@
+declare barChi {
+    mode=4, latex="\\bar{\\chi}^{\\eta}", scalar=true, scheme=((1,-4),(3,-2))
+}
+declare dbarChi {
+    mode=4, latex="\\overline{\\overline{\\chi}}^{\\eta}", scalar=true, scheme=((1,-3),(4,-2))
+}
+dbarChi_abcd = - barChi_bcad;

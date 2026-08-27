@@ -1,0 +1,15 @@
+# Tensor Pandya with Neithan index layout:
+#   barT_{p q r s}  (scheme: p×(-q), r×(-s))  =  - T_{p s r q}
+# so RHS ME is at psrq, matching neithan.tex.
+declare T {
+    mode=4,
+    latex="T",
+    scalar=false
+}
+declare barT {
+    mode=4,
+    latex="\\bar{T}",
+    scalar=false,
+    scheme=((1,-2),(3,-4))
+}
+barT_pqrs = - T_psrq;

@@ -1,0 +1,15 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false
+}
+
+# Try particle-hole style: bar involves crossed legs differently
+# barO_ajkb = Omega_abjk  (common Pandya leg swap)
+barO_ajkb = - Omega_abjk;

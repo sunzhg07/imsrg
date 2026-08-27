@@ -1,0 +1,17 @@
+declare barChi {
+    mode=4, latex="\\bar{\\chi}^{\\eta}", scalar=true, scheme=((1,-4),(3,-2))
+}
+declare Chi {
+    mode=4, latex="\\chi^{\\eta}", scalar=true
+}
+Chi_ijkl = - barChi_ijkl;
+
+declare ChiPerm {
+    mode=4, latex="\\chi^{\\eta(\\mathrm{adbc})}", scalar=true
+}
+ChiPerm_abcd = Chi_adbc;
+
+declare dbarChi {
+    mode=4, latex="\\overline{\\overline{\\chi}}^{\\eta(\\mathrm{adbc})}", scalar=true, scheme=((1,-4),(3,-2))
+}
+dbarChi_abcd = - ChiPerm_abcd;

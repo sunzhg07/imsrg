@@ -1,0 +1,12 @@
+# Term2: Pandya Ω × RC χ
+# From identity RCΩ_jalb = barΩ_jlba
+declare barO {
+    mode=4, latex="\bar{\Omega}", scalar=false, scheme=((1,-4),(3,-2))
+}
+declare dbarChi {
+    mode=4, latex="\overline{\overline{\chi}}^{\iota}", scalar=false, scheme=((1,-3),(4,-2))
+}
+declare D {
+    mode=4, latex="D^{(2)}", scalar=false, scheme=((1,-3),(4,-2))
+}
+D_ijkl = sum_ab(barO_jlba * dbarChi_akbi);

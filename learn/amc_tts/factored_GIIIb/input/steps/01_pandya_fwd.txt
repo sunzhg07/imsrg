@@ -1,0 +1,13 @@
+# Step 1 (m-scheme): forward Pandya of Omega and Gamma
+# Code: FactorizedDoubleCommutator.cc ~L1289-1296
+#   barO^J_{a b̄ c d̄} = -Σ_{J'}(2J'+1){ja jb J; jc jd J'} O^{J'}_{a d c b}
+declare Omega { mode=4, latex="\\Omega" }
+declare Gamma { mode=4, latex="\\Gamma" }
+declare barO {
+    mode=4, latex="\\bar{\\Omega}", scheme=((1,-4),(3,-2))
+}
+declare barG {
+    mode=4, latex="\\bar{\\Gamma}", scheme=((1,-4),(3,-2))
+}
+barO_ijkl = - Omega_ijkl;
+barG_ijkl = - Gamma_ijkl;

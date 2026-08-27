@@ -1,0 +1,22 @@
+# Step 3 RC — PERMUTATION STRIPPED (AMC only couples AM)
+# -------------------------------------------------------
+# Code eq:RC (with free indices a,b,c,d):
+#   dbarChi^J_{a b̄ c d̄}
+#     = -Σ_{J'}(2J'+1)(-1)^{jb+jc+J'} {ja jb J; jc jd J'}
+#       × ( barChi^{J'}_{b c̄ a d̄} + barChi^{J'}_{a d̄ b c̄} )
+#
+# Strip the (bcad)+(adbc) permute; feed AMC the same-label scheme change only:
+#   dbarChi_ijkl = - barChi_ijkl
+#   barChi: Pandya ((1,-4),(3,-2))
+#   dbarChi: CC    ((1,-3),(4,-2))
+#
+# AFTER AMC: restore permute by hand —
+#   barChi_ijkl  →  (barChi_bcad + barChi_adbc)
+#   and identify (i,j,k,l)↔(a,b,c,d) so the printed 6j/phases match code.
+declare barChi {
+    mode=4, latex="\\bar{\\chi}^{\\eta}", scalar=true, scheme=((1,-4),(3,-2))
+}
+declare dbarChi {
+    mode=4, latex="\\overline{\\overline{\\chi}}^{\\eta}", scalar=true, scheme=((1,-3),(4,-2))
+}
+dbarChi_ijkl = - barChi_ijkl;

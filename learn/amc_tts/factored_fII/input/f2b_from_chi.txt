@@ -1,0 +1,21 @@
+declare chi {
+    mode=2,
+    latex="\\chi^{\\beta}",
+    scalar=false
+}
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare f2b {
+    mode=2,
+    latex="f^{(II)}_b",
+    scalar=true
+}
+
+# Bra-ket swap of analyze Omega_diej. Assemble as h_Gamma * this
+# (see learn/amc_tts/NOTES.md f^II hermiticity note).
+f2b_ij = sum_de(chi_de*Omega_ejdi);

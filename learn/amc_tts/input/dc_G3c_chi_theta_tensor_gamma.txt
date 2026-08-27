@@ -1,0 +1,22 @@
+declare Chi {
+    mode=4,
+    latex="\chi",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\Gamma",
+    scalar=false
+}
+
+declare G3cchi {
+    mode=4,
+    latex="Z",
+    scalar=false
+}
+
+# Folded: both Chi and Gamma as tensors → reduced ME convention throughout.
+# (Physically Chi^θ and Γ are rank-0; declare as tensors so AMC does not mix
+#  unreduced scalar with reduced tensor rules.)
+G3cchi_ijkl = -1/2 * sum_ab(P(i/j) * P(k/l) * Chi_iabl * Gamma_bjka);

@@ -1,0 +1,1 @@
+../../../../factored_fIIIa/input/chi_gamma_direct.txt

@@ -1,0 +1,62 @@
+# comm231tts: tensor 2b × tensor 3b → scalar 1b  [Z UNREDUCED]
+# Packaging (IMSRG C++ default):
+#   X, Y: scalar=false → WE-reduced tensor MEs (AMC always reduced for tensors)
+#   Z:    scalar=true, reduce=false → unreduced scalar 1b (matches Z.IsReduced()=false)
+# Compare m-scheme via GetMschemeMatrixElement_1b; add overall 1/4 in code (UnitTest m AS).
+# Ref: learn/threebody_commutator equations.tex §comm231tts
+
+declare X {
+    mode=4,
+    latex="X",
+    scalar=false
+}
+
+declare Y {
+    mode=6,
+    latex="Y",
+    scalar=false
+}
+
+declare Z {
+    mode=2,
+    latex="Z",
+    scalar=true,
+    reduce=false
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+# Eq 1: X(2b) × Y(3b)
+Z_ij = sum_abcd((n_a*n_b*nbar_c*nbar_d)*(X_abcd*Y_cdiabj - Y_abicdj*X_cdab));
+
+declare X {
+    mode=6,
+    latex="X",
+    scalar=false
+}
+
+declare Y {
+    mode=4,
+    latex="Y",
+    scalar=false
+}
+
+declare Z {
+    mode=2,
+    latex="Z",
+    scalar=true,
+    reduce=false
+}
+
+# Eq 2: X(3b) × Y(2b)
+Z_ij = sum_abcd((n_a*n_b*nbar_c*nbar_d)*(X_abicdj*Y_cdab - Y_abcd*X_cdiabj));

@@ -105,7 +105,6 @@ namespace ReferenceImplementations
   void comm223_232_tts(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_232_tts_GI(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_232_tts_GII(const Operator &Eta, const Operator &Gamma, Operator &Z);
-  void comm223_232_tts_GIIIa(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_232_tts_GIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z);
   /// which_term: 0=both, 1=G3c Term1 (χ_k), 2=G3c Term2 (χ_j)
   void comm223_232_tts_GIIIc(const Operator &Eta, const Operator &Gamma, Operator &Z,
@@ -122,6 +121,11 @@ namespace ReferenceImplementations
   void comm223_232_tts_GIVc(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_231_tts_fI(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_231_tts_fII(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  /// Unreduced χ^γ tab (AMC direct / W1·W2). Gold for f^III_a ladder.
+  void build_chi_gamma_tab(const Operator &Eta, std::vector<double> &chi_tab);
+  /// Scalar ladder: f^III_a from unreduced χ^γ × Γ.
+  void fold_fIIIa_ladder(const Operator &Gamma,
+                         const std::vector<double> &chi_tab, Operator &Z);
   void comm223_231_tts_fIIIa(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_231_tts_fIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_231sst(const Operator &Eta, const Operator &Gamma, Operator &Z);

@@ -1,0 +1,40 @@
+
+\documentclass{scrartcl}
+
+\usepackage{expl3}
+\usepackage{xparse}
+\usepackage{amsmath}
+\usepackage{breqn}
+
+\newcommand{\threej}[3]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \end{Bmatrix}\endgroup}
+\newcommand{\sixj}[6]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \end{Bmatrix}\endgroup}
+\newcommand{\ninej}[9]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \\ #7 & #8 & #9 \end{Bmatrix}\endgroup}
+
+\ExplSyntaxOn
+\tl_new:N \l__hatfact_tl
+
+\NewDocumentCommand{\hatfact} {m} { \__hatfact_parse:n #1 }
+
+\cs_new:Nn \__hatfact_parse:n { \tl_set:Nn \l__hatfact_main_tl {#1} \__hatfact_hat: }
+
+\cs_generate_variant:Nn \str_set:Nn {Nx}
+\cs_new:Nn \__hatfact_hat:
+  {
+    \str_set:Nx \l_tmpa_str {\l__hatfact_main_tl}
+    \str_set:Nn \l_tmpb_str {j}
+    \str_if_eq:NNTF \l_tmpa_str \l_tmpb_str {
+      \hat{\jmath}
+    } {
+      \hat \l__hatfact_main_tl
+    }
+  }
+\ExplSyntaxOff
+
+\begin{document}
+
+\section{Equation 1}
+\begin{dmath*}
+W^{\mathrm{IV_b}}_{j l i k}^{{J}_{0} {J}_{1} {{\lambda}}_{0}} = (-1)^{{J}_{0}+{j}_{j}+{j}_{l}} \* \hatfact{{J}_{0}} \* \hatfact{{J}_{1}} \* \hatfact{{{\lambda}}_{0}} \* \sum_{a b {J}_{2} {J}_{3} {J}_{4} {J}_{5} {{\lambda}}_{1} {{\lambda}}_{2}} \* (-1)^{{J}_{3}+{J}_{4}+{j}_{a}+{j}_{b}+{{\lambda}}_{2}} \* \hatfact{{J}_{2}} \* \hatfact{{J}_{3}} \* \hatfact{{J}_{4}} \* \hatfact{{J}_{5}} \* \sixj{{J}_{0}}{{J}_{2}}{{J}_{5}}{{j}_{b}}{{j}_{k}}{{j}_{j}} \* \sixj{{J}_{1}}{{J}_{3}}{{J}_{4}}{{j}_{a}}{{j}_{i}}{{j}_{l}} \* \ninej{{J}_{1}}{{J}_{0}}{{{\lambda}}_{0}}{{J}_{4}}{{J}_{5}}{{{\lambda}}_{2}}{{J}_{3}}{{J}_{2}}{{{\lambda}}_{1}} \* \bar{\Omega}_{j l a b}^{{J}_{2} {J}_{3} {{\lambda}}_{1}} \* \overline{\overline{\chi}}^{\iota}_{a b i k}^{{J}_{4} {J}_{5} {{\lambda}}_{2}}
+\end{dmath*}
+
+\end{document}

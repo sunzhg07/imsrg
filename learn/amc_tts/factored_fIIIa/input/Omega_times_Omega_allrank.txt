@@ -1,0 +1,14 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Chi {
+    mode=4,
+    latex="\\chi",
+    scalar=false
+}
+
+# Same index topology as DGEMM but in normal coupling
+Chi_abcd = sum_ef(Omega_abef * Omega_efcd);

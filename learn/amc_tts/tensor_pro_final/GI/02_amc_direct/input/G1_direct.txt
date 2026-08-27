@@ -1,0 +1,1 @@
+../../../../factored_GI/input/G1_direct.txt

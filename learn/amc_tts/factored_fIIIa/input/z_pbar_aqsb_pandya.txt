@@ -1,0 +1,33 @@
+# Path B: Z_pqsr = sum_ab Omega_pbar * Omega_aqsb
+# Z reduced scalar; Omega reduced tensor
+# Pandya(Ω) → RME product → inv Pandya → Z
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+barO_ijkl = - Omega_ijkl;
+
+declare barZ {
+    mode=4,
+    latex="\\bar{Z}",
+    scalar=true,
+    reduce=true,
+    scheme=((1,-4),(3,-2))
+}
+# same m-scheme product, but in Pandya-coupled tensors
+barZ_pqsr = sum_ab(barO_pbar * barO_aqsb);
+
+declare Z {
+    mode=4,
+    latex="Z",
+    scalar=true,
+    reduce=true
+}
+Z_pqsr = - barZ_pqsr;

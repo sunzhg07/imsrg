@@ -1,0 +1,15 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+barO_ijkl = - Omega_ijkl;
+
+# AMC sample cross.txt topology for Pandya product
+barO_abcd = sum_ef(barO_ebcf * barO_afed);

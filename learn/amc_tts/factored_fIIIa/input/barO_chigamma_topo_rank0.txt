@@ -1,0 +1,35 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+
+barO_ijkl = - Omega_ijkl;
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+# Scalar χ in Pandya scheme: same m-scheme as chi_gamma but with barO
+declare barChi {
+    mode=4,
+    latex="\\bar{\\chi}^{\\gamma}",
+    scalar=true,
+    scheme=((1,-4),(3,-2))
+}
+
+barChi_ijkl = sum_ab((n_a*nbar_b*n_j*nbar_k - nbar_a*n_b*nbar_j*n_k) * (barO_ajkb * barO_ibal));

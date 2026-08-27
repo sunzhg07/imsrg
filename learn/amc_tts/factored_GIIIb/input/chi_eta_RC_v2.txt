@@ -1,0 +1,12 @@
+# RC try: both ordinary scalar (no scheme) — pure index rewrite
+declare barChi {
+    mode=4,
+    latex="\\bar{\\chi}^{\\eta}",
+    scalar=true
+}
+declare dbarChi {
+    mode=4,
+    latex="\\overline{\\overline{\\chi}}^{\\eta}",
+    scalar=true
+}
+dbarChi_abcd = -1 * (barChi_bcad + barChi_adbc);

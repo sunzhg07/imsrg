@@ -1,0 +1,1 @@
+../../../../factored_GII/input/G2_direct.txt

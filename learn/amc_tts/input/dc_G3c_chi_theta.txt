@@ -1,0 +1,17 @@
+declare Chi {
+    mode=4,
+    latex="\chi"
+}
+
+declare Gamma {
+    mode=4,
+    latex="\Gamma"
+}
+
+declare G3cchi {
+    mode=4,
+    latex="Z"
+}
+
+# Folded m-scheme: -1/2 (1-Pij)(1-Pkl) sum_ab Chi_iabl Gamma_bjka
+G3cchi_ijkl = -1/2 * sum_ab(P(i/j) * P(k/l) * Chi_iabl * Gamma_bjka);

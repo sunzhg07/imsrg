@@ -1,0 +1,23 @@
+# Γ^{IV_a} ket topology — DO NOT USE.
+# Literal Ω_ijdb * Chi_klbd Yutsis-fails (like-index / orientation).
+# Use G4a_Wklij_noperm.txt instead: W_klij = −Σ χ_klbd Ω_dbij, then
+# V_ijkl = h_Ω W_klij (transpose). Bench: run/test_G4a_Wket_mscheme.py
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\kappa}",
+    scalar=false,
+    reduce=true
+}
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare V {
+    mode=4,
+    latex="V",
+    scalar=true,
+    reduce=true
+}
+V_ijkl = -1 * sum_bd(Omega_ijdb * Chi_klbd);
