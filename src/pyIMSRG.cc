@@ -971,6 +971,14 @@ PYBIND11_MODULE(pyIMSRG, m) {
   Commutator.def("comm223tts", &Commutator::comm223tts);
   Commutator.def("comm231st", &Commutator::comm231st);
      Commutator.def("comm231tts", &Commutator::comm231tts);
+  Commutator.def("comm110tts", &Commutator::comm110tts);
+  Commutator.def("comm220tts", &Commutator::comm220tts);
+  Commutator.def("comm111tts", &Commutator::comm111tts);
+  Commutator.def("comm121tts", &Commutator::comm121tts);
+  Commutator.def("comm122tts", &Commutator::comm122tts);
+  Commutator.def("comm221tts", &Commutator::comm221tts);
+  Commutator.def("comm222_pp_hhtts", &Commutator::comm222_pp_hhtts);
+  Commutator.def("comm222_phtts", &Commutator::comm222_phtts);
   Commutator.def("comm232st", &Commutator::comm232st);
   Commutator.def("comm133st", &Commutator::comm133st);
   Commutator.def("comm132st", &Commutator::comm132st);
@@ -1046,11 +1054,41 @@ PYBIND11_MODULE(pyIMSRG, m) {
       "SetUse_TypeIII_1b",
       &Commutator::FactorizedDoubleCommutator::SetUse_TypeIII_1b);
   FactorizedDoubleCommutator.def(
+      "SetUse_TypeI_1b",
+      &Commutator::FactorizedDoubleCommutator::SetUse_TypeI_1b);
+  FactorizedDoubleCommutator.def(
+      "SetUse_TypeIIIa_1b",
+      &Commutator::FactorizedDoubleCommutator::SetUse_TypeIIIa_1b);
+  FactorizedDoubleCommutator.def(
       "SetUse_TypeII_2b",
       &Commutator::FactorizedDoubleCommutator::SetUse_TypeII_2b);
   FactorizedDoubleCommutator.def(
       "SetUse_TypeIII_2b",
       &Commutator::FactorizedDoubleCommutator::SetUse_TypeIII_2b);
+  FactorizedDoubleCommutator.def(
+      "SetUse_TypeGI_2b",
+      &Commutator::FactorizedDoubleCommutator::SetUse_TypeGI_2b);
+  FactorizedDoubleCommutator.def(
+      "SetUse_TypeGII_2b",
+      &Commutator::FactorizedDoubleCommutator::SetUse_TypeGII_2b);
+  FactorizedDoubleCommutator.def(
+      "SetUse_TypeGIIIa_2b",
+      &Commutator::FactorizedDoubleCommutator::SetUse_TypeGIIIa_2b);
+  FactorizedDoubleCommutator.def(
+      "SetUse_TypeGIIIb_2b",
+      &Commutator::FactorizedDoubleCommutator::SetUse_TypeGIIIb_2b);
+  FactorizedDoubleCommutator.def(
+      "SetUse_TypeGIIIc_2b",
+      &Commutator::FactorizedDoubleCommutator::SetUse_TypeGIIIc_2b);
+  FactorizedDoubleCommutator.def(
+      "SetUse_TypeGIVa_2b",
+      &Commutator::FactorizedDoubleCommutator::SetUse_TypeGIVa_2b);
+  FactorizedDoubleCommutator.def(
+      "SetUse_TypeGIVb_2b",
+      &Commutator::FactorizedDoubleCommutator::SetUse_TypeGIVb_2b);
+  FactorizedDoubleCommutator.def(
+      "SetUse_TypeGIVc_2b",
+      &Commutator::FactorizedDoubleCommutator::SetUse_TypeGIVc_2b);
 
   py::module FactorizedDoubleCommutator_eths = Commutator.def_submodule(
        "FactorizedDoubleCommutator_eths",
@@ -1290,7 +1328,9 @@ PYBIND11_MODULE(pyIMSRG, m) {
   ReferenceImplementations.def("comm223_232_tts_GIVa",
                                &ReferenceImplementations::comm223_232_tts_GIVa);
   ReferenceImplementations.def("comm223_232_tts_GIVb",
-                               &ReferenceImplementations::comm223_232_tts_GIVb);
+                               &ReferenceImplementations::comm223_232_tts_GIVb,
+                               py::arg("Eta"), py::arg("Gamma"), py::arg("Z"),
+                               py::arg("which_term") = 0);
   ReferenceImplementations.def("comm223_232_tts_GIVc",
                                &ReferenceImplementations::comm223_232_tts_GIVc);
   ReferenceImplementations.def(
@@ -1322,10 +1362,40 @@ PYBIND11_MODULE(pyIMSRG, m) {
                                &ReferenceImplementations::comm231st);
   ReferenceImplementations.def("comm232st",
                                &ReferenceImplementations::comm232st);
+  ReferenceImplementations.def("comm232st_amc",
+                               &ReferenceImplementations::comm232st_amc);
+  ReferenceImplementations.def("comm232st_amc_eq1",
+                               &ReferenceImplementations::comm232st_amc_eq1);
   ReferenceImplementations.def("comm133st",
                                &ReferenceImplementations::comm133st);
   ReferenceImplementations.def("comm132st",
                                &ReferenceImplementations::comm132st);
+  ReferenceImplementations.def("comm231tts",
+                               &ReferenceImplementations::comm231tts);
+  ReferenceImplementations.def("comm110tts",
+                               &ReferenceImplementations::comm110tts);
+  ReferenceImplementations.def("comm220tts",
+                               &ReferenceImplementations::comm220tts);
+  ReferenceImplementations.def("comm111tts",
+                               &ReferenceImplementations::comm111tts);
+  ReferenceImplementations.def("comm121tts",
+                               &ReferenceImplementations::comm121tts);
+  ReferenceImplementations.def("comm122tts",
+                               &ReferenceImplementations::comm122tts);
+  ReferenceImplementations.def("comm221tts",
+                               &ReferenceImplementations::comm221tts);
+  ReferenceImplementations.def("comm222_pp_hhtts",
+                               &ReferenceImplementations::comm222_pp_hhtts);
+  ReferenceImplementations.def("comm222_phtts",
+                               &ReferenceImplementations::comm222_phtts);
+  ReferenceImplementations.def("comm132tts",
+                               &ReferenceImplementations::comm132tts);
+  ReferenceImplementations.def("comm232tts",
+                               &ReferenceImplementations::comm232tts);
+  ReferenceImplementations.def("comm232tts_bare",
+                               &ReferenceImplementations::comm232tts_bare);
+  ReferenceImplementations.def("comm223tts",
+                               &ReferenceImplementations::comm223tts);
   ReferenceImplementations.def("comm332_ppph_hhhpst",
                                &ReferenceImplementations::comm332_ppph_hhhpst);
   ReferenceImplementations.def("comm332_pphhst",
@@ -1773,8 +1843,35 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("Mscheme_Test_comm223st", &UnitTest::Mscheme_Test_comm223st)
       .def("Mscheme_Test_comm231st", &UnitTest::Mscheme_Test_comm231st)
       .def("Mscheme_Test_comm232st", &UnitTest::Mscheme_Test_comm232st)
+      .def("Mscheme_Test_comm232st_amc", &UnitTest::Mscheme_Test_comm232st_amc)
+      .def("Test_comm232st_amc", &UnitTest::Test_comm232st_amc)
       .def("Mscheme_Test_comm133st", &UnitTest::Mscheme_Test_comm133st)
       .def("Mscheme_Test_comm132st", &UnitTest::Mscheme_Test_comm132st)
+      .def("Mscheme_Test_comm231tts", &UnitTest::Mscheme_Test_comm231tts)
+      .def("Mscheme_Test_comm110tts", &UnitTest::Mscheme_Test_comm110tts)
+      .def("Mscheme_Test_comm220tts", &UnitTest::Mscheme_Test_comm220tts)
+      .def("Mscheme_Test_comm111tts", &UnitTest::Mscheme_Test_comm111tts)
+      .def("Mscheme_Test_comm121tts", &UnitTest::Mscheme_Test_comm121tts)
+      .def("Mscheme_Test_comm122tts", &UnitTest::Mscheme_Test_comm122tts)
+      .def("Mscheme_Test_comm221tts", &UnitTest::Mscheme_Test_comm221tts)
+      .def("Mscheme_Test_comm222_pp_hhtts", &UnitTest::Mscheme_Test_comm222_pp_hhtts)
+      .def("Mscheme_Test_comm222_phtts", &UnitTest::Mscheme_Test_comm222_phtts)
+      .def("Mscheme_Test_comm132tts", &UnitTest::Mscheme_Test_comm132tts)
+      .def("Mscheme_Test_comm232tts", &UnitTest::Mscheme_Test_comm232tts)
+      .def("Mscheme_Test_comm223tts", &UnitTest::Mscheme_Test_comm223tts)
+      .def("RME_Test_comm232tts_bare", &UnitTest::RME_Test_comm232tts_bare)
+      .def("Test_comm231tts", &UnitTest::Test_comm231tts)
+      .def("Test_comm110tts", &UnitTest::Test_comm110tts)
+      .def("Test_comm220tts", &UnitTest::Test_comm220tts)
+      .def("Test_comm111tts", &UnitTest::Test_comm111tts)
+      .def("Test_comm121tts", &UnitTest::Test_comm121tts)
+      .def("Test_comm122tts", &UnitTest::Test_comm122tts)
+      .def("Test_comm221tts", &UnitTest::Test_comm221tts)
+      .def("Test_comm222_pp_hhtts", &UnitTest::Test_comm222_pp_hhtts)
+      .def("Test_comm222_phtts", &UnitTest::Test_comm222_phtts)
+      .def("Test_comm132tts", &UnitTest::Test_comm132tts)
+      .def("Test_comm232tts", &UnitTest::Test_comm232tts)
+      .def("Test_comm223tts", &UnitTest::Test_comm223tts)
       .def("Mscheme_Test_comm332_ppph_hhhpst",
            &UnitTest::Mscheme_Test_comm332_ppph_hhhpst)
       .def("Mscheme_Test_comm332_pphhst",
@@ -1795,6 +1892,38 @@ PYBIND11_MODULE(pyIMSRG, m) {
            &UnitTest::GetMschemeMatrixElement_2b) // Op, a,ma, b,mb...
       .def("GetMschemeMatrixElement_3b",
            &UnitTest::GetMschemeMatrixElement_3b) // Op, a,ma, b,mb...
+      .def("Mscheme_comm223_232_GIVb", &UnitTest::Mscheme_comm223_232_GIVb,
+           py::arg("Eta"), py::arg("Gamma"),
+           py::arg("i"), py::arg("mi"), py::arg("j"), py::arg("mj"),
+           py::arg("k"), py::arg("mk"), py::arg("l"), py::arg("ml"),
+           py::arg("which_term") = 0)
+      .def("Mscheme_chi_alpha", &UnitTest::Mscheme_chi_alpha)
+      .def("Mscheme_chi_beta", &UnitTest::Mscheme_chi_beta)
+      .def("Mscheme_chi_gamma", &UnitTest::Mscheme_chi_gamma)
+      .def("Mscheme_chi_delta", &UnitTest::Mscheme_chi_delta)
+      .def("Mscheme_chi_epsilon", &UnitTest::Mscheme_chi_epsilon)
+      .def("Mscheme_chi_zeta", &UnitTest::Mscheme_chi_zeta)
+      .def("Mscheme_chi_eta", &UnitTest::Mscheme_chi_eta)
+      .def("Mscheme_chi_theta", &UnitTest::Mscheme_chi_theta)
+      .def("Mscheme_chi_iota", &UnitTest::Mscheme_chi_iota)
+      .def("Mscheme_chi_kappa", &UnitTest::Mscheme_chi_kappa)
+      .def("Mscheme_chi_lambda", &UnitTest::Mscheme_chi_lambda)
+      .def("Mscheme_fact_fI", &UnitTest::Mscheme_fact_fI)
+      .def("Mscheme_fact_fII", &UnitTest::Mscheme_fact_fII)
+      .def("Mscheme_fact_fIIIa", &UnitTest::Mscheme_fact_fIIIa)
+      .def("Mscheme_fact_fIIIb", &UnitTest::Mscheme_fact_fIIIb)
+      .def("Mscheme_fact_GI", &UnitTest::Mscheme_fact_GI)
+      .def("Mscheme_fact_GII", &UnitTest::Mscheme_fact_GII)
+      .def("Mscheme_fact_GIIIa", &UnitTest::Mscheme_fact_GIIIa)
+      .def("Mscheme_fact_GIIIb", &UnitTest::Mscheme_fact_GIIIb)
+      .def("Mscheme_fact_GIIIc", &UnitTest::Mscheme_fact_GIIIc)
+      .def("Mscheme_fact_GIVa", &UnitTest::Mscheme_fact_GIVa)
+      .def("Mscheme_fact_GIVb_chi", &UnitTest::Mscheme_fact_GIVb_chi)
+      .def("Mscheme_fact_GIVc", &UnitTest::Mscheme_fact_GIVc)
+      .def("Mscheme_comm231tts_wick", &UnitTest::Mscheme_comm231tts_wick)
+      .def("Mscheme_comm132tts_wick", &UnitTest::Mscheme_comm132tts_wick)
+      .def("Mscheme_comm232tts_wick", &UnitTest::Mscheme_comm232tts_wick)
+
 
       ;
 

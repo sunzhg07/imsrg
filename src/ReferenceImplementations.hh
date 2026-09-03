@@ -67,8 +67,33 @@ namespace ReferenceImplementations
   void comm223st(const Operator &X, const Operator &Y, Operator &Z);            // PASS the unit test (J and T)
   void comm231st(const Operator &X, const Operator &Y, Operator &Z);            // PASS the unit test (J and T)
   void comm232st(const Operator &X, const Operator &Y, Operator &Z);            // PASS the unit test (J and T)
+  // AMC print of comm232st seeds + restore ×1/2 and (1-P). See learn/amc_tts/comm232st/
+  void comm232st_amc(const Operator &X, const Operator &Y, Operator &Z);
+  // Diagnostic: AMC tex Eq1 only (X_icab Y_abjklc), no 1/2 and no (1-P).
+  void comm232st_amc_eq1(const Operator &X, const Operator &Y, Operator &Z);
   void comm133st(const Operator &X, const Operator &Y, Operator &Z);            // PASS the unit test (J and T)
   void comm132st(const Operator &X, const Operator &Y, Operator &Z);            // PASS the unit test (J and T)
+
+  // tensor × tensor → scalar leftover. Naive J-scheme (and production wraps
+  // for diagrams with no ss-level BLAS: 121, 132, 231, 223, 232).
+  // Production GEMM: 111, 122, 221, 220, 222. Gold: UnitTest::Mscheme_Test_comm*tts.
+  // Not-production tested: comm232tts_bare, comm223_231_tts*, comm223_232_tts*.
+  // AMC: learn/amc_tts/comm_tts/input/comm*tts_unred.txt
+  void comm110tts(const Operator &X, const Operator &Y, Operator &Z);
+  void comm220tts(const Operator &X, const Operator &Y, Operator &Z);
+  void comm111tts(const Operator &X, const Operator &Y, Operator &Z);
+  void comm121tts(const Operator &X, const Operator &Y, Operator &Z);
+  void comm122tts(const Operator &X, const Operator &Y, Operator &Z);
+  void comm221tts(const Operator &X, const Operator &Y, Operator &Z);
+  void comm222_pp_hhtts(const Operator &X, const Operator &Y, Operator &Z);
+  void comm222_phtts(const Operator &X, const Operator &Y, Operator &Z);
+  void comm231tts(const Operator &X, const Operator &Y, Operator &Z);
+  void comm132tts(const Operator &X, const Operator &Y, Operator &Z);
+  void comm232tts(const Operator &X, const Operator &Y, Operator &Z);
+  // AMC comm232tts Eq. eq (1..4) as printed: no 1/2, no (1-P).
+  void comm232tts_bare(const Operator &X, const Operator &Y, Operator &Z, int eq);
+  // Tensor 2b × tensor 2b → scalar 3b. AMC primitive + comm223ss 9 perms.
+  void comm223tts(const Operator &X, const Operator &Y, Operator &Z);
   
   void comm332_ppph_hhhpst(const Operator &X, const Operator &Y, Operator &Z);  // PASS the unit test (J and T)
   void comm332_pphhst(const Operator &X, const Operator &Y, Operator &Z);       // PASS the unit test (J and T)
@@ -117,7 +142,9 @@ namespace ReferenceImplementations
   void comm223_232_tts_GIIIc_tensor_red(const Operator &Eta, const Operator &Gamma,
                                         Operator &Z, int which_term = 0);
   void comm223_232_tts_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z);
-  void comm223_232_tts_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z);
+  /// which_term: 0 both, 1 AMC term1 (W1 / Ω_dibc Γ_acdk Ω_jbla), 2 AMC term2 (Ω_dkbc Γ_acdi Ω_lbja).
+  void comm223_232_tts_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z,
+                           int which_term = 0);
   void comm223_232_tts_GIVc(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_231_tts_fI(const Operator &Eta, const Operator &Gamma, Operator &Z);
   void comm223_231_tts_fII(const Operator &Eta, const Operator &Gamma, Operator &Z);

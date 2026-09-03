@@ -499,6 +499,8 @@ namespace Commutator
       const TwoBodyChannel_CC &tbc_cc = Z.modelspace->GetTwoBodyChannel_CC(ch);
       index_t nKets_cc = tbc_cc.GetNumberKets();
       size_t nph_kets = tbc_cc.GetKetIndex_hh().size() + tbc_cc.GetKetIndex_ph().size();
+      if (nKets_cc == 0 or nph_kets == 0)
+        continue;
 
       arma::mat Y_bar_ph;
       arma::mat X_bar_ph;
@@ -535,6 +537,8 @@ namespace Commutator
         //        Zbar_ch = arma::zeros( norb, 2*nKets_cc );  // This seems unnecessary since we initialized things earlier... try getting rid of it and see if things break.
         continue;
       }
+      if (X_bar_ph.n_rows != 2 * nph_kets or X_bar_ph.n_cols != nKets_cc or Y_bar_ph.n_cols != 2 * nph_kets)
+        continue;
 
       // get the phases for taking the transpose
       arma::mat PhaseMat(nKets_cc, nKets_cc, arma::fill::ones);
@@ -731,6 +735,11 @@ namespace Commutator
               if (std::abs(sixj) < 1e-8)
                 continue;
               int ch_cc = Z.modelspace->GetTwoBodyChannelIndex(Jprime, parity_cc, Tz_cc);
+              if (ch_cc < 0 or static_cast<size_t>(ch_cc) >= Zbar.size())
+                continue;
+              const arma::mat &Zbar_cc = Zbar.at(ch_cc);
+              if (Zbar_cc.n_elem == 0)
+                continue;
               TwoBodyChannel_CC &tbc_cc = Z.modelspace->GetTwoBodyChannel_CC(ch_cc);
               int nkets_cc = tbc_cc.GetNumberKets();
               size_t indx_iQ = i;
@@ -739,7 +748,9 @@ namespace Commutator
               if (indx_kj_raw < 0)
                 continue;
               size_t indx_kj = static_cast<size_t>(indx_kj_raw) + (k > j ? nkets_cc : 0);
-              double me1 = Zbar.at(ch_cc)(indx_iQ, indx_kj);
+              if (indx_iQ >= Zbar_cc.n_rows or indx_kj >= Zbar_cc.n_cols)
+                continue;
+              double me1 = Zbar_cc(indx_iQ, indx_kj);
               commijk -= (2 * Jprime + 1.) * sixj * me1 * Pij;
             }
 

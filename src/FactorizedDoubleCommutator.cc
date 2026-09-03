@@ -15,10 +15,20 @@ bool use_1b_intermediates = true;
 bool use_2b_intermediates = true;
 bool use_goose_tank_only_1b = false; // only calculate Goose Tanks
 bool use_goose_tank_only_2b = false; // only calculate Goose Tanks
+bool use_TypeI_1b = true;
 bool use_TypeII_1b = true;
+bool use_TypeIIIa_1b = true;
 bool use_TypeIII_1b = true;
 bool use_TypeII_2b = true;
 bool use_TypeIII_2b = true;
+bool use_TypeGI_2b = true;
+bool use_TypeGII_2b = true;
+bool use_TypeGIIIa_2b = true;
+bool use_TypeGIIIb_2b = true;
+bool use_TypeGIIIc_2b = true;
+bool use_TypeGIVa_2b = true;
+bool use_TypeGIVb_2b = true;
+bool use_TypeGIVc_2b = true;
 bool use_GT_TypeI_2b = true;
 bool use_GT_TypeIV_2b = true;
 //  bool SlowVersion = false;
@@ -34,13 +44,20 @@ void SetUse_GooseTank_only_1b(bool tf) { use_goose_tank_only_1b = tf; }
 
 void SetUse_GooseTank_only_2b(bool tf) { use_goose_tank_only_2b = tf; }
 
+void SetUse_TypeI_1b(bool tf) { use_TypeI_1b = tf; }
 void SetUse_TypeII_1b(bool tf) { use_TypeII_1b = tf; }
-
+void SetUse_TypeIIIa_1b(bool tf) { use_TypeIIIa_1b = tf; }
 void SetUse_TypeIII_1b(bool tf) { use_TypeIII_1b = tf; }
-
 void SetUse_TypeII_2b(bool tf) { use_TypeII_2b = tf; }
-
 void SetUse_TypeIII_2b(bool tf) { use_TypeIII_2b = tf; }
+void SetUse_TypeGI_2b(bool tf) { use_TypeGI_2b = tf; }
+void SetUse_TypeGII_2b(bool tf) { use_TypeGII_2b = tf; }
+void SetUse_TypeGIIIa_2b(bool tf) { use_TypeGIIIa_2b = tf; }
+void SetUse_TypeGIIIb_2b(bool tf) { use_TypeGIIIb_2b = tf; }
+void SetUse_TypeGIIIc_2b(bool tf) { use_TypeGIIIc_2b = tf; }
+void SetUse_TypeGIVa_2b(bool tf) { use_TypeGIVa_2b = tf; }
+void SetUse_TypeGIVb_2b(bool tf) { use_TypeGIVb_2b = tf; }
+void SetUse_TypeGIVc_2b(bool tf) { use_TypeGIVc_2b = tf; }
 
 void SetUse_GT_TypeI_2b(bool tf) { use_GT_TypeI_2b = tf; }
 
@@ -109,8 +126,13 @@ void comm223_231_chi1b(const Operator &Eta, const Operator &Gamma,
   int hGamma = Gamma.IsHermitian() ? 1 : -1;
   // int hZ = Z.IsHermitian() ? 1 : -1;
   int hZ = hGamma;
+  int nch = Z.modelspace->GetNumberTwoBodyChannels();
+  int norbits = Z.modelspace->all_orbits.size();
+  std::vector<index_t> allorb_vec(Z.modelspace->all_orbits.begin(),
+                                  Z.modelspace->all_orbits.end());
   // ###########################################################
   //  Diagram I
+  if (use_TypeI_1b) {
   // Here we compute chi^alpha, Eq.(B5a) of the paper, which is the intermediate one-body operator for diagram I.
   // The intermediate one body operator
   //  Chi_221_a :
@@ -125,11 +147,6 @@ void comm223_231_chi1b(const Operator &Eta, const Operator &Gamma,
 
   auto Chi_221_a = Z.OneBody;
   Chi_221_a.zeros(); // Set all elements to zero
-
-  int nch = Z.modelspace->GetNumberTwoBodyChannels();
-  int norbits = Z.modelspace->all_orbits.size();
-  std::vector<index_t> allorb_vec(Z.modelspace->all_orbits.begin(),
-                                  Z.modelspace->all_orbits.end());
 
   //      TwoBodyME intermediateTB = Z.TwoBody;
   TwoBodyME intermediateTB = Eta.TwoBody;
@@ -248,6 +265,8 @@ void comm223_231_chi1b(const Operator &Eta, const Operator &Gamma,
     t_internal = omp_get_wtime();
   }
 
+  } // use_TypeI_1b
+
   if (use_goose_tank_only_1b) {
     Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
     return;
@@ -258,6 +277,7 @@ void comm223_231_chi1b(const Operator &Eta, const Operator &Gamma,
   //                                  Diagram III     F II indeed //
   // ***********************************************************************************
   // //
+  if (use_TypeII_1b) {
 
   // ###########################################################
   //  diagram III_a and diagram III_b
@@ -371,6 +391,8 @@ void comm223_231_chi1b(const Operator &Eta, const Operator &Gamma,
     } // for q
   } // for p
 
+  } // use_TypeII_1b
+
   Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
   return;
 } // comm223_231_chi1b
@@ -397,6 +419,7 @@ void comm223_231_chi2b(const Operator &Eta, const Operator &Gamma,
   //                               Diagram II_b and II_d // ZS:  f^{IIIb} indeed
   // ***********************************************************************************
   // //
+  if (use_TypeIII_1b) {
   // ###########################################################
   //  diagram II_b and II_d, ZS: chi^\delta, Eq.(B5d) in the paper
   //
@@ -542,12 +565,18 @@ void comm223_231_chi2b(const Operator &Eta, const Operator &Gamma,
     t_internal = omp_get_wtime();
   }
 
+  } // use_TypeIII_1b
+
   // ***********************************************************************************
   // //
   //                               Diagram II_a and II_c // ZS: F(IIIa) in the paer, Eq.A2c
   // ***********************************************************************************
   // //
+  if (use_TypeIIIa_1b) {
   // chi^\gamma is computed in pandya transformed representation; see B5c in the paper;
+  int norbits = Z.modelspace->all_orbits.size();
+  std::vector<index_t> allorb_vec(Z.modelspace->all_orbits.begin(),
+                                  Z.modelspace->all_orbits.end());
   // ###########################################################
   //  diagram II_a
   //
@@ -794,6 +823,8 @@ void comm223_231_chi2b(const Operator &Eta, const Operator &Gamma,
     }
   }
 
+  } // use_TypeIIIa_1b
+
   Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
   return;
 
@@ -1008,6 +1039,11 @@ void comm223_232_chi1b(const Operator &Eta, const Operator &Gamma,
     CHI_II(p, q) = chiY_pq;
     //        } // for q
   } // for p
+
+  if (not use_TypeGI_2b)
+    CHI_I.zeros();
+  if (not use_TypeGII_2b)
+    CHI_II.zeros();
 
   if (Commutator::verbose) {
     Z.profiler
@@ -1702,16 +1738,24 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
 
     if (nbras < 1 or nkets < 1)
       continue;
+    arma::mat Multi_matirx;
+    if (use_TypeGIIIa_2b) {
     // Diagram IIa and IIc
-    arma::mat Multi_matirx = Chi_III_Op.GetMatrix(ch_bra, ch_bra) *
+    Multi_matirx = Chi_III_Op.GetMatrix(ch_bra, ch_bra) *
                              Gamma.TwoBody.GetMatrix(ch_bra, ch_ket);
     Multi_matirx += hZ * Gamma.TwoBody.GetMatrix(ch_bra, ch_ket) *
                     (Chi_III_Op.GetMatrix(ch_ket, ch_ket).t());
+    } else {
+      auto &Gmat = Gamma.TwoBody.GetMatrix(ch_bra, ch_ket);
+      Multi_matirx = arma::mat(Gmat.n_rows, Gmat.n_cols, arma::fill::zeros);
+    }
+    if (use_TypeGIVa_2b) {
     // Diagram IIIc and Diagram IIId
     Multi_matirx +=
         -Eta.TwoBody.GetMatrix(ch_bra) * Chi_VI_Op.GetMatrix(ch_bra, ch_ket) -
         (Chi_VI_II_Op.GetMatrix(ch_bra, ch_ket) *
          Eta.TwoBody.GetMatrix(ch_ket));
+    }
     Z2.GetMatrix(ch_bra, ch_ket) += Multi_matirx;
   } // J0 channel
 
@@ -1886,6 +1930,7 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
   //  X^J_ijkl  = - ( 1- P_ij ) ( 1- P_kl ) (-)^{J + ji + jj}  sum_J' (2J'+1)
   //                (-)^{J' + ji + jk}  { j i J }  \bar{X}^J'_jl`ki`
   //                                    { k l J'}
+  if (use_TypeGIVb_2b) {
 #pragma omp parallel for
   for (int ch = 0; ch < nch; ++ch) {
     int ch_bra = ch_bra_list[ch];
@@ -2014,6 +2059,7 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
       }
     }
   }
+  } // use_TypeGIVb_2b
 
   if (Commutator::verbose) {
     Z.profiler
@@ -2547,6 +2593,7 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
   //  II(f)^J_ijkl  = - 1/2 ( 1- P_ij ) ( 1- P_kl ) sum_J' (2J'+1)  { i j J }
   //  \bar{bar_CHI_gamma_II}^J'_il`kj`
   //
+  if (use_TypeGIIIc_2b) {
 #pragma omp parallel for
   for (int ch = 0; ch < nch; ++ch) {
     size_t ch_bra = ch_bra_list[ch];
@@ -2670,6 +2717,7 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
       }
     }
   }
+  } // use_TypeGIIIc_2b
 
   if (Commutator::verbose) {
     Z.profiler
@@ -2688,6 +2736,7 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
   // ######################################################
   //                 Diagram IIb and IId
   // ######################################################
+  if (use_TypeGIIIb_2b) {
   std::deque<arma::mat> CHI_III_final(n_nonzero);
   for (int ch_cc = 0; ch_cc < n_nonzero; ++ch_cc) {
     TwoBodyChannel_CC &tbc_cc_bra = Z.modelspace->GetTwoBodyChannel_CC(ch_cc);
@@ -2862,6 +2911,7 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
     CHI_III_final[ch].clear();
   }
   CHI_III_final.clear();
+  } // use_TypeGIIIb_2b
 
   /////////////////////////////////////////////
   //     diagram    IIIe and IIIf
@@ -2906,6 +2956,7 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
   //  X^J_ijkl  = - ( 1- P_ij ) ( 1- P_kl ) (-)^{J + ji + jj}  sum_J' (2J'+1)
   //                (-)^{J' + ji + jk}  { j i J }  \bar{X}^J'_jl`ki`
   //                                    { k l J'}
+  if (use_TypeGIVc_2b) {
 #pragma omp parallel for
   for (int ch = 0; ch < nch; ++ch) {
     int ch_bra = ch_bra_list[ch];
@@ -3039,6 +3090,7 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
       }
     }
   }
+  } // use_TypeGIVc_2b
 
   if (Commutator::verbose) {
     Z.profiler

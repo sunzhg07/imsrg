@@ -28,6 +28,47 @@ class UnitTest
   double GetMschemeMatrixElement_2b( const Operator& Op, int a, int ma, int b, int mb, int c, int mc, int d, int md );
   double GetMschemeMatrixElement_3b( const Operator& Op, int a, int ma, int b, int mb, int c, int mc, int d, int md, int e, int me, int f, int mf );
 
+  /// Gold A: unfactorized 3-operator m-scheme Γ^{IV_b}. No J-scheme χ.
+  /// W = Σ_abcd w(c,d,b) [Ω_dibc Γ_acdk Ω_jbla − Ω_dkbc Γ_acdi Ω_jalb],
+  /// w = n̄_c n_d n̄_b + n_c n̄_d n_b, then Z(m) = (1−P_ij)(1−P_kl) W.
+  /// Ω may be tensor (WE-reduced) or scalar; Γ unreduced scalar.
+  /// which_term: 0 both (W1−W2), 1 only W1, 2 only −W2. Then (1−P_ij)(1−P_kl).
+  double Mscheme_comm223_232_GIVb(const Operator &Eta, const Operator &Gamma,
+                                 int i, int mi, int j, int mj, int k, int mk, int l, int ml,
+                                 int which_term = 0);
+
+  // Factorized m-scheme gold (Python run/test_chi_*_mscheme.py + eq:fact folds).
+  // Ω×Ω → scalar χ uses CG(λ μ, λ −μ; 00) as in those scripts. Ω×Γ χ has no extra CG.
+  double Mscheme_chi_alpha(const Operator &Eta, int i, int mi, int j, int mj);
+  double Mscheme_chi_beta(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj);
+  double Mscheme_chi_gamma(const Operator &Eta, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_chi_delta(const Operator &Eta, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_chi_epsilon(const Operator &Eta, int i, int mi, int j, int mj);
+  double Mscheme_chi_zeta(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj);
+  double Mscheme_chi_eta(const Operator &Eta, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_chi_theta(const Operator &Eta, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_chi_iota(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_chi_kappa(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_chi_lambda(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+
+  double Mscheme_fact_fI(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj);
+  double Mscheme_fact_fII(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj);
+  double Mscheme_fact_fIIIa(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj);
+  double Mscheme_fact_fIIIb(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj);
+
+  double Mscheme_fact_GI(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_fact_GII(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_fact_GIIIa(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  /// G^{III_b} = IIb + IId as in comm223_232_BruteForce (distinct occ).
+  /// IIb: −Σ (n̄_b n_c n_d + n_b n̄_c n̄_d) Ω_dcbk Ω_biac Γ_jald
+  /// IId: −Σ (n̄_c n_b n_d + n_c n̄_b n̄_d) Ω_jcbd Ω_balc Γ_diak
+  /// then Z = (1−P_ij)(1−P_kl) W. Not the shared-occ χ^η fold.
+  double Mscheme_fact_GIIIb(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_fact_GIIIc(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_fact_GIVa(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_fact_GIVb_chi(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_fact_GIVc(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+
 
   double GetMschemeMatrixElement_1leg( const Operator& Op, int a, int ma );
   double GetMschemeMatrixElement_3leg( const Operator& Op, int a, int ma, int b, int mb, int c, int mc );
@@ -97,6 +138,18 @@ class UnitTest
   bool Test_comm231st( const Operator& X, const Operator& Y ) ;
   bool Test_comm232st( const Operator& X, const Operator& Y ) ;
   bool Test_comm132st( const Operator& X, const Operator& Y ) ;
+  bool Test_comm231tts( const Operator& X, const Operator& Y ) ;
+  bool Test_comm110tts( const Operator& X, const Operator& Y ) ;
+  bool Test_comm220tts( const Operator& X, const Operator& Y ) ;
+  bool Test_comm111tts( const Operator& X, const Operator& Y ) ;
+  bool Test_comm121tts( const Operator& X, const Operator& Y ) ;
+  bool Test_comm122tts( const Operator& X, const Operator& Y ) ;
+  bool Test_comm221tts( const Operator& X, const Operator& Y ) ;
+  bool Test_comm222_pp_hhtts( const Operator& X, const Operator& Y ) ;
+  bool Test_comm222_phtts( const Operator& X, const Operator& Y ) ;
+  bool Test_comm132tts( const Operator& X, const Operator& Y ) ;
+  bool Test_comm232tts( const Operator& X, const Operator& Y ) ;
+  bool Test_comm223tts( const Operator& X, const Operator& Y ) ;
   bool Test_comm223st( const Operator& X, const Operator& Y ) ;
   bool Test_comm133st( const Operator& X, const Operator& Y ) ;
 
@@ -135,8 +188,30 @@ class UnitTest
   bool Mscheme_Test_comm223st( const Operator& X, const Operator& Y );
   bool Mscheme_Test_comm231st( const Operator& X, const Operator& Y );
   bool Mscheme_Test_comm232st( const Operator& X, const Operator& Y );
+  bool Mscheme_Test_comm232st_amc( const Operator& X, const Operator& Y );
+  bool Test_comm232st_amc( const Operator& X, const Operator& Y );
   bool Mscheme_Test_comm133st( const Operator& X, const Operator& Y );
   bool Mscheme_Test_comm132st( const Operator& X, const Operator& Y );
+  /// Raw leftover m-scheme Wick (physical m). X is 2b tensor ω, Y is 3b tensor W=[ω,H]_3.
+  /// Same strings as Mscheme_Test_comm231tts / 232tts / 132tts; no m-average, no CG projection.
+  double Mscheme_comm231tts_wick(const Operator &X, const Operator &Y, int i, int mi, int j, int mj);
+  double Mscheme_comm132tts_wick(const Operator &X, const Operator &Y, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_comm232tts_wick(const Operator &X, const Operator &Y, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  bool Mscheme_Test_comm231tts( const Operator& X, const Operator& Y );
+  bool Mscheme_Test_comm110tts( const Operator& X, const Operator& Y );
+  bool Mscheme_Test_comm220tts( const Operator& X, const Operator& Y );
+  bool Mscheme_Test_comm111tts( const Operator& X, const Operator& Y );
+  bool Mscheme_Test_comm121tts( const Operator& X, const Operator& Y );
+  bool Mscheme_Test_comm122tts( const Operator& X, const Operator& Y );
+  bool Mscheme_Test_comm221tts( const Operator& X, const Operator& Y );
+  bool Mscheme_Test_comm222_pp_hhtts( const Operator& X, const Operator& Y );
+  bool Mscheme_Test_comm222_phtts( const Operator& X, const Operator& Y );
+  bool Mscheme_Test_comm132tts( const Operator& X, const Operator& Y );
+  bool Mscheme_Test_comm232tts( const Operator& X, const Operator& Y );
+  bool Mscheme_Test_comm223tts( const Operator& X, const Operator& Y );
+  /// Project m-scheme gold for comm232tts_bare Eq. eq onto J:
+  /// S=Σ CG CG Z(m), reduced RME = S/Ĵ. PASS if GetTBME_J = −S/Ĵ on all stored TBMEs.
+  bool RME_Test_comm232tts_bare( const Operator& X, const Operator& Y, int eq );
   bool Mscheme_Test_comm332_ppph_hhhpst(const Operator& X, const Operator& Y); 
   bool Mscheme_Test_comm332_pphhst(const Operator &X, const Operator &Y);
   bool Mscheme_Test_comm233_pp_hhst(const Operator &X, const Operator &Y);
@@ -180,6 +255,10 @@ class UnitTest
   bool TestPerturbativeTriples();
 
   bool SanityCheck();
+
+ private:
+  bool Mscheme_Test_comm232st_core(const Operator &X, const Operator &Y,
+                                  commutator_func comm, const char *tag);
 
 };
 

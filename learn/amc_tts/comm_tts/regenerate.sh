@@ -8,6 +8,11 @@ mkdir -p "$OUT"
 for f in "$DIR"/input/*_unred.txt; do
   base=$(basename "$f" .txt)
   echo "AMC $base ..."
-  python3 -m amc "$f" -o "$OUT/${base}.tex" --wet-convention wigner
+  python3 -m amc "$f" -o "$OUT/${base}.tex" --wet-convention wigner --collect-ninejs
 done
+if [ -f "$DIR/input/comm222_phtts_via_pandya.txt" ]; then
+  echo "AMC comm222_phtts_via_pandya ..."
+  python3 -m amc "$DIR/input/comm222_phtts_via_pandya.txt" \
+    -o "$OUT/comm222_phtts_via_pandya.tex" --wet-convention wigner --collect-ninejs
+fi
 echo "Done. See AMC_CHECK.md for packaging notes."
