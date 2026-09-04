@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""ethS Gamma^II ≡ Path B W−V (AMC strip/restore).
+"""ethS Gamma^II ≡ Path B −W_OG − V_ζ.
 
-Γ^II = W − V with
-  W = (1−P_ij) χ_ja Ω_iakl   (AMC G2_Wbra_noperm + bra exchange)
-  V = (1−P_kl) χ_ak Ω_ijal   (AMC G2_Wket_noperm + ket exchange)
+Γ^II = −W − V with
+  W = (1−P_ij) χ^{ΩΓ}_ja Ω_iakl
+  V = (1−P_kl) χ^ζ_ak Ω_ijal
 See learn/amc_tts/factored_GII/NOTES.md.
 
 Compare on channel-ordered kets (ibra≤iket) via GetTBME_J.
@@ -73,62 +73,101 @@ max_J = max(j2i(o) for o in orbits)
 
 
 def chi_zeta_J(i, j) -> float:
+    """AMC chi_zeta_analyze: χ^ζ_{ij} from Γ_ciab Ω_abcj."""
     ji, jj = jo(i), jo(j)
     if not tri(ji, jj, lam):
         return 0.0
     sm = 0.0
     for a in orbits:
-        ja = jo(a)
         for b in orbits:
             for c in orbits:
                 w = occ(a) * occ(b) * nbar(c) + nbar(a) * nbar(b) * occ(c)
                 if abs(w) < 1e-12:
                     continue
+                jc = jo(c)
                 for J0 in range(0, max_J + 1):
-                    if not (tri(ja, ji, J0) and tri(jo(b), jo(c), J0)):
+                    if not (tri(jc, ji, J0) and tri(jo(a), jo(b), J0)):
                         continue
-                    g = Gamma.TwoBody.GetTBME_J(J0, J0, a, i, b, c)
+                    g = Gamma.TwoBody.GetTBME_J(J0, J0, c, i, a, b)
                     if abs(g) < 1e-16:
                         continue
                     for J1 in range(0, max_J + 1):
-                        if not tri(J0, J1, lam) or not tri(ja, jj, J1):
+                        if not tri(J0, J1, lam) or not tri(jc, jj, J1):
                             continue
-                        o = Eta.TwoBody.GetTBME_J(J0, J1, b, c, a, j)
+                        o = Eta.TwoBody.GetTBME_J(J0, J1, a, b, c, j)
                         if abs(o) < 1e-16:
                             continue
-                        six = SixJ(lam, J1, J0, ja, ji, jj)
+                        six = SixJ(lam, J1, J0, jc, ji, jj)
                         if abs(six) < 1e-16:
                             continue
-                        ph = iphase((j2i(j) + j2i(a)) // 2 + lam + J0)
+                        ph = iphase((j2i(j) + j2i(c)) // 2 + lam + J0)
                         sm += ph * hat(J0) * hat(J1) * six * w * g * o
     return 0.5 * sm
 
 
-print("Building χ^ζ ...")
+def chi_OG_J(i, j) -> float:
+    ji, jj = jo(i), jo(j)
+    if not tri(ji, jj, lam):
+        return 0.0
+    sm = 0.0
+    for a in orbits:
+        for b in orbits:
+            for c in orbits:
+                w = occ(a) * occ(b) * nbar(c) + nbar(a) * nbar(b) * occ(c)
+                if abs(w) < 1e-12:
+                    continue
+                jc = jo(c)
+                for J0 in range(0, max_J + 1):
+                    if not tri(jc, ji, J0):
+                        continue
+                    for J1 in range(0, max_J + 1):
+                        if not tri(J0, J1, lam):
+                            continue
+                        if not tri(jo(a), jo(b), J1):
+                            continue
+                        if not tri(jc, jj, J1):
+                            continue
+                        o = Eta.TwoBody.GetTBME_J(J0, J1, c, i, a, b)
+                        if abs(o) < 1e-16:
+                            continue
+                        g = Gamma.TwoBody.GetTBME_J(J1, J1, a, b, c, j)
+                        if abs(g) < 1e-16:
+                            continue
+                        six = SixJ(J0, J1, lam, jj, ji, jc)
+                        if abs(six) < 1e-16:
+                            continue
+                        ph = iphase((j2i(j) + j2i(c)) // 2 + lam + J0)
+                        sm += ph * hat(J0) * hat(J1) * six * w * o * g
+    return 0.5 * sm
+
+
+print("Building χ^ζ and χ^{ΩΓ} ...")
 t0 = time.time()
 chi = {}
+chi_og = {}
 for i in orbits:
     for j in orbits:
         if tri(jo(i), jo(j), lam):
             chi[(i, j)] = chi_zeta_J(i, j)
+            chi_og[(i, j)] = chi_OG_J(i, j)
 print(f"  n={len(chi)} ({time.time()-t0:.2f}s)")
 
 
 def pathB_Z_J(J, i, j, k, l) -> float:
-    """W − V with (1−P) restored (AMC G2_Wbra/Wket_noperm)."""
+    """−W_OG − V_ζ with (1−P) restored."""
     W = V = 0.0
     for a in orbits:
         for J2 in range(0, max_J + 1):
             if not tri(J, J2, lam):
                 continue
             pref = 1.0 / hat(J) * hat(J2) * hat_lam_inv
-            c = chi.get((j, a), 0.0)
+            c = chi_og.get((j, a), 0.0)
             if abs(c) > 1e-16:
                 six = SixJ(J, J2, lam, jo(a), jo(j), jo(i))
                 o = Eta.TwoBody.GetTBME_J(J2, J, i, a, k, l)
                 if abs(six * o) > 1e-16:
                     W += iphase((j2i(i) + j2i(a)) // 2 + J2) * pref * six * c * o
-            c = chi.get((i, a), 0.0)
+            c = chi_og.get((i, a), 0.0)
             if abs(c) > 1e-16:
                 six = SixJ(J, J2, lam, jo(a), jo(i), jo(j))
                 o = Eta.TwoBody.GetTBME_J(J2, J, j, a, k, l)
@@ -158,7 +197,7 @@ def pathB_Z_J(J, i, j, k, l) -> float:
                         * c
                         * o
                     )
-    return W - V
+    return -W - V
 
 
 # ethS GII only
@@ -224,5 +263,5 @@ if worst:
     )
 
 ok = max_abs < tol and Z.TwoBodyNorm() > 1e-8
-print("PASS — ethS Γ^II ≡ Path B (W−V)" if ok else "FAIL")
+print("PASS — ethS Γ^II ≡ Path B (−W−V)" if ok else "FAIL")
 sys.exit(0 if ok else 1)

@@ -18,6 +18,7 @@ for t in ['comm330ss','comm131ss','comm231ss','comm331ss','comm132ss','comm232ss
 pyIMSRG.Commutator.SetUseIMSRG3(True)
 pyIMSRG.Commutator.SetUseIMSRG3N7(True)
 passed = ut.TestCommutators(X,Y)
+passed = ut.Test_scalar_tts_matches_ss(X,Y) and passed
 
 
 ms = pyIMSRG.ModelSpace(1,'He6','He6')

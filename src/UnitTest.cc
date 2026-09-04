@@ -1859,6 +1859,82 @@ bool UnitTest::Test_comm223st(const Operator &X, const Operator &Y)
 {
   return Test_against_ref_impl(X, Y, Commutator::comm223st, ReferenceImplementations::comm223st, "comm223st");
 }
+
+static bool Test_scalar_tts_matches_ss_impl(const Operator &X, const Operator &Y,
+                                           void (*ComSS)(const Operator &, const Operator &, Operator &),
+                                           void (*ComTTS)(const Operator &, const Operator &, Operator &),
+                                           const char *tag)
+{
+  if (X.GetJRank() != 0 or Y.GetJRank() != 0)
+  {
+    std::cout << "   " << tag << "  skip: X/Y are not scalar" << std::endl;
+    return false;
+  }
+
+  int z_parity = (X.GetParity() + Y.GetParity()) % 2;
+  int z_part = std::max({2, X.GetParticleRank(), Y.GetParticleRank()});
+  Operator Xss(X), Yss(Y);
+  if (Xss.IsReduced())
+    Xss.MakeNotReduced();
+  if (Yss.IsReduced())
+    Yss.MakeNotReduced();
+
+  Operator Xtts(Xss), Ytts(Yss);
+  Xtts.MakeReduced();
+  Ytts.MakeReduced();
+
+  Operator Zss(*(X.modelspace), 0, 0, z_parity, z_part);
+  Operator Ztts(Zss);
+  if (z_part > 2)
+  {
+    Zss.ThreeBody.SetMode("pn");
+    Ztts.ThreeBody.SetMode("pn");
+  }
+  if (Zss.IsReduced())
+    Zss.MakeNotReduced();
+  if (Ztts.IsReduced())
+    Ztts.MakeNotReduced();
+
+  if ((X.IsHermitian() and Y.IsHermitian()) or (X.IsAntiHermitian() and Y.IsAntiHermitian()))
+  {
+    Zss.SetAntiHermitian();
+    Ztts.SetAntiHermitian();
+  }
+  else if ((X.IsHermitian() and Y.IsAntiHermitian()) or (X.IsAntiHermitian() and Y.IsHermitian()))
+  {
+    Zss.SetHermitian();
+    Ztts.SetHermitian();
+  }
+  else
+  {
+    Zss.SetNonHermitian();
+    Ztts.SetNonHermitian();
+  }
+
+  ComSS(Xss, Yss, Zss);
+  ComTTS(Xtts, Ytts, Ztts);
+
+  const double norm_ss = Zss.Norm() + std::abs(Zss.ZeroBody);
+  const double norm_tts = Ztts.Norm() + std::abs(Ztts.ZeroBody);
+  Ztts -= Zss;
+  const double summed_error = Ztts.Norm() + std::abs(Ztts.ZeroBody);
+  const bool passed = summed_error < 1e-6;
+  std::string passfail = passed ? "PASS " : "FAIL";
+  std::cout << "   " << tag << "  sum_ss, sum_tts = " << norm_ss << " " << norm_tts
+            << "    summed error = " << summed_error << "  => " << passfail << std::endl;
+  return passed;
+}
+
+bool UnitTest::Test_scalar_tts_matches_ss(const Operator &X, const Operator &Y)
+{
+  bool passed = true;
+  passed &= Test_scalar_tts_matches_ss_impl(X, Y, Commutator::comm231ss, Commutator::comm231tts, "comm231 scalar tts vs ss");
+  passed &= Test_scalar_tts_matches_ss_impl(X, Y, Commutator::comm132ss, Commutator::comm132tts, "comm132 scalar tts vs ss");
+  passed &= Test_scalar_tts_matches_ss_impl(X, Y, Commutator::comm232ss, Commutator::comm232tts, "comm232 scalar tts vs ss");
+  passed &= Test_scalar_tts_matches_ss_impl(X, Y, Commutator::comm223ss, Commutator::comm223tts, "comm223 scalar tts vs ss");
+  return passed;
+}
+
 bool UnitTest::Test_comm133st(const Operator &X, const Operator &Y)
 {
   return Test_against_ref_impl(X, Y, Commutator::comm133st, ReferenceImplementations::comm133st, "comm133st");
@@ -8645,6 +8721,17 @@ bool UnitTest::Mscheme_Test_comm132st(const Operator &X, const Operator &Y)
 
 double UnitTest::Mscheme_comm231tts_wick(const Operator &X, const Operator &Y, int i, int mi, int j, int mj)
 {
+  // scalar-1b m-conservation: mi must equal mj
+  if (mi != mj)
+    return 0.0;
+  // J=0 projector on Ω×Ω pair: CG(λμ, λ-μ | 00). For λ=0 returns 1.
+  const int lamX = X.GetJRank();
+  auto cg_pair = [&](int twoM_left, int twoM_right) -> double {
+    if (lamX == 0) return 1.0;
+    double mu = 0.5 * (twoM_left - twoM_right);
+    if (std::abs(mu) > lamX + 1e-9) return 0.0;
+    return AngMom::CG(1.0 * lamX, mu, 1.0 * lamX, -mu, 0.0, 0.0);
+  };
   double z = 0.0;
   size_t norb = X.modelspace->GetNumberOrbits();
 #pragma omp parallel for schedule(dynamic, 1) reduction(+ : z)
@@ -8685,8 +8772,14 @@ double UnitTest::Mscheme_comm231tts_wick(const Operator &X, const Operator &Y, i
                   double ycdab = GetMschemeMatrixElement_2b(Y, c, mc, d, md, a, ma, b, mb);
                   double xabicdj = GetMschemeMatrixElement_3b(X, a, ma, b, mb, i, mi, c, mc, d, md, j, mj);
                   double xcdiabj = GetMschemeMatrixElement_3b(X, c, mc, d, md, i, mi, a, ma, b, mb, j, mj);
+                  // Per-term J=0 projectors on Ω×Ω. mi=mj so each pair has M_X + M_Y = 0.
+                  double cg1 = cg_pair(ma + mb,        mc + md);            // xabcd · ycdiabj
+                  double cg2 = cg_pair(ma + mb + mi,   mc + md + mj);       // yabicdj · xcdab
+                  double cg3 = cg_pair(ma + mb,        mc + md);            // yabcd · xcdiabj
+                  double cg4 = cg_pair(ma + mb + mi,   mc + md + mj);       // xabicdj · ycdab
                   z += 0.25 * na * nb * (1 - nc) * (1 - nd)
-                       * ((xabcd * ycdiabj - yabicdj * xcdab) - (yabcd * xcdiabj - xabicdj * ycdab));
+                       * ((cg1 * xabcd * ycdiabj - cg2 * yabicdj * xcdab)
+                          - (cg3 * yabcd * xcdiabj - cg4 * xabicdj * ycdab));
                 }
         }
       }
@@ -8699,6 +8792,17 @@ double UnitTest::Mscheme_comm132tts_wick(const Operator &X, const Operator &Y, i
 {
   if ((i == j and mi == mj) or (k == l and mk == ml))
     return 0.0;
+  // scalar-2b m-conservation: mi+mj must equal mk+ml, otherwise Z is not a scalar 2b ME
+  if (mi + mj != mk + ml)
+    return 0.0;
+  // J=0 projector on Ω×Ω pair: CG(λμ, λ-μ | 00). For λ=0 returns 1.
+  const int lamX = X.GetJRank();
+  auto cg_pair = [&](int twoM_left, int twoM_right) -> double {
+    if (lamX == 0) return 1.0;
+    double mu = 0.5 * (twoM_left - twoM_right);
+    if (std::abs(mu) > lamX + 1e-9) return 0.0;
+    return AngMom::CG(1.0 * lamX, mu, 1.0 * lamX, -mu, 0.0, 0.0);
+  };
   double z = 0.0;
   size_t norb = X.modelspace->GetNumberOrbits();
 #pragma omp parallel for schedule(dynamic, 1) reduction(+ : z)
@@ -8719,7 +8823,10 @@ double UnitTest::Mscheme_comm132tts_wick(const Operator &X, const Operator &Y, i
           double yab = GetMschemeMatrixElement_1b(Y, a, ma, b, mb);
           double xijbkla = GetMschemeMatrixElement_3b(X, i, mi, j, mj, b, mb, k, mk, l, ml, a, ma);
           double yijbkla = GetMschemeMatrixElement_3b(Y, i, mi, j, mj, b, mb, k, mk, l, ml, a, ma);
-          z += (na - nb) * (xab * yijbkla - yab * xijbkla);
+          // Per-term J=0 projectors on 1b-Ω × 3b-Ω legs (M_X + M_Y = 0 since mi+mj=mk+ml).
+          double cg1 = cg_pair(ma, mb);                                  // xab · yijbkla
+          double cg2 = cg_pair(ma, mb);                                  // yab · xijbkla
+          z += (na - nb) * (cg1 * xab * yijbkla - cg2 * yab * xijbkla);
         }
     }
   }
@@ -8730,6 +8837,17 @@ double UnitTest::Mscheme_comm232tts_wick(const Operator &X, const Operator &Y, i
 {
   if ((i == j and mi == mj) or (k == l and mk == ml))
     return 0.0;
+  // scalar-2b m-conservation: mi+mj must equal mk+ml, otherwise Z is not a scalar 2b ME
+  if (mi + mj != mk + ml)
+    return 0.0;
+  // J=0 projector on Ω×Ω pair: CG(λμ, λ-μ | 00). For λ=0 returns 1.
+  const int lamX = X.GetJRank();
+  auto cg_pair = [&](int twoM_left, int twoM_right) -> double {
+    if (lamX == 0) return 1.0;
+    double mu = 0.5 * (twoM_left - twoM_right);
+    if (std::abs(mu) > lamX + 1e-9) return 0.0;
+    return AngMom::CG(1.0 * lamX, mu, 1.0 * lamX, -mu, 0.0, 0.0);
+  };
   double z = 0.0;
   size_t norb = X.modelspace->GetNumberOrbits();
 #pragma omp parallel for schedule(dynamic, 1) reduction(+ : z)
@@ -8752,14 +8870,17 @@ double UnitTest::Mscheme_comm232tts_wick(const Operator &X, const Operator &Y, i
           for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
             for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
             {
-              double xicab = GetMschemeMatrixElement_2b(X, i, mi, c, mc, a, ma, b, mb);
-              double yicab = GetMschemeMatrixElement_2b(Y, i, mi, c, mc, a, ma, b, mb);
-              double xjcab = GetMschemeMatrixElement_2b(X, j, mj, c, mc, a, ma, b, mb);
-              double yjcab = GetMschemeMatrixElement_2b(Y, j, mj, c, mc, a, ma, b, mb);
-              double xabkc = GetMschemeMatrixElement_2b(X, a, ma, b, mb, k, mk, c, mc);
-              double yabkc = GetMschemeMatrixElement_2b(Y, a, ma, b, mb, k, mk, c, mc);
-              double xablc = GetMschemeMatrixElement_2b(X, a, ma, b, mb, l, ml, c, mc);
-              double yablc = GetMschemeMatrixElement_2b(Y, a, ma, b, mb, l, ml, c, mc);
+              // Tensor coupling: Ω×Ω → scalar. Insert J=0 projector CG(λμ,λ-μ|00) per XY pair.
+              // Each term below has M_X + M_Y = 0 given mi+mj = mk+ml, so cg_OmOm0 uses X's
+              // (bra_2m_sum, ket_2m_sum). For λ=0 cg_OmOm0 ≡ 1, recovering the scalar Wick.
+              double xicab   = GetMschemeMatrixElement_2b(X, i, mi, c, mc, a, ma, b, mb);
+              double yicab   = GetMschemeMatrixElement_2b(Y, i, mi, c, mc, a, ma, b, mb);
+              double xjcab   = GetMschemeMatrixElement_2b(X, j, mj, c, mc, a, ma, b, mb);
+              double yjcab   = GetMschemeMatrixElement_2b(Y, j, mj, c, mc, a, ma, b, mb);
+              double xabkc   = GetMschemeMatrixElement_2b(X, a, ma, b, mb, k, mk, c, mc);
+              double yabkc   = GetMschemeMatrixElement_2b(Y, a, ma, b, mb, k, mk, c, mc);
+              double xablc   = GetMschemeMatrixElement_2b(X, a, ma, b, mb, l, ml, c, mc);
+              double yablc   = GetMschemeMatrixElement_2b(Y, a, ma, b, mb, l, ml, c, mc);
               double xabjklc = GetMschemeMatrixElement_3b(X, a, ma, b, mb, j, mj, k, mk, l, ml, c, mc);
               double yabjklc = GetMschemeMatrixElement_3b(Y, a, ma, b, mb, j, mj, k, mk, l, ml, c, mc);
               double xabiklc = GetMschemeMatrixElement_3b(X, a, ma, b, mb, i, mi, k, mk, l, ml, c, mc);
@@ -8768,10 +8889,90 @@ double UnitTest::Mscheme_comm232tts_wick(const Operator &X, const Operator &Y, i
               double yijcabl = GetMschemeMatrixElement_3b(Y, i, mi, j, mj, c, mc, a, ma, b, mb, l, ml);
               double xijcabk = GetMschemeMatrixElement_3b(X, i, mi, j, mj, c, mc, a, ma, b, mb, k, mk);
               double yijcabk = GetMschemeMatrixElement_3b(Y, i, mi, j, mj, c, mc, a, ma, b, mb, k, mk);
-              z += -0.5 * occfactor * (xicab * yabjklc - xjcab * yabiklc - yijcabl * xabkc + yijcabk * xablc
-                                       - yicab * xabjklc + yjcab * xabiklc + xijcabl * yabkc - xijcabk * yablc);
+              // Per-term J=0 projectors on Ω×Ω (M_X and M_Y read off the X operator's legs)
+              double cg1 = cg_pair(mi + mc, ma + mb);           // xicab · yabjklc
+              double cg2 = cg_pair(mj + mc, ma + mb);           // xjcab · yabiklc
+              double cg3 = cg_pair(ma + mb, mk + mc);           // xabkc · yijcabl
+              double cg4 = cg_pair(ma + mb, ml + mc);           // xablc · yijcabk
+              double cg5 = cg_pair(ma + mb + mj, mk + ml + mc); // xabjklc · yicab
+              double cg6 = cg_pair(ma + mb + mi, mk + ml + mc); // xabiklc · yjcab
+              double cg7 = cg_pair(mi + mj + mc, ma + mb + ml); // xijcabl · yabkc
+              double cg8 = cg_pair(mi + mj + mc, ma + mb + mk); // xijcabk · yablc
+              z += -0.5 * occfactor * (cg1 * xicab * yabjklc - cg2 * xjcab * yabiklc
+                                       - cg3 * yijcabl * xabkc + cg4 * yijcabk * xablc
+                                       - cg5 * yicab * xabjklc + cg6 * yjcab * xabiklc
+                                       + cg7 * xijcabl * yabkc - cg8 * xijcabk * yablc);
             }
       }
+    }
+  }
+  return z;
+}
+
+// Pure m-scheme Wick for W = [X,Y]_3 (scalar 3b component in m). No J-scheme, no CG projector
+// on the 2b×2b→3b legs (this piece is what factorized side calls a "bare" [X,Y]_3, before any
+// Ω×Ω J=0 projection). Mirrors the wick lambda inside Mscheme_Test_comm223tts.
+double UnitTest::Mscheme_comm223tts_wick(const Operator &X, const Operator &Y,
+                                        int i, int mi, int j, int mj, int k, int mk,
+                                        int l, int ml, int m, int mm, int n, int mn)
+{
+  if ((i == j and mi == mj) or (i == k and mi == mk) or (j == k and mj == mk))
+    return 0.0;
+  if ((l == m and ml == mm) or (l == n and ml == mn) or (m == n and mm == mn))
+    return 0.0;
+  double z = 0.0;
+  size_t norb = X.modelspace->GetNumberOrbits();
+#pragma omp parallel for schedule(dynamic, 1) reduction(+ : z)
+  for (size_t a = 0; a < norb; a++)
+  {
+    Orbit &oa = X.modelspace->GetOrbit(a);
+    for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+    {
+      double x_ijla = GetMschemeMatrixElement_2b(X, i, mi, j, mj, l, ml, a, ma);
+      double y_akmn = GetMschemeMatrixElement_2b(Y, a, ma, k, mk, m, mm, n, mn);
+      double y_ijla = GetMschemeMatrixElement_2b(Y, i, mi, j, mj, l, ml, a, ma);
+      double x_akmn = GetMschemeMatrixElement_2b(X, a, ma, k, mk, m, mm, n, mn);
+      double x_kjla = GetMschemeMatrixElement_2b(X, k, mk, j, mj, l, ml, a, ma);
+      double y_aimn = GetMschemeMatrixElement_2b(Y, a, ma, i, mi, m, mm, n, mn);
+      double y_kjla = GetMschemeMatrixElement_2b(Y, k, mk, j, mj, l, ml, a, ma);
+      double x_aimn = GetMschemeMatrixElement_2b(X, a, ma, i, mi, m, mm, n, mn);
+      double x_ikla = GetMschemeMatrixElement_2b(X, i, mi, k, mk, l, ml, a, ma);
+      double y_ajmn = GetMschemeMatrixElement_2b(Y, a, ma, j, mj, m, mm, n, mn);
+      double y_ikla = GetMschemeMatrixElement_2b(Y, i, mi, k, mk, l, ml, a, ma);
+      double x_ajmn = GetMschemeMatrixElement_2b(X, a, ma, j, mj, m, mm, n, mn);
+      double x_ijma = GetMschemeMatrixElement_2b(X, i, mi, j, mj, m, mm, a, ma);
+      double y_akln = GetMschemeMatrixElement_2b(Y, a, ma, k, mk, l, ml, n, mn);
+      double y_ijma = GetMschemeMatrixElement_2b(Y, i, mi, j, mj, m, mm, a, ma);
+      double x_akln = GetMschemeMatrixElement_2b(X, a, ma, k, mk, l, ml, n, mn);
+      double x_ijna = GetMschemeMatrixElement_2b(X, i, mi, j, mj, n, mn, a, ma);
+      double y_akml = GetMschemeMatrixElement_2b(Y, a, ma, k, mk, m, mm, l, ml);
+      double y_ijna = GetMschemeMatrixElement_2b(Y, i, mi, j, mj, n, mn, a, ma);
+      double x_akml = GetMschemeMatrixElement_2b(X, a, ma, k, mk, m, mm, l, ml);
+      double x_kjma = GetMschemeMatrixElement_2b(X, k, mk, j, mj, m, mm, a, ma);
+      double y_ailn = GetMschemeMatrixElement_2b(Y, a, ma, i, mi, l, ml, n, mn);
+      double y_kjma = GetMschemeMatrixElement_2b(Y, k, mk, j, mj, m, mm, a, ma);
+      double x_ailn = GetMschemeMatrixElement_2b(X, a, ma, i, mi, l, ml, n, mn);
+      double x_kjna = GetMschemeMatrixElement_2b(X, k, mk, j, mj, n, mn, a, ma);
+      double y_aiml = GetMschemeMatrixElement_2b(Y, a, ma, i, mi, m, mm, l, ml);
+      double y_kjna = GetMschemeMatrixElement_2b(Y, k, mk, j, mj, n, mn, a, ma);
+      double x_aiml = GetMschemeMatrixElement_2b(X, a, ma, i, mi, m, mm, l, ml);
+      double x_ikma = GetMschemeMatrixElement_2b(X, i, mi, k, mk, m, mm, a, ma);
+      double y_ajln = GetMschemeMatrixElement_2b(Y, a, ma, j, mj, l, ml, n, mn);
+      double y_ikma = GetMschemeMatrixElement_2b(Y, i, mi, k, mk, m, mm, a, ma);
+      double x_ajln = GetMschemeMatrixElement_2b(X, a, ma, j, mj, l, ml, n, mn);
+      double x_ikna = GetMschemeMatrixElement_2b(X, i, mi, k, mk, n, mn, a, ma);
+      double y_ajml = GetMschemeMatrixElement_2b(Y, a, ma, j, mj, m, mm, l, ml);
+      double y_ikna = GetMschemeMatrixElement_2b(Y, i, mi, k, mk, n, mn, a, ma);
+      double x_ajml = GetMschemeMatrixElement_2b(X, a, ma, j, mj, m, mm, l, ml);
+      z += x_ijla * y_akmn - y_ijla * x_akmn;
+      z -= x_kjla * y_aimn - y_kjla * x_aimn;
+      z -= x_ikla * y_ajmn - y_ikla * x_ajmn;
+      z -= x_ijma * y_akln - y_ijma * x_akln;
+      z -= x_ijna * y_akml - y_ijna * x_akml;
+      z += x_kjma * y_ailn - y_kjma * x_ailn;
+      z += x_kjna * y_aiml - y_kjna * x_aiml;
+      z += x_ikma * y_ajln - y_ikma * x_ajln;
+      z += x_ikna * y_ajml - y_ikna * x_ajml;
     }
   }
   return z;
@@ -11034,6 +11235,42 @@ double UnitTest::Mscheme_chi_zeta(const Operator &Eta, const Operator &Gamma, in
   return 0.5 * sm;
 }
 
+double UnitTest::Mscheme_chi_OmegaGamma(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj)
+{
+  // Unfact G^II bra grouping: χ^{ΩΓ}_{ij} = 1/2 Σ w Ω_ciab Γ_abcj.
+  // Same occ as χ^ζ. T×S → T, no leftover CG inside.
+  double sm = 0.0;
+  for (auto a : Eta.modelspace->all_orbits)
+  {
+    Orbit &oa = Eta.modelspace->GetOrbit(a);
+    double na = oa.occ, nba = 1.0 - na;
+    for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+      for (auto b : Eta.modelspace->all_orbits)
+      {
+        Orbit &ob = Eta.modelspace->GetOrbit(b);
+        double nb = ob.occ, nbb = 1.0 - nb;
+        for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
+          for (auto c : Eta.modelspace->all_orbits)
+          {
+            Orbit &oc = Eta.modelspace->GetOrbit(c);
+            double nc = oc.occ, nbc = 1.0 - nc;
+            double w = na * nb * nbc + nba * nbb * nc;
+            if (std::abs(w) < 1e-12)
+              continue;
+            for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
+            {
+              double o = GetMschemeMatrixElement_2b(Eta, c, mc, i, mi, a, ma, b, mb);
+              if (std::abs(o) < 1e-16)
+                continue;
+              double g = GetMschemeMatrixElement_2b(Gamma, a, ma, b, mb, c, mc, j, mj);
+              sm += w * o * g;
+            }
+          }
+      }
+  }
+  return 0.5 * sm;
+}
+
 double UnitTest::Mscheme_chi_eta(const Operator &Eta, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
 {
   // run/test_chi_eta_mscheme.py
@@ -11221,7 +11458,12 @@ double UnitTest::Mscheme_fact_fI(const Operator &Eta, const Operator &Gamma, int
 
 double UnitTest::Mscheme_fact_fII(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj)
 {
-  int hO = Eta.IsHermitian() ? 1 : -1;
+  // χ^β_de × Ω → scalar f_ij. Both folds must contract d,e (one in, one out).
+  //   f_a: χ_de Ω_eidj   (d out on χ, in on Ω)
+  //   f_b: χ_de Ω_ejdi   (same χ; bra–ket swap of Ω_diej)
+  // χ_de Ω_diej is not a 1b contraction (d outgoing on both). Scalar code used
+  // Ω_diej = h_Ω Ω_ejdi, which hides that. AMC: f = f_a + h_Γ f_b, leftover CG
+  // on both (cg_OmOm0 ≡ 1 for λ=0).
   int hG = Gamma.IsHermitian() ? 1 : -1;
   double sm = 0.0;
   for (auto a : Eta.modelspace->all_orbits)
@@ -11236,8 +11478,9 @@ double UnitTest::Mscheme_fact_fII(const Operator &Eta, const Operator &Gamma, in
           double chi = Mscheme_chi_beta(Eta, Gamma, a, ma, b, mb);
           if (std::abs(chi) < 1e-16)
             continue;
-          sm += chi * GetMschemeMatrixElement_2b(Eta, b, mb, i, mi, a, ma, j, mj);
-          sm += hO * hG * chi * GetMschemeMatrixElement_2b(Eta, a, ma, i, mi, b, mb, j, mj);
+          double cg = cg_OmOm0(Eta, ma, mb);
+          sm += cg * chi * GetMschemeMatrixElement_2b(Eta, b, mb, i, mi, a, ma, j, mj);
+          sm += hG * cg * chi * GetMschemeMatrixElement_2b(Eta, b, mb, j, mj, a, ma, i, mi);
         }
       }
   }
@@ -11328,20 +11571,30 @@ double UnitTest::Mscheme_fact_GI(const Operator &Eta, const Operator &Gamma, int
 
 double UnitTest::Mscheme_fact_GII(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
 {
+  // Unfact Γ^II = −1/2 Σ w {(1−P_ij) Ω_cjab Γ_abcd Ω_idkl
+  //                         + (1−P_kl) Γ_cdab Ω_abcl Ω_ijkd}.
+  // Bra is Ω×Γ×Ω: χ^{ΩΓ}_jd Ω_idkl with dummy a≡d in on χ, out on Ω.
+  //   → −(1−P_ij) χ^{ΩΓ}_ja Ω_iakl. χ^ζ=Γ×Ω equals this only at λ=0.
+  // Ket is Γ×Ω×Ω: already −(1−P_kl) χ^ζ_ak Ω_ijal.
+  // Leftover CG on both folds. cg_OmOm0 ≡ 1 for λ=0.
   double sm = 0.0;
   for (auto a : Eta.modelspace->all_orbits)
   {
     Orbit &oa = Eta.modelspace->GetOrbit(a);
     for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
     {
-      double chi_aj = Mscheme_chi_zeta(Eta, Gamma, a, ma, j, mj);
-      double chi_ai = Mscheme_chi_zeta(Eta, Gamma, a, ma, i, mi);
-      sm += chi_aj * GetMschemeMatrixElement_2b(Eta, i, mi, a, ma, k, mk, l, ml)
-          - chi_ai * GetMschemeMatrixElement_2b(Eta, j, mj, a, ma, k, mk, l, ml);
+      double chi_ja = Mscheme_chi_OmegaGamma(Eta, Gamma, j, mj, a, ma);
+      double chi_ia = Mscheme_chi_OmegaGamma(Eta, Gamma, i, mi, a, ma);
+      double cg_ja = cg_OmOm0(Eta, mj, ma);
+      double cg_ia = cg_OmOm0(Eta, mi, ma);
+      sm -= cg_ja * chi_ja * GetMschemeMatrixElement_2b(Eta, i, mi, a, ma, k, mk, l, ml)
+          - cg_ia * chi_ia * GetMschemeMatrixElement_2b(Eta, j, mj, a, ma, k, mk, l, ml);
       double chi_ak = Mscheme_chi_zeta(Eta, Gamma, a, ma, k, mk);
       double chi_al = Mscheme_chi_zeta(Eta, Gamma, a, ma, l, ml);
-      sm -= chi_ak * GetMschemeMatrixElement_2b(Eta, i, mi, j, mj, a, ma, l, ml)
-          - chi_al * GetMschemeMatrixElement_2b(Eta, i, mi, j, mj, a, ma, k, mk);
+      double cg_ak = cg_OmOm0(Eta, ma, mk);
+      double cg_al = cg_OmOm0(Eta, ma, ml);
+      sm -= cg_ak * chi_ak * GetMschemeMatrixElement_2b(Eta, i, mi, j, mj, a, ma, l, ml)
+          - cg_al * chi_al * GetMschemeMatrixElement_2b(Eta, i, mi, j, mj, a, ma, k, mk);
     }
   }
   return sm;
@@ -11506,7 +11759,8 @@ double UnitTest::Mscheme_fact_GIVa(const Operator &Eta, const Operator &Gamma, i
             double chi = Mscheme_chi_kappa(Eta, Gamma, ii, mii, jj, mjj, b, mb, d, md);
             if (std::abs(chi) < 1e-16)
               continue;
-            sm -= chi * GetMschemeMatrixElement_2b(Eta, d, md, b, mb, kk, mkk, ll, mll);
+            double cg = cg_OmOm0(Eta, mii + mjj, mb + md);
+            sm -= cg * chi * GetMschemeMatrixElement_2b(Eta, d, md, b, mb, kk, mkk, ll, mll);
           }
         }
     }
@@ -11521,7 +11775,9 @@ double UnitTest::Mscheme_fact_GIVa(const Operator &Eta, const Operator &Gamma, i
 
 double UnitTest::Mscheme_fact_GIVb_chi(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
 {
-  // run/test_G4b_unfact_vs_chi_fold.py
+  // W1: χ_aibk Ω_jbla (a,b in/out). W2 analyze χ_akbi Ω_jalb has a outgoing on
+  // both; bra–ket swap Ω_jalb = h_Ω Ω_lbja (λ=0 identity). Leftover CG on both.
+  int hO = Eta.IsHermitian() ? 1 : -1;
   auto Wm = [&](int ii, int mii, int jj, int mjj, int kk, int mkk, int ll, int mll) -> double {
     if ((mii + mjj) != (mkk + mll))
       return 0.0;
@@ -11537,10 +11793,16 @@ double UnitTest::Mscheme_fact_GIVb_chi(const Operator &Eta, const Operator &Gamm
           {
             double c1 = Mscheme_chi_iota(Eta, Gamma, a, ma, ii, mii, b, mb, kk, mkk);
             if (std::abs(c1) > 1e-16)
-              sm += c1 * GetMschemeMatrixElement_2b(Eta, jj, mjj, b, mb, ll, mll, a, ma);
+            {
+              double cg1 = cg_OmOm0(Eta, ma + mii, mb + mkk);
+              sm += cg1 * c1 * GetMschemeMatrixElement_2b(Eta, jj, mjj, b, mb, ll, mll, a, ma);
+            }
             double c2 = Mscheme_chi_iota(Eta, Gamma, a, ma, kk, mkk, b, mb, ii, mii);
             if (std::abs(c2) > 1e-16)
-              sm -= c2 * GetMschemeMatrixElement_2b(Eta, jj, mjj, a, ma, ll, mll, b, mb);
+            {
+              double cg2 = cg_OmOm0(Eta, ma + mkk, mb + mii);
+              sm -= hO * cg2 * c2 * GetMschemeMatrixElement_2b(Eta, ll, mll, b, mb, jj, mjj, a, ma);
+            }
           }
         }
     }
@@ -11565,8 +11827,13 @@ double UnitTest::Mscheme_fact_GIVc(const Operator &Eta, const Operator &Gamma, i
         {
           Orbit &ob = Eta.modelspace->GetOrbit(b);
           for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
-            sm += Mscheme_chi_lambda(Eta, Gamma, ii, mii, a, ma, ll, mll, b, mb)
-                  * GetMschemeMatrixElement_2b(Eta, b, mb, jj, mjj, a, ma, kk, mkk);
+          {
+            double chi = Mscheme_chi_lambda(Eta, Gamma, ii, mii, a, ma, ll, mll, b, mb);
+            if (std::abs(chi) < 1e-16)
+              continue;
+            double cg = cg_OmOm0(Eta, mii + ma, mll + mb);
+            sm += cg * chi * GetMschemeMatrixElement_2b(Eta, b, mb, jj, mjj, a, ma, kk, mkk);
+          }
         }
     }
     return sm;

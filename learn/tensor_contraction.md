@@ -41,6 +41,8 @@ Leftover of the scalar \(Z\) (this is global, not per 6j):
 
 If a ratio clusters at \(\hat\lambda^{\pm 1}\) or \(1/\sqrt{2J+1}\), **stop** — packaging, not a 6j.
 
+**Dummy in/out.** A contracted index must leave one operator and enter the other. At \(\lambda=0\), \(\Omega_{ijkl}=h_\Omega\Omega_{klij}\) hides illegal slots; at \(\lambda\neq 0\) that identity is false for `GetMscheme`. Rewrite slots + leftover CG; do not substitute swapped MEs. Occupation-weighted \(\chi\) is often NH. Full note: `learn/tensor_contraction` (closed vs open leftover, and the hermiticity section).
+
 ---
 
 ## Wick string vs m-scheme **code** (ss / st / tts)

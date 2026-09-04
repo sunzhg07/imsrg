@@ -45,6 +45,8 @@ class UnitTest
   double Mscheme_chi_delta(const Operator &Eta, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_chi_epsilon(const Operator &Eta, int i, int mi, int j, int mj);
   double Mscheme_chi_zeta(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj);
+  /// G^{II} bra: χ^{ΩΓ}_{ij} = 1/2 Σ w Ω_ciab Γ_abcj. Same occ as χ^ζ. T×S, no CG inside.
+  double Mscheme_chi_OmegaGamma(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj);
   double Mscheme_chi_eta(const Operator &Eta, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_chi_theta(const Operator &Eta, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_chi_iota(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
@@ -150,6 +152,7 @@ class UnitTest
   bool Test_comm132tts( const Operator& X, const Operator& Y ) ;
   bool Test_comm232tts( const Operator& X, const Operator& Y ) ;
   bool Test_comm223tts( const Operator& X, const Operator& Y ) ;
+  bool Test_scalar_tts_matches_ss( const Operator& X, const Operator& Y ) ;
   bool Test_comm223st( const Operator& X, const Operator& Y ) ;
   bool Test_comm133st( const Operator& X, const Operator& Y ) ;
 
@@ -197,6 +200,10 @@ class UnitTest
   double Mscheme_comm231tts_wick(const Operator &X, const Operator &Y, int i, int mi, int j, int mj);
   double Mscheme_comm132tts_wick(const Operator &X, const Operator &Y, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_comm232tts_wick(const Operator &X, const Operator &Y, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  /// Pure m-scheme Wick for [X,Y]_3 (=comm223tts kernel); scalar 3b m-component, no J-scheme.
+  double Mscheme_comm223tts_wick(const Operator &X, const Operator &Y,
+                                 int i, int mi, int j, int mj, int k, int mk,
+                                 int l, int ml, int m, int mm, int n, int mn);
   bool Mscheme_Test_comm231tts( const Operator& X, const Operator& Y );
   bool Mscheme_Test_comm110tts( const Operator& X, const Operator& Y );
   bool Mscheme_Test_comm220tts( const Operator& X, const Operator& Y );

@@ -1872,6 +1872,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("Test_comm132tts", &UnitTest::Test_comm132tts)
       .def("Test_comm232tts", &UnitTest::Test_comm232tts)
       .def("Test_comm223tts", &UnitTest::Test_comm223tts)
+      .def("Test_scalar_tts_matches_ss", &UnitTest::Test_scalar_tts_matches_ss)
       .def("Mscheme_Test_comm332_ppph_hhhpst",
            &UnitTest::Mscheme_Test_comm332_ppph_hhhpst)
       .def("Mscheme_Test_comm332_pphhst",
@@ -1903,6 +1904,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("Mscheme_chi_delta", &UnitTest::Mscheme_chi_delta)
       .def("Mscheme_chi_epsilon", &UnitTest::Mscheme_chi_epsilon)
       .def("Mscheme_chi_zeta", &UnitTest::Mscheme_chi_zeta)
+      .def("Mscheme_chi_OmegaGamma", &UnitTest::Mscheme_chi_OmegaGamma)
       .def("Mscheme_chi_eta", &UnitTest::Mscheme_chi_eta)
       .def("Mscheme_chi_theta", &UnitTest::Mscheme_chi_theta)
       .def("Mscheme_chi_iota", &UnitTest::Mscheme_chi_iota)
@@ -1923,6 +1925,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("Mscheme_comm231tts_wick", &UnitTest::Mscheme_comm231tts_wick)
       .def("Mscheme_comm132tts_wick", &UnitTest::Mscheme_comm132tts_wick)
       .def("Mscheme_comm232tts_wick", &UnitTest::Mscheme_comm232tts_wick)
+      .def("Mscheme_comm223tts_wick", &UnitTest::Mscheme_comm223tts_wick)
 
 
       ;

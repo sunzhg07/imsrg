@@ -1270,8 +1270,8 @@ void comm223_232(const Operator &Eta, const Operator &Gamma, Operator &Z) {
 /// factorized 223_232 double commutator with 1b intermediate
 ///
 /// Gamma^I  : chi^epsilon (Omega x Omega -> scalar 1b) x Gamma  -- any lambda
-/// Gamma^II : chi^zeta (Gamma x Omega -> tensor 1b) x Omega -> scalar
-///            Universal AMC Path B RME (any lambda). Gold: m == AMC direct == Path B.
+/// Gamma^II : bra χ^{ΩΓ} (Ω×Γ → tensor 1b) × Ω, ket χ^ζ (Γ×Ω) × Ω
+///            Unfact bra is ΩΓΩ; χ^ζ on the bra matches only at λ=0.
 ///            Docs: learn/amc_tts/factored_GII/NOTES.md
 ////////////////////////////////////////////////////////////////////////////
 void comm223_232_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
@@ -1556,15 +1556,15 @@ void comm223_232_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
   }
 
   // ######################################################################
-  // Gamma^II -- chi^zeta (reduced tensor 1b, any lambda) x Omega
+  // Gamma^II -- bra χ^{ΩΓ} (Ω×Γ), ket χ^ζ (Γ×Ω)
   //
-  // M-scheme (analyze):
-  //   Γ^II = Σ_a [ (1-P_ij) χ_aj Ω_iakl  -  (1-P_kl) χ_ak Ω_ijal ]
-  // Bra W and ket V are not Hermitian alone; W - V is.
-  // Do NOT use W + h W^T (χ^ζ is non-Hermitian; ≠ W-V).
-  //
-  // AMC: strip P → G2_Wbra_noperm / G2_Wket_noperm → restore (1-P) by hand.
-  // Docs: learn/amc_tts/factored_GII/NOTES.md
+  // Unfact: Γ^II = −1/2 Σ w {(1−P_ij) Ω_cjab Γ_abcd Ω_idkl
+  //                           + (1−P_kl) Γ_cdab Ω_abcl Ω_ijkd}
+  // Bra: χ^{ΩΓ}_ij = 1/2 Σ w Ω_ciab Γ_abcj  (AMC chi_omega_gamma_analyze)
+  //      → −(1−P_ij) χ^{ΩΓ}_ja Ω_iakl
+  // Ket: χ^ζ_ij = 1/2 Σ w Γ_ciab Ω_abcj
+  //      → −(1−P_kl) χ^ζ_ak Ω_ijal
+  // Fold (AMC G2_Wbra / G2_Wket) is the same 6j for any tensor 1b χ.
   // ######################################################################
   if (do_GII) {
     int max_j2 = 0;
@@ -1575,15 +1575,15 @@ void comm223_232_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
                                 Z.modelspace->all_orbits.end());
     const int norb = (int)allorb.size();
 
-    // chi^zeta_ij^lambda = 1/2 * (-1)^{j_j+lambda} * sum w * (-1)^{J0+j_a}
-    //   * hatJ0 * hatJ1 * SixJ(lambda,J1,J0; ja,ji,jj) * Gamma_aibc * Omega_bcaj
-    // w = n_a n_b nbar_c + nbar_a nbar_b n_c.  Reduced tensor 1b.
     arma::mat Chi_zeta(Gamma.OneBody.n_rows, Gamma.OneBody.n_cols,
                        arma::fill::zeros);
+    arma::mat Chi_OG(Gamma.OneBody.n_rows, Gamma.OneBody.n_cols,
+                     arma::fill::zeros);
 
 #pragma omp parallel
     {
-      arma::mat Chi_loc(Chi_zeta.n_rows, Chi_zeta.n_cols, arma::fill::zeros);
+      arma::mat ChiZ_loc(Chi_zeta.n_rows, Chi_zeta.n_cols, arma::fill::zeros);
+      arma::mat ChiOG_loc(Chi_OG.n_rows, Chi_OG.n_cols, arma::fill::zeros);
 #pragma omp for schedule(dynamic, 1)
       for (int ii = 0; ii < norb; ++ii) {
         const index_t i = allorb[ii];
@@ -1594,57 +1594,89 @@ void comm223_232_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
           const double jj = oj.j2 * 0.5;
           if (not AngMom::Triangle(ji, jj, (double)lambda))
             continue;
-          double sm = 0.0;
+          double smZ = 0.0;
+          double smOG = 0.0;
           for (auto a : allorb) {
             Orbit &oa = Z.modelspace->GetOrbit(a);
             const double ja = oa.j2 * 0.5;
             const double n_a = oa.occ, nbar_a = 1.0 - n_a;
             for (auto b : allorb) {
               Orbit &ob = Z.modelspace->GetOrbit(b);
+              const double jb = ob.j2 * 0.5;
               const double n_b = ob.occ, nbar_b = 1.0 - n_b;
               for (auto c : allorb) {
                 Orbit &oc = Z.modelspace->GetOrbit(c);
+                const double jc = oc.j2 * 0.5;
                 const double n_c = oc.occ, nbar_c = 1.0 - n_c;
                 const double w =
                     n_a * n_b * nbar_c + nbar_a * nbar_b * n_c;
                 if (std::abs(w) < 1e-12)
                   continue;
                 for (int J0 = 0; J0 <= max_J; ++J0) {
-                  if (not AngMom::Triangle(ja, ji, (double)J0))
-                    continue;
-                  if (not AngMom::Triangle(ob.j2 * 0.5, oc.j2 * 0.5,
-                                           (double)J0))
-                    continue;
-                  const double g =
-                      Gamma.TwoBody.GetTBME_J(J0, J0, a, i, b, c);
-                  if (std::abs(g) < 1e-16)
-                    continue;
-                  for (int J1 = 0; J1 <= max_J; ++J1) {
-                    if (not AngMom::Triangle(J0, J1, lambda))
-                      continue;
-                    if (not AngMom::Triangle(ja, jj, (double)J1))
-                      continue;
-                    const double om =
-                        Eta.TwoBody.GetTBME_J(J0, J1, b, c, a, j);
-                    if (std::abs(om) < 1e-16)
-                      continue;
-                    const double sixj =
-                        AngMom::SixJ(lambda, J1, J0, ja, ji, jj);
-                    if (std::abs(sixj) < 1e-16)
-                      continue;
-                    const double ph = Z.modelspace->phase(
-                        (oj.j2 + oa.j2) / 2 + lambda + J0);
-                    sm += ph * hat(J0) * hat(J1) * sixj * w * g * om;
+                  // χ^ζ analyze: Γ_ciab^{J0} Ω_abcj^{J0 J1 λ}
+                  if (AngMom::Triangle(jc, ji, (double)J0) and
+                      AngMom::Triangle(ja, jb, (double)J0)) {
+                    const double gZ =
+                        Gamma.TwoBody.GetTBME_J(J0, J0, c, i, a, b);
+                    if (std::abs(gZ) > 1e-16) {
+                      for (int J1 = 0; J1 <= max_J; ++J1) {
+                        if (not AngMom::Triangle(J0, J1, lambda))
+                          continue;
+                        if (not AngMom::Triangle(jc, jj, (double)J1))
+                          continue;
+                        const double omZ =
+                            Eta.TwoBody.GetTBME_J(J0, J1, a, b, c, j);
+                        if (std::abs(omZ) < 1e-16)
+                          continue;
+                        const double sixj =
+                            AngMom::SixJ(lambda, J1, J0, jc, ji, jj);
+                        if (std::abs(sixj) < 1e-16)
+                          continue;
+                        const double ph = Z.modelspace->phase(
+                            (oj.j2 + oc.j2) / 2 + lambda + J0);
+                        smZ += ph * hat(J0) * hat(J1) * sixj * w * gZ * omZ;
+                      }
+                    }
+                  }
+                  // χ^{ΩΓ}: Ω_ciab^{J0 J1 λ} Γ_abcj^{J1}
+                  if (AngMom::Triangle(jc, ji, (double)J0)) {
+                    for (int J1 = 0; J1 <= max_J; ++J1) {
+                      if (not AngMom::Triangle(J0, J1, lambda))
+                        continue;
+                      if (not AngMom::Triangle(ja, jb, (double)J1))
+                        continue;
+                      if (not AngMom::Triangle(jc, jj, (double)J1))
+                        continue;
+                      const double omOG =
+                          Eta.TwoBody.GetTBME_J(J0, J1, c, i, a, b);
+                      if (std::abs(omOG) < 1e-16)
+                        continue;
+                      const double gOG =
+                          Gamma.TwoBody.GetTBME_J(J1, J1, a, b, c, j);
+                      if (std::abs(gOG) < 1e-16)
+                        continue;
+                      const double sixj =
+                          AngMom::SixJ(J0, J1, lambda, jj, ji, jc);
+                      if (std::abs(sixj) < 1e-16)
+                        continue;
+                      const double ph = Z.modelspace->phase(
+                          (oj.j2 + oc.j2) / 2 + lambda + J0);
+                      smOG += ph * hat(J0) * hat(J1) * sixj * w * omOG * gOG;
+                    }
                   }
                 }
               }
             }
           }
-          Chi_loc(i, j) += 0.5 * sm;
+          ChiZ_loc(i, j) += 0.5 * smZ;
+          ChiOG_loc(i, j) += 0.5 * smOG;
         }
       }
 #pragma omp critical
-      { Chi_zeta += Chi_loc; }
+      {
+        Chi_zeta += ChiZ_loc;
+        Chi_OG += ChiOG_loc;
+      }
     }
 
     if (Commutator::verbose) {
@@ -1652,8 +1684,7 @@ void comm223_232_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
       t_internal = omp_get_wtime();
     }
 
-    // Fold: Γ^II = W - V with (1-P) restored on each topology.
-    // W: AMC G2_Wbra_noperm + bra exchange; V: G2_Wket_noperm + ket exchange.
+    // Fold: Z = −W_OG − V_ζ. W: AMC Wbra with χ^{ΩΓ}; V: Wket with χ^ζ.
 #pragma omp parallel for schedule(dynamic, 1)
     for (size_t ich = 0; ich < nch; ++ich) {
       size_t ch_bra = ch_bra_list[ich];
@@ -1684,8 +1715,8 @@ void comm223_232_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
           Orbit &ol = Z.modelspace->GetOrbit(l);
           const double jk = ok.j2 * 0.5, jl = ol.j2 * 0.5;
 
-          double W = 0.0; // bra (1-P_ij) χ_ja Ω_iakl
-          double V = 0.0; // ket (1-P_kl) χ_ak Ω_ijal
+          double W = 0.0; // bra (1-P_ij) χ^{ΩΓ}_ja Ω_iakl
+          double V = 0.0; // ket (1-P_kl) χ^ζ_ak Ω_ijal
           for (auto a : allorb) {
             Orbit &oa = Z.modelspace->GetOrbit(a);
             const double ja = oa.j2 * 0.5;
@@ -1694,9 +1725,8 @@ void comm223_232_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
                 continue;
               const double pref = hatJ_inv * hat(J2) * hat_lambda_inv;
 
-              // W bare (AMC Wbra) + bra exchange
               {
-                const double c = Chi_zeta(j, a);
+                const double c = Chi_OG(j, a);
                 if (std::abs(c) > 1e-16) {
                   const double sixj =
                       AngMom::SixJ(J, J2, lambda, ja, jj, ji);
@@ -1710,7 +1740,7 @@ void comm223_232_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
                 }
               }
               {
-                const double c = Chi_zeta(i, a);
+                const double c = Chi_OG(i, a);
                 if (std::abs(c) > 1e-16) {
                   const double sixj =
                       AngMom::SixJ(J, J2, lambda, ja, ji, jj);
@@ -1723,7 +1753,6 @@ void comm223_232_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
                   }
                 }
               }
-              // V bare (AMC Wket) + ket exchange
               {
                 const double c = Chi_zeta(a, k);
                 if (std::abs(c) > 1e-16) {
@@ -1755,7 +1784,7 @@ void comm223_232_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
             }
           }
 
-          double z = W - V; // Γ^II
+          double z = -W - V; // Γ^II = −W_OG − V_ζ
           if (i == j)
             z /= PhysConst::SQRT2;
           if (k == l)

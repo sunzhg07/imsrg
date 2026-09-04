@@ -1,20 +1,24 @@
-# Γ^II / χ^ζ — m-scheme → AMC → Path B
+# Γ^II / χ^{ΩΓ} + χ^ζ — m-scheme → AMC → Path B
 
-**Discipline:** strip \(P\) for AMC → restore by hand. Do **not** feed
-permuted indices into AMC. Code computes **one bra topology** and **one ket
-topology** (each with \((1-P)\)), not four expanded AMC copies.
+**Discipline:** strip \(P\) for AMC → restore by hand.
 
-See also [../factored_GI/NOTES.md](../factored_GI/NOTES.md),
-[../REDUCED_UNREDUCED.md](../REDUCED_UNREDUCED.md).
+Unfactored bra is \(\Omega\times\Gamma\times\Omega\). Ket is \(\Gamma\times\Omega\times\Omega\).
+\(\chi^\zeta=\Gamma\times\Omega\) on the **bra** matches only at \(\lambda=0\).
+
+See also [../REDUCED_UNREDUCED.md](../REDUCED_UNREDUCED.md).
 
 ---
 
 ## 1. M-scheme (locked)
 
-### χ^ζ (tensor 1b, rank \(\lambda_\Omega\))
+### χ^ζ (ket; \(T\times S\to T\))
 
 \[
 \chi^\zeta_{ij}
+=
+\frac12\sum_{abc}
+w\,
+\Gamma_{ciab}\,\Omega_{abcj}
 =
 \frac12\sum_{abc}
 w\,
@@ -23,167 +27,93 @@ w\,
 w=n_a n_b\bar n_c+\bar n_a\bar n_b n_c.
 \]
 
-(Equivalent to analyze \(\Gamma_{ciab}\Omega_{abcj}\) by rename. χ is
-**non-Hermitian**.)
+### χ^{ΩΓ} (bra; \(T\times S\to T\))
 
-### Γ^II — two topologies; sum is Hermitian
+\[
+\chi^{\Omega\Gamma}_{ij}
+=
+\frac12\sum_{abc}
+w\,
+\Omega_{ciab}\,\Gamma_{abcj}.
+\]
+
+Do **not** relabel this to \(\Omega_{aibc}\Gamma_{bcaj}\) while keeping the same
+\(w(a,b,c)\) — unlike χ^ζ, that rename is **not** equivalent.
+
+### Γ^II
 
 \[
 \boxed{
 \Gamma^{\mathrm{II}}_{ijkl}
 =
-\sum_a\Bigl[
-\underbrace{(1-\hat P_{ij})\,\chi^\zeta_{aj}\,\Omega_{iakl}}_{\text{bra }W}
+-\,(1-\hat P_{ij})\,\chi^{\Omega\Gamma}_{ja}\,\Omega_{iakl}
 \;-\;
-\underbrace{(1-\hat P_{kl})\,\chi^\zeta_{ak}\,\Omega_{ijal}}_{\text{ket }V}
-\Bigr].
+(1-\hat P_{kl})\,\chi^\zeta_{ak}\,\Omega_{ijal}.
 }
 \]
 
-| Piece | Hermitian alone? |
-|---|---|
-| Bra \(W=(1-P_{ij})\chi_{aj}\Omega_{iakl}\) | **no** |
-| Ket \(V=(1-P_{kl})\chi_{ak}\Omega_{ijal}\) | **no** |
-| \(W-V\) | **yes** |
-
-Do **not** replace ket by \(h_Z W^{T}\). That is the `comm122ss` trick when the
-1b factor is Hermitian; here χ^ζ is not, so \(W+hW^{T}\neq W-V\).
-
-**AMC orientation note:** analyze writes \(\chi_{aj}\). AMC Yutsis needs
-\(\chi_{ja}\Omega_{iakl}\) (swap χ legs). Same physics; angular print uses
-that orientation.
+Leftover CG on both folds when \(\lambda\neq 0\).
 
 ---
 
-## 2. AMC DIRECT — strip → expand χ → restore
+## 2. AMC Path B
 
-Unfactored expand of χ into \(\Gamma\,\Omega\,\Omega\), same strip/restore as Path B.
+### χ^{ΩΓ}
 
-| Topology | Input (P stripped) | Output |
-|---|---|---|
-| Bra \(W\) | `input/G2_Wdirect_noperm.txt` | `output/G2_Wdirect_noperm.tex` |
-| Ket \(V\) | `input/G2_Vdirect_noperm.txt` | `output/G2_Vdirect_noperm.tex` |
+**Input** `input/chi_omega_gamma_analyze.txt`.
 
-Restore \((1-P_{ij})\) / \((1-P_{kl})\) by hand; assemble \(\Gamma^{\mathrm{II}}=W-V\).
-
-AMC tensor overall signs are unreliable — numerical lock is
-`run/test_tts_GII_direct_mscheme.py` (DIRECT ≡ Path B).
-
-Optional P-kept expand: `input/G2_direct.txt`.
-
----
-
-## 3. AMC Path B — strip → couple → restore
-
-### Step A — χ^ζ alone
-
-**Input** `input/chi_zeta.txt` (no \(P\)).
-
-**Output** `output/chi_zeta.tex` — reduced tensor 1b RME.
-
-### Step B — bra topology, \(P\) stripped
-
-**Input** `input/G2_Wbra_noperm.txt`:
-
-```text
-W_ijkl = sum_a(chizeta_ja * Omega_iakl);
-```
-
-**Output** `output/G2_Wbra_noperm.tex` — **one** RME (unreduced \(Z\), reduced
-χ/Ω, \(\lambda=\mathrm{rank}(\Omega)\)):
+**Output** `output/chi_omega_gamma_analyze.tex`:
 
 \[
-W^{J}_{ijkl}
+\chi^{\Omega\Gamma\,\lambda}_{ij}
 =
-(-1)^{j_i}\hat J^{-1}
-\sum_{a J_2}
-(-1)^{J_2+j_a}\,\hat J_2\,\hat\lambda^{-1}
-\begin{Bmatrix}J & J_2 & \lambda \\ j_a & j_j & j_i\end{Bmatrix}
-\chi^\zeta_{ja}{}^\lambda\,
-\Omega^{J_2 J\lambda}_{iakl}.
+\tfrac12(-1)^{j_j+\lambda}
+\sum_{abc J_0 J_1}
+w\,(-1)^{J_0+j_c}\,\hat J_0\hat J_1
+\begin{Bmatrix}J_0 & J_1 & \lambda \\ j_j & j_i & j_c\end{Bmatrix}
+\Omega^{J_0 J_1\lambda}_{ciab}\,
+\Gamma^{J_1}_{abcj}.
 \]
 
-**Restore by hand** \((1-\hat P_{ij})\) (fermionic bra exchange / `Ket::Phase`):
-adds the exchange copy with \(\chi_{ia}\Omega_{jakl}\) and phase
-\((-1)^{J+j_i}\) (same SixJ with \(i\leftrightarrow j\)).
+χ^ζ analyze: `input/chi_zeta_analyze.txt` (Γ_ciab Ω_abcj). Older
+`chi_zeta.txt` (Γ_aibc Ω_bcaj, same w labels) is **not** equivalent.
 
-### Step C — ket topology, \(P\) stripped
+### Folds (same 6j as before)
 
-**Input** `input/G2_Wket_noperm.txt`:
+Wbra with \(\chi^{\Omega\Gamma}_{ja}\Omega_{iakl}\): `input/G2_Wbra_OG_noperm.txt`
+(identical 6j to old Wbra). Ket: `input/G2_Wket_noperm.txt`.
 
-```text
-V_ijkl = sum_a(chizeta_ak * Omega_ijal);
-```
-
-**Output** `output/G2_Wket_noperm.tex` — **one** RME:
-
-\[
-V^{J}_{ijkl}
-=
-(-1)^{j_l}\hat J^{-1}
-\sum_{a J_2}
-(-1)^{J_2+j_a}\,\hat J_2\,\hat\lambda^{-1}
-\begin{Bmatrix}J & J_2 & \lambda \\ j_a & j_k & j_l\end{Bmatrix}
-\chi^\zeta_{ak}{}^\lambda\,
-\Omega^{J J_2\lambda}_{ijal}.
-\]
-
-**Restore by hand** \((1-\hat P_{kl})\): exchange copy with \(\chi_{al}\Omega_{ijak}\)
-and phase \((-1)^{J+j_l}\).
-
-### Step D — assemble
-
-\[
-\Gamma^{\mathrm{II}\,J}=W_{\mathrm{restored}}-V_{\mathrm{restored}}.
-\]
-
-(\(\tfrac12\) lives inside χ^ζ, not here.)
-
-### Optional: AMC with \(P\) expanded
-
-`input/G2_from_chi_RME.txt` still has \(P(i/j)\), \(P(k/l)\) and prints four
-terms — useful as a check that restore matches, **not** the implementation
-target.
+Assemble \(\Gamma^{\mathrm{II}}=-W-V\). Restore \((1-P)\) by hand.
 
 ---
 
-## 4. Path B / ethS code pattern
-
-Mirror `comm122ss` **structure** (one insertion loop + channel factors), but
-keep **both** topologies:
+## 3. ethS
 
 ```text
-1. Build Chi_zeta (AMC χ^ζ, any λ)     — reduced tensor 1b
-2. W  ← (1-P_ij) χ_ja Ω_iakl           — flipphase / SQRT2 like GI bra
-3. V  ← (1-P_kl) χ_ak Ω_ijal           — same on ket
-4. Z  += W - V                           — Hermitian as a sum
-5. AddToTBME (upper triangle OK)
+1. Build Chi_OG  (AMC χ^{ΩΓ}) and Chi_zeta
+2. W ← (1-P_ij) χOG_ja Ω_iakl
+3. V ← (1-P_kl) χζ_ak Ω_ijal
+4. Z += −W − V
 ```
-
-λ=0 is the same formulas (\(\hat\lambda^{-1}=1\), equal-\(J\) SixJ); no separate
-cheap scalar path.
 
 ---
 
-## 5. Status
+## 4. Status
 
 | Piece | Status |
 |---|---|
-| χ^ζ m ≡ AMC | **PASS** `run/test_chi_zeta_mscheme.py` (any λ) |
-| m ≡ Path B (\(W-V\)) | **PASS** `run/test_tts_GII_pathB_mscheme.py` (any λ) |
-| DIRECT ≡ Path B (\(W-V\)) | **PASS** `run/test_tts_GII_direct_mscheme.py` (any λ) |
-| ethS ≡ Path B | **PASS** `run/test_tts_GII_eths_pathB.py` (any λ) |
-| \(W+hW^{T}\) ≡ \(W-V\) | **FAIL** (χ non-Hermitian) — do not use |
-
-**Verdict:** \(\Gamma^{\mathrm{II}}\) gold chain fully locked (m ≡ DIRECT ≡ Path B ≡ ethS).
+| χ^{ΩΓ} m ≡ AMC J | `run/test_tts_GII_pathB_mscheme.py` |
+| χ^ζ m ≡ AMC J | `run/test_chi_zeta_mscheme.py` |
+| m ≡ Path B ≡ `Mscheme_fact_GII` | `run/test_tts_GII_pathB_mscheme.py` |
+| ethS ≡ Path B | `run/test_tts_GII_eths_pathB.py` |
+| nested wick 232 ≡ Σ G* | `run/test_nested_tts_vs_mscheme.py` |
 
 ### Re-run AMC
 
 ```bash
 cd learn/amc_tts/factored_GII
+amc -o output/chi_omega_gamma_analyze.tex input/chi_omega_gamma_analyze.txt
+amc -o output/G2_Wbra_OG_noperm.tex input/G2_Wbra_OG_noperm.txt
 amc -o output/chi_zeta.tex input/chi_zeta.txt
-amc -o output/G2_Wbra_noperm.tex input/G2_Wbra_noperm.txt
 amc -o output/G2_Wket_noperm.tex input/G2_Wket_noperm.txt
-amc -o output/G2_Wdirect_noperm.tex input/G2_Wdirect_noperm.txt
-amc -o output/G2_Vdirect_noperm.tex input/G2_Vdirect_noperm.txt
 ```
