@@ -70,6 +70,12 @@ class UnitTest
   double Mscheme_fact_GIVa(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_fact_GIVb_chi(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_fact_GIVc(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  /// 223_132 leftover 2b, tensor ω × scalar H. Physical m of the factorized strings
+  /// (ladder / χ^η 122 + 1bB / cross). T×T→S via cg_OmOm0. Cross restores (1−Pij)(1−Pkl).
+  double Mscheme_fact_223_132_ladder(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_fact_223_132_onebody(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_fact_223_132_cross(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_fact_223_132(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
 
 
   double GetMschemeMatrixElement_1leg( const Operator& Op, int a, int ma );

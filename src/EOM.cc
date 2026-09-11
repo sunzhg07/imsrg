@@ -4,13 +4,17 @@
 #include "Commutator.hh"
 #include "IMSRG3Commutators.hh"
 #include "FactorizedDoubleCommutator.hh"
+#include "FactorizedDoubleCommutator_eths.hh"
 #include "ReadWrite.hh"
 #include "UnitTest.hh"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -178,9 +182,7 @@ void EOM::PrintIncludeConfigs() const {
             << " pphh=" << (include_pphh ? 1 : 0) << std::endl;
 }
 
-void EOM::ConstructConfigs() {
-  // Generate configuration for fock space EOM.
-  // Blocks gated by SetIncludeConfigs (default: all on).
+void EOM::ClearConfigBookkeeping() {
   eom_confs.clear();
   eom_dims = 0;
   qv_dim = ph_dim = ppvv_dim = pphv_dim = pphh_dim = 0;
@@ -189,6 +191,32 @@ void EOM::ConstructConfigs() {
   ppvv_start = ppvv_end = 0;
   pphv_start = pphv_end = 0;
   pphh_start = pphh_end = 0;
+}
+
+bool EOM::TensorOneBodyAllowed(const Orbit &oa, const Orbit &oi) const {
+  if ((oa.l + oi.l + parity) % 2)
+    return false;
+  if (std::abs(oa.tz2 - oi.tz2) != 2 * itz)
+    return false;
+  return AngMom::Triangle(oa.j2 * 0.5, oi.j2 * 0.5, (double)J2);
+}
+
+bool EOM::TensorTwoBodyAllowed(const TwoBodyChannel &bra,
+                               const TwoBodyChannel &ket) const {
+  if (!AngMom::Triangle(bra.J, ket.J, J2))
+    return false;
+  if (std::abs(bra.Tz - ket.Tz) != itz)
+    return false;
+  if ((bra.parity + ket.parity + parity) % 2)
+    return false;
+  return true;
+}
+
+void EOM::ConstructConfigs() {
+  // Generate configuration for fock space EOM (scalar: bra/ket share JπTz).
+  // Blocks gated by SetIncludeConfigs (default: all on).
+  ClearConfigBookkeeping();
+  eom_tensor_configs = false;
 
   std::cout << "Constructing EOM configurations for J2=" << J2
             << " parity=" << parity << " itz=" << itz << std::endl;
@@ -261,7 +289,7 @@ void EOM::ConstructConfigs() {
       for (auto &ibra :
            VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv())) {
         for (auto &iket : tbc.GetKetIndex_vv()) {
-          eom_confs.push_back({ibra, iket, ich, eom_dims});
+          eom_confs.push_back({ibra, iket, ich, ich});
           eom_dims += 1;
           ppvv_dim += 1;
         }
@@ -282,7 +310,7 @@ void EOM::ConstructConfigs() {
            VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv(),
                        tbc.GetKetIndex_vv())) {
         for (auto &iket : tbc.GetKetIndex_vc()) {
-          eom_confs.push_back({ibra, iket, ich, eom_dims});
+          eom_confs.push_back({ibra, iket, ich, ich});
           eom_dims += 1;
           pphv_dim += 1;
         }
@@ -303,7 +331,7 @@ void EOM::ConstructConfigs() {
            VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv(),
                        tbc.GetKetIndex_vv())) {
         for (auto &iket : tbc.GetKetIndex_cc()) {
-          eom_confs.push_back({ibra, iket, ich, eom_dims});
+          eom_confs.push_back({ibra, iket, ich, ich});
           eom_dims += 1;
           pphh_dim += 1;
         }
@@ -317,6 +345,144 @@ void EOM::ConstructConfigs() {
             << " (dim=" << pphh_dim << ")" << std::endl;
 
   std::cout << "Total dimension of EOM: " << eom_confs.size() << std::endl;
+}
+
+void EOM::ConstructConfigs_tensor() {
+  // Tensor EOM: bra/ket JπTz couple to (J2, parity, itz), they do not match.
+  // 2b stored as {ibra, iket, ch_bra, ch_ket} with ch_bra <= ch_ket
+  // (same triangle as TwoBodyME::Allocate). Off-diagonal also keeps the
+  // swapped (ket-type, bra-type) block, which is independent in the stored
+  // half-matrix (hermitian conjugate lives in the unstored ch_ket, ch_bra).
+  ClearConfigBookkeeping();
+  eom_tensor_configs = true;
+
+  std::cout << "Constructing tensor EOM configurations for J=" << J2
+            << " parity=" << parity << " Tz=" << itz << std::endl;
+  PrintIncludeConfigs();
+
+  int norbits = modelspace->norbits;
+
+  auto add_1b = [&](index_t i_orb, index_t j_orb, index_t &dim) {
+    eom_confs.push_back({i_orb, j_orb, 0, eom_dims});
+    eom_dims += 1;
+    dim += 1;
+  };
+
+  // qv: ⟨q|v⟩
+  qv_start = 0;
+  if (include_qv) {
+    for (index_t i_orb = 0; i_orb < norbits; i_orb++) {
+      Orbit &oi = modelspace->GetOrbit(i_orb);
+      if (oi.cvq != 2)
+        continue;
+      for (index_t j_orb = 0; j_orb < norbits; j_orb++) {
+        Orbit &oj = modelspace->GetOrbit(j_orb);
+        if (oj.cvq != 1)
+          continue;
+        if (!TensorOneBodyAllowed(oi, oj))
+          continue;
+        add_1b(i_orb, j_orb, qv_dim);
+      }
+    }
+  }
+  if (qv_dim > 0)
+    qv_end = qv_start + qv_dim - 1;
+  std::cout << "dimension EOM qv: " << qv_start << " " << qv_end
+            << " (dim=" << qv_dim << ")" << std::endl;
+
+  // ph: ⟨p|h⟩  p = v∪q, h = core
+  ph_start = eom_confs.size();
+  if (include_ph) {
+    for (index_t i_orb = 0; i_orb < norbits; i_orb++) {
+      Orbit &oi = modelspace->GetOrbit(i_orb);
+      if (oi.cvq == 0)
+        continue;
+      for (index_t j_orb = 0; j_orb < norbits; j_orb++) {
+        Orbit &oj = modelspace->GetOrbit(j_orb);
+        if (oj.cvq != 0)
+          continue;
+        if (!TensorOneBodyAllowed(oi, oj))
+          continue;
+        add_1b(i_orb, j_orb, ph_dim);
+      }
+    }
+  }
+  if (ph_dim > 0)
+    ph_end = ph_start + ph_dim - 1;
+  std::cout << "dimension EOM ph: " << ph_start << " " << ph_end
+            << " (dim=" << ph_dim << ")" << std::endl;
+
+  const size_t nch = modelspace->GetNumberTwoBodyChannels();
+
+  auto add_2b_pair = [&](index_t ibra, index_t iket, size_t ch_bra,
+                          size_t ch_ket, index_t &dim) {
+    eom_confs.push_back(
+        {ibra, iket, (index_t)ch_bra, (index_t)ch_ket});
+    eom_dims += 1;
+    dim += 1;
+  };
+
+  auto add_2b_block = [&](auto get_bras, auto get_kets, index_t &dim) {
+    for (size_t ch_bra = 0; ch_bra < nch; ++ch_bra) {
+      TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(ch_bra);
+      for (size_t ch_ket = ch_bra; ch_ket < nch; ++ch_ket) {
+        TwoBodyChannel &tbc_ket = modelspace->GetTwoBodyChannel(ch_ket);
+        if (!TensorTwoBodyAllowed(tbc_bra, tbc_ket))
+          continue;
+        for (auto &ibra : get_bras(tbc_bra)) {
+          for (auto &iket : get_kets(tbc_ket))
+            add_2b_pair(ibra, iket, ch_bra, ch_ket, dim);
+        }
+        if (ch_bra == ch_ket)
+          continue;
+        for (auto &ibra : get_kets(tbc_bra)) {
+          for (auto &iket : get_bras(tbc_ket))
+            add_2b_pair(ibra, iket, ch_bra, ch_ket, dim);
+        }
+      }
+    }
+  };
+
+  auto bras_qq_qv = [](TwoBodyChannel &tbc) {
+    return VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv());
+  };
+  auto bras_pp = [](TwoBodyChannel &tbc) {
+    return VectorUnion(tbc.GetKetIndex_qq(), tbc.GetKetIndex_qv(),
+                       tbc.GetKetIndex_vv());
+  };
+  auto kets_vv = [](TwoBodyChannel &tbc) { return tbc.GetKetIndex_vv(); };
+  auto kets_vc = [](TwoBodyChannel &tbc) { return tbc.GetKetIndex_vc(); };
+  auto kets_cc = [](TwoBodyChannel &tbc) { return tbc.GetKetIndex_cc(); };
+
+  // ppvv: ⟨qq,qv|vv⟩
+  ppvv_start = eom_confs.size();
+  if (include_ppvv)
+    add_2b_block(bras_qq_qv, kets_vv, ppvv_dim);
+  if (ppvv_dim > 0)
+    ppvv_end = ppvv_start + ppvv_dim - 1;
+  std::cout << "dimension EOM ppvv: " << ppvv_start << " " << ppvv_end
+            << " (dim=" << ppvv_dim << ")" << std::endl;
+
+  // pphv: ⟨qq,qv,vv|hv⟩
+  pphv_start = eom_confs.size();
+  if (include_pphv)
+    add_2b_block(bras_pp, kets_vc, pphv_dim);
+  if (pphv_dim > 0)
+    pphv_end = pphv_start + pphv_dim - 1;
+  std::cout << "dimension EOM pphv: " << pphv_start << " " << pphv_end
+            << " (dim=" << pphv_dim << ")" << std::endl;
+
+  // pphh: ⟨pp|hh⟩
+  pphh_start = eom_confs.size();
+  if (include_pphh)
+    add_2b_block(bras_pp, kets_cc, pphh_dim);
+  if (pphh_dim > 0)
+    pphh_end = pphh_start + pphh_dim - 1;
+  std::cout << "dimension EOM pphh: " << pphh_start << " " << pphh_end
+            << " (dim=" << pphh_dim << ")" << std::endl;
+
+  std::cout << "Total dimension of tensor EOM: " << eom_confs.size()
+            << std::endl;
 }
 
 arma::vec EOM::GetEnergies() { return Energies; }
@@ -339,6 +505,9 @@ void EOM::ShowModel() {
 }
 
 void EOM::ConstructNormMatrix() {
+  if (eom_tensor_configs)
+    throw std::runtime_error(
+        "ConstructNormMatrix: scalar-only; use ConstructNormMatrix_tensor");
 
   Nkernel.set_size(eom_dims, eom_dims);
 
@@ -793,6 +962,670 @@ void EOM::ConstructNormMatrix() {
 }
 
 
+namespace {
+
+std::array<int, 2> PqCC_eom(TwoBodyChannel_CC &tbc, int idx, int nK) {
+  Ket &ket = tbc.GetKet(idx % nK);
+  if (idx < nK)
+    return {(int)ket.p, (int)ket.q};
+  if (ket.p == ket.q)
+    return {-1, -1};
+  return {(int)ket.q, (int)ket.p};
+}
+
+double TensorPandyaBar_eom(const Operator &Op, int i, int j, int k, int l,
+                             int Jbra, int Jket) {
+  const int lambda = Op.GetJRank();
+  if (not AngMom::Triangle((double)Jbra, (double)Jket, (double)lambda))
+    return 0.0;
+  Orbit &oi = Op.modelspace->GetOrbit(i);
+  Orbit &oj = Op.modelspace->GetOrbit(j);
+  Orbit &ok = Op.modelspace->GetOrbit(k);
+  Orbit &ol = Op.modelspace->GetOrbit(l);
+  const double ji = oi.j2 * 0.5, jj = oj.j2 * 0.5;
+  const double jk = ok.j2 * 0.5, jl = ol.j2 * 0.5;
+  double sm = 0.0;
+  const int J2min = std::abs(oi.j2 - oj.j2) / 2;
+  const int J2max = (oi.j2 + oj.j2) / 2;
+  const int J3min = std::abs(ok.j2 - ol.j2) / 2;
+  const int J3max = (ok.j2 + ol.j2) / 2;
+  for (int J2 = J2min; J2 <= J2max; ++J2) {
+    for (int J3 = J3min; J3 <= J3max; ++J3) {
+      if (not AngMom::Triangle((double)J2, (double)J3, (double)lambda))
+        continue;
+      const double n9 = AngMom::NineJ((double)lambda, (double)Jbra, (double)Jket,
+                                       (double)J3, jl, jk, (double)J2, ji, jj);
+      if (std::abs(n9) < 1e-16)
+        continue;
+      const double hats = std::sqrt((2.0 * J2 + 1.0) * (2.0 * J3 + 1.0));
+      sm += AngMom::phase(J2) * hats * n9 *
+            Op.TwoBody.GetTBME_J(J2, J3, i, j, k, l);
+    }
+  }
+  const double pref = -AngMom::phase(Jbra + (oi.j2 + ok.j2) / 2 + lambda) *
+                      std::sqrt((2.0 * Jbra + 1.0) * (2.0 * Jket + 1.0));
+  return pref * sm;
+}
+
+struct PandyaTrip {
+  int chb, ibra, chk, iket;
+  double val;
+};
+
+std::vector<PandyaTrip> FillPandyaTrips(const Operator &Op,
+                                         const std::set<int> &S) {
+  std::vector<PandyaTrip> out;
+  const int lambda = Op.GetJRank();
+  const int n_cc = Op.modelspace->GetNumberTwoBodyChannels_CC();
+  auto inS = [&](int p, int q) { return S.count(p) && S.count(q); };
+  for (int ch_b = 0; ch_b < n_cc; ++ch_b) {
+    TwoBodyChannel_CC &tb = Op.modelspace->GetTwoBodyChannel_CC(ch_b);
+    const int nb = tb.GetNumberKets();
+    if (nb < 1)
+      continue;
+    const int Jb = tb.J;
+    for (int ch_k = 0; ch_k < n_cc; ++ch_k) {
+      TwoBodyChannel_CC &tk = Op.modelspace->GetTwoBodyChannel_CC(ch_k);
+      const int nk = tk.GetNumberKets();
+      if (nk < 1)
+        continue;
+      if (not AngMom::Triangle((double)Jb, (double)tk.J, (double)lambda))
+        continue;
+      if ((tb.parity + tk.parity + Op.GetParity()) % 2 != 0 || tb.Tz != tk.Tz)
+        continue;
+      for (int ibra = 0; ibra < 2 * nb; ++ibra) {
+        auto il = PqCC_eom(tb, ibra, nb);
+        if (il[0] < 0 || !inS(il[0], il[1]))
+          continue;
+        for (int iket = 0; iket < 2 * nk; ++iket) {
+          auto ba = PqCC_eom(tk, iket, nk);
+          if (ba[0] < 0 || !inS(ba[0], ba[1]))
+            continue;
+          double v = TensorPandyaBar_eom(Op, il[0], ba[1], ba[0], il[1], Jb,
+                                           tk.J);
+          if (std::abs(v) < 1e-16)
+            continue;
+          out.push_back({ch_b, ibra, ch_k, iket, v});
+        }
+      }
+    }
+  }
+  return out;
+}
+
+double C4FromPandyaBars(EOM &eom, const std::vector<PandyaTrip> &barX,
+                         const std::vector<PandyaTrip> &barY, int lambda) {
+  if (barX.empty() || barY.empty())
+    return 0.0;
+  ModelSpace *ms = eom.modelspace;
+  const int n_cc = ms->GetNumberTwoBodyChannels_CC();
+  const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+
+  std::map<std::array<int, 2>, arma::mat> Xmats, Ymats;
+  auto ensure = [&](std::map<std::array<int, 2>, arma::mat> &M, int chb,
+                      int chk) -> arma::mat & {
+    std::array<int, 2> key{chb, chk};
+    auto it = M.find(key);
+    if (it != M.end())
+      return it->second;
+    TwoBodyChannel_CC &tb = ms->GetTwoBodyChannel_CC(chb);
+    TwoBodyChannel_CC &tk = ms->GetTwoBodyChannel_CC(chk);
+    const int nb = std::max(1, (int)tb.GetNumberKets());
+    const int nk = std::max(1, (int)tk.GetNumberKets());
+    arma::mat z(2 * nb, 2 * nk, arma::fill::zeros);
+    return M.emplace(key, std::move(z)).first->second;
+  };
+  for (auto &t : barX)
+    ensure(Xmats, t.chb, t.chk)(t.ibra, t.iket) = t.val;
+  for (auto &t : barY)
+    ensure(Ymats, t.chb, t.chk)(t.ibra, t.iket) = t.val;
+
+  std::vector<arma::mat> barZ(n_cc);
+  for (int ch_b = 0; ch_b < n_cc; ++ch_b) {
+    int nb = (int)ms->GetTwoBodyChannel_CC(ch_b).GetNumberKets();
+    barZ[ch_b] = arma::mat(2 * std::max(1, nb), 2 * std::max(1, nb),
+                           arma::fill::zeros);
+  }
+
+  auto scale_occ_rows = [&](arma::mat &R, int ch_k) {
+    TwoBodyChannel_CC &tk = ms->GetTwoBodyChannel_CC(ch_k);
+    const int nk = tk.GetNumberKets();
+    for (int ibra = 0; ibra < 2 * nk; ++ibra) {
+      auto ba = PqCC_eom(tk, ibra, nk);
+      if (ba[0] < 0)
+        continue;
+      const double nanb =
+          ms->GetOrbit(ba[1]).occ - ms->GetOrbit(ba[0]).occ;
+      R.row(ibra) *= nanb;
+    }
+  };
+
+  for (int ch_b = 0; ch_b < n_cc; ++ch_b) {
+    TwoBodyChannel_CC &tb = ms->GetTwoBodyChannel_CC(ch_b);
+    const int nb = tb.GetNumberKets();
+    if (nb < 1)
+      continue;
+    const int Jb = tb.J;
+    const double wL = AngMom::phase(Jb) / (2.0 * Jb + 1.0);
+    for (int ch_k = 0; ch_k < n_cc; ++ch_k) {
+      TwoBodyChannel_CC &tk = ms->GetTwoBodyChannel_CC(ch_k);
+      const int nk = tk.GetNumberKets();
+      if (nk < 1)
+        continue;
+      const int Jk = tk.J;
+      const double pref =
+          wL * AngMom::phase(Jk + lambda) * hat_lambda_inv;
+      auto itX = Xmats.find({ch_b, ch_k});
+      auto itYr = Ymats.find({ch_k, ch_b});
+      if (itX != Xmats.end() && itYr != Ymats.end()) {
+        arma::mat RY = itYr->second;
+        scale_occ_rows(RY, ch_k);
+        barZ[ch_b] += pref * (itX->second * RY);
+      }
+      auto itY = Ymats.find({ch_b, ch_k});
+      auto itXr = Xmats.find({ch_k, ch_b});
+      if (itY != Ymats.end() && itXr != Xmats.end()) {
+        arma::mat RX = itXr->second;
+        scale_occ_rows(RX, ch_k);
+        barZ[ch_b] -= pref * (itY->second * RX);
+      }
+    }
+  }
+
+  auto zbar_at = [&](int p, int q, int r, int s, int Jp) -> double {
+    Orbit &op = ms->GetOrbit(p);
+    Orbit &oq = ms->GetOrbit(q);
+    Orbit &oR = ms->GetOrbit(r);
+    Orbit &os = ms->GetOrbit(s);
+    const int parity_cc = (op.l + os.l) % 2;
+    const int Tz_cc = std::abs(op.tz2 - os.tz2) / 2;
+    const size_t ch_cc =
+        ms->GetTwoBodyChannelIndex(Jp, parity_cc, Tz_cc);
+    if ((int)ch_cc >= n_cc)
+      return 0.0;
+    TwoBodyChannel_CC &tbc_cc = ms->GetTwoBodyChannel_CC(ch_cc);
+    const int nkets_cc = tbc_cc.GetNumberKets();
+    if (nkets_cc < 1 || barZ[ch_cc].n_rows < 1)
+      return 0.0;
+    int indx_il = tbc_cc.GetLocalIndex(std::min(p, s), std::max(p, s));
+    int indx_kj = tbc_cc.GetLocalIndex(std::min(r, q), std::max(r, q));
+    if (indx_il < 0 || indx_kj < 0)
+      return 0.0;
+    indx_il += (p > s ? nkets_cc : 0);
+    indx_kj += (r > q ? nkets_cc : 0);
+    if (indx_il >= (int)barZ[ch_cc].n_rows ||
+        indx_kj >= (int)barZ[ch_cc].n_cols)
+      return 0.0;
+    return barZ[ch_cc](indx_il, indx_kj);
+  };
+
+  double ovlp2 = 0.0;
+  const size_t nch = ms->GetNumberTwoBodyChannels();
+  for (size_t ch = 0; ch < nch; ++ch) {
+    TwoBodyChannel &tbc = ms->GetTwoBodyChannel(ch);
+    const int J = tbc.J;
+    const auto &vv = tbc.GetKetIndex_vv();
+    if (vv.empty())
+      continue;
+    const double hatJ = std::sqrt(2.0 * J + 1.0);
+    for (size_t ia = 0; ia < vv.size(); ++ia) {
+      const int ibra = (int)vv[ia];
+      Ket &bra = tbc.GetKet(ibra);
+      const size_t i = bra.p, j = bra.q;
+      Orbit &oi = ms->GetOrbit(i);
+      Orbit &oj = ms->GetOrbit(j);
+      for (size_t ik = ia; ik < vv.size(); ++ik) {
+        const int iket = (int)vv[ik];
+        Ket &ket = tbc.GetKet(iket);
+        const size_t k = ket.p, l = ket.q;
+        Orbit &ok = ms->GetOrbit(k);
+        Orbit &ol = ms->GetOrbit(l);
+        double zijkl = 0.0;
+        int Jpmin =
+            std::min(std::max(std::abs(oi.j2 - ol.j2), std::abs(oj.j2 - ok.j2)),
+                     std::max(std::abs(oj.j2 - ol.j2),
+                              std::abs(oi.j2 - ok.j2))) /
+            2;
+        int Jpmax =
+            std::max(std::min(oi.j2 + ol.j2, oj.j2 + ok.j2),
+                     std::min(oj.j2 + ol.j2, oi.j2 + ok.j2)) /
+            2;
+        for (int Jp = Jpmin; Jp <= Jpmax; ++Jp) {
+          const double sixj_ijkl = AngMom::SixJ(
+              oi.j2 * 0.5, oj.j2 * 0.5, J, ok.j2 * 0.5, ol.j2 * 0.5, Jp);
+          const double sixj_jikl = AngMom::SixJ(
+              oj.j2 * 0.5, oi.j2 * 0.5, J, ok.j2 * 0.5, ol.j2 * 0.5, Jp);
+          const int phase_ij = AngMom::phase((oi.j2 + oj.j2 - 2 * J) / 2);
+          zijkl -= (2 * Jp + 1) * sixj_ijkl *
+                   zbar_at((int)i, (int)j, (int)k, (int)l, Jp);
+          zijkl += (2 * Jp + 1) * sixj_jikl *
+                   zbar_at((int)j, (int)i, (int)k, (int)l, Jp) * phase_ij;
+        }
+        if (i == j)
+          zijkl /= PhysConst::SQRT2;
+        if (k == l)
+          zijkl /= PhysConst::SQRT2;
+        double rho = eom.RdmTB_J((double)J, i, j, k, l);
+        ovlp2 += zijkl * rho * hatJ;
+        if (ibra != iket) {
+          double rho2 = eom.RdmTB_J((double)J, k, l, i, j);
+          ovlp2 += zijkl * rho2 * hatJ;
+        }
+      }
+    }
+  }
+  return ovlp2 / 2.0;
+}
+
+} // namespace
+
+void EOM::ConstructNormMatrix_tensor() {
+  // Tensor N-kernel: same Wick strings as ConstructNormMatrix, AMC with
+  // X,Y rank λ (Y index-reversed so λ×λ→0). Formulas:
+  //   learn/amc_tts/eom_norm/output/*_tensor.tex
+  // ρ is always scalar 0+.
+  // Empirical hats vs ½[Q⁺,Q⁻] (He4-core, TTS leftover × GetVSEOM_Overlap):
+  //   110/220 (A1, A2): λ̂^{-2}  (AMC had λ̂^{-1}; 0-body m-trace is λ̂^{-2})
+  //   leftover 2b×ρ (C1, C2, C3, C4, C5): λ̂^{-2}
+  //   leftover 1b×ρ (B4, B1, B2, B5, B3): λ̂^{-1} / ĵ of the contracted orbit
+  // C4 is ½⟨comm222_phtts(χ, Q)⟩_ρ (Pandya leftover), not the AMC Wick XρY.
+  // Y_ia / Y_ijab folded into stored Y_ai / Y_abij via IMSRG tensor flip:
+  //   1b: O_ji = (-1)^{j_i-j_j} O_ij   (Hermitian)
+  //   2b: ⟨J1||O||J0⟩ = (-1)^{J1-J0} ⟨J0||O||J1⟩
+  // ρ3 not wired yet.
+  if (!eom_tensor_configs)
+    throw std::runtime_error(
+        "ConstructNormMatrix_tensor: call ConstructConfigs_tensor first");
+
+  Nkernel.set_size(eom_dims, eom_dims);
+  Nkernel.zeros();
+
+  const int lam = J2;
+  const double lamhat = std::sqrt(2.0 * lam + 1.0);
+  const double lamhatinv = 1.0 / lamhat;
+  const double lamhatinv2 = lamhatinv * lamhatinv;
+  auto hat = [](int J) { return std::sqrt(2.0 * J + 1.0); };
+  auto jhat = [](const Orbit &o) { return std::sqrt(o.j2 + 1.0); };
+  auto ph = [](int n) { return (double)AngMom::phase(n); };
+
+  // Fold Y_ia into stored Y_ai (SetOneBody).
+  auto we1 = [&](const Orbit &oa, const Orbit &oi) {
+    return ph((oa.j2 - oi.j2) / 2);
+  };
+  // Fold Y_ijab^{J1 J0} into stored Y_abij^{J0 J1} (GetTwoBody).
+  auto we2 = [&](int J0, int J1) { return ph(J1 - J0); };
+
+  // Tensor pphv stores both ⟨pp||χ||hv⟩ and the independent ⟨hv||χ||pp⟩.
+  // C4/B1 Wick strings are X_abcd with (ab)=pp, (cd)=hv. Swapped-type
+  // configs must not be labeled as pp-hv (scalar hermiticity did that).
+  auto is_pp_ket = [&](const Ket &k) {
+    return modelspace->GetOrbit(k.p).cvq != 0 &&
+           modelspace->GetOrbit(k.q).cvq != 0;
+  };
+  auto is_hv_ket = [&](const Ket &k) {
+    int ca = modelspace->GetOrbit(k.p).cvq;
+    int cb = modelspace->GetOrbit(k.q).cvq;
+    return (ca + cb == 1);
+  };
+  auto pphv_is_pp_hv = [&](index_t idx) {
+    auto &cf = eom_confs.at(idx);
+    Ket &kbra = modelspace->GetTwoBodyChannel(cf[2]).GetKet(cf[0]);
+    Ket &kket = modelspace->GetTwoBodyChannel(cf[3]).GetKet(cf[1]);
+    return is_pp_ket(kbra) && is_hv_ket(kket);
+  };
+
+  // B4 qv-qv leftover 1b×ρ: λ̂^{-1} / ĵ_v
+  if (qv_dim != 0) {
+    for (index_t i = qv_start; i <= qv_end; i++) {
+      auto &cf_bra = eom_confs.at(i);
+      Orbit &oa = modelspace->GetOrbit(cf_bra[0]);
+      Orbit &oi = modelspace->GetOrbit(cf_bra[1]);
+      for (index_t j = qv_start; j <= qv_end; j++) {
+        auto &cf_ket = eom_confs.at(j);
+        if (cf_bra[0] != cf_ket[0])
+          continue;
+        Orbit &oj = modelspace->GetOrbit(cf_ket[1]);
+        if (oj.j2 != oi.j2)
+          continue;
+        Nkernel(i, j) +=
+            -ph((oa.j2 + oi.j2) / 2 + lam) * lamhatinv / jhat(oi) *
+            we1(oa, oj) * RdmOB(cf_bra[1], cf_ket[1]);
+      }
+    }
+  }
+
+  // A1 (110): λ̂^{-2}. B5 leftover 1b×ρ: λ̂^{-1} / ĵ_a
+  if (ph_dim != 0) {
+    for (index_t i = ph_start; i <= ph_end; i++) {
+      auto &cf_bra = eom_confs.at(i);
+      Orbit &oa = modelspace->GetOrbit(cf_bra[0]);
+      Orbit &oi = modelspace->GetOrbit(cf_bra[1]);
+      const double phase = ph((oa.j2 + oi.j2) / 2 + lam);
+      for (index_t j = ph_start; j <= ph_end; j++) {
+        auto &cf_ket = eom_confs.at(j);
+        if (cf_bra[1] != cf_ket[1])
+          continue;
+        Orbit &ob = modelspace->GetOrbit(cf_ket[0]);
+        if (i == j)
+          Nkernel(i, j) += -phase * lamhatinv2 * we1(oa, oi);
+        if (ob.j2 != oa.j2)
+          continue;
+        Nkernel(i, j) +=
+            phase * lamhatinv / jhat(oa) * we1(ob, oi) *
+            RdmOB(cf_ket[0], cf_bra[0]);
+      }
+    }
+  }
+
+  // C1 ppvv leftover 2b×ρ: λ̂^{-2}
+  if (ppvv_dim != 0) {
+    for (index_t i = ppvv_start; i <= ppvv_end; i++) {
+      auto &cf_bra = eom_confs.at(i);
+      TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
+      TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
+      Ket &kvvX = tkX.GetKet(cf_bra[1]);
+      const int J0 = tbX.J;
+      const int J1 = tkX.J;
+      for (index_t j = ppvv_start; j <= ppvv_end; j++) {
+        auto &cf_ket = eom_confs.at(j);
+        if (cf_bra[0] != cf_ket[0] || cf_bra[2] != cf_ket[2])
+          continue;
+        TwoBodyChannel &tkY = modelspace->GetTwoBodyChannel(cf_ket[3]);
+        if (tkY.J != J1)
+          continue;
+        Ket &kvvY = tkY.GetKet(cf_ket[1]);
+        double val = RdmTB_J(J1, kvvX.p, kvvX.q, kvvY.p, kvvY.q);
+        Nkernel(i, j) += ph(J0 + J1 + lam) * lamhatinv2 * we2(J0, J1) * val;
+      }
+    }
+  }
+
+  // B1 pphv leftover 1b×ρ: λ̂^{-1} / ĵ_c
+  if (pphv_dim != 0) {
+    for (index_t i = pphv_start; i <= pphv_end; i++) {
+      auto &cf_bra = eom_confs.at(i);
+      TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
+      Ket &kvcX = tkX.GetKet(cf_bra[1]);
+      size_t e1 = kvcX.p;
+      size_t c1 = kvcX.q;
+      Orbit &oe1 = modelspace->GetOrbit(e1);
+      Orbit &oc1 = modelspace->GetOrbit(c1);
+      if (oc1.cvq != 1)
+        continue;
+      if (!pphv_is_pp_hv(i))
+        continue;
+      const int J1 = tkX.J;
+      for (index_t j = pphv_start; j <= pphv_end; j++) {
+        auto &cf_ket = eom_confs.at(j);
+        if (cf_bra[0] != cf_ket[0] || cf_bra[2] != cf_ket[2])
+          continue;
+        TwoBodyChannel &tkY = modelspace->GetTwoBodyChannel(cf_ket[3]);
+        if (tkY.J != J1)
+          continue;
+        Ket &kvcY = tkY.GetKet(cf_ket[1]);
+        if (kvcY.p != e1)
+          continue;
+        size_t c2 = kvcY.q;
+        Orbit &oc2 = modelspace->GetOrbit(c2);
+        if (oc2.cvq != 1 || oc2.j2 != oc1.j2 || oc1.l != oc2.l ||
+            oc1.tz2 != oc2.tz2)
+          continue;
+        Nkernel(i, j) +=
+            ph((oe1.j2 + oc1.j2) / 2 + lam) * lamhatinv / jhat(oc1) *
+            RdmOB(c1, c2);
+      }
+    }
+  }
+
+  // C4 pphv-pphv leftover 2b×ρ. Gold is ½⟨comm222_phtts(χ_i, Q_j)⟩_ρ,
+  // not the unrestricted Wick X ρ Y (that 9j misses XY−YX on the ph line).
+  if (pphv_dim != 0) {
+    std::vector<std::vector<PandyaTrip>> bar_chi(eom_dims), bar_Q(eom_dims);
+    std::vector<char> is_typeA(eom_dims, 0);
+    Operator chi_u(*modelspace, lam, itz, parity, 2);
+    chi_u.SetHermitian();
+    arma::vec ej(eom_dims, arma::fill::zeros);
+    for (index_t i = pphv_start; i <= pphv_end; i++) {
+      if (!pphv_is_pp_hv(i))
+        continue;
+      is_typeA[i] = 1;
+      auto &cf = eom_confs.at(i);
+      Ket &kbra = modelspace->GetTwoBodyChannel(cf[2]).GetKet(cf[0]);
+      Ket &kket = modelspace->GetTwoBodyChannel(cf[3]).GetKet(cf[1]);
+      std::set<int> S{(int)kbra.p, (int)kbra.q, (int)kket.p, (int)kket.q};
+      ej.zeros();
+      ej(i) = 1.0;
+      UnflattenOperator(chi_u, ej);
+      bar_chi[i] = FillPandyaTrips(chi_u, S);
+      Operator Q = GetVSEOM_ladder_multiref(chi_u, -1);
+      bar_Q[i] = FillPandyaTrips(Q, S);
+    }
+    for (index_t i = pphv_start; i <= pphv_end; i++) {
+      if (!is_typeA[i])
+        continue;
+      for (index_t j = pphv_start; j <= pphv_end; j++) {
+        if (!is_typeA[j])
+          continue;
+        Nkernel(i, j) += C4FromPandyaBars(*this, bar_chi[i], bar_Q[j], lam);
+      }
+    }
+  }
+
+  // A2 pphh identity (220): λ̂^{-2}
+  if (pphh_dim != 0) {
+    for (index_t i = pphh_start; i <= pphh_end; i++) {
+      auto &cf = eom_confs.at(i);
+      TwoBodyChannel &tb = modelspace->GetTwoBodyChannel(cf[2]);
+      TwoBodyChannel &tk = modelspace->GetTwoBodyChannel(cf[3]);
+      Nkernel(i, i) += ph(tb.J + tk.J + lam) * lamhatinv2 * we2(tb.J, tk.J);
+    }
+  }
+
+  // C3 pphh leftover 2b×ρ: λ̂^{-2}
+  if (pphh_dim != 0) {
+    for (index_t i = pphh_start; i <= pphh_end; i++) {
+      auto &cf_bra = eom_confs.at(i);
+      TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
+      TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
+      Ket &kppX = tbX.GetKet(cf_bra[0]);
+      Orbit &oa = modelspace->GetOrbit(kppX.p);
+      Orbit &ob = modelspace->GetOrbit(kppX.q);
+      if (oa.cvq != 1 || ob.cvq != 1)
+        continue;
+      const int J0 = tbX.J;
+      const int J1 = tkX.J;
+      for (index_t j = pphh_start; j <= pphh_end; j++) {
+        auto &cf_ket = eom_confs.at(j);
+        if (cf_ket[1] != cf_bra[1] || cf_ket[3] != cf_bra[3])
+          continue;
+        TwoBodyChannel &tbY = modelspace->GetTwoBodyChannel(cf_ket[2]);
+        if (tbY.J != J0)
+          continue;
+        Ket &kppY = tbY.GetKet(cf_ket[0]);
+        Orbit &oc = modelspace->GetOrbit(kppY.p);
+        Orbit &od = modelspace->GetOrbit(kppY.q);
+        if (oc.cvq != 1 || od.cvq != 1)
+          continue;
+        double val = RdmTB_J(J0, kppX.p, kppX.q, kppY.p, kppY.q);
+        Nkernel(i, j) += ph(J0 + J1 + lam) * lamhatinv2 * we2(J0, J1) * val;
+      }
+    }
+  }
+
+  // B2 pphh leftover 1b×ρ: λ̂^{-1} / ĵ of the contracted particle
+  if (pphh_dim != 0) {
+    for (index_t i = pphh_start; i <= pphh_end; i++) {
+      auto &cf_bra = eom_confs.at(i);
+      TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
+      TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
+      Ket &kppX = tbX.GetKet(cf_bra[0]);
+      size_t a = kppX.p, b = kppX.q;
+      Orbit &oa = modelspace->GetOrbit(a);
+      Orbit &ob = modelspace->GetOrbit(b);
+      if (oa.cvq != 1 && ob.cvq != 1)
+        continue;
+      double norm_fact1 = (a == b) ? std::sqrt(2.) : 1.;
+      const int J0 = tbX.J;
+      const int J1 = tkX.J;
+      const double w0 = -ph(J0 + J1 + lam) * lamhatinv * we2(J0, J1);
+      for (index_t j = pphh_start; j <= pphh_end; j++) {
+        auto &cf_ket = eom_confs.at(j);
+        if (cf_ket[1] != cf_bra[1] || cf_ket[3] != cf_bra[3])
+          continue;
+        TwoBodyChannel &tbY = modelspace->GetTwoBodyChannel(cf_ket[2]);
+        if (tbY.J != J0)
+          continue;
+        Ket &kppY = tbY.GetKet(cf_ket[0]);
+        size_t c = kppY.p, d = kppY.q;
+        double norm_fact2 = (c == d) ? std::sqrt(2.) : 1.;
+        Orbit &oc = modelspace->GetOrbit(c);
+        Orbit &od = modelspace->GetOrbit(d);
+        double nf = norm_fact1 * norm_fact2;
+        if (b == d && oc.j2 == oa.j2)
+          Nkernel(i, j) += w0 * nf * RdmOB(c, a) / jhat(oa);
+        if (b != a && ob.cvq == 1 && a == d && oc.j2 == ob.j2)
+          Nkernel(i, j) +=
+              w0 * nf * RdmOB(c, b) * kppX.Phase(J0) / jhat(ob);
+        if (c != d && od.cvq == 1 && b == c && od.j2 == oa.j2)
+          Nkernel(i, j) +=
+              w0 * nf * RdmOB(d, a) * kppY.Phase(tbY.J) / jhat(oa);
+        if (b != a && c != d && od.cvq == 1 && ob.cvq == 1 && a == c &&
+            od.j2 == ob.j2)
+          Nkernel(i, j) += w0 * nf * RdmOB(d, b) * kppX.Phase(J0) *
+                          kppY.Phase(tbY.J) / jhat(ob);
+      }
+    }
+  }
+
+  // B3 pphv-ph leftover 1b×ρ: λ̂^{-1} / ĵ of the contracted valence
+  if (pphv_dim != 0 && ph_dim != 0) {
+    for (index_t i = pphv_start; i <= pphv_end; i++) {
+      auto &cf_bra = eom_confs.at(i);
+      TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
+      TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
+      Ket &kpp = tbX.GetKet(cf_bra[0]);
+      Ket &kvc = tkX.GetKet(cf_bra[1]);
+      size_t a = kpp.p, b = kpp.q, c = kvc.p, d = kvc.q;
+      Orbit &oa = modelspace->GetOrbit(a);
+      Orbit &ob = modelspace->GetOrbit(b);
+      Orbit &oc = modelspace->GetOrbit(c);
+      Orbit &od = modelspace->GetOrbit(d);
+      if (oa.cvq != 1 && ob.cvq != 1)
+        continue;
+      if (od.cvq != 1)
+        continue;
+      if (!pphv_is_pp_hv(i))
+        continue;
+      const int J0 = tbX.J;
+      const int J1 = tkX.J;
+      double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5, jc = oc.j2 * 0.5;
+      double six = AngMom::SixJ((double)lam, (double)J1, (double)J0, ja, jb, jc);
+      // -we2: leftover 1b gold flips when J0=J1 (Hermitian X in one channel).
+      double w = -ph(J0 + J1 + (ob.j2 + oc.j2) / 2) * hat(J0) * hat(J1) *
+                 lamhatinv / jhat(oa) * six * (-we2(J0, J1));
+      double norm_fact = (a == b) ? std::sqrt(2.) : 1.;
+      for (index_t j = ph_start; j <= ph_end; j++) {
+        auto &cf_ket = eom_confs.at(j);
+        size_t c1 = cf_ket[0];
+        size_t b1 = cf_ket[1];
+        if (b1 != c)
+          continue;
+        if (c1 == b && od.j2 == oa.j2) {
+          double val = w * norm_fact * we1(ob, oc) * kpp.Phase(J0) * RdmOB(a, d);
+          Nkernel(i, j) += val;
+          Nkernel(j, i) += val;
+        }
+        if (c1 == a && a != b && od.j2 == ob.j2) {
+          double six2 = AngMom::SixJ((double)lam, (double)J1, (double)J0,
+                                      ob.j2 * 0.5, oa.j2 * 0.5, jc);
+          double w2 = -ph(J0 + J1 + (oa.j2 + oc.j2) / 2) * hat(J0) * hat(J1) *
+                      lamhatinv / jhat(ob) * six2 * (-we2(J0, J1));
+          double val = w2 * norm_fact * we1(oa, oc) * RdmOB(b, d);
+          Nkernel(i, j) += val;
+          Nkernel(j, i) += val;
+        }
+      }
+    }
+  }
+
+  // C5 pphv-ph leftover 2b×ρ: λ̂^{-2}
+  if (pphv_dim != 0 && ph_dim != 0) {
+    for (index_t i = pphv_start; i <= pphv_end; i++) {
+      auto &cf_bra = eom_confs.at(i);
+      TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
+      TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
+      Ket &kpp = tbX.GetKet(cf_bra[0]);
+      Ket &kvc = tkX.GetKet(cf_bra[1]);
+      size_t a = kpp.p, b = kpp.q, c = kvc.p, d = kvc.q;
+      Orbit &oa = modelspace->GetOrbit(a);
+      Orbit &ob = modelspace->GetOrbit(b);
+      Orbit &oc = modelspace->GetOrbit(c);
+      Orbit &od = modelspace->GetOrbit(d);
+      if (oa.cvq != 1 || ob.cvq != 1 || od.cvq != 1)
+        continue;
+      if (!pphv_is_pp_hv(i))
+        continue;
+      const int J0 = tbX.J;
+      const int J1 = tkX.J;
+      for (index_t j = ph_start; j <= ph_end; j++) {
+        auto &cf_ket = eom_confs.at(j);
+        size_t e = cf_ket[0];
+        size_t b1 = cf_ket[1];
+        if (b1 != c)
+          continue;
+        Orbit &oe = modelspace->GetOrbit(e);
+        double six = AngMom::SixJ((double)J1, (double)J0, (double)lam,
+                                   oe.j2 * 0.5, oc.j2 * 0.5, od.j2 * 0.5);
+        double nf = (e == d) ? std::sqrt(2.) : 1.;
+        double val = -ph(J1 + (oc.j2 + od.j2) / 2) * hat(J0) * hat(J1) *
+                     lamhatinv2 * six * we1(oe, oc) * (-we2(J0, J1)) *
+                     RdmTB_J(J0, a, b, e, d) * nf;
+        Nkernel(i, j) += val;
+        Nkernel(j, i) += val;
+      }
+    }
+  }
+
+  // C2 ppvv-qv leftover 2b×ρ: λ̂^{-2}
+  if (ppvv_dim != 0 && qv_dim != 0) {
+    for (index_t i = ppvv_start; i <= ppvv_end; i++) {
+      auto &cf_bra = eom_confs.at(i);
+      TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
+      TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
+      Ket &kpp = tbX.GetKet(cf_bra[0]);
+      Ket &kvv = tkX.GetKet(cf_bra[1]);
+      size_t a = kpp.p, b = kpp.q, cv = kvv.p, dv = kvv.q;
+      Orbit &oa = modelspace->GetOrbit(a);
+      Orbit &ob = modelspace->GetOrbit(b);
+      Orbit &oc = modelspace->GetOrbit(cv);
+      Orbit &od = modelspace->GetOrbit(dv);
+      if (oa.cvq != 1 || oc.cvq != 1 || od.cvq != 1)
+        continue;
+      const int J0 = tbX.J;
+      const int J1 = tkX.J;
+      for (index_t j = qv_start; j <= qv_end; j++) {
+        auto &cf_ket = eom_confs.at(j);
+        size_t q = cf_ket[0];
+        size_t k = cf_ket[1];
+        if (b != q)
+          continue;
+        Orbit &ok = modelspace->GetOrbit(k);
+        double six = AngMom::SixJ((double)J0, (double)J1, (double)lam,
+                                   ok.j2 * 0.5, ob.j2 * 0.5, oa.j2 * 0.5);
+        double nf = (a == k) ? std::sqrt(2.) : 1.;
+        double val = ph(J0 + (oa.j2 + ob.j2) / 2) * hat(J0) * hat(J1) *
+                     lamhatinv2 * six * we1(ob, ok) *
+                     RdmTB_J(J1, a, k, cv, dv) * nf;
+        Nkernel(i, j) += val;
+        Nkernel(j, i) += val;
+      }
+    }
+  }
+
+  std::cout << "ConstructNormMatrix_tensor: λ=" << lam
+            << " eom_dims=" << eom_dims << std::endl;
+}
+
 std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_Entries(size_t a, size_t b, size_t c, size_t d, size_t e,
                           size_t f, size_t g, double j0, double j2) {
   std::vector<std::tuple<size_t,size_t,size_t,double>> result;
@@ -1009,6 +1842,86 @@ double EOM::Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
   }
   return (val);
 }
+
+double EOM::Core_Diagram_tensor(size_t a, size_t b, size_t c, size_t d,
+                                 size_t e, size_t f, int J0, int J1, int J4,
+                                 int J5, int lam) {
+  // leftover 2b×ρ: λ̂^{-2} (AMC had λ̂^{-1}).
+  //   (-1)^{J0+λ+J3+J4+J5+ja+jb+jd+jf} Ĵ0 Ĵ1 λ̂^{-2} Ĵ3² Ĵ4 Ĵ5 ĵ0²
+  //   6j{J1 λ J0; jb ja j0} 6j{J4 λ J5; jb jf j0}
+  //   9j{jc jd J1; je J3 ja; J4 jf j0}
+  double val = 0.;
+  Orbit &oa = modelspace->GetOrbit(a);
+  Orbit &ob = modelspace->GetOrbit(b);
+  Orbit &oc = modelspace->GetOrbit(c);
+  Orbit &od = modelspace->GetOrbit(d);
+  Orbit &oe = modelspace->GetOrbit(e);
+  Orbit &of = modelspace->GetOrbit(f);
+
+  if (((oa.l + oe.l) & 1) != ((od.l + of.l) & 1))
+    return val;
+  if ((oa.tz2 + oe.tz2) != (od.tz2 + of.tz2))
+    return val;
+
+  const double ja = oa.j2 * 0.5;
+  const double jb = ob.j2 * 0.5;
+  const double jc = oc.j2 * 0.5;
+  const double jd = od.j2 * 0.5;
+  const double je = oe.j2 * 0.5;
+  const double jf = of.j2 * 0.5;
+  const double dlam = (double)lam;
+  const double dJ0 = (double)J0;
+  const double dJ1 = (double)J1;
+  const double dJ4 = (double)J4;
+  const double dJ5 = (double)J5;
+
+  double norm_fact = 1.;
+  if (d == f)
+    norm_fact *= std::sqrt(2.);
+  if (a == e)
+    norm_fact *= std::sqrt(2.);
+
+  const double lamhatinv2 = 1.0 / (2.0 * lam + 1.0);
+  const double hats_xy = std::sqrt(2.0 * J0 + 1.0) * std::sqrt(2.0 * J1 + 1.0) *
+                         lamhatinv2 * std::sqrt(2.0 * J4 + 1.0) *
+                         std::sqrt(2.0 * J5 + 1.0);
+
+  const int J3min =
+      std::max(std::abs(od.j2 - of.j2), std::abs(oa.j2 - oe.j2)) / 2;
+  const int J3max = std::min(od.j2 + of.j2, oa.j2 + oe.j2) / 2;
+
+  const int two_j0_min =
+      std::max(std::max(std::abs(2 * J1 - oa.j2), std::abs(ob.j2 - 2 * lam)),
+               std::abs(2 * J4 - of.j2));
+  const int two_j0_max =
+      std::min(std::min(2 * J1 + oa.j2, ob.j2 + 2 * lam), 2 * J4 + of.j2);
+
+  for (int J3 = J3min; J3 <= J3max; ++J3) {
+    if (!AngMom::Triangle(jd, jf, (double)J3) ||
+        !AngMom::Triangle(ja, je, (double)J3))
+      continue;
+    double rho = RdmTB_J((double)J3, d, f, a, e);
+    if (std::abs(rho) < 1e-16)
+      continue;
+    const double hatJ3sq = 2.0 * J3 + 1.0;
+    for (int two_j0 = two_j0_min; two_j0 <= two_j0_max; two_j0 += 2) {
+      double j0 = 0.5 * two_j0;
+      if (!AngMom::Triangle(dJ1, ja, j0) || !AngMom::Triangle(jb, dlam, j0) ||
+          !AngMom::Triangle(dJ4, jf, j0))
+        continue;
+      double six1 = AngMom::SixJ(dJ1, dlam, dJ0, jb, ja, j0);
+      double six2 = AngMom::SixJ(dJ4, dlam, dJ5, jb, jf, j0);
+      double nine = AngMom::NineJ(jc, jd, dJ1, je, (double)J3, ja, dJ4, jf, j0);
+      double phase = (double)AngMom::phase(
+          J0 + lam + J3 + J4 + J5 +
+          (oa.j2 + ob.j2 + od.j2 + of.j2) / 2);
+      val += phase * hats_xy * hatJ3sq * (2.0 * j0 + 1.0) * six1 * six2 *
+             nine * rho;
+    }
+  }
+  return val * norm_fact;
+}
+
 void EOM::PrintConfigs() {
   // 1-body types: c[0]=a, c[1]=b (orbit indices directly)
   auto print_1b = [&](const std::string &label, index_t start, index_t dim) {
@@ -1019,18 +1932,19 @@ void EOM::PrintConfigs() {
                 << " " << cfs[0] << " " << cfs[1] << std::endl;
     }
   };
-  // 2-body types: c[0]=ibra, c[1]=iket, c[2]=ich -> unpack to a,b,c,d
+  // 2-body types: c[0]=ibra, c[1]=iket, c[2]=ch_bra, c[3]=ch_ket
   auto print_2b = [&](const std::string &label, index_t start, index_t dim) {
     if (dim == 0) return;
     for (index_t i = 0; i < dim; i++) {
       auto &cfs = eom_confs.at(start + i);
-      TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(cfs[2]);
-      Ket &kbra = tbc.GetKet(cfs[0]);
-      Ket &kket = tbc.GetKet(cfs[1]);
+      TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(cfs[2]);
+      TwoBodyChannel &tbc_ket = modelspace->GetTwoBodyChannel(cfs[3]);
+      Ket &kbra = tbc_bra.GetKet(cfs[0]);
+      Ket &kket = tbc_ket.GetKet(cfs[1]);
       std::cout << label << " " << (start + i)
                 << " " << kbra.p << " " << kbra.q
                 << " " << kket.p << " " << kket.q
-                << " " << cfs[2] << std::endl;
+                << " " << cfs[2] << " " << cfs[3] << std::endl;
     }
   };
   print_1b("qv",   qv_start,   qv_dim);
@@ -1041,9 +1955,24 @@ void EOM::PrintConfigs() {
 }
 
 void EOM::ConstructProjectMatrix() {
-
   Prj_kernel.set_size(eom_dims, eom_dims);
   Prj_kernel.zeros();
+  if (eom_dims == 0)
+    return;
+
+  // Tensor configs couple different 2b channels (ch_bra ≠ ch_ket). The scalar
+  // per-channel blocking is wrong; use one positive-N projector on the full kernel.
+  if (eom_tensor_configs) {
+    std::vector<int> all_idx;
+    all_idx.reserve(eom_dims);
+    for (index_t i = 0; i < eom_dims; ++i)
+      all_idx.push_back((int)i);
+    std::cout << "ConstructProjectMatrix (tensor): full-N positive projector, dim="
+              << eom_dims << std::endl;
+    block_svd(all_idx);
+    return;
+  }
+
 
   size_t number_channels = modelspace->GetNumberTwoBodyChannels();
   int nconf_pphh_ch[number_channels] = {0};
@@ -1301,21 +2230,18 @@ double EOM::ComputeNorm(Operator &Op1, Operator &Op2) {
   for (index_t i = pphh_start; i <= pphh_end; i++) {
     size_t ibra = eom_confs.at(i)[0];
     size_t iket = eom_confs.at(i)[1];
-    size_t ich = eom_confs.at(i)[2];
-    v1(i) = Op1.GetTwoBody(ich, ich, ibra, iket);
+    v1(i) = Op1.GetTwoBody(eom_confs.at(i)[2], eom_confs.at(i)[3], ibra, iket);
   }
 
   for (index_t i = ppvv_start; i <= ppvv_end; i++) {
     size_t ibra = eom_confs.at(i)[0];
     size_t iket = eom_confs.at(i)[1];
-    size_t ich = eom_confs.at(i)[2];
-    v1(i) = Op1.GetTwoBody(ich, ich, ibra, iket);
+    v1(i) = Op1.GetTwoBody(eom_confs.at(i)[2], eom_confs.at(i)[3], ibra, iket);
   }
   for (index_t i = pphv_start; i <= pphv_end; i++) {
     size_t ibra = eom_confs.at(i)[0];
     size_t iket = eom_confs.at(i)[1];
-    size_t ich = eom_confs.at(i)[2];
-    v1(i) = Op1.GetTwoBody(ich, ich, ibra, iket);
+    v1(i) = Op1.GetTwoBody(eom_confs.at(i)[2], eom_confs.at(i)[3], ibra, iket);
   }
 
   // Flatten Op2 to vector (raw matrix elements, angular momentum factors are in Nkernel)
@@ -1336,21 +2262,18 @@ double EOM::ComputeNorm(Operator &Op1, Operator &Op2) {
   for (index_t i = pphh_start; i <= pphh_end; i++) {
     size_t ibra = eom_confs.at(i)[0];
     size_t iket = eom_confs.at(i)[1];
-    size_t ich = eom_confs.at(i)[2];
-    v2(i) = Op2.GetTwoBody(ich, ich, ibra, iket);
+    v2(i) = Op2.GetTwoBody(eom_confs.at(i)[2], eom_confs.at(i)[3], ibra, iket);
   }
 
   for (index_t i = ppvv_start; i <= ppvv_end; i++) {
     size_t ibra = eom_confs.at(i)[0];
     size_t iket = eom_confs.at(i)[1];
-    size_t ich = eom_confs.at(i)[2];
-    v2(i) = Op2.GetTwoBody(ich, ich, ibra, iket);
+    v2(i) = Op2.GetTwoBody(eom_confs.at(i)[2], eom_confs.at(i)[3], ibra, iket);
   }
   for (index_t i = pphv_start; i <= pphv_end; i++) {
     size_t ibra = eom_confs.at(i)[0];
     size_t iket = eom_confs.at(i)[1];
-    size_t ich = eom_confs.at(i)[2];
-    v2(i) = Op2.GetTwoBody(ich, ich, ibra, iket);
+    v2(i) = Op2.GetTwoBody(eom_confs.at(i)[2], eom_confs.at(i)[3], ibra, iket);
   }
 
   // Compute v1.t() * Nkernel * v2
@@ -1364,71 +2287,45 @@ void EOM::ProjectOprator(Operator &Qin) {
   arma::vec Qflat(eom_confs.size());
   Qflat.fill(0.);
 
-  for (index_t i = qv_start; i <= qv_end; i++) {
-    size_t p = eom_confs.at(i)[0];
-    size_t q = eom_confs.at(i)[1];
-    Qflat(i) = Qin.GetOneBody(p, q);
-  }
-  for (index_t i = ph_start; i <= ph_end; i++) {
-    size_t p = eom_confs.at(i)[0];
-    size_t q = eom_confs.at(i)[1];
-    Qflat(i) = Qin.GetOneBody(p, q);
-  }
-
-  for (index_t i = pphh_start; i <= pphh_end; i++) {
-    size_t ibra = eom_confs.at(i)[0];
-    size_t iket = eom_confs.at(i)[1];
-    size_t ich = eom_confs.at(i)[2];
-    Qflat(i) = Qin.GetTwoBody(ich, ich, ibra, iket);
-  }
-
-  for (index_t i = ppvv_start; i <= ppvv_end; i++) {
-    size_t ibra = eom_confs.at(i)[0];
-    size_t iket = eom_confs.at(i)[1];
-    size_t ich = eom_confs.at(i)[2];
-    Qflat(i) = Qin.GetTwoBody(ich, ich, ibra, iket);
-  }
-  for (index_t i = pphv_start; i <= pphv_end; i++) {
-    size_t ibra = eom_confs.at(i)[0];
-    size_t iket = eom_confs.at(i)[1];
-    size_t ich = eom_confs.at(i)[2];
-    Qflat(i) = Qin.GetTwoBody(ich, ich, ibra, iket);
-  }
+  auto get1 = [&](index_t i) {
+    Qflat(i) = Qin.GetOneBody(eom_confs.at(i)[0], eom_confs.at(i)[1]);
+  };
+  auto get2 = [&](index_t i) {
+    Qflat(i) = Qin.GetTwoBody(eom_confs.at(i)[2], eom_confs.at(i)[3],
+                              eom_confs.at(i)[0], eom_confs.at(i)[1]);
+  };
+  if (qv_dim > 0)
+    for (index_t i = qv_start; i <= qv_end; ++i) get1(i);
+  if (ph_dim > 0)
+    for (index_t i = ph_start; i <= ph_end; ++i) get1(i);
+  if (pphh_dim > 0)
+    for (index_t i = pphh_start; i <= pphh_end; ++i) get2(i);
+  if (ppvv_dim > 0)
+    for (index_t i = ppvv_start; i <= ppvv_end; ++i) get2(i);
+  if (pphv_dim > 0)
+    for (index_t i = pphv_start; i <= pphv_end; ++i) get2(i);
 
   Qin *= 0.;
 
   arma::vec Qout = Prj_kernel * Qflat;
 
-  for (index_t i = qv_start; i <= qv_end; i++) {
-    size_t p = eom_confs.at(i)[0];
-    size_t q = eom_confs.at(i)[1];
-    Qin.SetOneBody(p, q, Qout(i));
-  }
-  for (index_t i = ph_start; i <= ph_end; i++) {
-    size_t p = eom_confs.at(i)[0];
-    size_t q = eom_confs.at(i)[1];
-    Qin.SetOneBody(p, q, Qout(i));
-  }
-
-  for (index_t i = pphh_start; i <= pphh_end; i++) {
-    size_t ibra = eom_confs.at(i)[0];
-    size_t iket = eom_confs.at(i)[1];
-    size_t ich = eom_confs.at(i)[2];
-    Qin.TwoBody.SetTBME(ich, ich, ibra, iket, Qout(i));
-  }
-
-  for (index_t i = ppvv_start; i <= ppvv_end; i++) {
-    size_t ibra = eom_confs.at(i)[0];
-    size_t iket = eom_confs.at(i)[1];
-    size_t ich = eom_confs.at(i)[2];
-    Qin.TwoBody.SetTBME(ich, ich, ibra, iket, Qout(i));
-  }
-  for (index_t i = pphv_start; i <= pphv_end; i++) {
-    size_t ibra = eom_confs.at(i)[0];
-    size_t iket = eom_confs.at(i)[1];
-    size_t ich = eom_confs.at(i)[2];
-    Qin.TwoBody.SetTBME(ich, ich, ibra, iket, Qout(i));
-  }
+  auto put1 = [&](index_t i) {
+    Qin.SetOneBody(eom_confs.at(i)[0], eom_confs.at(i)[1], Qout(i));
+  };
+  auto put2 = [&](index_t i) {
+    Qin.TwoBody.SetTBME(eom_confs.at(i)[2], eom_confs.at(i)[3],
+                        eom_confs.at(i)[0], eom_confs.at(i)[1], Qout(i));
+  };
+  if (qv_dim > 0)
+    for (index_t i = qv_start; i <= qv_end; ++i) put1(i);
+  if (ph_dim > 0)
+    for (index_t i = ph_start; i <= ph_end; ++i) put1(i);
+  if (pphh_dim > 0)
+    for (index_t i = pphh_start; i <= pphh_end; ++i) put2(i);
+  if (ppvv_dim > 0)
+    for (index_t i = ppvv_start; i <= ppvv_end; ++i) put2(i);
+  if (pphv_dim > 0)
+    for (index_t i = pphv_start; i <= pphv_end; ++i) put2(i);
 }
 
 void EOM::block_svd(std::vector<int> &coupled_vector) {
@@ -1439,21 +2336,19 @@ void EOM::block_svd(std::vector<int> &coupled_vector) {
   Amat.fill(0.);
   for (index_t i = 0; i < n; i++) {
     index_t ia = coupled_vector.at(i);
-    std::array<index_t, 4> &cfs_bra = eom_confs.at(ia);
     for (index_t j = 0; j < n; j++) {
       index_t ib = coupled_vector.at(j);
-      std::array<index_t, 4> &cfs_ket = eom_confs.at(ib);
-      Amat(i, j) = Nkernel(cfs_bra[3], cfs_ket[3]);
+      Amat(i, j) = Nkernel(ia, ib);
     }
   }
 
   SqrtMat(Amat, n);
 
   for (index_t i = 0; i < n; i++) {
-    std::array<index_t, 4> &cfs_bra = eom_confs.at(coupled_vector.at(i));
+    index_t ia = coupled_vector.at(i);
     for (index_t j = 0; j < n; j++) {
-      std::array<index_t, 4> &cfs_ket = eom_confs.at(coupled_vector.at(j));
-      Prj_kernel(cfs_bra[3], cfs_ket[3]) = Amat(i, j);
+      index_t ib = coupled_vector.at(j);
+      Prj_kernel(ia, ib) = Amat(i, j);
     }
   }
 }
@@ -1465,7 +2360,7 @@ arma::vec EOM::FlattenOperator(Operator &Op) const
     v(i) = Op.GetOneBody(eom_confs.at(i)[0], eom_confs.at(i)[1]);
   };
   auto set2 = [&](index_t i) {
-    v(i) = Op.GetTwoBody(eom_confs.at(i)[2], eom_confs.at(i)[2],
+    v(i) = Op.GetTwoBody(eom_confs.at(i)[2], eom_confs.at(i)[3],
                          eom_confs.at(i)[0], eom_confs.at(i)[1]);
   };
   if (qv_dim > 0)
@@ -1481,14 +2376,22 @@ arma::vec EOM::FlattenOperator(Operator &Op) const
   return v;
 }
 
+Operator EOM::ZeroAmplitude() const
+{
+  Operator op(*modelspace, J2, itz, parity, 2);
+  op.SetHermitian();
+  op *= 0.0;
+  return op;
+}
+
 void EOM::UnflattenOperator(Operator &Op, const arma::vec &v) const
 {
   Op *= 0.0;
   auto put1 = [&](index_t i) {
-    Op.OneBody(eom_confs.at(i)[0], eom_confs.at(i)[1]) = v(i);
+    Op.SetOneBody(eom_confs.at(i)[0], eom_confs.at(i)[1], v(i));
   };
   auto put2 = [&](index_t i) {
-    Op.TwoBody.SetTBME(eom_confs.at(i)[2], eom_confs.at(i)[2],
+    Op.TwoBody.SetTBME(eom_confs.at(i)[2], eom_confs.at(i)[3],
                        eom_confs.at(i)[0], eom_confs.at(i)[1], v(i));
   };
   if (qv_dim > 0)
@@ -1584,7 +2487,7 @@ EOM::SolveGEPCanonical(int state_want, double eps, int n_h2_subspace)
   std::cout << "SolveGEPCanonical: building H2 (" << N << " Htc actions)..."
             << std::endl;
 
-  Operator scratch = Hs * 0.0;
+  Operator scratch = ZeroAmplitude();
   std::vector<arma::vec> htc_flat(N);
   for (int j = 0; j < N; ++j)
   {
@@ -1648,7 +2551,7 @@ EOM::SolveGEPCanonical(int state_want, double eps, int n_h2_subspace)
     for (int a = 0; a < n_sub; ++a)
     {
       arma::vec coef = X_canon * evecs2.col(a);
-      Operator pa = Hs * 0.0;
+      Operator pa = ZeroAmplitude();
       UnflattenOperator(pa, coef);
       double nn = ComputeNorm(pa, pa);
       if (nn > 0.0)
@@ -1755,7 +2658,7 @@ EOM::SolveGEPCanonical(int state_want, double eps, int n_h2_subspace)
   std::vector<Operator> ritz;
   for (int k = 0; k < nwant; ++k)
   {
-    Operator rk = Hs * 0.0;
+    Operator rk = ZeroAmplitude();
     UnflattenOperator(rk, C.col(k));
     double nn = ComputeNorm(rk, rk);
     if (nn > 0.0)
@@ -2264,6 +3167,9 @@ double EOM::NormSingle(Operator &T1, Operator &T2)
 ///   result = (⟨nop2⟩_ρ + ⟨t3⟩_ρ) / 2
 double EOM::NormMultiref(Operator &T1, Operator &T2)
 {
+  if (T1.GetJRank() != 0 or T2.GetJRank() != 0)
+    return NormMultiref_tensor(T1, T2);
+
   Operator T2d = T1 * 0.0;
   T2d = GetVSEOM_ladder_multiref(T2, -1);
   Operator nop = T1 * 0.0;
@@ -2284,6 +3190,29 @@ double EOM::NormMultiref(Operator &T1, Operator &T2)
   }
 
   return rst / 2.0;
+}
+
+/// Tensor analogue of NormMultiref: leftover [χ_λ, χ^{-}_λ] is a scalar 0+
+/// operator. Production Commutator() exits on T×T, so assemble it from TTS.
+double EOM::NormMultiref_tensor(Operator &T1, Operator &T2)
+{
+  Operator T2d = T2 * 0.0;
+  T2d = GetVSEOM_ladder_multiref(T2, -1);
+
+  Operator nop(*modelspace, 0, 0, 0, 2);
+  nop.SetHermitian();
+  nop *= 0.0;
+
+  Commutator::comm110tts(T1, T2d, nop);
+  Commutator::comm220tts(T1, T2d, nop);
+  Commutator::comm111tts(T1, T2d, nop);
+  Commutator::comm121tts(T1, T2d, nop);
+  Commutator::comm221tts(T1, T2d, nop);
+  Commutator::comm122tts(T1, T2d, nop);
+  Commutator::comm222_pp_hhtts(T1, T2d, nop);
+  Commutator::comm222_phtts(T1, T2d, nop);
+
+  return GetVSEOM_Overlap_multiref(nop) / 2.0;
 }
 
 /// 3-body contribution to <t1|t2>:
@@ -2330,9 +3259,11 @@ Operator EOM::HtcMultiref(Operator &haml, Operator &chi)
 
 // -----------  double commutator diagonal  -------------------
 
-/// Diagonal double-commutator contribution:
-///   opa += comm223_231 + comm223_232 + comm223_132
-///   returns GetVSEOM_Overlap_multiref(opa)/2
+/// Diagonal double-commutator contribution H3:
+///   [χ, [χ, H]_3] folded to 1b+2b, then ⟨·⟩_ρ / 2.
+/// Scalar: FactorizedDoubleCommutator 223_231/232/132.
+/// Tensor χ (λ≠0): FactorizedDoubleCommutator_eths 223_231_st / 223_232 /
+///   223_132_tts (leftover is a scalar 0+ operator).
 double EOM::DcomMultiref(Operator &haml, Operator &chi_in)
 {
   using Clock = std::chrono::steady_clock;
@@ -2340,11 +3271,46 @@ double EOM::DcomMultiref(Operator &haml, Operator &chi_in)
     return std::chrono::duration<double>(Clock::now() - start).count();
   };
 
-  Operator opa = chi_in * 0.0;
   auto timer = Clock::now();
   Operator chi = GetVSEOM_ladder_multiref(chi_in, -1);
   if (arnoldi_print_timing)
     dcom_time_ladder += elapsed(timer);
+
+  if (IsTensorEOM()) {
+    Operator opa(*modelspace, 0, 0, 0, 2);
+    opa.SetHermitian();
+    opa *= 0.0;
+
+    namespace eth = Commutator::FactorizedDoubleCommutator_eths;
+    eth::SetUse_1b_Intermediates(true);
+    eth::SetUse_2b_Intermediates(true);
+
+    timer = Clock::now();
+    eth::comm223_231_st(chi, haml, opa);
+    if (arnoldi_print_timing)
+      dcom_time_223_231 += elapsed(timer);
+
+    timer = Clock::now();
+    eth::comm223_232(chi, haml, opa);
+    if (arnoldi_print_timing)
+      dcom_time_223_232 += elapsed(timer);
+
+    timer = Clock::now();
+    eth::comm223_132_tts(chi, haml, opa);
+    if (arnoldi_print_timing)
+      dcom_time_223_132 += elapsed(timer);
+
+    timer = Clock::now();
+    double rst = GetVSEOM_Overlap_multiref(opa);
+    if (arnoldi_print_timing)
+    {
+      dcom_time_overlap += elapsed(timer);
+      ++dcom_profile_calls;
+    }
+    return rst / 2.0;
+  }
+
+  Operator opa = chi_in * 0.0;
   opa.SetHermitian();
 
   Commutator::FactorizedDoubleCommutator::SetUse_1b_Intermediates(true);
@@ -4647,15 +5613,26 @@ EOM::RunResult EOM::RunMR(int max_iter, int state_want)
             << std::endl;
 
   // --- (2) Setup ---
-  ConstructConfigs();
-  ConstructNormMatrix();
+  if (IsTensorEOM()) {
+    ConstructConfigs_tensor();
+    ConstructNormMatrix_tensor();
+    if (arnoldi_use_h3)
+      std::cout << "  tensor EOM H3: ethS 223_231_st + 223_232 + 223_132_tts"
+                << std::endl;
+    else
+      std::cout << "  tensor EOM: H3 off (Hall = Htc only)" << std::endl;
+  } else {
+    ConstructConfigs();
+    ConstructNormMatrix();
+  }
   ConstructProjectMatrix();
 
   // --- (3) Random projected initial vector ---
   UnitTest unt(*modelspace);
-  Operator h_rand = unt.RandomOp(*modelspace, 0, 0, 0, 2, 1); // scalar only for now
+  Operator h_rand = unt.RandomOp(*modelspace, J2, itz, parity, 2, 1);
   Operator chi_b  = GetVSEOM_ladder_multiref(h_rand, 1);
-  ProjectOprator(chi_b);
+  if (arnoldi_use_projection)
+    ProjectOprator(chi_b);
   double n0 = ComputeNorm(chi_b, chi_b);
   std::cout << "Initial vector N-norm after projection: " << n0 << std::endl;
   if (n0 <= 0.0)

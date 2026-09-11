@@ -2530,6 +2530,17 @@ bool UnitTest::Mscheme_Test_comm220tts(const Operator &X, const Operator &Y)
   return passed;
 }
 
+/// Convention 2 leftover projector CG(λ μ, λ −μ | 00). μ from 2m sums of one tensor's legs.
+static double cg_tts_J0(int lam, int twoM_left, int twoM_right)
+{
+  if (lam == 0)
+    return 1.0;
+  double mu = 0.5 * (twoM_left - twoM_right);
+  if (std::abs(mu) > lam + 1e-9)
+    return 0.0;
+  return AngMom::CG(1.0 * lam, mu, 1.0 * lam, -mu, 0.0, 0.0);
+}
+
 static Operator MakeTtsOneBodyZ(const Operator &X, const Operator &Y)
 {
   int parityZ = (X.GetParity() + Y.GetParity()) % 2;
@@ -2547,8 +2558,7 @@ static Operator MakeTtsOneBodyZ(const Operator &X, const Operator &Y)
   return Z_J;
 }
 
-/// m-gold = m-average of comm111ss Wick. Stretched m is not a scalar for λ>0, j>1/2.
-/// Z_ij = 1/(2j_i+1) sum_m sum_{a ma} (X_{im,ama} Y_{ama,jm} - Y_{im,ama} X_{ama,jm})
+/// Convention 2 leftover 1b: CG(λμ,λ−μ|00) on each XY pair, then GetMscheme_1b ≡ Wick.
 bool UnitTest::Mscheme_Test_comm111tts(const Operator &X, const Operator &Y)
 {
   if (X.GetJRank() != Y.GetJRank())
@@ -2585,7 +2595,8 @@ bool UnitTest::Mscheme_Test_comm111tts(const Operator &X, const Operator &Y)
             double Yia = GetMschemeMatrixElement_1b(Y, i, mi, a, ma);
             double Xaj = GetMschemeMatrixElement_1b(X, a, ma, j, mj);
             double Yaj = GetMschemeMatrixElement_1b(Y, a, ma, j, mj);
-            Zm_ij += Xia * Yaj - Yia * Xaj;
+            const double cg = cg_tts_J0(X.GetJRank(), mi, ma);
+            Zm_ij += cg * (Xia * Yaj - Yia * Xaj);
           }
         }
       }
@@ -2667,7 +2678,8 @@ bool UnitTest::Mscheme_Test_comm121tts(const Operator &X, const Operator &Y)
                 double Ybiaj = GetMschemeMatrixElement_2b(Y, b, mb, i, mi, a, ma, j, mj);
                 double Xaibj = GetMschemeMatrixElement_2b(X, a, ma, i, mi, b, mb, j, mj);
                 double Yaibj = GetMschemeMatrixElement_2b(Y, a, ma, i, mi, b, mb, j, mj);
-                Zm_ij += na * (1. - nb) * (Xab * Ybiaj - Yaibj * Xba - Yab * Xbiaj + Xaibj * Yba);
+                const double cg = cg_tts_J0(X.GetJRank(), ma, mb);
+                Zm_ij += cg * na * (1. - nb) * (Xab * Ybiaj - Yaibj * Xba - Yab * Xbiaj + Xaibj * Yba);
               }
             }
           }
@@ -2750,8 +2762,15 @@ bool UnitTest::Mscheme_Test_comm122tts(const Operator &X, const Operator &Y)
         double Yiakl = GetMschemeMatrixElement_2b(Y, i, mi, a, ma, k, mk, l, ml);
         double Yijal = GetMschemeMatrixElement_2b(Y, i, mi, j, mj, a, ma, l, ml);
         double Yijka = GetMschemeMatrixElement_2b(Y, i, mi, j, mj, k, mk, a, ma);
-        z += (Xia * Yajkl + Xja * Yiakl - Yijal * Xak - Yijka * Xal)
-             - (Yia * Xajkl + Yja * Xiakl - Xijal * Yak - Xijka * Yal);
+        const int lam = X.GetJRank();
+        z += cg_tts_J0(lam, mi, ma) * Xia * Yajkl
+             + cg_tts_J0(lam, mj, ma) * Xja * Yiakl
+             - cg_tts_J0(lam, ma, mk) * Yijal * Xak
+             - cg_tts_J0(lam, ma, ml) * Yijka * Xal
+             - (cg_tts_J0(lam, ma + mj, mk + ml) * Yia * Xajkl
+                + cg_tts_J0(lam, mi + ma, mk + ml) * Yja * Xiakl
+                - cg_tts_J0(lam, mi + mj, ma + ml) * Xijal * Yak
+                - cg_tts_J0(lam, mi + mj, mk + ma) * Xijka * Yal);
       }
     }
     return z;
@@ -2893,14 +2912,17 @@ bool UnitTest::Mscheme_Test_comm221tts(const Operator &X, const Operator &Y)
               {
                 for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
                 {
-                  int mc = ma + mb - mi;
-                  if (std::abs(mc) > oc.j2)
-                    continue;
-                  double Xciab = GetMschemeMatrixElement_2b(X, c, mc, i, mi, a, ma, b, mb);
-                  double Yciab = GetMschemeMatrixElement_2b(Y, c, mc, i, mi, a, ma, b, mb);
-                  double Xabcj = GetMschemeMatrixElement_2b(X, a, ma, b, mb, c, mc, j, mj);
-                  double Yabcj = GetMschemeMatrixElement_2b(Y, a, ma, b, mb, c, mc, j, mj);
-                  Zm_ij += 0.5 * Nocc * (Xciab * Yabcj - Yciab * Xabcj);
+                  for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
+                  {
+                    const double cg = cg_tts_J0(X.GetJRank(), mc + mi, ma + mb);
+                    if (std::abs(cg) < 1e-16)
+                      continue;
+                    double Xciab = GetMschemeMatrixElement_2b(X, c, mc, i, mi, a, ma, b, mb);
+                    double Yciab = GetMschemeMatrixElement_2b(Y, c, mc, i, mi, a, ma, b, mb);
+                    double Xabcj = GetMschemeMatrixElement_2b(X, a, ma, b, mb, c, mc, j, mj);
+                    double Yabcj = GetMschemeMatrixElement_2b(Y, a, ma, b, mb, c, mc, j, mj);
+                    Zm_ij += cg * 0.5 * Nocc * (Xciab * Yabcj - Yciab * Xabcj);
+                  }
                 }
               }
             }
@@ -2984,7 +3006,10 @@ bool UnitTest::Mscheme_Test_comm222_pp_hhtts(const Operator &X, const Operator &
             double Xabkl = GetMschemeMatrixElement_2b(X, a, ma, b, mb, k, mk, l, ml);
             double Yijab = GetMschemeMatrixElement_2b(Y, i, mi, j, mj, a, ma, b, mb);
             double Yabkl = GetMschemeMatrixElement_2b(Y, a, ma, b, mb, k, mk, l, ml);
-            z += 0.5 * ((1 - na) * (1 - nb) - na * nb) * (Xijab * Yabkl - Yijab * Xabkl);
+            const int lam = X.GetJRank();
+            z += 0.5 * ((1 - na) * (1 - nb) - na * nb)
+                 * (cg_tts_J0(lam, mi + mj, ma + mb) * Xijab * Yabkl
+                    - cg_tts_J0(lam, ma + mb, mk + ml) * Yijab * Xabkl);
           }
         }
       }
@@ -3125,7 +3150,11 @@ bool UnitTest::Mscheme_Test_comm222_phtts(const Operator &X, const Operator &Y)
             double Xbjak = GetMschemeMatrixElement_2b(X, b, mb, j, mj, a, ma, k, mk);
             double Yajbl = GetMschemeMatrixElement_2b(Y, a, ma, j, mj, b, mb, l, ml);
             double Xbiak = GetMschemeMatrixElement_2b(X, b, mb, i, mi, a, ma, k, mk);
-            z -= (na - nb) * (Yaibk * Xbjal - Yajbk * Xbial - Yaibl * Xbjak + Yajbl * Xbiak);
+            const int lam = X.GetJRank();
+            z -= (na - nb) * (cg_tts_J0(lam, mb + mj, ma + ml) * Yaibk * Xbjal
+                              - cg_tts_J0(lam, mb + mi, ma + ml) * Yajbk * Xbial
+                              - cg_tts_J0(lam, mb + mj, ma + mk) * Yaibl * Xbjak
+                              + cg_tts_J0(lam, mb + mi, ma + mk) * Yajbl * Xbiak);
           }
         }
       }
@@ -9373,15 +9402,25 @@ bool UnitTest::Mscheme_Test_comm223tts(const Operator &X, const Operator &Y)
         double y_ajml = GetMschemeMatrixElement_2b(Y, a, ma, j, mj, m, mm, l, ml);
         double y_ikna = GetMschemeMatrixElement_2b(Y, i, mi, k, mk, n, mn, a, ma);
         double x_ajml = GetMschemeMatrixElement_2b(X, a, ma, j, mj, m, mm, l, ml);
-        z += x_ijla * y_akmn - y_ijla * x_akmn;
-        z -= x_kjla * y_aimn - y_kjla * x_aimn;
-        z -= x_ikla * y_ajmn - y_ikla * x_ajmn;
-        z -= x_ijma * y_akln - y_ijma * x_akln;
-        z -= x_ijna * y_akml - y_ijna * x_akml;
-        z += x_kjma * y_ailn - y_kjma * x_ailn;
-        z += x_kjna * y_aiml - y_kjna * x_aiml;
-        z += x_ikma * y_ajln - y_ikma * x_ajln;
-        z += x_ikna * y_ajml - y_ikna * x_ajml;
+        const int lam = X.GetJRank();
+        z += cg_tts_J0(lam, mi + mj, ml + ma) * x_ijla * y_akmn
+             - cg_tts_J0(lam, ma + mk, mm + mn) * y_ijla * x_akmn;
+        z -= cg_tts_J0(lam, mk + mj, ml + ma) * x_kjla * y_aimn
+             - cg_tts_J0(lam, ma + mi, mm + mn) * y_kjla * x_aimn;
+        z -= cg_tts_J0(lam, mi + mk, ml + ma) * x_ikla * y_ajmn
+             - cg_tts_J0(lam, ma + mj, mm + mn) * y_ikla * x_ajmn;
+        z -= cg_tts_J0(lam, mi + mj, mm + ma) * x_ijma * y_akln
+             - cg_tts_J0(lam, ma + mk, ml + mn) * y_ijma * x_akln;
+        z -= cg_tts_J0(lam, mi + mj, mn + ma) * x_ijna * y_akml
+             - cg_tts_J0(lam, ma + mk, mm + ml) * y_ijna * x_akml;
+        z += cg_tts_J0(lam, mk + mj, mm + ma) * x_kjma * y_ailn
+             - cg_tts_J0(lam, ma + mi, ml + mn) * y_kjma * x_ailn;
+        z += cg_tts_J0(lam, mk + mj, mn + ma) * x_kjna * y_aiml
+             - cg_tts_J0(lam, ma + mi, mm + ml) * y_kjna * x_aiml;
+        z += cg_tts_J0(lam, mi + mk, mm + ma) * x_ikma * y_ajln
+             - cg_tts_J0(lam, ma + mj, ml + mn) * y_ikma * x_ajln;
+        z += cg_tts_J0(lam, mi + mk, mn + ma) * x_ikna * y_ajml
+             - cg_tts_J0(lam, ma + mj, mm + ml) * y_ikna * x_ajml;
       }
     }
     return z;
@@ -11840,4 +11879,257 @@ double UnitTest::Mscheme_fact_GIVc(const Operator &Eta, const Operator &Gamma, i
   };
   return 0.5 * (kernel(i, mi, j, mj, k, mk, l, ml) - kernel(j, mj, i, mi, k, mk, l, ml)
                 - kernel(i, mi, j, mj, l, ml, k, mk) + kernel(j, mj, i, mi, l, ml, k, mk));
+}
+
+double UnitTest::Mscheme_fact_223_132_ladder(const Operator &Eta, const Operator &Gamma,
+                                            int i, int mi, int j, int mj, int k, int mk, int l, int ml)
+{
+  // Z = (η_cakl Γ_ijcb − η_ijcb Γ_cakl) η_ba (n̄_a n_b − n_a n̄_b)
+  if ((i == j and mi == mj) or (k == l and mk == ml))
+    return 0.0;
+  if (mi + mj != mk + ml)
+    return 0.0;
+  double z = 0.0;
+  for (auto a : Eta.modelspace->all_orbits)
+  {
+    Orbit &oa = Eta.modelspace->GetOrbit(a);
+    const double na = oa.occ, nna = 1.0 - na;
+    for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+      for (auto b : Eta.modelspace->all_orbits)
+      {
+        Orbit &ob = Eta.modelspace->GetOrbit(b);
+        const double nb = ob.occ, nnb = 1.0 - nb;
+        const double occ = nna * nb - na * nnb;
+        if (std::abs(occ) < 1e-12)
+          continue;
+        for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
+        {
+          const double eta1 = GetMschemeMatrixElement_1b(Eta, b, mb, a, ma);
+          if (std::abs(eta1) < 1e-16)
+            continue;
+          const double cg = cg_OmOm0(Eta, mb, ma);
+          if (std::abs(cg) < 1e-16)
+            continue;
+          for (auto c : Eta.modelspace->all_orbits)
+          {
+            Orbit &oc = Eta.modelspace->GetOrbit(c);
+            for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
+            {
+              const double e_cakl = GetMschemeMatrixElement_2b(Eta, c, mc, a, ma, k, mk, l, ml);
+              const double g_ijcb = GetMschemeMatrixElement_2b(Gamma, i, mi, j, mj, c, mc, b, mb);
+              const double e_ijcb = GetMschemeMatrixElement_2b(Eta, i, mi, j, mj, c, mc, b, mb);
+              const double g_cakl = GetMschemeMatrixElement_2b(Gamma, c, mc, a, ma, k, mk, l, ml);
+              z += occ * cg * eta1 * (e_cakl * g_ijcb - e_ijcb * g_cakl);
+            }
+          }
+        }
+      }
+  }
+  // cg_OmOm0 is convention 2 (λ̂⁻¹).
+  return z;
+}
+
+double UnitTest::Mscheme_fact_223_132_onebody(const Operator &Eta, const Operator &Gamma,
+                                             int i, int mi, int j, int mj, int k, int mk, int l, int ml)
+{
+  // 1bA: χ^η_ic = Σ_ab occ cg η_ba η_iacb, then 122 into Γ.
+  // 1bB: (1−P_kl) η_ijkc Γ_calb η_ba − (1−P_ij) Γ_jacb η_ba η_ickl.
+  if ((i == j and mi == mj) or (k == l and mk == ml))
+    return 0.0;
+  if (mi + mj != mk + ml)
+    return 0.0;
+
+  auto occ_ab = [&](size_t a, size_t b) {
+    Orbit &oa = Eta.modelspace->GetOrbit(a);
+    Orbit &ob = Eta.modelspace->GetOrbit(b);
+    return (1.0 - oa.occ) * ob.occ - oa.occ * (1.0 - ob.occ);
+  };
+
+  auto chi_eta = [&](int p, int mp, int q, int mq) -> double {
+    if (mp != mq)
+      return 0.0;
+    Orbit &op = Eta.modelspace->GetOrbit(p);
+    Orbit &oq = Eta.modelspace->GetOrbit(q);
+    if (op.j2 != oq.j2 or op.l != oq.l or op.tz2 != oq.tz2)
+      return 0.0;
+    double sm = 0.0;
+    for (auto a : Eta.modelspace->all_orbits)
+    {
+      Orbit &oa = Eta.modelspace->GetOrbit(a);
+      for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+        for (auto b : Eta.modelspace->all_orbits)
+        {
+          const double occ = occ_ab(a, b);
+          if (std::abs(occ) < 1e-12)
+            continue;
+          Orbit &ob = Eta.modelspace->GetOrbit(b);
+          for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
+          {
+            const double eta1 = GetMschemeMatrixElement_1b(Eta, b, mb, a, ma);
+            if (std::abs(eta1) < 1e-16)
+              continue;
+            const double cg = cg_OmOm0(Eta, mb, ma);
+            if (std::abs(cg) < 1e-16)
+              continue;
+            sm += occ * cg * eta1 * GetMschemeMatrixElement_2b(Eta, p, mp, a, ma, q, mq, b, mb);
+          }
+        }
+    }
+    return sm;
+  };
+
+  double z122 = 0.0;
+  for (auto a : Eta.modelspace->all_orbits)
+  {
+    Orbit &oa = Eta.modelspace->GetOrbit(a);
+    for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+    {
+      z122 += chi_eta(i, mi, a, ma) * GetMschemeMatrixElement_2b(Gamma, a, ma, j, mj, k, mk, l, ml);
+      z122 += chi_eta(j, mj, a, ma) * GetMschemeMatrixElement_2b(Gamma, i, mi, a, ma, k, mk, l, ml);
+      z122 -= GetMschemeMatrixElement_2b(Gamma, i, mi, j, mj, a, ma, l, ml) * chi_eta(a, ma, k, mk);
+      z122 -= GetMschemeMatrixElement_2b(Gamma, i, mi, j, mj, k, mk, a, ma) * chi_eta(a, ma, l, ml);
+    }
+  }
+
+  auto seed_B = [&](int ii, int mii, int jj, int mjj, int kk, int mkk, int ll, int mll) -> double {
+    double sm = 0.0;
+    for (auto a : Eta.modelspace->all_orbits)
+    {
+      Orbit &oa = Eta.modelspace->GetOrbit(a);
+      for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+        for (auto b : Eta.modelspace->all_orbits)
+        {
+          const double occ = occ_ab(a, b);
+          if (std::abs(occ) < 1e-12)
+            continue;
+          Orbit &ob = Eta.modelspace->GetOrbit(b);
+          for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
+          {
+            const double eta1 = GetMschemeMatrixElement_1b(Eta, b, mb, a, ma);
+            if (std::abs(eta1) < 1e-16)
+              continue;
+            const double cg = cg_OmOm0(Eta, mb, ma);
+            if (std::abs(cg) < 1e-16)
+              continue;
+            for (auto c : Eta.modelspace->all_orbits)
+            {
+              Orbit &oc = Eta.modelspace->GetOrbit(c);
+              for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
+              {
+                const double e = GetMschemeMatrixElement_2b(Eta, ii, mii, jj, mjj, kk, mkk, c, mc);
+                const double g = GetMschemeMatrixElement_2b(Gamma, c, mc, a, ma, ll, mll, b, mb);
+                sm += occ * cg * eta1 * e * g;
+              }
+            }
+          }
+        }
+    }
+    return sm;
+  };
+
+  auto seed_B2 = [&](int ii, int mii, int jj, int mjj, int kk, int mkk, int ll, int mll) -> double {
+    double sm = 0.0;
+    for (auto a : Eta.modelspace->all_orbits)
+    {
+      Orbit &oa = Eta.modelspace->GetOrbit(a);
+      for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+        for (auto b : Eta.modelspace->all_orbits)
+        {
+          const double occ = occ_ab(a, b);
+          if (std::abs(occ) < 1e-12)
+            continue;
+          Orbit &ob = Eta.modelspace->GetOrbit(b);
+          for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
+          {
+            const double eta1 = GetMschemeMatrixElement_1b(Eta, b, mb, a, ma);
+            if (std::abs(eta1) < 1e-16)
+              continue;
+            const double cg = cg_OmOm0(Eta, mb, ma);
+            if (std::abs(cg) < 1e-16)
+              continue;
+            for (auto c : Eta.modelspace->all_orbits)
+            {
+              Orbit &oc = Eta.modelspace->GetOrbit(c);
+              for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
+              {
+                const double g = GetMschemeMatrixElement_2b(Gamma, jj, mjj, a, ma, c, mc, b, mb);
+                const double e = GetMschemeMatrixElement_2b(Eta, ii, mii, c, mc, kk, mkk, ll, mll);
+                sm += occ * cg * eta1 * g * e;
+              }
+            }
+          }
+        }
+    }
+    return sm;
+  };
+
+  const double CB = seed_B(i, mi, j, mj, k, mk, l, ml) - seed_B(i, mi, j, mj, l, ml, k, mk);
+  const double CB2 = seed_B2(i, mi, j, mj, k, mk, l, ml) - seed_B2(j, mj, i, mi, k, mk, l, ml);
+  return z122 + CB - CB2;
+}
+
+double UnitTest::Mscheme_fact_223_132_cross(const Operator &Eta, const Operator &Gamma,
+                                           int i, int mi, int j, int mj, int k, int mk, int l, int ml)
+{
+  // Seed: (η_icka η_ab Γ_bjcl − η_ibkc η_ab Γ_cjal) occ. Restore (1−Pij)(1−Pkl).
+  if ((i == j and mi == mj) or (k == l and mk == ml))
+    return 0.0;
+  if (mi + mj != mk + ml)
+    return 0.0;
+
+  auto W = [&](int ii, int mii, int jj, int mjj, int kk, int mkk, int ll, int mll) -> double {
+    if ((mii + mjj) != (mkk + mll))
+      return 0.0;
+    double sm = 0.0;
+    for (auto a : Eta.modelspace->all_orbits)
+    {
+      Orbit &oa = Eta.modelspace->GetOrbit(a);
+      const double na = oa.occ, nna = 1.0 - na;
+      for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+        for (auto b : Eta.modelspace->all_orbits)
+        {
+          Orbit &ob = Eta.modelspace->GetOrbit(b);
+          const double nb = ob.occ, nnb = 1.0 - nb;
+          const double occ = nna * nb - na * nnb;
+          if (std::abs(occ) < 1e-12)
+            continue;
+          for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
+          {
+            const double eta1 = GetMschemeMatrixElement_1b(Eta, a, ma, b, mb);
+            if (std::abs(eta1) < 1e-16)
+              continue;
+            const double cg = cg_OmOm0(Eta, ma, mb);
+            if (std::abs(cg) < 1e-16)
+              continue;
+            for (auto c : Eta.modelspace->all_orbits)
+            {
+              Orbit &oc = Eta.modelspace->GetOrbit(c);
+              for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
+              {
+                const double e_icka = GetMschemeMatrixElement_2b(Eta, ii, mii, c, mc, kk, mkk, a, ma);
+                const double g_bjcl = GetMschemeMatrixElement_2b(Gamma, b, mb, jj, mjj, c, mc, ll, mll);
+                const double e_ibkc = GetMschemeMatrixElement_2b(Eta, ii, mii, b, mb, kk, mkk, c, mc);
+                const double g_cjal = GetMschemeMatrixElement_2b(Gamma, c, mc, jj, mjj, a, ma, ll, mll);
+                sm += occ * cg * eta1 * (e_icka * g_bjcl - e_ibkc * g_cjal);
+              }
+            }
+          }
+        }
+    }
+    return sm;
+  };
+
+  double w = W(i, mi, j, mj, k, mk, l, ml);
+  w -= W(j, mj, i, mi, k, mk, l, ml);
+  w -= W(i, mi, j, mj, l, ml, k, mk);
+  w += W(j, mj, i, mi, l, ml, k, mk);
+  return w;
+}
+
+double UnitTest::Mscheme_fact_223_132(const Operator &Eta, const Operator &Gamma,
+                                     int i, int mi, int j, int mj, int k, int mk, int l, int ml)
+{
+  return Mscheme_fact_223_132_ladder(Eta, Gamma, i, mi, j, mj, k, mk, l, ml)
+       + Mscheme_fact_223_132_onebody(Eta, Gamma, i, mi, j, mj, k, mk, l, ml)
+       + Mscheme_fact_223_132_cross(Eta, Gamma, i, mi, j, mj, k, mk, l, ml);
 }

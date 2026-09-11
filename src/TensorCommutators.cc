@@ -1799,7 +1799,7 @@ namespace Commutator
   //       * sum_{a J2 J3 J4 λ} (-1)^{J4+j_a+λ} Ĵ2 Ĵ3 Ĵ4 λ̂^{-1}
   //       * {j_n j_m J4; j_l j0 J1} {J0 j_k j0; λ J3 J4; J2 j_a j_l}
   //       * X_{ijla}^{J0 J2 λ} Y_{akmn}^{J3 J4 λ}
-  // Code leftover: λ̂^{-1}→λ̂^{-2}. Keep Ĵ1.
+  // Code leftover: convention 2 λ̂^{-1}. Keep Ĵ1.
   // Wick (1-P_ik-P_jk)(1-P_lm-P_ln): bra ABC/CBA/ACB, ket ABC/CBA/BAC (P_lm is BAC, not ACB).
   // Universal in λ: unreduced scalars are MakeReduced then this same kernel.
   // Naive J-scheme lives in Reference (ss has no dgemm for this diagram).
@@ -3976,6 +3976,7 @@ namespace Commutator
     double tstart = omp_get_wtime();
     const int lambda0 = X.GetJRank();
     const bool reduced = X.IsReduced();
+    // 0-body special: ZeroBody is the trace over all m of two WE-unpacked tensors (sum_m X(m)Y(m)), not leftover 1b/2b. WE orthogonality on RMEs supplies one extra 1/λ̂ beyond AMC's coupled-product λ̂^{-1}, so λ̂^{-2}=1/(2λ+1). Do not change this to λ̂^{-1}.
     const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
     double z0 = 0.0;
 
@@ -4027,6 +4028,7 @@ namespace Commutator
     double tstart = omp_get_wtime();
     const int lambda0 = X.GetJRank();
     const bool reduced = X.IsReduced();
+    // 0-body special: ZeroBody is the trace over all m of two WE-unpacked tensors (sum_m X(m)Y(m)), not leftover 1b/2b. WE orthogonality on RMEs supplies one extra 1/λ̂ beyond AMC's coupled-product λ̂^{-1}, so λ̂^{-2}=1/(2λ+1). Do not change this to λ̂^{-1}.
     const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
     auto &X2 = X.TwoBody;
     auto &Y2 = Y.TwoBody;
@@ -4134,9 +4136,9 @@ namespace Commutator
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /// tensor x tensor -> scalar. AMC unreduced Z:
   ///   learn/amc_tts/comm_tts/input/comm{231,132,232}tts_unred.txt
-  /// 132: leftover 2b. ⟨ij J0 b|O|kl J0 a⟩ X_ab. Keep Ĵ0^{-2}; code λ̂^{-2}. Unreduced λ=0: comm132ss.
-  /// 232: leftover 2b. AMC omits 1/2 and (1-P); restored here. Keep Ĵ0^{-1}; code λ̂^{-2}.
-  /// 231: leftover 1b (111 analog). AMC λ̂^{-1}; code λ̂^{-2}. Restore 1/4.
+  /// 132: leftover 2b. Keep Ĵ0^{-2}; convention 2 λ̂^{-1}. Unreduced λ=0: comm132ss.
+  /// 232: leftover 2b. AMC omits 1/2 and (1-P); restored here. Keep Ĵ0^{-1}; convention 2 λ̂^{-1}.
+  /// 231: leftover 1b. Convention 2 λ̂^{-1} (AMC). Restore 1/4.
   /// Raw AMC terms (two couplings); do not group the particle-order swap onto one 6j.
   /// Unreduced λ=0: comm231ss.
   /// 132: Z = Eq1 - Eq2.
@@ -4148,11 +4150,7 @@ namespace Commutator
 
 
   /// Tensor 1b × tensor 1b → scalar 1b. AMC: comm111tts_unred.tex
-  /// m-gold = m-average of comm111ss Wick (stretched m is not a scalar for λ>0, j>1/2):
-  ///   Z_ij = 1/(2j_i+1) sum_m sum_{a,ma} (X_{im,ama} Y_{ama,jm} - Y_{im,ama} X_{ama,jm})
-  /// AMC prints λ̂^{-1} (coupled product). Code λ̂^{-2} to match that m-average, same as comm110tts.
-  /// Unreduced Z: δ_{j_i j_j} (-1)^{j_i+j_a+λ} ĵ_i^{-2} λ̂^{-2} (Y_ia X_aj - X_ia Y_aj)
-  /// GEMM: Xw_ia = (-1)^{j_i+j_a+λ} X_ia (triangle else 0), Z += λ̂^{-2} (Yw X − Xw Y), then ĵ_i^{-2}.
+  /// Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}. Unreduced 1b also ĵ_i^{-2}.
   void comm111tts(const Operator &X, const Operator &Y, Operator &Z)
   {
     if (Z.GetJRank() != 0 or X.GetJRank() != Y.GetJRank())
@@ -4166,7 +4164,7 @@ namespace Commutator
     }
 
     const int lambda0 = X.GetJRank();
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
     const int hZ = Z.IsHermitian() ? +1 : -1;
     const size_t norb = Z.modelspace->GetNumberOrbits();
 
@@ -4190,7 +4188,7 @@ namespace Commutator
       }
     }
 
-    arma::mat W = hat_lambda_inv2 * (Yw * X.OneBody - Xw * Y.OneBody);
+    arma::mat W = hat_lambda_inv * (Yw * X.OneBody - Xw * Y.OneBody);
     auto &Z1 = Z.OneBody;
     for (auto i : Z.modelspace->all_orbits)
     {
@@ -4211,7 +4209,7 @@ namespace Commutator
 
 
   /// Tensor 1b × tensor 2b → scalar 1b. AMC: comm121tts_unred.tex (Eq1 − Eq2).
-  /// m-gold = m-average of comm121ss Wick. AMC λ̂^{-1}; code λ̂^{-2}.
+  /// Convention 2 leftover: AMC λ̂^{-1}.
   /// Naive J-scheme lives in Reference (ss has no dgemm for this diagram).
   void comm121tts(const Operator &X, const Operator &Y, Operator &Z)
   {
@@ -4220,7 +4218,7 @@ namespace Commutator
 
 
   /// Tensor 1b × tensor 2b → scalar 2b. AMC: comm122tts_unred.tex (Eq1 − Eq2).
-  /// Wick = comm122ss (no occupancy on a). AMC leftover Ĵ0^{-1} λ̂^{-1}; code λ̂^{-2}.
+  /// Wick = comm122ss (no occupancy on a). Convention 2 leftover Ĵ0^{-1} λ̂^{-1}.
   /// Universal in λ: unreduced scalars are MakeReduced then this same kernel.
   /// GEMM: per leftover J0, gather NAS |aj>/|ia>/|al>/|ka> in J2 and dgemm into W like comm122ss.
   void comm122tts(const Operator &X, const Operator &Y, Operator &Z)
@@ -4242,7 +4240,7 @@ namespace Commutator
 
     double t_start = omp_get_wtime();
     const int lambda0 = X.GetJRank();
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
     auto &X1 = X.OneBody;
     auto &Y1 = Y.OneBody;
     const int hX = X.IsHermitian() ? +1 : -1;
@@ -4305,7 +4303,7 @@ namespace Commutator
         const int nK2 = tbc_J2.GetNumberKets();
         if (nK2 == 0)
           continue;
-        const double hats = hatJ0inv * std::sqrt(2.0 * J2 + 1.0) * hat_lambda_inv2;
+        const double hats = hatJ0inv * std::sqrt(2.0 * J2 + 1.0) * hat_lambda_inv;
         const bool haveY_bra = y2 and has_block(Y.TwoBody, ch_J2, ch_ket);
         const bool haveX_bra = x2 and has_block(X.TwoBody, ch_J2, ch_ket);
         const bool haveY_ket = y2 and has_block(Y.TwoBody, ch_bra, ch_J2);
@@ -4503,8 +4501,7 @@ namespace Commutator
 
 
   /// Tensor 2b × tensor 2b → scalar 1b. AMC: comm221tts_unred.tex. Restore 1/2 omitted by AMC.
-  /// m-gold = m-average of comm221ss Wick. AMC λ̂^{-1} and (-1)^{J0+J1+λ};
-  /// code λ̂^{-2} and (-1)^{J0+J1} (extra (-1)^λ vs AMC; even λ hides it).
+  /// Convention 2 leftover: AMC λ̂^{-1}.
   /// GEMM: ConstructScalar-style Mpp/Mhh (no Ĵ0^{-2}; phase (−1)^{J0+J2}), then leftover-1b trace without (2J+1).
   void comm221tts(const Operator &X, const Operator &Y, Operator &Z)
   {
@@ -4520,7 +4517,7 @@ namespace Commutator
 
     double t_start = omp_get_wtime();
     const int lambda0 = X.GetJRank();
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
     const int hX = X.IsHermitian() ? +1 : -1;
     const int hY = Y.IsHermitian() ? +1 : -1;
     const int hZ = Z.IsHermitian() ? +1 : -1;
@@ -4588,7 +4585,7 @@ namespace Commutator
         if (not has_block(X.TwoBody, ch_bra, ch_ab) or not has_block(Y.TwoBody, ch_ab, ch_ket))
           continue;
 
-        const double pref = hat_lambda_inv2 * AngMom::phase(J0 + J2);
+        const double pref = hat_lambda_inv * AngMom::phase(J0 + J2);
         arma::mat X_ijab = block(X, ch_bra, ch_ab, hX);
         arma::mat Y_abkl = block(Y, ch_ab, ch_ket, hY);
 
@@ -4679,7 +4676,7 @@ namespace Commutator
   /// Scalar is ConstructScalarMpp_Mhh: NAS dgemm in one J, Z += Mpp − Mhh.
   /// Here X,Y are rank λ so the contracted pair sits in J2 with △(J0,J2,λ):
   ///   Z^{J0} += pref × (X^{J0 J2} P_{pp/hh} Y^{J2 J0} − (X↔Y)),
-  /// pref = (−1)^{J0+J2+λ} Ĵ_0^{-2} λ̂^{-2} (AMC λ̂^{-1}; m-gold λ̂^{-2}).
+  /// pref = (−1)^{J0+J2+λ} Ĵ_0^{-2} λ̂^{-1} (convention 2 / AMC).
   /// Unreduced λ=0: same as comm222_pp_hhss.
   void comm222_pp_hhtts(const Operator &X, const Operator &Y, Operator &Z)
   {
@@ -4695,7 +4692,7 @@ namespace Commutator
 
     double tstart = omp_get_wtime();
     const int lambda0 = X.GetJRank();
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
     const int hX = X.IsHermitian() ? +1 : -1;
     const int hY = Y.IsHermitian() ? +1 : -1;
     const size_t ntb = Z.modelspace->GetNumberTwoBodyChannels();
@@ -4757,7 +4754,7 @@ namespace Commutator
         if (not has_block(X.TwoBody, ch_bra, ch_ab) or not has_block(Y.TwoBody, ch_ab, ch_ket))
           continue;
 
-        const double pref = hatJ0_inv2 * hat_lambda_inv2 * AngMom::phase(J0 + J2 + lambda0);
+        const double pref = hatJ0_inv2 * hat_lambda_inv * AngMom::phase(J0 + J2 + lambda0);
         arma::mat X_ijab = block(X, ch_bra, ch_ab, hX);
         arma::mat Y_abkl = block(Y, ch_ab, ch_ket, hY);
 
@@ -4858,7 +4855,7 @@ namespace Commutator
 
   /// Tensor 2b × tensor 2b → scalar 2b ph ladder.
   /// Path B = chi^eta pipeline: tensor Pandya → CC dgemm → inv Pandya, plus (1−Pij).
-  /// AMC: comm222_phtts_via_pandya.tex. Code λ̂^{-2} (AMC λ̂^{-1}).
+  /// AMC: comm222_phtts_via_pandya.tex. Convention 2 λ̂^{-1}.
   void comm222_phtts(const Operator &X, const Operator &Y, Operator &Z)
   {
     if (Z.GetJRank() != 0 or X.GetJRank() != Y.GetJRank())
@@ -4873,7 +4870,7 @@ namespace Commutator
 
     double tstart = omp_get_wtime();
     const int lambda0 = X.GetJRank();
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
     const int n_cc = Z.modelspace->GetNumberTwoBodyChannels_CC();
 
     std::vector<std::array<int, 2>> pairs;
@@ -4974,7 +4971,7 @@ namespace Commutator
           RY.row(ibra) *= nanb;
           RX.row(ibra) *= nanb;
         }
-        const double pref = wL * AngMom::phase(Jk + lambda0) * hat_lambda_inv2;
+        const double pref = wL * AngMom::phase(Jk + lambda0) * hat_lambda_inv;
         barZ[ch_b] += pref * (itX->second * RY - itY->second * RX);
       }
     }

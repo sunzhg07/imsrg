@@ -70,7 +70,11 @@ public:
 
   arma::vec Energies;
   // configurations
+  // 1b: {p, q, 0, flat} with p ← q orbits
+  // 2b: {ibra, iket, ch_bra, ch_ket}  (scalar: ch_bra == ch_ket;
+  //      tensor: ch_bra <= ch_ket, stored TBME triangle)
   std::vector<std::array<index_t, 4>> eom_confs;
+  bool eom_tensor_configs = false;
   index_t qv_start, qv_end, qv_dim;
   index_t ph_start, ph_end, ph_dim;
   index_t ppvv_start, ppvv_end, ppvv_dim;
@@ -170,11 +174,29 @@ public:
   Operator GetVSEOM_ladder_single(Operator &H, int herm);
   Operator GetVSEOM_ladder_multiref(Operator &H, int herm);
 
+  void ClearConfigBookkeeping();
   void ConstructConfigs();
+  /// Same five blocks as ConstructConfigs, but bra/ket couple to the EOM
+  /// operator (J2, parity, itz) instead of sharing JπTz:
+  ///   1b: Triangle(ja, ji, J2), (la+li+parity) even, |tza-tzi|=2*itz
+  ///   2b: Triangle(Jbra, Jket, J2), |Tzbra-Tzket|=itz,
+  ///       (Pbra+Pket+parity) even; stored with ch_bra <= ch_ket.
+  /// Blocks: ⟨q|v⟩, ⟨p|h⟩, ⟨qq,qv|vv⟩, ⟨qq,qv,vv|hv⟩, ⟨pp|hh⟩.
+  void ConstructConfigs_tensor();
+  bool TensorOneBodyAllowed(const Orbit &oa, const Orbit &oi) const;
+  bool TensorTwoBodyAllowed(const TwoBodyChannel &bra,
+                            const TwoBodyChannel &ket) const;
   void PrintConfigs();
   void ShowModel();
   void ConstructNormMatrix();
+  /// Tensor N-kernel from AMC of the same m-scheme strings as ConstructNormMatrix
+  /// (Y index-reversed so λ×λ→0). See learn/amc_tts/eom_norm/.
+  void ConstructNormMatrix_tensor();
   void ConstructProjectMatrix();
+  /// Nonzero J2 / parity / Tz: tensor EOM (2+ from 0+, etc.).
+  bool IsTensorEOM() const { return J2 != 0 or parity != 0 or itz != 0; }
+  /// Empty Hermitian amplitude with this EOM's (J2, Tz, parity).
+  Operator ZeroAmplitude() const;
   /// Canonical orthogonalization of Nkernel (Szabo–Ostlund):
   ///   N U = U s, keep s_k >= eps * s_max, X = U_sub * s_sub^{-1/2}.
   /// Returns M = number of retained modes. Stores X in X_canon (N x M).
@@ -182,6 +204,11 @@ public:
 
   double Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
                       size_t f, double j1, double j2);
+  /// Tensor C4: AMC of X_abcd ρ_dfae Y_cebf (Y reversed). J0,J1 = X pp,hv;
+  /// J4,J5 = Y hv,pp of the reversed ME (stored Y is pp,hv = J5,J4).
+  double Core_Diagram_tensor(size_t a, size_t b, size_t c, size_t d, size_t e,
+                              size_t f, int J0, int J1, int J4, int J5,
+                              int lam);
   // Debug/inspection helper: return the direct-term 3-body diagram entries before
   // RDM contraction. The public scalar API applies the same direct-only convention.
   std::vector<std::tuple<size_t,size_t,size_t,double>> ThreeBody_Diagram_Entries(size_t a, size_t b, size_t c,
@@ -211,6 +238,9 @@ public:
   // --- norm helpers ---
   double NormSingle(Operator &T1, Operator &T2);
   double NormMultiref(Operator &T1, Operator &T2);
+  /// Tensor χ: ⟨[T1, ladder(T2,-1)]⟩_ρ / 2 using TTS commutators (T×T→scalar).
+  /// Same physics as NormMultiref; production Commutator() has no T×T.
+  double NormMultiref_tensor(Operator &T1, Operator &T2);
   double Norm3Multiref(Operator &t1, Operator &t2, Operator &haml);
 
   // --- H * v helpers (direct member calls, no callbacks) ---

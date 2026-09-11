@@ -1121,9 +1121,6 @@ PYBIND11_MODULE(pyIMSRG, m) {
        "SetUse_TypeIIIa_1b",
        &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeIIIa_1b);
   FactorizedDoubleCommutator_eths.def(
-       "SetUse_TypeIIIa_slow",
-       &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeIIIa_slow);
-  FactorizedDoubleCommutator_eths.def(
        "SetUse_TypeGI_2b",
        &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeGI_2b);
   FactorizedDoubleCommutator_eths.def(
@@ -1138,12 +1135,6 @@ PYBIND11_MODULE(pyIMSRG, m) {
   FactorizedDoubleCommutator_eths.def(
        "SetUse_TypeGIIIc_2b",
        &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeGIIIc_2b);
-  FactorizedDoubleCommutator_eths.def(
-       "DebugChiPandyaHermiticity",
-       &Commutator::FactorizedDoubleCommutator_eths::DebugChiPandyaHermiticity);
-  FactorizedDoubleCommutator_eths.def(
-       "DebugTensorPandyaRoundTrip",
-       &Commutator::FactorizedDoubleCommutator_eths::DebugTensorPandyaRoundTrip);
   FactorizedDoubleCommutator_eths.def(
        "ForceScalarMakeNotReduced",
        &Commutator::FactorizedDoubleCommutator_eths::ForceScalarMakeNotReduced);
@@ -1174,6 +1165,18 @@ PYBIND11_MODULE(pyIMSRG, m) {
   FactorizedDoubleCommutator_eths.def(
        "comm223_232_GIVc",
        &Commutator::FactorizedDoubleCommutator_eths::comm223_232_GIVc);
+  FactorizedDoubleCommutator_eths.def(
+       "comm223_132_tts",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_132_tts);
+  FactorizedDoubleCommutator_eths.def(
+       "comm223_132_tts_ladder",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_132_tts_ladder);
+  FactorizedDoubleCommutator_eths.def(
+       "comm223_132_tts_onebody",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_132_tts_onebody);
+  FactorizedDoubleCommutator_eths.def(
+       "comm223_132_tts_cross",
+       &Commutator::FactorizedDoubleCommutator_eths::comm223_132_tts_cross);
   FactorizedDoubleCommutator.def(
       "SetUse_GT_TypeI_2b",
       &Commutator::FactorizedDoubleCommutator::SetUse_GT_TypeI_2b);
@@ -1535,7 +1538,9 @@ PYBIND11_MODULE(pyIMSRG, m) {
             self.UnflattenOperator(Op, v);
           }, py::arg("Op"), py::arg("v"))
       .def("ConstructConfigs",       &EOM::ConstructConfigs)
+      .def("ConstructConfigs_tensor", &EOM::ConstructConfigs_tensor)
       .def("ConstructNormMatrix",    &EOM::ConstructNormMatrix)
+      .def("ConstructNormMatrix_tensor", &EOM::ConstructNormMatrix_tensor)
       .def("ConstructProjectMatrix", &EOM::ConstructProjectMatrix)
       .def("SetArnoldiUseProjection", &EOM::SetArnoldiUseProjection,
            py::arg("use_projection"))
@@ -1585,6 +1590,9 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("H"))
       .def("NormMultiref",             &EOM::NormMultiref,
            py::arg("T1"), py::arg("T2"))
+      .def("NormMultiref_tensor",     &EOM::NormMultiref_tensor,
+           py::arg("T1"), py::arg("T2"),
+           "⟨[T1, ladder(T2,-1)]⟩_ρ / 2 for rank-λ χ (TTS leftover)")
       .def("Norm3Multiref",            &EOM::Norm3Multiref,
            py::arg("t1"), py::arg("t2"), py::arg("haml"))
       .def("HtcMultiref",              &EOM::HtcMultiref,
@@ -1626,6 +1634,12 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("tdm_file"))
       .def("WriteTdm", &EOM::WriteTdm,
            py::arg("op"), py::arg("filename"))
+      .def_readonly("qv_start",   &EOM::qv_start)
+      .def_readonly("qv_end",     &EOM::qv_end)
+      .def_readonly("qv_dim",     &EOM::qv_dim)
+      .def_readonly("ph_start",   &EOM::ph_start)
+      .def_readonly("ph_end",     &EOM::ph_end)
+      .def_readonly("ph_dim",     &EOM::ph_dim)
       .def_readonly("ppvv_start", &EOM::ppvv_start)
       .def_readonly("ppvv_end",   &EOM::ppvv_end)
       .def_readonly("ppvv_dim",   &EOM::ppvv_dim)
@@ -1634,6 +1648,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def_readonly("pphv_dim",   &EOM::pphv_dim)
       .def_readonly("pphh_start", &EOM::pphh_start)
       .def_readonly("pphh_end",   &EOM::pphh_end)
+      .def_readonly("pphh_dim",   &EOM::pphh_dim)
       .def_readonly("eom_dims",   &EOM::eom_dims)
       .def_property_readonly("eom_confs", [](const EOM &self) {
             std::vector<std::array<size_t,4>> out;
@@ -1922,6 +1937,10 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("Mscheme_fact_GIVa", &UnitTest::Mscheme_fact_GIVa)
       .def("Mscheme_fact_GIVb_chi", &UnitTest::Mscheme_fact_GIVb_chi)
       .def("Mscheme_fact_GIVc", &UnitTest::Mscheme_fact_GIVc)
+      .def("Mscheme_fact_223_132_ladder", &UnitTest::Mscheme_fact_223_132_ladder)
+      .def("Mscheme_fact_223_132_onebody", &UnitTest::Mscheme_fact_223_132_onebody)
+      .def("Mscheme_fact_223_132_cross", &UnitTest::Mscheme_fact_223_132_cross)
+      .def("Mscheme_fact_223_132", &UnitTest::Mscheme_fact_223_132)
       .def("Mscheme_comm231tts_wick", &UnitTest::Mscheme_comm231tts_wick)
       .def("Mscheme_comm132tts_wick", &UnitTest::Mscheme_comm132tts_wick)
       .def("Mscheme_comm232tts_wick", &UnitTest::Mscheme_comm232tts_wick)

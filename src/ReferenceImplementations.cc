@@ -57,6 +57,7 @@ namespace ReferenceImplementations
     double t_start = omp_get_wtime();
     const int lambda0 = X.GetJRank();
     const bool reduced = X.IsReduced();
+    // 0-body special: ZeroBody is the trace over all m of two WE-unpacked tensors (sum_m X(m)Y(m)), not leftover 1b/2b. WE orthogonality on RMEs supplies one extra 1/λ̂ beyond AMC's coupled-product λ̂^{-1}, so λ̂^{-2}=1/(2λ+1). Do not change this to λ̂^{-1}.
     const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
     double z0 = 0.0;
 
@@ -112,6 +113,7 @@ namespace ReferenceImplementations
     double t_start = omp_get_wtime();
     const int lambda0 = X.GetJRank();
     const bool reduced = X.IsReduced();
+    // 0-body special: ZeroBody is the trace over all m of two WE-unpacked tensors (sum_m X(m)Y(m)), not leftover 1b/2b. WE orthogonality on RMEs supplies one extra 1/λ̂ beyond AMC's coupled-product λ̂^{-1}, so λ̂^{-2}=1/(2λ+1). Do not change this to λ̂^{-1}.
     const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
     auto &X2 = X.TwoBody;
     auto &Y2 = Y.TwoBody;
@@ -184,10 +186,7 @@ namespace ReferenceImplementations
   }
 
   /// Tensor 1b × tensor 1b → scalar 1b. AMC: comm111tts_unred.tex
-  /// m-gold = m-average of comm111ss Wick (stretched m is not a scalar for λ>0, j>1/2):
-  ///   Z_ij = 1/(2j_i+1) sum_m sum_{a,ma} (X_{im,ama} Y_{ama,jm} - Y_{im,ama} X_{ama,jm})
-  /// AMC prints λ̂^{-1} (coupled product). Code λ̂^{-2} to match that m-average, same as comm110tts.
-  /// Unreduced Z: δ_{j_i j_j} (-1)^{j_i+j_a+λ} ĵ_i^{-2} λ̂^{-2} (Y_ia X_aj - X_ia Y_aj)
+  /// Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}. Unreduced 1b also ĵ_i^{-2}.
   void comm111tts(const Operator &X, const Operator &Y, Operator &Z)
   {
     if (Z.GetJRank() != 0 or X.GetJRank() != Y.GetJRank())
@@ -195,7 +194,7 @@ namespace ReferenceImplementations
     double t_start = omp_get_wtime();
     const int lambda0 = X.GetJRank();
     const bool reduced = X.IsReduced();
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
     auto &Z1 = Z.OneBody;
     const int hZ = Z.IsHermitian() ? +1 : -1;
 
@@ -217,7 +216,7 @@ namespace ReferenceImplementations
               continue;
             if (not AngMom::Triangle(oa.j2, Z.modelspace->GetOrbit(j).j2, 2 * lambda0))
               continue;
-            const double pref = diag * hat_lambda_inv2 * AngMom::phase((oi.j2 + oa.j2 + 2 * lambda0) / 2);
+            const double pref = diag * hat_lambda_inv * AngMom::phase((oi.j2 + oa.j2 + 2 * lambda0) / 2);
             zij += pref * (Y.OneBody(i, a) * X.OneBody(a, j) - X.OneBody(i, a) * Y.OneBody(a, j));
           }
         }
@@ -235,7 +234,7 @@ namespace ReferenceImplementations
   }
 
   /// Tensor 1b × tensor 2b → scalar 1b. AMC: comm121tts_unred.tex (Eq1 − Eq2).
-  /// m-gold = m-average of comm121ss Wick. AMC λ̂^{-1}; code λ̂^{-2}.
+  /// Convention 2 leftover: AMC λ̂^{-1}.
   void comm121tts(const Operator &X, const Operator &Y, Operator &Z)
   {
     if (Z.GetJRank() != 0 or X.GetJRank() != Y.GetJRank())
@@ -289,7 +288,7 @@ namespace ReferenceImplementations
             if (not AngMom::Triangle(oa.j2, ob.j2, 2 * lambda0))
               continue;
             const double diag = occ / (oi.j2 + 1.0);
-            const double hatl2 = 1.0 / (2.0 * lambda0 + 1.0);
+            const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
 
             int J0min = std::abs(ob.j2 - oi.j2) / 2;
             int J0max = (ob.j2 + oi.j2) / 2;
@@ -308,7 +307,7 @@ namespace ReferenceImplementations
                 const double hatJ = std::sqrt((2 * J0 + 1.0) * (2 * J1 + 1.0));
                 const double sixj = Z.modelspace->GetSixJ(J1, lambda0, J0, jb, ji, ja);
                 const double phase = AngMom::phase((oi.j2 + oa.j2 + 2 * J1) / 2);
-                const double pref = diag * hatJ * hatl2 * phase * sixj;
+                const double pref = diag * hatJ * hat_lambda_inv * phase * sixj;
                 const double ybiaj = Y2.GetTBME_J(J0, J1, b, i, a, j);
                 const double xbiaj = X2.GetTBME_J(J0, J1, b, i, a, j);
                 zij += pref * (X1(a, b) * ybiaj - Y1(a, b) * xbiaj);
@@ -332,7 +331,7 @@ namespace ReferenceImplementations
                 const double hatJ = std::sqrt((2 * J0 + 1.0) * (2 * J1 + 1.0));
                 const double sixj = Z.modelspace->GetSixJ(lambda0, J1, J0, ji, ja, jb);
                 const double phase = AngMom::phase((oi.j2 + ob.j2 + 2 * J1) / 2);
-                const double pref = diag * hatJ * hatl2 * phase * sixj;
+                const double pref = diag * hatJ * hat_lambda_inv * phase * sixj;
                 const double yaibj = Y2.GetTBME_J(J0, J1, a, i, b, j);
                 const double xaibj = X2.GetTBME_J(J0, J1, a, i, b, j);
                 zij -= pref * (yaibj * X1(b, a) - xaibj * Y1(b, a));
@@ -370,7 +369,7 @@ namespace ReferenceImplementations
 
     double t_start = omp_get_wtime();
     const int lambda0 = X.GetJRank();
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
     auto &X1 = X.OneBody;
     auto &Y1 = Y.OneBody;
     auto &X2 = X.TwoBody;
@@ -450,7 +449,7 @@ namespace ReferenceImplementations
                   continue;
                 const double hatJ2 = std::sqrt(2.0 * J2 + 1.0);
                 const double phase = AngMom::phase(J0 + (oi.j2 + oj.j2) / 2);
-                const double pref = hatJ0inv * hatJ2 * hat_lambda_inv2 * phase * sixj;
+                const double pref = hatJ0inv * hatJ2 * hat_lambda_inv * phase * sixj;
                 const double yajkl = Y2.GetTBME_J(J2, J0, a, j, k, l);
                 const double xajkl = X2.GetTBME_J(J2, J0, a, j, k, l);
                 zijkl += pref * (xia * yajkl - yia * xajkl);
@@ -473,7 +472,7 @@ namespace ReferenceImplementations
                   continue;
                 const double hatJ2 = std::sqrt(2.0 * J2 + 1.0);
                 const double phase = AngMom::phase((oi.j2 + oa.j2) / 2 + J2);
-                const double pref = hatJ0inv * hatJ2 * hat_lambda_inv2 * phase * sixj;
+                const double pref = hatJ0inv * hatJ2 * hat_lambda_inv * phase * sixj;
                 const double yiakl = Y2.GetTBME_J(J2, J0, i, a, k, l);
                 const double xiakl = X2.GetTBME_J(J2, J0, i, a, k, l);
                 zijkl += pref * (xja * yiakl - yja * xiakl);
@@ -496,7 +495,7 @@ namespace ReferenceImplementations
                   continue;
                 const double hatJ2 = std::sqrt(2.0 * J2 + 1.0);
                 const double phase = AngMom::phase((ol.j2 + oa.j2) / 2 + J2);
-                const double pref = hatJ0inv * hatJ2 * hat_lambda_inv2 * phase * sixj;
+                const double pref = hatJ0inv * hatJ2 * hat_lambda_inv * phase * sixj;
                 const double yijal = Y2.GetTBME_J(J0, J2, i, j, a, l);
                 const double xijal = X2.GetTBME_J(J0, J2, i, j, a, l);
                 zijkl -= pref * (yijal * xak - xijal * yak);
@@ -519,7 +518,7 @@ namespace ReferenceImplementations
                   continue;
                 const double hatJ2 = std::sqrt(2.0 * J2 + 1.0);
                 const double phase = AngMom::phase(J0 + (ok.j2 + ol.j2) / 2);
-                const double pref = hatJ0inv * hatJ2 * hat_lambda_inv2 * phase * sixj;
+                const double pref = hatJ0inv * hatJ2 * hat_lambda_inv * phase * sixj;
                 const double yijka = Y2.GetTBME_J(J0, J2, i, j, k, a);
                 const double xijka = X2.GetTBME_J(J0, J2, i, j, k, a);
                 zijkl -= pref * (yijka * xal - xijka * yal);
@@ -539,8 +538,7 @@ namespace ReferenceImplementations
   }
 
   /// Tensor 2b × tensor 2b → scalar 1b. AMC: comm221tts_unred.tex. Restore 1/2 omitted by AMC.
-  /// m-gold = m-average of comm221ss Wick. AMC λ̂^{-1} and (-1)^{J0+J1+λ};
-  /// code λ̂^{-2} and (-1)^{J0+J1} (extra (-1)^λ vs AMC; even λ hides it).
+  /// Convention 2 leftover: AMC λ̂^{-1}.
   void comm221tts(const Operator &X, const Operator &Y, Operator &Z)
   {
     if (Z.GetJRank() != 0 or X.GetJRank() != Y.GetJRank())
@@ -548,7 +546,7 @@ namespace ReferenceImplementations
     double t_start = omp_get_wtime();
     const int lambda0 = X.GetJRank();
     const bool reduced = X.IsReduced();
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
     auto &X2 = X.TwoBody;
     auto &Y2 = Y.TwoBody;
     auto &Z1 = Z.OneBody;
@@ -605,7 +603,7 @@ namespace ReferenceImplementations
                     continue;
                   if (not AngMom::Triangle(oc.j2, oj.j2, 2 * J0))
                     continue;
-                  const double pref = 0.5 * Nocc / (oi.j2 + 1.0) * hat_lambda_inv2
+                  const double pref = 0.5 * Nocc / (oi.j2 + 1.0) * hat_lambda_inv
                                       * AngMom::phase(J0 + J1);
                   const double xciab = X2.GetTBME_J(J0, J1, c, i, a, b);
                   const double yabcj = Y2.GetTBME_J(J1, J0, a, b, c, j);
@@ -969,7 +967,7 @@ namespace ReferenceImplementations
     double t_start = omp_get_wtime();
     const int lambda0 = X.GetJRank();
     // AMC prints λ̂^{-1} and (-1)^{J0+J2+λ}. Code λ̂^{-2} (m-gold); keep AMC phase.
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
     auto &X2 = X.TwoBody;
     auto &Y2 = Y.TwoBody;
     auto &Z2 = Z.TwoBody;
@@ -1024,7 +1022,7 @@ namespace ReferenceImplementations
                   continue;
                 if (not AngMom::Triangle(2 * J0, 2 * J2, 2 * lambda0))
                   continue;
-                const double pref = 0.5 * occ * hatJ0_inv2 * hat_lambda_inv2
+                const double pref = 0.5 * occ * hatJ0_inv2 * hat_lambda_inv
                                     * AngMom::phase(J0 + J2 + lambda0);
                 const double xijab = X2.GetTBME_J(J0, J2, i, j, a, b);
                 const double yabkl = Y2.GetTBME_J(J2, J0, a, b, k, l);
@@ -1086,8 +1084,8 @@ namespace ReferenceImplementations
 
   /// Tensor 2b × tensor 2b → scalar 2b, ph ladder. AMC: comm222_phtts_via_pandya.tex
   /// Path B: tensor Pandya → leftover-2b tts couple in CC → inv Pandya.
-  /// Couple (AMC λ̂^{-1}; code λ̂^{-2}):
-  ///   barZ^{J0} = (−1)^{J0} Ĵ0^{-2} Σ_{ab J2} (na−nb) (−1)^{J2+λ} λ̂^{-2}
+  /// Couple (convention 2 / AMC λ̂^{-1}):
+  ///   barZ^{J0} = (−1)^{J0} Ĵ0^{-2} Σ_{ab J2} (na−nb) (−1)^{J2+λ} λ̂^{-1}
   ///               (Xbar^{J0 J2}_{iabl} Ybar^{J2 J0}_{bjka} − YX)
   /// Inverse unreduced: Z^J = −Σ_{J'} Ĵ'^2 6j barZ^{J'}  then (1−Pij) like comm222_phss.
   /// chi^eta is the same couple without AS and with different occupancy.
@@ -1103,7 +1101,7 @@ namespace ReferenceImplementations
     }
     double t_start = omp_get_wtime();
     const int lambda0 = X.GetJRank();
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
     auto &Z2 = Z.TwoBody;
 
     std::vector<size_t> ch_bra_list, ch_ket_list;
@@ -1170,7 +1168,7 @@ namespace ReferenceImplementations
                 {
                   if (not AngMom::Triangle((double)Jp, (double)J2, (double)lambda0))
                     continue;
-                  const double pref = wL * AngMom::phase(J2 + lambda0) * hat_lambda_inv2 * nanb;
+                  const double pref = wL * AngMom::phase(J2 + lambda0) * hat_lambda_inv * nanb;
                   // Direct ⟨il|ba⟩⟨ba|kj⟩ : barX_iabl * barY_bjka
                   const double x_iabl = TensorPandyaBar(X, (int)i, (int)a, (int)b, (int)l, Jp, J2);
                   const double y_bjka = TensorPandyaBar(Y, (int)b, (int)j, (int)k, (int)a, J2, Jp);
@@ -24341,9 +24339,9 @@ namespace ReferenceImplementations
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /// tensor x tensor -> scalar. AMC unreduced Z:
   ///   learn/amc_tts/comm_tts/input/comm{231,132,232}tts_unred.txt
-  /// 132: leftover 2b. ⟨ij J0 b|O|kl J0 a⟩ X_ab. Keep Ĵ0^{-2}; code λ̂^{-2}. Unreduced λ=0: comm132ss.
-  /// 232: leftover 2b. AMC omits 1/2 and (1-P); restored here. Keep Ĵ0^{-1}; code λ̂^{-2}.
-  /// 231: leftover 1b (111 analog). AMC λ̂^{-1}; code λ̂^{-2}. Restore 1/4.
+  /// 132: leftover 2b. Keep Ĵ0^{-2}; convention 2 λ̂^{-1}. Unreduced λ=0: comm132ss.
+  /// 232: leftover 2b. AMC omits 1/2 and (1-P); restored here. Keep Ĵ0^{-1}; convention 2 λ̂^{-1}.
+  /// 231: leftover 1b. Convention 2 λ̂^{-1} (AMC). Restore 1/4.
   /// Raw AMC terms (two couplings); do not group the particle-order swap onto one 6j.
   /// Unreduced λ=0: comm231ss.
   /// 132: Z = Eq1 - Eq2.
@@ -24417,7 +24415,7 @@ namespace ReferenceImplementations
                     // Raw AMC (comm231tts_unred.tex), not the grouped threebody tex.
                     // Coupling A: Y_cdiabj^{J1 j0, J0 j1} — j0 = (J1, i), j1 = (J0, j).
                     // Coupling B: Y_abicdj^{J0 j0, J1 j1} — j0 = (J0, i), j1 = (J1, j).
-                    // AMC λ̂^{-1}; leftover m-average λ̂^{-2}. Restore 1/4.
+                    // Convention 2: AMC λ̂^{-1}. Restore 1/4.
 
                     int j0minA = std::abs(2 * J1 - oi.j2);
                     int j0maxA = 2 * J1 + oi.j2;
@@ -24429,7 +24427,7 @@ namespace ReferenceImplementations
                       {
                         if (std::abs(j0 - j1) > 2 * lambda0 || (j0 + j1) < 2 * lambda0)
                           continue;
-                        double hatfactor = std::sqrt((j0 + 1.0) * (j1 + 1.0)) / (2.0 * lambda0 + 1.0);
+                        double hatfactor = std::sqrt((j0 + 1.0) * (j1 + 1.0) / (2.0 * lambda0 + 1.0)); // conv 2: λ̂^{-1};
                         double prefactor = 0.25 * occ_factor * diag_factor * hatfactor;
                         double sixj1 = Z.modelspace->GetSixJ(J1, lambda0, J0,
                                                             j1 / 2., oi.j2 / 2., j0 / 2.);
@@ -24452,7 +24450,7 @@ namespace ReferenceImplementations
                       {
                         if (std::abs(j0 - j1) > 2 * lambda0 || (j0 + j1) < 2 * lambda0)
                           continue;
-                        double hatfactor = std::sqrt((j0 + 1.0) * (j1 + 1.0)) / (2.0 * lambda0 + 1.0);
+                        double hatfactor = std::sqrt((j0 + 1.0) * (j1 + 1.0) / (2.0 * lambda0 + 1.0)); // conv 2: λ̂^{-1};
                         double prefactor = 0.25 * occ_factor * diag_factor * hatfactor;
                         double sixj2 = Z.modelspace->GetSixJ(lambda0, J0, J1,
                                                             oi.j2 / 2., j1 / 2., j0 / 2.);
@@ -24498,7 +24496,7 @@ namespace ReferenceImplementations
     auto &Y3 = Y.ThreeBody;
     auto &Z2 = Z.TwoBody;
     const int lambda0 = X.GetJRank();
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
 
     Z.modelspace->PreCalculateSixJ();
     double tstart = omp_get_wtime();
@@ -24579,7 +24577,7 @@ namespace ReferenceImplementations
 
                   // AMC: (−1)^{J0+j_b+j0} Ĵ0^{-2} ĵ0 ĵ1 λ̂^{-1}. Keep Ĵ0^{-2}; code λ̂^{-2}.
                   int phase = AngMom::phase((ob.j2 + twoj0 + 2 * J0) / 2);
-                  double hatfactor = std::sqrt((twoj0 + 1.0) * (twoj1 + 1.0)) * hat_lambda_inv2;
+                  double hatfactor = std::sqrt((twoj0 + 1.0) * (twoj1 + 1.0)) * hat_lambda_inv;
                   double prefactor = hatJ0_inv2 * occfactor * phase * hatfactor * sixj;
 
                   double yijbkla = Y3.GetME_pn(J0, twoj0, J0, twoj1, i, j, b, k, l, a);
@@ -24619,7 +24617,7 @@ namespace ReferenceImplementations
     auto &Y3 = Y.ThreeBody;
     auto &Z2 = Z.TwoBody;
     const int lambda0 = X.GetJRank();
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
 
     Z.modelspace->PreCalculateSixJ();
     double tstart = omp_get_wtime();
@@ -24719,7 +24717,7 @@ namespace ReferenceImplementations
                                                       twoj1 / 2., oi_s.j2 / 2., twoj0 / 2.);
                           if (std::abs(sixj1 * sixj2) < 1e-16)
                             continue;
-                          double hatfactor = std::sqrt((2 * J2 + 1.0) * (twoj0 + 1.0) * (twoj1 + 1.0)) * hat_lambda_inv2;
+                          double hatfactor = std::sqrt((2 * J2 + 1.0) * (twoj0 + 1.0) * (twoj1 + 1.0)) * hat_lambda_inv;
                           int phasek = (oi_s.j2 + twoj1 + 2 * J2) / 2;
                           double pref = occfactor * psign * AngMom::phase(phasek) * hatfactor * sixj1 * sixj2;
                           double x2 = X2.GetTBME_J(J2, J3, c, j_s, a, b);
@@ -24769,7 +24767,7 @@ namespace ReferenceImplementations
                                                       twoj1 / 2., twoj0 / 2., ok_s.j2 / 2.);
                           if (std::abs(sixj1 * sixj2) < 1e-16)
                             continue;
-                          double hatfactor = std::sqrt((2 * J3 + 1.0) * (twoj0 + 1.0) * (twoj1 + 1.0)) * hat_lambda_inv2;
+                          double hatfactor = std::sqrt((2 * J3 + 1.0) * (twoj0 + 1.0) * (twoj1 + 1.0)) * hat_lambda_inv;
                           int phasek = (ok_s.j2 + twoj1 + 2 * J2) / 2;
                           double pref = occfactor * psign * AngMom::phase(phasek) * hatfactor * sixj1 * sixj2;
                           double y3 = Y3.GetME_pn(J0, twoj0, J2, twoj1, i, j, c, a, b, k_s);
@@ -24803,7 +24801,7 @@ namespace ReferenceImplementations
   //       * sum_{a J2 J3 J4 λ} (-1)^{J4+j_a+λ} Ĵ2 Ĵ3 Ĵ4 λ̂^{-1}
   //       * {j_n j_m J4; j_l j0 J1} {J0 j_k j0; λ J3 J4; J2 j_a j_l}
   //       * X_{ijla}^{J0 J2 λ} Y_{akmn}^{J3 J4 λ}
-  // Code leftover: λ̂^{-1}→λ̂^{-2}. Keep Ĵ1.
+  // Code leftover: convention 2 λ̂^{-1}. Keep Ĵ1.
   // Wick (1-P_ik-P_jk)(1-P_lm-P_ln): bra ABC/CBA/ACB, ket ABC/CBA/BAC (P_lm is BAC, not ACB).
   // Universal in λ: unreduced scalars are MakeReduced then this same kernel.
   void comm223tts(const Operator &X, const Operator &Y, Operator &Z)
@@ -24827,7 +24825,7 @@ namespace ReferenceImplementations
     auto &X2 = X.TwoBody;
     auto &Y2 = Y.TwoBody;
     const int lambda0 = X.GetJRank();
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda0 + 1.0); // Convention 2 leftover: [X×Y]^{(0)}_0 ⇒ AMC λ̂^{-1}.
     Z.modelspace->PreCalculateSixJ();
     double t_start = omp_get_wtime();
 
@@ -24989,7 +24987,7 @@ namespace ReferenceImplementations
                                                   + (o4.j2 + o5.j2 + o6.j2 + oa.j2) / 2);
                         double hats = std::sqrt((2.0 * J2p + 1.0) * (2.0 * J2amc + 1.0)
                                                 * (2.0 * J3 + 1.0) * (2.0 * J4 + 1.0))
-                                      * hat_lambda_inv2;
+                                      * hat_lambda_inv;
                         double x_ijla = X2.GetTBME_J(J1p, J2amc, I1, I2, I4, a);
                         double y_akmn = Y2.GetTBME_J(J3, J4, a, I3, I5, I6);
                         double y_ijla = Y2.GetTBME_J(J1p, J2amc, I1, I2, I4, a);
