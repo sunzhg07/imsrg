@@ -502,6 +502,355 @@ void comm223_231_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
 ///   f^III_b: M = chi*Gamma; same-ch M+=M.t(); unequal M-=Gamma*chi_ket
 ///   f^III_a: M = hat(J)^2 (Gamma*chi - chi*Gamma)  [no .t() shortcut]
 ////////////////////////////////////////////////////////////////////////////
+/// Leftover χ^γ × Γ ladder (λ≠0). Same W1·W2 as tts_fIIIa, (a,b) by DGEMM.
+static void comm223_231_fIIIa_leftover_dgemm(const Operator &Eta,
+                                            const Operator &Gamma,
+                                            Operator &Z) {
+  double t_start = omp_get_wtime();
+  Z.modelspace->PreCalculateSixJ();
+  const int lambda = Eta.GetJRank();
+  const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+  const int hZ = Gamma.IsHermitian() ? 1 : -1;
+  std::vector<index_t> allorb(Z.modelspace->all_orbits.begin(),
+                              Z.modelspace->all_orbits.end());
+  const int n_orb = (int)allorb.size();
+  int max_j2 = 0;
+  int n_orb_alloc = 0;
+  for (auto o : allorb) {
+    max_j2 = std::max(max_j2, Z.modelspace->GetOrbit(o).j2);
+    n_orb_alloc = std::max(n_orb_alloc, (int)o + 1);
+  }
+  const int max_J = max_j2;
+  const int max_j0_2 = 2 * (max_J + lambda + 2);
+  const int n_J = max_J + 1;
+  const int n_j0 = max_j0_2 + 1;
+
+  std::vector<int> compact(n_orb_alloc, -1);
+  std::vector<int> oj2(n_orb);
+  std::vector<double> ojh(n_orb), nocc(n_orb), nnocc(n_orb);
+  for (int t = 0; t < n_orb; ++t) {
+    compact[(int)allorb[t]] = t;
+    Orbit &o = Z.modelspace->GetOrbit(allorb[t]);
+    oj2[t] = o.j2;
+    ojh[t] = o.j2 * 0.5;
+    nocc[t] = o.occ;
+    nnocc[t] = 1.0 - o.occ;
+  }
+
+  const size_t w_s_j0 = 1;
+  const size_t w_s_J6 = (size_t)n_j0 * w_s_j0;
+  const size_t w_s_b = (size_t)n_J * w_s_J6;
+  const size_t w_s_k = (size_t)n_orb * w_s_b;
+  const size_t w_s_j = (size_t)n_orb * w_s_k;
+  const size_t w_s_a = (size_t)n_orb * w_s_j;
+  std::vector<double> W1((size_t)n_orb * w_s_a, 0.0),
+      W2((size_t)n_orb * w_s_a, 0.0);
+  auto w_index = [&](int a, int j, int k, int b, int J6, int j02) -> size_t {
+    return (size_t)a * w_s_a + (size_t)j * w_s_j + (size_t)k * w_s_k +
+           (size_t)b * w_s_b + (size_t)J6 * w_s_J6 + (size_t)j02 * w_s_j0;
+  };
+
+  double t_w1 = omp_get_wtime();
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int ia = 0; ia < n_orb; ++ia) {
+    const int a = (int)allorb[ia];
+    const double ja = ojh[ia];
+    const int ja2 = oj2[ia];
+    std::vector<double> s1((size_t)n_j0, 0.0);
+    for (int ij = 0; ij < n_orb; ++ij) {
+      const int j = (int)allorb[ij];
+      const double jj = ojh[ij];
+      const int jj2 = oj2[ij];
+      const int J2min = std::abs(ja2 - jj2) / 2;
+      const int J2max = (ja2 + jj2) / 2;
+      for (int J2 = J2min; J2 <= J2max; ++J2) {
+        for (int J3 = 0; J3 <= max_J; ++J3) {
+          if (not AngMom::Triangle(J2, J3, lambda))
+            continue;
+          int s1lo = std::max(std::abs(2 * J3 - jj2), std::abs(ja2 - 2 * lambda));
+          int s1hi = std::min({max_j0_2, 2 * J3 + jj2, ja2 + 2 * lambda});
+          if ((s1lo & 1) == 0)
+            ++s1lo;
+          if (s1lo > s1hi)
+            continue;
+          std::fill(s1.begin(), s1.end(), 0.0);
+          bool any_s1 = false;
+          for (int j02 = s1lo; j02 <= s1hi; j02 += 2) {
+            const double sj =
+                AngMom::SixJ(J3, lambda, J2, ja, jj, 0.5 * j02);
+            if (std::abs(sj) < 1e-14)
+              continue;
+            s1[(size_t)j02] = sj;
+            any_s1 = true;
+          }
+          if (not any_s1)
+            continue;
+          const double hats23 =
+              std::sqrt((2.0 * J2 + 1.0) * (2.0 * J3 + 1.0));
+          const double phase3 = Z.modelspace->phase(J3);
+          for (int ik = 0; ik < n_orb; ++ik) {
+            const int k = (int)allorb[ik];
+            const double jk = ojh[ik];
+            const int jk2 = oj2[ik];
+            const int J6min = std::abs(jj2 - jk2) / 2;
+            const int J6max = (jj2 + jk2) / 2;
+            for (int ib = 0; ib < n_orb; ++ib) {
+              const int jb2 = oj2[ib];
+              const int J3min = std::abs(jk2 - jb2) / 2;
+              const int J3max = (jk2 + jb2) / 2;
+              if (J3 < J3min or J3 > J3max)
+                continue;
+              const int b = (int)allorb[ib];
+              const double o1 = Eta.TwoBody.GetTBME_J(J2, J3, a, j, k, b);
+              if (std::abs(o1) < 1e-14)
+                continue;
+              const double jb = ojh[ib];
+              const double pref = phase3 * hats23 * o1;
+              for (int J6 = J6min; J6 <= J6max; ++J6) {
+                int lo = std::max(s1lo, std::abs(jb2 - 2 * J6));
+                int hi = std::min(s1hi, jb2 + 2 * J6);
+                if ((lo & 1) == 0)
+                  ++lo;
+                for (int j02 = lo; j02 <= hi; j02 += 2) {
+                  const double s1v = s1[(size_t)j02];
+                  if (std::abs(s1v) < 1e-14)
+                    continue;
+                  const double s2 =
+                      AngMom::SixJ(jj, jk, J6, jb, 0.5 * j02, J3);
+                  if (std::abs(s2) < 1e-14)
+                    continue;
+                  W1[w_index(ia, ij, ik, ib, J6, j02)] += pref * s1v * s2;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  Z.profiler.timer["_fIIIa_W1"] += omp_get_wtime() - t_w1;
+
+  double t_w2 = omp_get_wtime();
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int ia = 0; ia < n_orb; ++ia) {
+    const int a = (int)allorb[ia];
+    const double ja = ojh[ia];
+    const int ja2 = oj2[ia];
+    std::vector<double> s1((size_t)n_j0, 0.0);
+    for (int il = 0; il < n_orb; ++il) {
+      const int l = (int)allorb[il];
+      const double jl = ojh[il];
+      const int jl2 = oj2[il];
+      const int J5min_al = std::abs(ja2 - jl2) / 2;
+      const int J5max_al = (ja2 + jl2) / 2;
+      for (int J4 = 0; J4 <= max_J; ++J4) {
+        for (int J5 = J5min_al; J5 <= J5max_al; ++J5) {
+          if (not AngMom::Triangle(J4, J5, lambda))
+            continue;
+          int s1lo = std::max(std::abs(2 * J4 - jl2), std::abs(ja2 - 2 * lambda));
+          int s1hi = std::min({max_j0_2, 2 * J4 + jl2, ja2 + 2 * lambda});
+          if ((s1lo & 1) == 0)
+            ++s1lo;
+          if (s1lo > s1hi)
+            continue;
+          std::fill(s1.begin(), s1.end(), 0.0);
+          bool any_s1 = false;
+          for (int j02 = s1lo; j02 <= s1hi; j02 += 2) {
+            const double sj =
+                AngMom::SixJ(J4, lambda, J5, ja, jl, 0.5 * j02);
+            if (std::abs(sj) < 1e-14)
+              continue;
+            s1[(size_t)j02] = sj;
+            any_s1 = true;
+          }
+          if (not any_s1)
+            continue;
+          const double hats45 =
+              std::sqrt((2.0 * J4 + 1.0) * (2.0 * J5 + 1.0));
+          const double phase5 = Z.modelspace->phase(J5);
+          for (int ii = 0; ii < n_orb; ++ii) {
+            const int i = (int)allorb[ii];
+            const double ji = ojh[ii];
+            const int ji2 = oj2[ii];
+            const int J6min = std::abs(jl2 - ji2) / 2;
+            const int J6max = (jl2 + ji2) / 2;
+            for (int ib = 0; ib < n_orb; ++ib) {
+              const int jb2 = oj2[ib];
+              const int J4min = std::abs(ji2 - jb2) / 2;
+              const int J4max = (ji2 + jb2) / 2;
+              if (J4 < J4min or J4 > J4max)
+                continue;
+              const int b = (int)allorb[ib];
+              const double o2 = Eta.TwoBody.GetTBME_J(J4, J5, i, b, a, l);
+              if (std::abs(o2) < 1e-14)
+                continue;
+              const double jb = ojh[ib];
+              const double pref = phase5 * hats45 * o2;
+              for (int J6 = J6min; J6 <= J6max; ++J6) {
+                int lo = std::max(s1lo, std::abs(jb2 - 2 * J6));
+                int hi = std::min(s1hi, jb2 + 2 * J6);
+                if ((lo & 1) == 0)
+                  ++lo;
+                for (int j02 = lo; j02 <= hi; j02 += 2) {
+                  const double s1v = s1[(size_t)j02];
+                  if (std::abs(s1v) < 1e-14)
+                    continue;
+                  const double s2 =
+                      AngMom::SixJ(jl, ji, J6, jb, 0.5 * j02, J4);
+                  if (std::abs(s2) < 1e-14)
+                    continue;
+                  W2[w_index(ii, ib, ia, il, J6, j02)] += pref * s1v * s2;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  Z.profiler.timer["_fIIIa_W2"] += omp_get_wtime() - t_w2;
+
+  const size_t chi_stride_l = (size_t)n_J;
+  const size_t chi_stride_k = (size_t)n_orb * chi_stride_l;
+  const size_t chi_stride_j = (size_t)n_orb * chi_stride_k;
+  const size_t chi_stride_i = (size_t)n_orb * chi_stride_j;
+  std::vector<double> chi_tab((size_t)n_orb * chi_stride_i, 0.0);
+  auto chi_index = [&](int i, int j, int k, int l, int J0) -> size_t {
+    return (size_t)i * chi_stride_i + (size_t)j * chi_stride_j +
+           (size_t)k * chi_stride_k + (size_t)l * chi_stride_l + (size_t)J0;
+  };
+
+  const double phase_lambda = Z.modelspace->phase(lambda);
+  const int n2 = n_orb * n_orb;
+  double t_dgemm = omp_get_wtime();
+  if (n2 > 0) {
+    arma::mat X(n2, n2), Y(n2, n2);
+    for (int J6 = 0; J6 <= max_J; ++J6) {
+      for (int j02 = 1; j02 <= max_j0_2; j02 += 2) {
+        X.zeros();
+        Y.zeros();
+#pragma omp parallel for schedule(dynamic, 1)
+        for (int col = 0; col < n2; ++col) {
+          const int ia = col / n_orb;
+          const int ib = col - ia * n_orb;
+          const double occ_ab_1 = nocc[ia] * nnocc[ib];
+          const double occ_ab_2 = nnocc[ia] * nocc[ib];
+          for (int ij = 0; ij < n_orb; ++ij) {
+            for (int ik = 0; ik < n_orb; ++ik) {
+              const double w1 = W1[w_index(ia, ij, ik, ib, J6, j02)];
+              if (std::abs(w1) < 1e-16)
+                continue;
+              const double occ = nocc[ij] * nnocc[ik] * occ_ab_1 -
+                                 nnocc[ij] * nocc[ik] * occ_ab_2;
+              X(ij * n_orb + ik, col) = occ * w1;
+            }
+          }
+          for (int ii = 0; ii < n_orb; ++ii) {
+            for (int il = 0; il < n_orb; ++il) {
+              Y(ii * n_orb + il, col) = W2[w_index(ii, ib, ia, il, J6, j02)];
+            }
+          }
+        }
+        const arma::mat M = X * Y.t();
+        const double sc = -phase_lambda * hat_lambda_inv * (2.0 * J6 + 1.0) *
+                          (j02 + 1.0);
+#pragma omp parallel for schedule(dynamic, 1)
+        for (int ii = 0; ii < n_orb; ++ii) {
+          const double ji = ojh[ii];
+          for (int ij = 0; ij < n_orb; ++ij) {
+            const double jj = ojh[ij];
+            const int jj2 = oj2[ij];
+            for (int ik = 0; ik < n_orb; ++ik) {
+              const double jk = ojh[ik];
+              for (int il = 0; il < n_orb; ++il) {
+                const double jl = ojh[il];
+                const double ph_jl =
+                    Z.modelspace->phase((jj2 + oj2[il]) / 2);
+                const double m = M(ij * n_orb + ik, ii * n_orb + il);
+                if (std::abs(m) < 1e-16)
+                  continue;
+                for (int J0 = 0; J0 <= max_J; ++J0) {
+                  if (not AngMom::Triangle(ji, jj, (double)J0) or
+                      not AngMom::Triangle(jk, jl, (double)J0))
+                    continue;
+                  const double sixj =
+                      AngMom::SixJ(jk, jl, J0, ji, jj, J6);
+                  if (std::abs(sixj) < 1e-14)
+                    continue;
+                  chi_tab[chi_index(ii, ij, ik, il, J0)] +=
+                      sc * ph_jl * sixj * m;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  Z.profiler.timer["_fIIIa_dgemm"] += omp_get_wtime() - t_dgemm;
+  W1.clear();
+  W2.clear();
+
+  double t_fold = omp_get_wtime();
+  std::vector<double> gam((size_t)n_orb * chi_stride_i, 0.0);
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int ii = 0; ii < n_orb; ++ii) {
+    const int i = (int)allorb[ii];
+    const double ji = ojh[ii];
+    for (int ij = 0; ij < n_orb; ++ij) {
+      const int j = (int)allorb[ij];
+      const double jj = ojh[ij];
+      for (int ik = 0; ik < n_orb; ++ik) {
+        const int k = (int)allorb[ik];
+        const double jk = ojh[ik];
+        for (int il = 0; il < n_orb; ++il) {
+          const int l = (int)allorb[il];
+          const double jl = ojh[il];
+          for (int J0 = 0; J0 <= max_J; ++J0) {
+            if (not AngMom::Triangle(ji, jj, (double)J0) or
+                not AngMom::Triangle(jk, jl, (double)J0))
+              continue;
+            gam[chi_index(ii, ij, ik, il, J0)] =
+                Gamma.TwoBody.GetTBME_J(J0, J0, i, j, k, l);
+          }
+        }
+      }
+    }
+  }
+
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int ip = 0; ip < n_orb; ++ip) {
+    const int p = (int)allorb[ip];
+    const int jp2 = oj2[ip];
+    for (int iq = 0; iq <= ip; ++iq) {
+      if (oj2[iq] != jp2)
+        continue;
+      const int q = (int)allorb[iq];
+      double zpq = 0.0;
+      for (int ic = 0; ic < n_orb; ++ic) {
+        for (int ia = 0; ia < n_orb; ++ia) {
+          for (int ib = 0; ib < n_orb; ++ib) {
+            for (int J0 = 0; J0 <= max_J; ++J0) {
+              const double g1 = gam[chi_index(ic, ip, ia, ib, J0)];
+              const double g2 = gam[chi_index(ia, ib, iq, ic, J0)];
+              if (std::abs(g1) < 1e-14 && std::abs(g2) < 1e-14)
+                continue;
+              zpq += (2.0 * J0 + 1.0) *
+                     (g1 * chi_tab[chi_index(ia, ib, ic, iq, J0)] -
+                      chi_tab[chi_index(ip, ic, ia, ib, J0)] * g2);
+            }
+          }
+        }
+      }
+      Z.OneBody(p, q) += zpq / (jp2 + 1.0);
+      if (p != q)
+        Z.OneBody(q, p) += hZ * zpq / (jp2 + 1.0);
+    }
+  }
+  Z.profiler.timer["_fIIIa_fold"] += omp_get_wtime() - t_fold;
+  Z.profiler.timer["comm223_231_tts_fIIIa"] += omp_get_wtime() - t_start;
+}
+
 void comm223_231_chi2b_tensor(const Operator &Eta, const Operator &Gamma,
                               Operator &Z) {
 
@@ -1016,10 +1365,9 @@ void comm223_231_chi2b_tensor(const Operator &Eta, const Operator &Gamma,
     }
 
     if (lambda != 0) {
-      // Leftover χ^γ: AMC direct W1·W2 (unreduced), same as tts_fIIIa.
-      // reduce=true Path B × Ĵ0 in the Ĵ² ladder disagrees with leftover m
-      // (orbit-dependent ratios). Gold: Mscheme_fact_fIIIa ≡ this tab.
-      ReferenceImplementations::comm223_231_tts_fIIIa(Eta, Gamma, Z);
+      // Leftover χ^γ: AMC direct W1·W2 (unreduced). DGEMM over (a,b).
+      // reduce=true Path B × Ĵ0 in the Ĵ² ladder disagrees with leftover m.
+      comm223_231_fIIIa_leftover_dgemm(Eta, Gamma, Z);
     } else {
 
     // ---- f^III_a ladder: unreduced χ × unreduced Γ ----
@@ -2435,6 +2783,7 @@ void comm223_232_GIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z) 
   int n_orb_alloc = 0;
   for (auto o : allorb)
     n_orb_alloc = std::max(n_orb_alloc, (int)o + 1);
+  const int n_orb = (int)allorb.size();
 
   struct ChiGIIIbTab {
     int n = 0;
@@ -2465,189 +2814,276 @@ void comm223_232_GIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z) 
   chi_iib.allocate(n_orb_alloc, max_J);
   chi_iid.allocate(n_orb_alloc, max_J);
 
+  const double t_chi = omp_get_wtime();
+
+  struct OmTabJJ {
+    int max_J = 0;
+    size_t sJ1 = 0, sL = 0, sK = 0, sJ = 0, sI = 0;
+    std::vector<double> data;
+    void allocate(int n, int Jmax) {
+      max_J = Jmax;
+      sJ1 = (size_t)(max_J + 1);
+      sL = sJ1 * (size_t)(max_J + 1);
+      sK = (size_t)n * sL;
+      sJ = (size_t)n * sK;
+      sI = (size_t)n * sJ;
+      data.assign((size_t)n * sI, 0.0);
+    }
+    double &at(index_t p, index_t q, index_t r, index_t s, int J0, int J1) {
+      return data[(size_t)p * sI + (size_t)q * sJ + (size_t)r * sK +
+                  (size_t)s * sL + (size_t)J0 * sJ1 + (size_t)J1];
+    }
+    double operator()(index_t p, index_t q, index_t r, index_t s, int J0,
+                      int J1) const {
+      return data[(size_t)p * sI + (size_t)q * sJ + (size_t)r * sK +
+                  (size_t)s * sL + (size_t)J0 * sJ1 + (size_t)J1];
+    }
+  };
+  OmTabJJ Om;
+  Om.allocate(n_orb_alloc, max_J);
 #pragma omp parallel for schedule(dynamic, 1)
-  for (int id = 0; id < (int)allorb.size(); ++id) {
-    const index_t d = allorb[id];
-    Orbit &od = Z.modelspace->GetOrbit(d);
-    const double jd = od.j2 * 0.5;
-    const double nd = od.occ, nnd = 1.0 - nd;
-    for (auto k : allorb) {
-      Orbit &ok = Z.modelspace->GetOrbit(k);
-      const double jk = ok.j2 * 0.5;
-      for (auto a : allorb) {
-        Orbit &oa = Z.modelspace->GetOrbit(a);
-        const double ja = oa.j2 * 0.5;
-        for (auto i : allorb) {
-          Orbit &oi = Z.modelspace->GetOrbit(i);
-          const double ji = oi.j2 * 0.5;
-          const int J7min =
-              std::max(std::abs(od.j2 - ok.j2), std::abs(oa.j2 - oi.j2)) / 2;
-          const int J7max = std::min(od.j2 + ok.j2, oa.j2 + oi.j2) / 2;
-          for (int J7 = J7min; J7 <= J7max; ++J7) {
-            double tot = 0.0;
-            for (auto b : allorb) {
-              Orbit &ob = Z.modelspace->GetOrbit(b);
-              const double jb = ob.j2 * 0.5;
-              const double nb = ob.occ, nnb = 1.0 - nb;
-              const int J3min = std::abs(ob.j2 - ok.j2) / 2;
-              const int J3max = (ob.j2 + ok.j2) / 2;
-              const int J4min = std::abs(ob.j2 - oi.j2) / 2;
-              const int J4max = (ob.j2 + oi.j2) / 2;
-              for (auto c : allorb) {
-                Orbit &oc = Z.modelspace->GetOrbit(c);
-                const double jc = oc.j2 * 0.5;
-                const double nc = oc.occ, nnc = 1.0 - nc;
-                const double wb = nnb * nc * nd + nb * nnc * nnd;
-                if (std::abs(wb) < 1e-12)
-                  continue;
-                const int J2min = std::abs(od.j2 - oc.j2) / 2;
-                const int J2max = (od.j2 + oc.j2) / 2;
-                const int J5min = std::abs(oa.j2 - oc.j2) / 2;
-                const int J5max = (oa.j2 + oc.j2) / 2;
-                for (int J2 = J2min; J2 <= J2max; ++J2) {
-                  for (int J3 = J3min; J3 <= J3max; ++J3) {
-                    if (not AngMom::Triangle(J2, J3, lambda))
-                      continue;
-                    const double o1 = Eta.TwoBody.GetTBME_J(
-                        J2, J3, (int)d, (int)c, (int)b, (int)k);
-                    if (std::abs(o1) < 1e-16)
-                      continue;
-                    for (int J4 = J4min; J4 <= J4max; ++J4) {
-                      for (int J5 = J5min; J5 <= J5max; ++J5) {
-                        if (not AngMom::Triangle(J4, J5, lambda))
-                          continue;
-                        const double o2 = Eta.TwoBody.GetTBME_J(
-                            J4, J5, (int)b, (int)i, (int)a, (int)c);
-                        if (std::abs(o2) < 1e-16)
-                          continue;
-                        const double ph = Z.modelspace->phase(
-                            J2 + J4 + (oa.j2 + od.j2) / 2 + lambda);
-                        const double j0min =
-                            std::max({std::abs(jc - (double)lambda),
-                                      std::abs(J3 - jd), std::abs(J4 - ja)});
-                        const double j0max =
-                            std::min({jc + (double)lambda, J3 + jd, J4 + ja});
-                        const int j0_2min =
-                            (int)std::ceil(2.0 * j0min - 1e-9);
-                        const int j0_2max =
-                            (int)std::floor(2.0 * j0max + 1e-9);
-                        for (int j0_2 = j0_2min; j0_2 <= j0_2max; ++j0_2) {
-                          if ((j0_2 + oc.j2) % 2 != 0)
-                            continue;
-                          const double j0 = 0.5 * j0_2;
-                          const double six =
-                              Z.modelspace->GetSixJ(J3, lambda, J2, jc, jd, j0) *
-                              Z.modelspace->GetSixJ(J4, lambda, J5, jc, ja, j0) *
-                              Z.modelspace->GetSixJ(jd, jk, J7, jb, j0, J3) *
-                              Z.modelspace->GetSixJ(ja, ji, J7, jb, j0, J4);
-                          if (std::abs(six) < 1e-16)
-                            continue;
-                          const double hats = hatJ(J2) * hatJ(J3) * hatJ(J4) *
-                                              hatJ(J5) * (2.0 * j0 + 1.0) *
-                                              hat_lam_inv;
-                          tot += wb * ph * hats * six * o1 * o2;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
+  for (int ii = 0; ii < n_orb; ++ii) {
+    const index_t i = allorb[ii];
+    Orbit &oi = Z.modelspace->GetOrbit(i);
+    const double ji = oi.j2 * 0.5;
+    for (auto j : allorb) {
+      Orbit &oj = Z.modelspace->GetOrbit(j);
+      const double jj = oj.j2 * 0.5;
+      for (auto k : allorb) {
+        Orbit &ok = Z.modelspace->GetOrbit(k);
+        const double jk = ok.j2 * 0.5;
+        for (auto l : allorb) {
+          Orbit &ol = Z.modelspace->GetOrbit(l);
+          const double jl = ol.j2 * 0.5;
+          for (int J0 = 0; J0 <= max_J; ++J0) {
+            if (not AngMom::Triangle(ji, jj, (double)J0))
+              continue;
+            for (int J1 = 0; J1 <= max_J; ++J1) {
+              if (not AngMom::Triangle(jk, jl, (double)J1))
+                continue;
+              if (not AngMom::Triangle(J0, J1, lambda))
+                continue;
+              Om.at(i, j, k, l, J0, J1) =
+                  Eta.TwoBody.GetTBME_J(J0, J1, (int)i, (int)j, (int)k, (int)l);
             }
-            chi_iib.at(d, k, a, i, J7) = tot;
           }
         }
       }
     }
   }
 
+  std::vector<int> oj2(n_orb);
+  std::vector<double> ojh(n_orb), nocc(n_orb), nnocc(n_orb);
+  for (int t = 0; t < n_orb; ++t) {
+    Orbit &o = Z.modelspace->GetOrbit(allorb[t]);
+    oj2[t] = o.j2;
+    ojh[t] = o.j2 * 0.5;
+    nocc[t] = o.occ;
+    nnocc[t] = 1.0 - o.occ;
+  }
+
+  // χ^IIb / χ^IId: same 4-6j leftover as orbit loops, contract (b,c) by DGEMM.
+  const int n2 = n_orb * n_orb;
+  const int j0_2max = max_j2 + 2 * lambda;
+  const double ph_lam = Z.modelspace->phase(lambda);
+  if (n2 > 0) {
+    arma::mat Xb(n2, n2), Yb(n2, n2), Xd(n2, n2), Yd(n2, n2);
+    for (int J7 = 0; J7 <= max_J; ++J7) {
+      arma::mat accb(n2, n2, arma::fill::zeros);
+      arma::mat accd(n2, n2, arma::fill::zeros);
+      for (int j0_2 = 0; j0_2 <= j0_2max; ++j0_2) {
+        const double j0 = 0.5 * j0_2;
+        Xb.zeros();
+        Yb.zeros();
+        Xd.zeros();
+        Yd.zeros();
 #pragma omp parallel for schedule(dynamic, 1)
-  for (int ij = 0; ij < (int)allorb.size(); ++ij) {
-    const index_t j = allorb[ij];
-    Orbit &oj = Z.modelspace->GetOrbit(j);
-    const double jj = oj.j2 * 0.5;
-    for (auto d : allorb) {
-      Orbit &od = Z.modelspace->GetOrbit(d);
-      const double jd = od.j2 * 0.5;
-      const double nd = od.occ, nnd = 1.0 - nd;
-      for (auto l : allorb) {
-        Orbit &ol = Z.modelspace->GetOrbit(l);
-        const double jl = ol.j2 * 0.5;
-        for (auto a : allorb) {
-          Orbit &oa = Z.modelspace->GetOrbit(a);
-          const double ja = oa.j2 * 0.5;
-          const int J7min =
-              std::max(std::abs(oj.j2 - od.j2), std::abs(ol.j2 - oa.j2)) / 2;
-          const int J7max = std::min(oj.j2 + od.j2, ol.j2 + oa.j2) / 2;
-          for (int J7 = J7min; J7 <= J7max; ++J7) {
-            double tot = 0.0;
-            for (auto b : allorb) {
-              Orbit &ob = Z.modelspace->GetOrbit(b);
-              const double jb = ob.j2 * 0.5;
-              const double nb = ob.occ, nnb = 1.0 - nb;
-              const int J3min = std::abs(ob.j2 - od.j2) / 2;
-              const int J3max = (ob.j2 + od.j2) / 2;
-              const int J4min = std::abs(ob.j2 - oa.j2) / 2;
-              const int J4max = (ob.j2 + oa.j2) / 2;
-              for (auto c : allorb) {
-                Orbit &oc = Z.modelspace->GetOrbit(c);
-                const double jc = oc.j2 * 0.5;
-                const double nc = oc.occ, nnc = 1.0 - nc;
-                const double wd = nnc * nb * nd + nc * nnb * nnd;
-                if (std::abs(wd) < 1e-12)
-                  continue;
-                const int J2min = std::abs(oj.j2 - oc.j2) / 2;
-                const int J2max = (oj.j2 + oc.j2) / 2;
-                const int J5min = std::abs(ol.j2 - oc.j2) / 2;
-                const int J5max = (ol.j2 + oc.j2) / 2;
-                for (int J2 = J2min; J2 <= J2max; ++J2) {
-                  for (int J3 = J3min; J3 <= J3max; ++J3) {
+        for (int col = 0; col < n2; ++col) {
+          const int ib = col / n_orb;
+          const int ic = col - ib * n_orb;
+          const int b = (int)allorb[ib];
+          const int c = (int)allorb[ic];
+          const int jb2 = oj2[ib], jc2 = oj2[ic];
+          const double jb = ojh[ib], jc = ojh[ic];
+          const double nb = nocc[ib], nnb = nnocc[ib];
+          const double nc = nocc[ic], nnc = nnocc[ic];
+          if ((j0_2 + jc2) % 2 != 0)
+            continue;
+          if (not AngMom::Triangle(jc, (double)lambda, j0))
+            continue;
+
+          for (int id = 0; id < n_orb; ++id) {
+            const int d = (int)allorb[id];
+            const double jd = ojh[id];
+            const int jd2 = oj2[id];
+            const double nd = nocc[id], nnd = nnocc[id];
+            const double wb = nnb * nc * nd + nb * nnc * nnd;
+            const double wd = nnc * nb * nd + nc * nnb * nnd;
+            for (int ik = 0; ik < n_orb; ++ik) {
+              const int k = (int)allorb[ik];
+              const double jk = ojh[ik];
+              const int jk2 = oj2[ik];
+              const int row = id * n_orb + ik;
+              if (AngMom::Triangle(jd, jk, (double)J7) and std::abs(wb) > 1e-12) {
+                double s = 0.0;
+                const int j2min = std::abs(jd2 - jc2) / 2;
+                const int j2max = (jd2 + jc2) / 2;
+                const int j3min = std::abs(jb2 - jk2) / 2;
+                const int j3max = (jb2 + jk2) / 2;
+                for (int J2 = j2min; J2 <= j2max; ++J2) {
+                  for (int J3 = j3min; J3 <= j3max; ++J3) {
                     if (not AngMom::Triangle(J2, J3, lambda))
                       continue;
-                    const double o1 = Eta.TwoBody.GetTBME_J(
-                        J2, J3, (int)j, (int)c, (int)b, (int)d);
+                    const double o1 = Om(d, c, b, k, J2, J3);
                     if (std::abs(o1) < 1e-16)
                       continue;
-                    for (int J4 = J4min; J4 <= J4max; ++J4) {
-                      for (int J5 = J5min; J5 <= J5max; ++J5) {
-                        if (not AngMom::Triangle(J4, J5, lambda))
-                          continue;
-                        const double o2 = Eta.TwoBody.GetTBME_J(
-                            J4, J5, (int)b, (int)a, (int)l, (int)c);
-                        if (std::abs(o2) < 1e-16)
-                          continue;
-                        const double ph = Z.modelspace->phase(J2 + J4 + lambda);
-                        const double j0min =
-                            std::max({std::abs(jc - (double)lambda),
-                                      std::abs(J3 - jj), std::abs(J4 - jl)});
-                        const double j0max =
-                            std::min({jc + (double)lambda, J3 + jj, J4 + jl});
-                        const int j0_2min =
-                            (int)std::ceil(2.0 * j0min - 1e-9);
-                        const int j0_2max =
-                            (int)std::floor(2.0 * j0max + 1e-9);
-                        for (int j0_2 = j0_2min; j0_2 <= j0_2max; ++j0_2) {
-                          if ((j0_2 + oc.j2) % 2 != 0)
-                            continue;
-                          const double j0 = 0.5 * j0_2;
-                          const double six =
-                              Z.modelspace->GetSixJ(J3, lambda, J2, jc, jj, j0) *
-                              Z.modelspace->GetSixJ(J4, lambda, J5, jc, jl, j0) *
-                              Z.modelspace->GetSixJ(jj, jd, J7, jb, j0, J3) *
-                              Z.modelspace->GetSixJ(jl, ja, J7, jb, j0, J4);
-                          if (std::abs(six) < 1e-16)
-                            continue;
-                          const double hats = hatJ(J2) * hatJ(J3) * hatJ(J4) *
-                                              hatJ(J5) * (2.0 * j0 + 1.0) *
-                                              hat_lam_inv;
-                          tot += wd * ph * hats * six * o1 * o2;
-                        }
-                      }
-                    }
+                    s += hatJ(J2) * hatJ(J3) * Z.modelspace->phase(J2) *
+                         Z.modelspace->GetSixJ(J3, lambda, J2, jc, jd, j0) *
+                         Z.modelspace->GetSixJ(jd, jk, J7, jb, j0, J3) * o1;
                   }
                 }
+                Xb(row, col) = wb * s;
+              }
+              if (AngMom::Triangle(ojh[ik], jd, (double)J7) and
+                  std::abs(wd) > 1e-12) {
+                // Xd row (j,d) with j←ik: Ω_{j c b d}
+                const int j = k;
+                const double jj = jk;
+                const int jj2 = jk2;
+                double s = 0.0;
+                const int j2min = std::abs(jj2 - jc2) / 2;
+                const int j2max = (jj2 + jc2) / 2;
+                const int j3min = std::abs(jb2 - jd2) / 2;
+                const int j3max = (jb2 + jd2) / 2;
+                for (int J2 = j2min; J2 <= j2max; ++J2) {
+                  for (int J3 = j3min; J3 <= j3max; ++J3) {
+                    if (not AngMom::Triangle(J2, J3, lambda))
+                      continue;
+                    const double o1 = Om(j, c, b, d, J2, J3);
+                    if (std::abs(o1) < 1e-16)
+                      continue;
+                    s += hatJ(J2) * hatJ(J3) * Z.modelspace->phase(J2) *
+                         Z.modelspace->GetSixJ(J3, lambda, J2, jc, jj, j0) *
+                         Z.modelspace->GetSixJ(jj, jd, J7, jb, j0, J3) * o1;
+                  }
+                }
+                Xd(ik * n_orb + id, col) = wd * s;
               }
             }
-            chi_iid.at(j, d, l, a, J7) = tot;
+          }
+
+          for (int ia = 0; ia < n_orb; ++ia) {
+            const int a = (int)allorb[ia];
+            const double ja = ojh[ia];
+            const int ja2 = oj2[ia];
+            for (int ii = 0; ii < n_orb; ++ii) {
+              const int i = (int)allorb[ii];
+              const double ji = ojh[ii];
+              const int ji2 = oj2[ii];
+              const int row_ai = ia * n_orb + ii;
+              if (AngMom::Triangle(ja, ji, (double)J7)) {
+                double s = 0.0;
+                const int j4min = std::abs(jb2 - ji2) / 2;
+                const int j4max = (jb2 + ji2) / 2;
+                const int j5min = std::abs(ja2 - jc2) / 2;
+                const int j5max = (ja2 + jc2) / 2;
+                for (int J4 = j4min; J4 <= j4max; ++J4) {
+                  for (int J5 = j5min; J5 <= j5max; ++J5) {
+                    if (not AngMom::Triangle(J4, J5, lambda))
+                      continue;
+                    const double o2 = Om(b, i, a, c, J4, J5);
+                    if (std::abs(o2) < 1e-16)
+                      continue;
+                    s += hatJ(J4) * hatJ(J5) * Z.modelspace->phase(J4) *
+                         Z.modelspace->GetSixJ(J4, lambda, J5, jc, ja, j0) *
+                         Z.modelspace->GetSixJ(ja, ji, J7, jb, j0, J4) * o2;
+                  }
+                }
+                Yb(row_ai, col) = s;
+              }
+              // Yd row (l,a) with l←ii, a←ia: Ω_{b a l c}
+              if (AngMom::Triangle(ojh[ii], ja, (double)J7)) {
+                const int l = i;
+                const double jl = ji;
+                const int jl2 = ji2;
+                double s = 0.0;
+                const int j4min = std::abs(jb2 - ja2) / 2;
+                const int j4max = (jb2 + ja2) / 2;
+                const int j5min = std::abs(jl2 - jc2) / 2;
+                const int j5max = (jl2 + jc2) / 2;
+                for (int J4 = j4min; J4 <= j4max; ++J4) {
+                  for (int J5 = j5min; J5 <= j5max; ++J5) {
+                    if (not AngMom::Triangle(J4, J5, lambda))
+                      continue;
+                    const double o2 = Om(b, a, l, c, J4, J5);
+                    if (std::abs(o2) < 1e-16)
+                      continue;
+                    s += hatJ(J4) * hatJ(J5) * Z.modelspace->phase(J4) *
+                         Z.modelspace->GetSixJ(J4, lambda, J5, jc, jl, j0) *
+                         Z.modelspace->GetSixJ(jl, ja, J7, jb, j0, J4) * o2;
+                  }
+                }
+                Yd(ii * n_orb + ia, col) = s;
+              }
+            }
+          }
+        }
+        const double sc = (j0_2 + 1.0) * hat_lam_inv * ph_lam;
+        accb += sc * (Xb * Yb.t());
+        accd += sc * (Xd * Yd.t());
+      }
+#pragma omp parallel for collapse(2) schedule(dynamic, 4)
+      for (int id = 0; id < n_orb; ++id) {
+        for (int ik = 0; ik < n_orb; ++ik) {
+          const int d = (int)allorb[id];
+          const int k = (int)allorb[ik];
+          const int jd2 = oj2[id];
+          for (int ia = 0; ia < n_orb; ++ia) {
+            const int a = (int)allorb[ia];
+            const int ja2 = oj2[ia];
+            const double ph_ad = Z.modelspace->phase((ja2 + jd2) / 2);
+            for (int ii = 0; ii < n_orb; ++ii) {
+              const int i = (int)allorb[ii];
+              chi_iib.at(d, k, a, i, J7) =
+                  ph_ad * accb(id * n_orb + ik, ia * n_orb + ii);
+              const int j = k;
+              const int l = i;
+              chi_iid.at(j, d, l, a, J7) =
+                  accd(ik * n_orb + id, ii * n_orb + ia);
+            }
+          }
+        }
+      }
+    }
+  }
+  Z.profiler.timer["_GIIIb_chi"] += omp_get_wtime() - t_chi;
+  const double t_fold = omp_get_wtime();
+
+  std::vector<int> compact(n_orb_alloc, -1);
+  for (int t = 0; t < n_orb; ++t)
+    compact[(int)allorb[t]] = t;
+
+  ChiGIIIbTab Gam;
+  Gam.allocate(n_orb_alloc, max_J);
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int ii = 0; ii < n_orb; ++ii) {
+    const int i = (int)allorb[ii];
+    const double ji = ojh[ii];
+    for (int jj = 0; jj < n_orb; ++jj) {
+      const int j = (int)allorb[jj];
+      const double jjv = ojh[jj];
+      for (int kk = 0; kk < n_orb; ++kk) {
+        const int k = (int)allorb[kk];
+        const double jk = ojh[kk];
+        for (int ll = 0; ll < n_orb; ++ll) {
+          const int l = (int)allorb[ll];
+          const double jl = ojh[ll];
+          for (int J6 = 0; J6 <= max_J; ++J6) {
+            if (not AngMom::Triangle(ji, jjv, (double)J6) or
+                not AngMom::Triangle(jk, jl, (double)J6))
+              continue;
+            Gam.at(i, j, k, l, J6) =
+                Gamma.TwoBody.GetTBME_J(J6, J6, i, j, k, l);
           }
         }
       }
@@ -2655,43 +3091,43 @@ void comm223_232_GIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z) 
   }
 
   auto iib_unred = [&](int i, int j, int k, int l, int J0) -> double {
-    Orbit &oi = Z.modelspace->GetOrbit(i);
-    Orbit &oj = Z.modelspace->GetOrbit(j);
-    Orbit &ok = Z.modelspace->GetOrbit(k);
-    Orbit &ol = Z.modelspace->GetOrbit(l);
-    const double ji = oi.j2 * 0.5, jj = oj.j2 * 0.5;
-    const double jk = ok.j2 * 0.5, jl = ol.j2 * 0.5;
-    if (not AngMom::Triangle(ji, jj, (double)J0) or
+    const int ci = compact[i], cj = compact[j], ck = compact[k], cl = compact[l];
+    if (ci < 0 or cj < 0 or ck < 0 or cl < 0)
+      return 0.0;
+    const double ji = ojh[ci], jjv = ojh[cj];
+    const double jk = ojh[ck], jl = ojh[cl];
+    const int ji2 = oj2[ci], jj2 = oj2[cj], jk2 = oj2[ck], jl2 = oj2[cl];
+    if (not AngMom::Triangle(ji, jjv, (double)J0) or
         not AngMom::Triangle(jk, jl, (double)J0))
       return 0.0;
     double tot = 0.0;
-    for (auto d : allorb) {
-      Orbit &od = Z.modelspace->GetOrbit(d);
-      const double jd = od.j2 * 0.5;
-      for (auto a : allorb) {
-        Orbit &oa = Z.modelspace->GetOrbit(a);
-        const double ja = oa.j2 * 0.5;
-        const int J6min =
-            std::max(std::abs(oj.j2 - oa.j2), std::abs(ol.j2 - od.j2)) / 2;
-        const int J6max = std::min(oj.j2 + oa.j2, ol.j2 + od.j2) / 2;
-        const int J7min =
-            std::max(std::abs(od.j2 - ok.j2), std::abs(oa.j2 - oi.j2)) / 2;
-        const int J7max = std::min(od.j2 + ok.j2, oa.j2 + oi.j2) / 2;
-        for (int J6 = J6min; J6 <= J6max; ++J6) {
-          const double g =
-              Gamma.TwoBody.GetTBME_J(J6, J6, j, (int)a, l, (int)d);
-          if (std::abs(g) < 1e-16)
+    for (int id = 0; id < n_orb; ++id) {
+      const int d = (int)allorb[id];
+      const double jd = ojh[id];
+      const int jd2 = oj2[id];
+      for (int ia = 0; ia < n_orb; ++ia) {
+        const int a = (int)allorb[ia];
+        const double ja = ojh[ia];
+        const int ja2 = oj2[ia];
+        const int J7min = std::max(std::abs(jd2 - jk2), std::abs(ja2 - ji2)) / 2;
+        const int J7max = std::min(jd2 + jk2, ja2 + ji2) / 2;
+        const int J6min = std::max(std::abs(jj2 - ja2), std::abs(jl2 - jd2)) / 2;
+        const int J6max = std::min(jj2 + ja2, jl2 + jd2) / 2;
+        for (int J7 = J7min; J7 <= J7max; ++J7) {
+          const double chi = chi_iib(d, k, a, i, J7);
+          if (std::abs(chi) < 1e-16)
             continue;
-          for (int J7 = J7min; J7 <= J7max; ++J7) {
-            const double chi = chi_iib((int)d, k, (int)a, i, J7);
-            if (std::abs(chi) < 1e-16)
+          const double hat7 = (2.0 * J7 + 1.0) * chi;
+          for (int J6 = J6min; J6 <= J6max; ++J6) {
+            const double g = Gam(j, a, l, d, J6);
+            if (std::abs(g) < 1e-16)
               continue;
             const double six =
                 Z.modelspace->GetSixJ(J0, J7, J6, jd, jl, jk) *
-                Z.modelspace->GetSixJ(J0, J6, J7, ja, ji, jj);
+                Z.modelspace->GetSixJ(J0, J6, J7, ja, ji, jjv);
             if (std::abs(six) < 1e-16)
               continue;
-            tot += (2.0 * J6 + 1.0) * (2.0 * J7 + 1.0) * six * chi * g;
+            tot += (2.0 * J6 + 1.0) * hat7 * six * g;
           }
         }
       }
@@ -2700,48 +3136,48 @@ void comm223_232_GIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z) 
   };
 
   auto iid_unred = [&](int i, int j, int k, int l, int J0) -> double {
-    Orbit &oi = Z.modelspace->GetOrbit(i);
-    Orbit &oj = Z.modelspace->GetOrbit(j);
-    Orbit &ok = Z.modelspace->GetOrbit(k);
-    Orbit &ol = Z.modelspace->GetOrbit(l);
-    const double ji = oi.j2 * 0.5, jj = oj.j2 * 0.5;
-    const double jk = ok.j2 * 0.5, jl = ol.j2 * 0.5;
-    if (not AngMom::Triangle(ji, jj, (double)J0) or
+    const int ci = compact[i], cj = compact[j], ck = compact[k], cl = compact[l];
+    if (ci < 0 or cj < 0 or ck < 0 or cl < 0)
+      return 0.0;
+    const double ji = ojh[ci], jjv = ojh[cj];
+    const double jk = ojh[ck], jl = ojh[cl];
+    const int ji2 = oj2[ci], jj2 = oj2[cj], jk2 = oj2[ck], jl2 = oj2[cl];
+    if (not AngMom::Triangle(ji, jjv, (double)J0) or
         not AngMom::Triangle(jk, jl, (double)J0))
       return 0.0;
     double tot = 0.0;
-    for (auto d : allorb) {
-      Orbit &od = Z.modelspace->GetOrbit(d);
-      const double jd = od.j2 * 0.5;
-      for (auto a : allorb) {
-        Orbit &oa = Z.modelspace->GetOrbit(a);
-        const double ja = oa.j2 * 0.5;
-        const int J6min =
-            std::max(std::abs(od.j2 - oi.j2), std::abs(oa.j2 - ok.j2)) / 2;
-        const int J6max = std::min(od.j2 + oi.j2, oa.j2 + ok.j2) / 2;
-        const int J7min =
-            std::max(std::abs(oj.j2 - od.j2), std::abs(ol.j2 - oa.j2)) / 2;
-        const int J7max = std::min(oj.j2 + od.j2, ol.j2 + oa.j2) / 2;
-        for (int J6 = J6min; J6 <= J6max; ++J6) {
-          const double g =
-              Gamma.TwoBody.GetTBME_J(J6, J6, (int)d, i, (int)a, k);
-          if (std::abs(g) < 1e-16)
+    for (int id = 0; id < n_orb; ++id) {
+      const int d = (int)allorb[id];
+      const double jd = ojh[id];
+      const int jd2 = oj2[id];
+      for (int ia = 0; ia < n_orb; ++ia) {
+        const int a = (int)allorb[ia];
+        const double ja = ojh[ia];
+        const int ja2 = oj2[ia];
+        const int J7min = std::max(std::abs(jj2 - jd2), std::abs(jl2 - ja2)) / 2;
+        const int J7max = std::min(jj2 + jd2, jl2 + ja2) / 2;
+        const int J6min = std::max(std::abs(jd2 - ji2), std::abs(ja2 - jk2)) / 2;
+        const int J6max = std::min(jd2 + ji2, ja2 + jk2) / 2;
+        for (int J7 = J7min; J7 <= J7max; ++J7) {
+          const double chi = chi_iid(j, d, l, a, J7);
+          if (std::abs(chi) < 1e-16)
             continue;
-          for (int J7 = J7min; J7 <= J7max; ++J7) {
-            const double chi = chi_iid(j, (int)d, l, (int)a, J7);
-            if (std::abs(chi) < 1e-16)
+          const double hat7 = (2.0 * J7 + 1.0) * chi;
+          for (int J6 = J6min; J6 <= J6max; ++J6) {
+            const double g = Gam(d, i, a, k, J6);
+            if (std::abs(g) < 1e-16)
               continue;
             const double six =
-                Z.modelspace->GetSixJ(J0, J7, J6, jd, ji, jj) *
+                Z.modelspace->GetSixJ(J0, J7, J6, jd, ji, jjv) *
                 Z.modelspace->GetSixJ(J7, J6, J0, jk, jl, ja);
             if (std::abs(six) < 1e-16)
               continue;
-            tot += (2.0 * J6 + 1.0) * (2.0 * J7 + 1.0) * six * chi * g;
+            tot += (2.0 * J6 + 1.0) * hat7 * six * g;
           }
         }
       }
     }
-    return Z.modelspace->phase((oj.j2 + ol.j2) / 2) * tot;
+    return Z.modelspace->phase((jj2 + jl2) / 2) * tot;
   };
 
   std::vector<size_t> ch_bra_list, ch_ket_list;
@@ -2751,7 +3187,6 @@ void comm223_232_GIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z) 
   }
   const int nch = (int)ch_bra_list.size();
 
-#pragma omp parallel for schedule(dynamic, 1)
   for (int ch = 0; ch < nch; ++ch) {
     const int ch_bra = (int)ch_bra_list[ch];
     const int ch_ket = (int)ch_ket_list[ch];
@@ -2766,11 +3201,12 @@ void comm223_232_GIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z) 
       continue;
 
     arma::mat W2n(2 * nbras, 2 * nkets, arma::fill::zeros);
+#pragma omp parallel for collapse(2) schedule(dynamic, 4)
     for (int ibra = 0; ibra < 2 * nbras; ++ibra) {
-      auto ij = PqTB(tbc_bra, ibra, nbras);
-      if (ij[0] < 0)
-        continue;
       for (int iket = 0; iket < 2 * nkets; ++iket) {
+        auto ij = PqTB(tbc_bra, ibra, nbras);
+        if (ij[0] < 0)
+          continue;
         auto kl = PqTB(tbc_ket, iket, nkets);
         if (kl[0] < 0)
           continue;
@@ -2805,6 +3241,7 @@ void comm223_232_GIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z) 
     }
   }
 
+  Z.profiler.timer["_GIIIb_fold"] += omp_get_wtime() - t_fold;
   Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
 }
 
@@ -3147,6 +3584,98 @@ void comm223_232_GIIIc(const Operator &Eta, const Operator &Gamma, Operator &Z) 
 ///      (no extra hΩ on W_klij). Store Z_unred = Z_red / Ĵ (+√2 i=j / k=l).
 /// Ω is WE-reduced at every λ (λ=0 is the equal-J limit, not a Factorized fork).
 ////////////////////////////////////////////////////////////////////////////
+namespace {
+// Scalar Pandya of Γ (H). Identical 2×nKets CC layout in GIVa/GIVb.
+// Arnoldi keeps H fixed, so cache by pointer across leftover diagrams / Dcoms.
+struct BarGammaCCCache {
+  const Operator *gamma = nullptr;
+  int nch = -1;
+  std::deque<arma::mat> bar;
+};
+BarGammaCCCache g_bar_gamma_cc;
+
+void FillBarGammaScalarCC(const Operator &Gamma, Operator &Z, int hGamma,
+                          std::deque<arma::mat> &bar_Gamma) {
+  const int n_nonzero = Z.modelspace->GetNumberTwoBodyChannels_CC();
+  bar_Gamma.assign(n_nonzero, arma::mat());
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int ch_cc = 0; ch_cc < n_nonzero; ++ch_cc) {
+    TwoBodyChannel_CC &tbc_cc = Z.modelspace->GetTwoBodyChannel_CC(ch_cc);
+    const int nKets_cc = tbc_cc.GetNumberKets();
+    const int J_cc = tbc_cc.J;
+    bar_Gamma[ch_cc] = arma::mat(2 * nKets_cc, 2 * nKets_cc, arma::fill::zeros);
+    if (nKets_cc < 1)
+      continue;
+    for (int ibra_cc = 0; ibra_cc < nKets_cc; ++ibra_cc) {
+      Ket &bra_cc = tbc_cc.GetKet(ibra_cc);
+      const int a = bra_cc.p, b = bra_cc.q;
+      Orbit &oa = Z.modelspace->GetOrbit(a);
+      Orbit &ob = Z.modelspace->GetOrbit(b);
+      const double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5;
+      for (int iket_cc = 0; iket_cc < 2 * nKets_cc; ++iket_cc) {
+        if ((iket_cc % nKets_cc) < ibra_cc)
+          continue;
+        int c, d;
+        if (iket_cc < nKets_cc) {
+          Ket &ket_cc = tbc_cc.GetKet(iket_cc);
+          c = ket_cc.p;
+          d = ket_cc.q;
+        } else {
+          Ket &ket_cc = tbc_cc.GetKet(iket_cc - nKets_cc);
+          d = ket_cc.p;
+          c = ket_cc.q;
+        }
+        Orbit &oc = Z.modelspace->GetOrbit(c);
+        Orbit &od = Z.modelspace->GetOrbit(d);
+        const double jc = oc.j2 * 0.5, jd = od.j2 * 0.5;
+        double Gammabar = 0.0;
+        int jmin =
+            std::max(std::abs(oa.j2 - od.j2), std::abs(oc.j2 - ob.j2)) / 2;
+        int jmax = std::min(oa.j2 + od.j2, oc.j2 + ob.j2) / 2;
+        int dJ_std = 1;
+        if ((a == d or b == c)) {
+          dJ_std = 2;
+          jmin += jmin % 2;
+        }
+        for (int J_std = jmin; J_std <= jmax; J_std += dJ_std) {
+          const double sixj1 =
+              Z.modelspace->GetSixJ(ja, jb, J_cc, jc, jd, J_std);
+          if (std::abs(sixj1) > 1e-8)
+            Gammabar -= (2 * J_std + 1) * sixj1 *
+                        Gamma.TwoBody.GetTBME_J(J_std, a, d, c, b);
+        }
+        const double flip_phase =
+            Z.modelspace->phase((oa.j2 + ob.j2 + oc.j2 + od.j2) / 2);
+        if (iket_cc < nKets_cc or (iket_cc >= nKets_cc and c != d)) {
+          bar_Gamma[ch_cc](ibra_cc, iket_cc) = Gammabar;
+          if (iket_cc != ibra_cc)
+            bar_Gamma[ch_cc](iket_cc, ibra_cc) = hGamma * Gammabar;
+        }
+        if (a != b)
+          bar_Gamma[ch_cc](ibra_cc + nKets_cc,
+                           (iket_cc + nKets_cc) % (2 * nKets_cc)) =
+              Gammabar * flip_phase * hGamma;
+        if (iket_cc >= nKets_cc or (iket_cc < nKets_cc and c != d))
+          bar_Gamma[ch_cc]((iket_cc + nKets_cc) % (2 * nKets_cc),
+                           ibra_cc + nKets_cc) = Gammabar * flip_phase;
+      }
+    }
+  }
+}
+
+const std::deque<arma::mat> &CachedBarGammaScalarCC(const Operator &Gamma,
+                                                    Operator &Z, int hGamma) {
+  const int nch = Z.modelspace->GetNumberTwoBodyChannels_CC();
+  if (g_bar_gamma_cc.gamma == &Gamma && g_bar_gamma_cc.nch == nch &&
+      (int)g_bar_gamma_cc.bar.size() == nch)
+    return g_bar_gamma_cc.bar;
+  FillBarGammaScalarCC(Gamma, Z, hGamma, g_bar_gamma_cc.bar);
+  g_bar_gamma_cc.gamma = &Gamma;
+  g_bar_gamma_cc.nch = nch;
+  return g_bar_gamma_cc.bar;
+}
+} // namespace
+
 void comm223_232_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z) {
   double t_start = omp_get_wtime();
   Z.modelspace->PreCalculateSixJ();
@@ -3211,71 +3740,9 @@ void comm223_232_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z) {
     return Xbar;
   };
 
-  // Scalar Pandya Γ per CC channel (Factorized 2×nKets layout).
-  std::deque<arma::mat> bar_Gamma(n_nonzero);
-#pragma omp parallel for schedule(dynamic, 1)
-  for (int ch_cc = 0; ch_cc < n_nonzero; ++ch_cc) {
-    TwoBodyChannel_CC &tbc_cc = Z.modelspace->GetTwoBodyChannel_CC(ch_cc);
-    const int nKets_cc = tbc_cc.GetNumberKets();
-    const int J_cc = tbc_cc.J;
-    bar_Gamma[ch_cc] = arma::mat(2 * nKets_cc, 2 * nKets_cc, arma::fill::zeros);
-    if (nKets_cc < 1)
-      continue;
-    for (int ibra_cc = 0; ibra_cc < nKets_cc; ++ibra_cc) {
-      Ket &bra_cc = tbc_cc.GetKet(ibra_cc);
-      const int a = bra_cc.p, b = bra_cc.q;
-      Orbit &oa = Z.modelspace->GetOrbit(a);
-      Orbit &ob = Z.modelspace->GetOrbit(b);
-      const double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5;
-      for (int iket_cc = 0; iket_cc < 2 * nKets_cc; ++iket_cc) {
-        if ((iket_cc % nKets_cc) < ibra_cc)
-          continue;
-        int c, d;
-        if (iket_cc < nKets_cc) {
-          Ket &ket_cc = tbc_cc.GetKet(iket_cc);
-          c = ket_cc.p;
-          d = ket_cc.q;
-        } else {
-          Ket &ket_cc = tbc_cc.GetKet(iket_cc - nKets_cc);
-          d = ket_cc.p;
-          c = ket_cc.q;
-        }
-        Orbit &oc = Z.modelspace->GetOrbit(c);
-        Orbit &od = Z.modelspace->GetOrbit(d);
-        const double jc = oc.j2 * 0.5, jd = od.j2 * 0.5;
-        double Gammabar = 0.0;
-        int jmin =
-            std::max(std::abs(oa.j2 - od.j2), std::abs(oc.j2 - ob.j2)) / 2;
-        int jmax = std::min(oa.j2 + od.j2, oc.j2 + ob.j2) / 2;
-        int dJ_std = 1;
-        if ((a == d or b == c)) {
-          dJ_std = 2;
-          jmin += jmin % 2;
-        }
-        for (int J_std = jmin; J_std <= jmax; J_std += dJ_std) {
-          const double sixj1 =
-              Z.modelspace->GetSixJ(ja, jb, J_cc, jc, jd, J_std);
-          if (std::abs(sixj1) > 1e-8)
-            Gammabar -= (2 * J_std + 1) * sixj1 *
-                        Gamma.TwoBody.GetTBME_J(J_std, a, d, c, b);
-        }
-        const double flip_phase =
-            Z.modelspace->phase((oa.j2 + ob.j2 + oc.j2 + od.j2) / 2);
-        if (iket_cc < nKets_cc or (iket_cc >= nKets_cc and c != d)) {
-          bar_Gamma[ch_cc](ibra_cc, iket_cc) = Gammabar;
-          if (iket_cc != ibra_cc)
-            bar_Gamma[ch_cc](iket_cc, ibra_cc) = hGamma * Gammabar;
-        }
-        if (a != b)
-          bar_Gamma[ch_cc](ibra_cc + nKets_cc,
-                           (iket_cc + nKets_cc) % (2 * nKets_cc)) =
-              Gammabar * flip_phase * hGamma;
-        if (iket_cc >= nKets_cc or (iket_cc < nKets_cc and c != d))
-          bar_Gamma[ch_cc]((iket_cc + nKets_cc) % (2 * nKets_cc),
-                           ibra_cc + nKets_cc) = Gammabar * flip_phase;
-      }
-    }
-  }
+  // Scalar Pandya Γ per CC channel (cached; H is fixed in Arnoldi).
+  const std::deque<arma::mat> &bar_Gamma =
+      CachedBarGammaScalarCC(Gamma, Z, hGamma);
 
   // Rectangular CC pairs: χ̄(il;kj)^{J0,J1} = hΩ (−1)^{J0+J1} Ω̄_occ^T · Γ̄^{J1}
   std::vector<std::array<int, 2>> cc_pairs;
@@ -3298,37 +3765,42 @@ void comm223_232_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z) {
   }
 
   std::map<std::array<int, 2>, arma::mat> bar_CHI_VI_II;
-  for (auto pk : cc_pairs) {
-    const int ch_ab = pk[0], ch_il = pk[1];
-    TwoBodyChannel_CC &tab = Z.modelspace->GetTwoBodyChannel_CC(ch_ab);
-    TwoBodyChannel_CC &til = Z.modelspace->GetTwoBodyChannel_CC(ch_il);
-    const int nab = tab.GetNumberKets(), nil = til.GetNumberKets();
-    const int J1 = tab.J, J0 = til.J;
-    arma::mat Omega_occ(2 * nab, 2 * nil, arma::fill::zeros);
-    for (int ibra = 0; ibra < 2 * nab; ++ibra) {
-      auto ab = pq_cc(tab, ibra, nab);
-      if (ab[0] < 0)
-        continue;
-      Orbit &oa = Z.modelspace->GetOrbit(ab[0]);
-      Orbit &ob = Z.modelspace->GetOrbit(ab[1]);
-      const double n_a = oa.occ, nbar_a = 1.0 - n_a;
-      const double n_b = ob.occ, nbar_b = 1.0 - n_b;
-      for (int iket = 0; iket < 2 * nil; ++iket) {
-        auto il = pq_cc(til, iket, nil);
-        if (il[0] < 0)
+  {
+    std::vector<arma::mat> tmp(cc_pairs.size());
+#pragma omp parallel for schedule(dynamic, 1)
+    for (int ip = 0; ip < (int)cc_pairs.size(); ++ip) {
+      const int ch_ab = cc_pairs[ip][0], ch_il = cc_pairs[ip][1];
+      TwoBodyChannel_CC &tab = Z.modelspace->GetTwoBodyChannel_CC(ch_ab);
+      TwoBodyChannel_CC &til = Z.modelspace->GetTwoBodyChannel_CC(ch_il);
+      const int nab = tab.GetNumberKets(), nil = til.GetNumberKets();
+      const int J1 = tab.J, J0 = til.J;
+      arma::mat Omega_occ(2 * nab, 2 * nil, arma::fill::zeros);
+      for (int ibra = 0; ibra < 2 * nab; ++ibra) {
+        auto ab = pq_cc(tab, ibra, nab);
+        if (ab[0] < 0)
           continue;
-        Orbit &od = Z.modelspace->GetOrbit(il[1]);
-        const double n_d = od.occ, nbar_d = 1.0 - n_d;
-        const double occ_ABbarD = n_a * nbar_b * n_d + nbar_a * n_b * nbar_d;
-        if (std::abs(occ_ABbarD) < 1e-12)
-          continue;
-        Omega_occ(ibra, iket) =
-            pandya_eta(ab[0], ab[1], il[0], il[1], J1, J0) * occ_ABbarD;
+        Orbit &oa = Z.modelspace->GetOrbit(ab[0]);
+        Orbit &ob = Z.modelspace->GetOrbit(ab[1]);
+        const double n_a = oa.occ, nbar_a = 1.0 - n_a;
+        const double n_b = ob.occ, nbar_b = 1.0 - n_b;
+        for (int iket = 0; iket < 2 * nil; ++iket) {
+          auto il = pq_cc(til, iket, nil);
+          if (il[0] < 0)
+            continue;
+          Orbit &od = Z.modelspace->GetOrbit(il[1]);
+          const double n_d = od.occ, nbar_d = 1.0 - n_d;
+          const double occ_ABbarD = n_a * nbar_b * n_d + nbar_a * n_b * nbar_d;
+          if (std::abs(occ_ABbarD) < 1e-12)
+            continue;
+          Omega_occ(ibra, iket) =
+              pandya_eta(ab[0], ab[1], il[0], il[1], J1, J0) * occ_ABbarD;
+        }
       }
+      const double phaseJJ = Z.modelspace->phase(J0 + J1);
+      tmp[ip] = hEta * phaseJJ * (Omega_occ.t() * bar_Gamma[ch_ab]);
     }
-    const double phaseJJ = Z.modelspace->phase(J0 + J1);
-    bar_CHI_VI_II[{ch_il, ch_ab}] =
-        hEta * phaseJJ * (Omega_occ.t() * bar_Gamma[ch_ab]);
+    for (int ip = 0; ip < (int)cc_pairs.size(); ++ip)
+      bar_CHI_VI_II[{cc_pairs[ip][1], cc_pairs[ip][0]}] = std::move(tmp[ip]);
   }
 
   auto bar_chi = [&](int i, int j, int k, int l, int J2, int J3) -> double {
@@ -3414,30 +3886,36 @@ void comm223_232_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z) {
   }
 
   std::map<std::array<int, 2>, arma::mat> Chi;
-  for (auto pk : tb_pairs) {
-    const int c0 = pk[0], c2 = pk[1];
-    TwoBodyChannel &t0 = Z.modelspace->GetTwoBodyChannel(c0);
-    TwoBodyChannel &t2 = Z.modelspace->GetTwoBodyChannel(c2);
-    const int n0 = t0.GetNumberKets(), n2 = t2.GetNumberKets();
-    const int J0 = t0.J, J2 = t2.J;
-    arma::mat C(2 * n0, 2 * n2, arma::fill::zeros);
-    for (int ib = 0; ib < 2 * n0; ++ib) {
-      auto ij = pq_tb(t0, ib, n0);
-      if (ij[0] < 0)
-        continue;
-      for (int ik = 0; ik < 2 * n2; ++ik) {
-        auto bd = pq_tb(t2, ik, n2);
-        if (bd[0] < 0)
+  {
+    std::vector<arma::mat> tmp(tb_pairs.size());
+#pragma omp parallel for schedule(dynamic, 1)
+    for (int ip = 0; ip < (int)tb_pairs.size(); ++ip) {
+      const int c0 = tb_pairs[ip][0], c2 = tb_pairs[ip][1];
+      TwoBodyChannel &t0 = Z.modelspace->GetTwoBodyChannel(c0);
+      TwoBodyChannel &t2 = Z.modelspace->GetTwoBodyChannel(c2);
+      const int n0 = t0.GetNumberKets(), n2 = t2.GetNumberKets();
+      const int J0 = t0.J, J2 = t2.J;
+      arma::mat C(2 * n0, 2 * n2, arma::fill::zeros);
+      for (int ib = 0; ib < 2 * n0; ++ib) {
+        auto ij = pq_tb(t0, ib, n0);
+        if (ij[0] < 0)
           continue;
-        const double v = inv_plus(ij[0], ij[1], bd[0], bd[1], J0, J2);
-        if (std::abs(v) < 1e-16)
-          continue;
-        Orbit &ob = Z.modelspace->GetOrbit(bd[0]);
-        Orbit &od = Z.modelspace->GetOrbit(bd[1]);
-        C(ib, ik) = v * Z.modelspace->phase((ob.j2 + od.j2) / 2 + lambda);
+        for (int ik = 0; ik < 2 * n2; ++ik) {
+          auto bd = pq_tb(t2, ik, n2);
+          if (bd[0] < 0)
+            continue;
+          const double v = inv_plus(ij[0], ij[1], bd[0], bd[1], J0, J2);
+          if (std::abs(v) < 1e-16)
+            continue;
+          Orbit &ob = Z.modelspace->GetOrbit(bd[0]);
+          Orbit &od = Z.modelspace->GetOrbit(bd[1]);
+          C(ib, ik) = v * Z.modelspace->phase((ob.j2 + od.j2) / 2 + lambda);
+        }
       }
+      tmp[ip] = std::move(C);
     }
-    Chi[pk] = std::move(C);
+    for (int ip = 0; ip < (int)tb_pairs.size(); ++ip)
+      Chi[tb_pairs[ip]] = std::move(tmp[ip]);
   }
 
   std::vector<size_t> ch_bra_list, ch_ket_list;
@@ -3604,71 +4082,9 @@ void comm223_232_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z) {
     return Xbar;
   };
 
-  // Scalar Pandya Γ per CC channel (Factorized 2×nKets layout).
-  std::deque<arma::mat> bar_Gamma(n_nonzero);
-#pragma omp parallel for schedule(dynamic, 1)
-  for (int ch_cc = 0; ch_cc < n_nonzero; ++ch_cc) {
-    TwoBodyChannel_CC &tbc_cc = Z.modelspace->GetTwoBodyChannel_CC(ch_cc);
-    const int nKets_cc = tbc_cc.GetNumberKets();
-    const int J_cc = tbc_cc.J;
-    bar_Gamma[ch_cc] = arma::mat(2 * nKets_cc, 2 * nKets_cc, arma::fill::zeros);
-    if (nKets_cc < 1)
-      continue;
-    for (int ibra_cc = 0; ibra_cc < nKets_cc; ++ibra_cc) {
-      Ket &bra_cc = tbc_cc.GetKet(ibra_cc);
-      const int a = bra_cc.p, b = bra_cc.q;
-      Orbit &oa = Z.modelspace->GetOrbit(a);
-      Orbit &ob = Z.modelspace->GetOrbit(b);
-      const double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5;
-      for (int iket_cc = 0; iket_cc < 2 * nKets_cc; ++iket_cc) {
-        if ((iket_cc % nKets_cc) < ibra_cc)
-          continue;
-        int c, d;
-        if (iket_cc < nKets_cc) {
-          Ket &ket_cc = tbc_cc.GetKet(iket_cc);
-          c = ket_cc.p;
-          d = ket_cc.q;
-        } else {
-          Ket &ket_cc = tbc_cc.GetKet(iket_cc - nKets_cc);
-          d = ket_cc.p;
-          c = ket_cc.q;
-        }
-        Orbit &oc = Z.modelspace->GetOrbit(c);
-        Orbit &od = Z.modelspace->GetOrbit(d);
-        const double jc = oc.j2 * 0.5, jd = od.j2 * 0.5;
-        double Gammabar = 0.0;
-        int jmin =
-            std::max(std::abs(oa.j2 - od.j2), std::abs(oc.j2 - ob.j2)) / 2;
-        int jmax = std::min(oa.j2 + od.j2, oc.j2 + ob.j2) / 2;
-        int dJ_std = 1;
-        if ((a == d or b == c)) {
-          dJ_std = 2;
-          jmin += jmin % 2;
-        }
-        for (int J_std = jmin; J_std <= jmax; J_std += dJ_std) {
-          const double sixj1 =
-              Z.modelspace->GetSixJ(ja, jb, J_cc, jc, jd, J_std);
-          if (std::abs(sixj1) > 1e-8)
-            Gammabar -= (2 * J_std + 1) * sixj1 *
-                        Gamma.TwoBody.GetTBME_J(J_std, a, d, c, b);
-        }
-        const double flip_phase =
-            Z.modelspace->phase((oa.j2 + ob.j2 + oc.j2 + od.j2) / 2);
-        if (iket_cc < nKets_cc or (iket_cc >= nKets_cc and c != d)) {
-          bar_Gamma[ch_cc](ibra_cc, iket_cc) = Gammabar;
-          if (iket_cc != ibra_cc)
-            bar_Gamma[ch_cc](iket_cc, ibra_cc) = hGamma * Gammabar;
-        }
-        if (a != b)
-          bar_Gamma[ch_cc](ibra_cc + nKets_cc,
-                           (iket_cc + nKets_cc) % (2 * nKets_cc)) =
-              Gammabar * flip_phase * hGamma;
-        if (iket_cc >= nKets_cc or (iket_cc < nKets_cc and c != d))
-          bar_Gamma[ch_cc]((iket_cc + nKets_cc) % (2 * nKets_cc),
-                           ibra_cc + nKets_cc) = Gammabar * flip_phase;
-      }
-    }
-  }
+  // Scalar Pandya Γ per CC channel (cached; H is fixed in Arnoldi).
+  const std::deque<arma::mat> &bar_Gamma =
+      CachedBarGammaScalarCC(Gamma, Z, hGamma);
 
   // Rectangular CC pairs. Triangle(Jb,Jk,λ) — λ=0 ⇒ Jb=Jk.
   std::vector<std::array<int, 2>> cc_pairs;
@@ -3692,35 +4108,41 @@ void comm223_232_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z) {
 
   // Ω̄^{Jb Jk}(ab;kj) and χ̄ = Γ̄·(occ_AbarBC ⊙ Ω̄). No hΩ, no (−1)^{J0+J1}.
   std::map<std::array<int, 2>, arma::mat> bar_CHI_V;
-  for (auto pk : cc_pairs) {
-    const int ch_b = pk[0], ch_k = pk[1];
-    TwoBodyChannel_CC &tb = Z.modelspace->GetTwoBodyChannel_CC(ch_b);
-    TwoBodyChannel_CC &tk = Z.modelspace->GetTwoBodyChannel_CC(ch_k);
-    const int nb = tb.GetNumberKets(), nk = tk.GetNumberKets();
-    const int Jb = tb.J, Jk = tk.J;
-    arma::mat Occ(2 * nb, 2 * nk, arma::fill::zeros);
-    for (int ibra = 0; ibra < 2 * nb; ++ibra) {
-      auto ab = pq_cc(tb, ibra, nb);
-      if (ab[0] < 0)
-        continue;
-      Orbit &oa = Z.modelspace->GetOrbit(ab[0]);
-      Orbit &ob = Z.modelspace->GetOrbit(ab[1]);
-      const double n_a = oa.occ, nbar_a = 1.0 - n_a;
-      const double n_b = ob.occ, nbar_b = 1.0 - n_b;
-      for (int iket = 0; iket < 2 * nk; ++iket) {
-        auto kj = pq_cc(tk, iket, nk);
-        if (kj[0] < 0)
+  {
+    std::vector<arma::mat> tmp(cc_pairs.size());
+#pragma omp parallel for schedule(dynamic, 1)
+    for (int ip = 0; ip < (int)cc_pairs.size(); ++ip) {
+      const int ch_b = cc_pairs[ip][0], ch_k = cc_pairs[ip][1];
+      TwoBodyChannel_CC &tb = Z.modelspace->GetTwoBodyChannel_CC(ch_b);
+      TwoBodyChannel_CC &tk = Z.modelspace->GetTwoBodyChannel_CC(ch_k);
+      const int nb = tb.GetNumberKets(), nk = tk.GetNumberKets();
+      const int Jb = tb.J, Jk = tk.J;
+      arma::mat Occ(2 * nb, 2 * nk, arma::fill::zeros);
+      for (int ibra = 0; ibra < 2 * nb; ++ibra) {
+        auto ab = pq_cc(tb, ibra, nb);
+        if (ab[0] < 0)
           continue;
-        Orbit &ok = Z.modelspace->GetOrbit(kj[0]);
-        const double n_k = ok.occ, nbar_k = 1.0 - n_k;
-        const double occ_AbarBC = nbar_a * n_b * n_k + n_a * nbar_b * nbar_k;
-        if (std::abs(occ_AbarBC) < 1e-12)
-          continue;
-        Occ(ibra, iket) =
-            pandya_eta(ab[0], ab[1], kj[0], kj[1], Jb, Jk) * occ_AbarBC;
+        Orbit &oa = Z.modelspace->GetOrbit(ab[0]);
+        Orbit &ob = Z.modelspace->GetOrbit(ab[1]);
+        const double n_a = oa.occ, nbar_a = 1.0 - n_a;
+        const double n_b = ob.occ, nbar_b = 1.0 - n_b;
+        for (int iket = 0; iket < 2 * nk; ++iket) {
+          auto kj = pq_cc(tk, iket, nk);
+          if (kj[0] < 0)
+            continue;
+          Orbit &ok = Z.modelspace->GetOrbit(kj[0]);
+          const double n_k = ok.occ, nbar_k = 1.0 - n_k;
+          const double occ_AbarBC = nbar_a * n_b * n_k + n_a * nbar_b * nbar_k;
+          if (std::abs(occ_AbarBC) < 1e-12)
+            continue;
+          Occ(ibra, iket) =
+              pandya_eta(ab[0], ab[1], kj[0], kj[1], Jb, Jk) * occ_AbarBC;
+        }
       }
+      tmp[ip] = bar_Gamma[ch_b] * Occ;
     }
-    bar_CHI_V[pk] = bar_Gamma[ch_b] * Occ;
+    for (int ip = 0; ip < (int)cc_pairs.size(); ++ip)
+      bar_CHI_V[cc_pairs[ip]] = std::move(tmp[ip]);
   }
 
   auto lookup_chi = [&](int a, int d, int b, int c, int J3, int J4) -> double {
@@ -3818,6 +4240,7 @@ void comm223_232_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z) {
   };
   ChiTabJJ Chi;
   Chi.allocate(n_orb_alloc, max_J);
+  const double t_chi = omp_get_wtime();
 
 #pragma omp parallel for schedule(dynamic, 1)
   for (int ii = 0; ii < n_orb; ++ii) {
@@ -3850,110 +4273,53 @@ void comm223_232_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z) {
     }
   }
   bar_CHI_V.clear();
+  Z.profiler.timer["_GIVb_chi_inv"] += omp_get_wtime() - t_chi;
+  const double t_left = omp_get_wtime();
 
-  // Leftover AMC W1 / W2_slots (unreduced). G4b_W{1,2}_leftover.tex
-  auto w_leftover = [&](int i, int j, int k, int l, int J0,
-                        bool term2) -> double {
+  // Leftover W1/W2: same 5-6j AMC as G4b_W{1,2}_leftover.tex, but contract
+  // (a,b) by DGEMM for each (J6,j0). W2n = w1 − hΩ w2, then (1−P)² + NAS.
+  ChiTabJJ Om;
+  Om.allocate(n_orb_alloc, max_J);
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int ii = 0; ii < n_orb; ++ii) {
+    const index_t i = allorb[ii];
     Orbit &oi = Z.modelspace->GetOrbit(i);
-    Orbit &oj = Z.modelspace->GetOrbit(j);
-    Orbit &ok = Z.modelspace->GetOrbit(k);
-    Orbit &ol = Z.modelspace->GetOrbit(l);
-    const double ji = oi.j2 * 0.5, jjv = oj.j2 * 0.5;
-    const double jk = ok.j2 * 0.5, jl = ol.j2 * 0.5;
-    if (not AngMom::Triangle(ji, jjv, (double)J0) or
-        not AngMom::Triangle(jk, jl, (double)J0))
-      return 0.0;
-    double tot = 0.0;
-    for (auto a : allorb) {
-      Orbit &oa = Z.modelspace->GetOrbit(a);
-      const double ja = oa.j2 * 0.5;
-      for (auto b : allorb) {
-        Orbit &ob = Z.modelspace->GetOrbit(b);
-        const double jb = ob.j2 * 0.5;
-        const int j2min =
-            term2 ? std::abs(oa.j2 - ok.j2) / 2 : std::abs(oa.j2 - oi.j2) / 2;
-        const int j2max = term2 ? (oa.j2 + ok.j2) / 2 : (oa.j2 + oi.j2) / 2;
-        const int j3min =
-            term2 ? std::abs(ob.j2 - oi.j2) / 2 : std::abs(ob.j2 - ok.j2) / 2;
-        const int j3max = term2 ? (ob.j2 + oi.j2) / 2 : (ob.j2 + ok.j2) / 2;
-        for (int J2 = j2min; J2 <= j2max; ++J2) {
-          for (int J3 = j3min; J3 <= j3max; ++J3) {
-            if (not AngMom::Triangle(J2, J3, lambda))
+    const double ji = oi.j2 * 0.5;
+    for (auto j : allorb) {
+      Orbit &oj = Z.modelspace->GetOrbit(j);
+      const double jj = oj.j2 * 0.5;
+      for (auto k : allorb) {
+        Orbit &ok = Z.modelspace->GetOrbit(k);
+        const double jk = ok.j2 * 0.5;
+        for (auto l : allorb) {
+          Orbit &ol = Z.modelspace->GetOrbit(l);
+          const double jl = ol.j2 * 0.5;
+          for (int J0 = 0; J0 <= max_J; ++J0) {
+            if (not AngMom::Triangle(ji, jj, (double)J0))
               continue;
-            const double chi =
-                term2 ? Chi((int)a, k, (int)b, i, J2, J3)
-                      : Chi((int)a, i, (int)b, k, J2, J3);
-            if (std::abs(chi) < 1e-16)
-              continue;
-            const int j4min =
-                term2 ? std::abs(ol.j2 - ob.j2) / 2 : std::abs(oj.j2 - ob.j2) / 2;
-            const int j4max = term2 ? (ol.j2 + ob.j2) / 2 : (oj.j2 + ob.j2) / 2;
-            const int j5min =
-                term2 ? std::abs(oj.j2 - oa.j2) / 2 : std::abs(ol.j2 - oa.j2) / 2;
-            const int j5max = term2 ? (oj.j2 + oa.j2) / 2 : (ol.j2 + oa.j2) / 2;
-            for (int J4 = j4min; J4 <= j4max; ++J4) {
-              for (int J5 = j5min; J5 <= j5max; ++J5) {
-                if (not AngMom::Triangle(J4, J5, lambda))
-                  continue;
-                const double om =
-                    term2 ? Eta.TwoBody.GetTBME_J(J4, J5, l, (int)b, j, (int)a)
-                          : Eta.TwoBody.GetTBME_J(J4, J5, j, (int)b, l, (int)a);
-                if (std::abs(om) < 1e-16)
-                  continue;
-                const double ph_ab =
-                    Z.modelspace->phase((oa.j2 + ob.j2) / 2 + lambda);
-                const int J6min = term2
-                                      ? std::abs(ok.j2 - oi.j2) / 2
-                                      : std::abs(oi.j2 - ok.j2) / 2;
-                const int J6max = term2 ? (ok.j2 + oi.j2) / 2
-                                        : (oi.j2 + ok.j2) / 2;
-                for (int J6 = J6min; J6 <= J6max; ++J6) {
-                  // j0 from leftover 6j triangles (half-integer when ja is).
-                  const double ja_l = term2 ? jk : ji;
-                  const double ja_r = term2 ? jjv : jl;
-                  const double j0min = std::max(
-                      {std::abs(ja - (double)lambda), std::abs(J3 - ja_l),
-                       std::abs(J4 - ja_r)});
-                  const double j0max = std::min(
-                      {ja + (double)lambda, J3 + ja_l, J4 + ja_r});
-                  const int j0_2min = (int)std::ceil(2.0 * j0min - 1e-9);
-                  const int j0_2max = (int)std::floor(2.0 * j0max + 1e-9);
-                  for (int j0_2 = j0_2min; j0_2 <= j0_2max; ++j0_2) {
-                    if ((j0_2 + oa.j2) % 2 != 0)
-                      continue;
-                    const double j0 = 0.5 * j0_2;
-                    double six;
-                    if (term2) {
-                      six = Z.modelspace->GetSixJ(J3, lambda, J2, ja, jk, j0) *
-                            Z.modelspace->GetSixJ(J4, lambda, J5, ja, jjv, j0) *
-                            Z.modelspace->GetSixJ(jk, ji, J6, jb, j0, J3) *
-                            Z.modelspace->GetSixJ(jjv, jl, J6, jb, j0, J4) *
-                            Z.modelspace->GetSixJ(jk, jl, J0, jjv, ji, J6);
-                    } else {
-                      six = Z.modelspace->GetSixJ(J3, lambda, J2, ja, ji, j0) *
-                            Z.modelspace->GetSixJ(J4, lambda, J5, ja, jl, j0) *
-                            Z.modelspace->GetSixJ(ji, jk, J6, jb, j0, J3) *
-                            Z.modelspace->GetSixJ(jl, jjv, J6, jb, j0, J4) *
-                            Z.modelspace->GetSixJ(jk, jl, J0, jjv, ji, J6);
-                    }
-                    if (std::abs(six) < 1e-16)
-                      continue;
-                    const double hats = hatJ(J2) * hatJ(J3) * hatJ(J4) *
-                                        hatJ(J5) * (2.0 * J6 + 1.0) *
-                                        (2.0 * j0 + 1.0) * hat_lam_inv;
-                    tot += ph_ab * hats * six * chi * om;
-                  }
-                }
-              }
+            for (int J1 = 0; J1 <= max_J; ++J1) {
+              if (not AngMom::Triangle(jk, jl, (double)J1))
+                continue;
+              if (not AngMom::Triangle(J0, J1, lambda))
+                continue;
+              Om.at(i, j, k, l, J0, J1) =
+                  Eta.TwoBody.GetTBME_J(J0, J1, (int)i, (int)j, (int)k, (int)l);
             }
           }
         }
       }
     }
-    const int phJ = term2 ? (J0 + (oi.j2 + ol.j2) / 2)
-                          : (J0 + (oj.j2 + ok.j2) / 2);
-    return -Z.modelspace->phase(phJ) * tot;
-  };
+  }
+
+  std::vector<int> compact(n_orb_alloc, -1);
+  std::vector<int> oj2(n_orb);
+  std::vector<double> ojh(n_orb);
+  for (int t = 0; t < n_orb; ++t) {
+    compact[(int)allorb[t]] = t;
+    Orbit &o = Z.modelspace->GetOrbit(allorb[t]);
+    oj2[t] = o.j2;
+    ojh[t] = o.j2 * 0.5;
+  }
 
   std::vector<size_t> ch_bra_list, ch_ket_list;
   for (auto &iter : Z.TwoBody.MatEl) {
@@ -3961,38 +4327,212 @@ void comm223_232_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z) {
     ch_ket_list.push_back(iter.first[1]);
   }
   const int nch = (int)ch_bra_list.size();
-
-#pragma omp parallel for schedule(dynamic, 1)
+  std::vector<arma::mat> W2n_list(nch);
   for (int ch = 0; ch < nch; ++ch) {
-    const int ch_bra = (int)ch_bra_list[ch];
-    const int ch_ket = (int)ch_ket_list[ch];
-    TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
-    TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+    TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel((int)ch_bra_list[ch]);
+    TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel((int)ch_ket_list[ch]);
     if (tbc_bra.J != tbc_ket.J)
       continue;
-    const int J0 = tbc_bra.J;
     const int nbras = tbc_bra.GetNumberKets();
     const int nkets = tbc_ket.GetNumberKets();
     if (nbras < 1 or nkets < 1)
       continue;
+    W2n_list[ch] = arma::mat(2 * nbras, 2 * nkets, arma::fill::zeros);
+  }
 
-    arma::mat W2n(2 * nbras, 2 * nkets, arma::fill::zeros);
-    for (int ibra = 0; ibra < 2 * nbras; ++ibra) {
-      auto ij = PqTB(tbc_bra, ibra, nbras);
-      if (ij[0] < 0)
-        continue;
-      for (int iket = 0; iket < 2 * nkets; ++iket) {
-        auto kl = PqTB(tbc_ket, iket, nkets);
-        if (kl[0] < 0)
+  const int n2 = n_orb * n_orb;
+  const int j0_2max = max_j2 + 2 * lambda;
+  if (n2 > 0) {
+    arma::mat X1(n2, n2), Y1(n2, n2), X2(n2, n2), Y2(n2, n2);
+    for (int J6 = 0; J6 <= max_J; ++J6) {
+      arma::mat acc1(n2, n2, arma::fill::zeros);
+      arma::mat acc2(n2, n2, arma::fill::zeros);
+      for (int j0_2 = 0; j0_2 <= j0_2max; ++j0_2) {
+        const double j0 = 0.5 * j0_2;
+        X1.zeros();
+        Y1.zeros();
+        X2.zeros();
+        Y2.zeros();
+#pragma omp parallel for schedule(dynamic, 1)
+        for (int col = 0; col < n2; ++col) {
+          const int ia = col / n_orb;
+          const int ib = col - ia * n_orb;
+          const int a = (int)allorb[ia];
+          const int b = (int)allorb[ib];
+          const int ja2 = oj2[ia], jb2 = oj2[ib];
+          const double ja = ojh[ia], jb = ojh[ib];
+          if ((j0_2 + ja2) % 2 != 0)
+            continue;
+          if (not AngMom::Triangle(ja, (double)lambda, j0))
+            continue;
+          const double ph_ab =
+              Z.modelspace->phase((ja2 + jb2) / 2 + lambda);
+
+          for (int ii = 0; ii < n_orb; ++ii) {
+            const int i = (int)allorb[ii];
+            const double ji = ojh[ii];
+            const int ji2 = oj2[ii];
+            for (int kk = 0; kk < n_orb; ++kk) {
+              const int k = (int)allorb[kk];
+              const double jk = ojh[kk];
+              const int jk2 = oj2[kk];
+              if (not AngMom::Triangle(ji, jk, (double)J6))
+                continue;
+              const int row = ii * n_orb + kk;
+              double s1 = 0.0, s2 = 0.0;
+              const int j2min1 = std::abs(ja2 - ji2) / 2;
+              const int j2max1 = (ja2 + ji2) / 2;
+              const int j3min1 = std::abs(jb2 - jk2) / 2;
+              const int j3max1 = (jb2 + jk2) / 2;
+              for (int J2 = j2min1; J2 <= j2max1; ++J2) {
+                for (int J3 = j3min1; J3 <= j3max1; ++J3) {
+                  if (not AngMom::Triangle(J2, J3, lambda))
+                    continue;
+                  const double chi = Chi(a, i, b, k, J2, J3);
+                  if (std::abs(chi) < 1e-16)
+                    continue;
+                  s1 += hatJ(J2) * hatJ(J3) *
+                        Z.modelspace->GetSixJ(J3, lambda, J2, ja, ji, j0) *
+                        Z.modelspace->GetSixJ(ji, jk, J6, jb, j0, J3) * chi;
+                }
+              }
+              const int j2min2 = std::abs(ja2 - jk2) / 2;
+              const int j2max2 = (ja2 + jk2) / 2;
+              const int j3min2 = std::abs(jb2 - ji2) / 2;
+              const int j3max2 = (jb2 + ji2) / 2;
+              for (int J2 = j2min2; J2 <= j2max2; ++J2) {
+                for (int J3 = j3min2; J3 <= j3max2; ++J3) {
+                  if (not AngMom::Triangle(J2, J3, lambda))
+                    continue;
+                  const double chi = Chi(a, k, b, i, J2, J3);
+                  if (std::abs(chi) < 1e-16)
+                    continue;
+                  s2 += hatJ(J2) * hatJ(J3) *
+                        Z.modelspace->GetSixJ(J3, lambda, J2, ja, jk, j0) *
+                        Z.modelspace->GetSixJ(jk, ji, J6, jb, j0, J3) * chi;
+                }
+              }
+              X1(row, col) = ph_ab * s1;
+              X2(row, col) = ph_ab * s2;
+            }
+          }
+
+          for (int jj = 0; jj < n_orb; ++jj) {
+            const int j = (int)allorb[jj];
+            const double jjv = ojh[jj];
+            const int jj2 = oj2[jj];
+            for (int ll = 0; ll < n_orb; ++ll) {
+              const int l = (int)allorb[ll];
+              const double jl = ojh[ll];
+              const int jl2 = oj2[ll];
+              if (not AngMom::Triangle(jjv, jl, (double)J6))
+                continue;
+              const int row = jj * n_orb + ll;
+              double t1 = 0.0, t2 = 0.0;
+              const int j4min1 = std::abs(jj2 - jb2) / 2;
+              const int j4max1 = (jj2 + jb2) / 2;
+              const int j5min1 = std::abs(jl2 - ja2) / 2;
+              const int j5max1 = (jl2 + ja2) / 2;
+              for (int J4 = j4min1; J4 <= j4max1; ++J4) {
+                for (int J5 = j5min1; J5 <= j5max1; ++J5) {
+                  if (not AngMom::Triangle(J4, J5, lambda))
+                    continue;
+                  const double om = Om(j, b, l, a, J4, J5);
+                  if (std::abs(om) < 1e-16)
+                    continue;
+                  t1 += hatJ(J4) * hatJ(J5) *
+                        Z.modelspace->GetSixJ(J4, lambda, J5, ja, jl, j0) *
+                        Z.modelspace->GetSixJ(jl, jjv, J6, jb, j0, J4) * om;
+                }
+              }
+              const int j4min2 = std::abs(jl2 - jb2) / 2;
+              const int j4max2 = (jl2 + jb2) / 2;
+              const int j5min2 = std::abs(jj2 - ja2) / 2;
+              const int j5max2 = (jj2 + ja2) / 2;
+              for (int J4 = j4min2; J4 <= j4max2; ++J4) {
+                for (int J5 = j5min2; J5 <= j5max2; ++J5) {
+                  if (not AngMom::Triangle(J4, J5, lambda))
+                    continue;
+                  const double om = Om(l, b, j, a, J4, J5);
+                  if (std::abs(om) < 1e-16)
+                    continue;
+                  t2 += hatJ(J4) * hatJ(J5) *
+                        Z.modelspace->GetSixJ(J4, lambda, J5, ja, jjv, j0) *
+                        Z.modelspace->GetSixJ(jjv, jl, J6, jb, j0, J4) * om;
+                }
+              }
+              Y1(row, col) = t1;
+              Y2(row, col) = t2;
+            }
+          }
+        }
+        const double sc = (j0_2 + 1.0) * hat_lam_inv;
+        acc1 += sc * (X1 * Y1.t());
+        acc2 += sc * (X2 * Y2.t());
+      }
+
+      const double hatJ6sq = 2.0 * J6 + 1.0;
+#pragma omp parallel for schedule(dynamic, 1)
+      for (int ch = 0; ch < nch; ++ch) {
+        if (W2n_list[ch].n_rows < 1)
           continue;
-        const double w1 =
-            w_leftover(ij[0], ij[1], kl[0], kl[1], J0, false);
-        const double w2 =
-            w_leftover(ij[0], ij[1], kl[0], kl[1], J0, true);
-        W2n(ibra, iket) = w1 - hEta * w2;
+        const int ch_bra = (int)ch_bra_list[ch];
+        const int ch_ket = (int)ch_ket_list[ch];
+        TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+        TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+        const int J0 = tbc_bra.J;
+        const int nbras = tbc_bra.GetNumberKets();
+        const int nkets = tbc_ket.GetNumberKets();
+        for (int ibra = 0; ibra < 2 * nbras; ++ibra) {
+          auto ij = PqTB(tbc_bra, ibra, nbras);
+          if (ij[0] < 0)
+            continue;
+          const int i = ij[0], j = ij[1];
+          const int ci = compact[i], cj = compact[j];
+          if (ci < 0 or cj < 0)
+            continue;
+          const double ji = ojh[ci], jjv = ojh[cj];
+          const int ji2 = oj2[ci], jj2 = oj2[cj];
+          for (int iket = 0; iket < 2 * nkets; ++iket) {
+            auto kl = PqTB(tbc_ket, iket, nkets);
+            if (kl[0] < 0)
+              continue;
+            const int k = kl[0], l = kl[1];
+            const int ck = compact[k], cl = compact[l];
+            if (ck < 0 or cl < 0)
+              continue;
+            const double jk = ojh[ck], jl = ojh[cl];
+            const int row = ci * n_orb + ck;
+            const int col = cj * n_orb + cl;
+            const double six5 =
+                Z.modelspace->GetSixJ(jk, jl, J0, jjv, ji, J6);
+            if (std::abs(six5) < 1e-16)
+              continue;
+            const double pref = hatJ6sq * six5;
+            const double w1 =
+                -Z.modelspace->phase(J0 + (jj2 + oj2[ck]) / 2) * pref *
+                acc1(row, col);
+            const double w2 =
+                -Z.modelspace->phase(J0 + (ji2 + oj2[cl]) / 2) * pref *
+                acc2(row, col);
+            W2n_list[ch](ibra, iket) += w1 - hEta * w2;
+          }
+        }
       }
     }
+  }
 
+  for (int ch = 0; ch < nch; ++ch) {
+    if (W2n_list[ch].n_rows < 1)
+      continue;
+    const int ch_bra = (int)ch_bra_list[ch];
+    const int ch_ket = (int)ch_ket_list[ch];
+    TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
+    TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
+    const int J0 = tbc_bra.J;
+    const int nbras = tbc_bra.GetNumberKets();
+    const int nkets = tbc_ket.GetNumberKets();
+    arma::mat &W2n = W2n_list[ch];
     arma::mat &Zmat = Z2.GetMatrix(ch_bra, ch_ket);
     for (int ibra = 0; ibra < nbras; ++ibra) {
       Ket &bra = tbc_bra.GetKet(ibra);
@@ -4019,6 +4559,7 @@ void comm223_232_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z) {
     }
   }
 
+  Z.profiler.timer["_GIVb_leftover"] += omp_get_wtime() - t_left;
   Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
 }
 
@@ -4110,6 +4651,7 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
   };
 
   const int nch_tb = Z.modelspace->GetNumberTwoBodyChannels();
+#pragma omp parallel for schedule(dynamic, 1)
   for (int c0 = 0; c0 < nch_tb; ++c0) {
     TwoBodyChannel &t0 = Z.modelspace->GetTwoBodyChannel(c0);
     const int J0 = t0.J;
@@ -4218,44 +4760,104 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
     }
   }
 
-  // ---- IMSRG tensor Pandya (adcb). Chi from table; Ω from Eta. ----
-  auto pandya_tensor = [&](bool use_chi, int a, int b, int c, int d, int Jbra,
-                           int Jket) -> double {
-    if (not AngMom::Triangle(Jbra, Jket, lambda))
-      return 0.0;
-    Orbit &oa = Z.modelspace->GetOrbit(a);
-    Orbit &ob = Z.modelspace->GetOrbit(b);
-    Orbit &oc = Z.modelspace->GetOrbit(c);
-    Orbit &od = Z.modelspace->GetOrbit(d);
-    const double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5;
-    const double jc = oc.j2 * 0.5, jd = od.j2 * 0.5;
-    double Xbar = 0.0;
-    const int j1min = std::abs(oa.j2 - od.j2) / 2;
-    const int j1max = (oa.j2 + od.j2) / 2;
-    for (int J1 = j1min; J1 <= j1max; ++J1) {
-      const int j2min =
-          std::max(std::abs(oc.j2 - ob.j2) / 2, std::abs(J1 - lambda));
-      const int j2max = std::min((oc.j2 + ob.j2) / 2, J1 + lambda);
-      for (int J2 = j2min; J2 <= j2max; ++J2) {
-        const double ninej = AngMom::NineJ(ja, jd, (double)J1, jb, jc,
-                                           (double)J2, (double)Jbra,
-                                           (double)Jket, (double)lambda);
-        if (std::abs(ninej) < 1e-10)
-          continue;
-        const double hats = std::sqrt((2.0 * J1 + 1.0) * (2.0 * J2 + 1.0) *
-                                      (2.0 * Jbra + 1.0) * (2.0 * Jket + 1.0));
-        const double me =
-            use_chi ? Chi(a, d, c, b, J1, J2)
-                    : Eta.TwoBody.GetTBME_J(J1, J2, a, d, c, b);
-        Xbar -= hats * AngMom::phase((ob.j2 + od.j2) / 2 + Jket + J2) * ninej *
-                me;
-      }
-    }
-    return Xbar;
+  Z.profiler.timer["_GIVc_chi"] += omp_get_wtime() - t_start;
+
+  // ---- CC-pair tensor Pandya (IMSRG adcb), then mid-J DGEMM ----
+  // Same 2n layout as the old per-ME fill. GetNineJ (cached 6j product), not gsl.
+  // χ̄ and Ω̄ share 9js on each (Jbra,Jket) pair.
+  auto pq_cc = [](TwoBodyChannel_CC &tbc, int idx, int nK) -> std::array<int, 2> {
+    Ket &ket = tbc.GetKet(idx % nK);
+    if (idx < nK)
+      return {(int)ket.p, (int)ket.q};
+    if (ket.p == ket.q)
+      return {-1, -1};
+    return {(int)ket.q, (int)ket.p};
   };
 
-  // ---- Mid-J DGEMM: barProd[J]((p,r),(s,q)) = Σ_Jmid pref barχ barΩ ----
   const int n_cc = Z.modelspace->GetNumberTwoBodyChannels_CC();
+  std::vector<std::array<int, 2>> cc_pairs;
+  for (int ch_b = 0; ch_b < n_cc; ++ch_b) {
+    TwoBodyChannel_CC &tb = Z.modelspace->GetTwoBodyChannel_CC(ch_b);
+    if (tb.GetNumberKets() < 1)
+      continue;
+    for (int ch_k = 0; ch_k < n_cc; ++ch_k) {
+      TwoBodyChannel_CC &tk = Z.modelspace->GetTwoBodyChannel_CC(ch_k);
+      if (tk.GetNumberKets() < 1)
+        continue;
+      if ((tb.parity + tk.parity) % 2 != 0)
+        continue;
+      if (tb.Tz != tk.Tz)
+        continue;
+      if (not AngMom::Triangle(tb.J, tk.J, lambda))
+        continue;
+      cc_pairs.push_back({ch_b, ch_k});
+    }
+  }
+
+  double t_pandya = omp_get_wtime();
+  std::vector<arma::mat> tmp_chi(cc_pairs.size()), tmp_om(cc_pairs.size());
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int ip = 0; ip < (int)cc_pairs.size(); ++ip) {
+    const int ch_b = cc_pairs[ip][0], ch_k = cc_pairs[ip][1];
+    TwoBodyChannel_CC &tb = Z.modelspace->GetTwoBodyChannel_CC(ch_b);
+    TwoBodyChannel_CC &tk = Z.modelspace->GetTwoBodyChannel_CC(ch_k);
+    const int nb = tb.GetNumberKets(), nk = tk.GetNumberKets();
+    const int Jbra = tb.J, Jket = tk.J;
+    arma::mat Mchi(2 * nb, 2 * nk, arma::fill::zeros);
+    arma::mat Mom(2 * nb, 2 * nk, arma::fill::zeros);
+    for (int ibra = 0; ibra < 2 * nb; ++ibra) {
+      auto ab = pq_cc(tb, ibra, nb);
+      if (ab[0] < 0)
+        continue;
+      Orbit &oa = Z.modelspace->GetOrbit(ab[0]);
+      Orbit &ob = Z.modelspace->GetOrbit(ab[1]);
+      const double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5;
+      for (int iket = 0; iket < 2 * nk; ++iket) {
+        auto cd = pq_cc(tk, iket, nk);
+        if (cd[0] < 0)
+          continue;
+        Orbit &oc = Z.modelspace->GetOrbit(cd[0]);
+        Orbit &od = Z.modelspace->GetOrbit(cd[1]);
+        if (std::abs(oa.tz2 + od.tz2 - ob.tz2 - oc.tz2) != Eta.GetTRank())
+          continue;
+        const double jc = oc.j2 * 0.5, jd = od.j2 * 0.5;
+        double xchi = 0.0, xom = 0.0;
+        const int j1min = std::abs(oa.j2 - od.j2) / 2;
+        const int j1max = (oa.j2 + od.j2) / 2;
+        for (int J1 = j1min; J1 <= j1max; ++J1) {
+          const int j2min =
+              std::max(std::abs(oc.j2 - ob.j2) / 2, std::abs(J1 - lambda));
+          const int j2max = std::min((oc.j2 + ob.j2) / 2, J1 + lambda);
+          for (int J2 = j2min; J2 <= j2max; ++J2) {
+            const double ninej = Z.modelspace->GetNineJ(
+                ja, jd, J1, jb, jc, J2, Jbra, Jket, lambda);
+            if (std::abs(ninej) < 1e-10)
+              continue;
+            const double hats =
+                hat(J1) * hat(J2) * hat(Jbra) * hat(Jket);
+            const double ph =
+                Z.modelspace->phase((ob.j2 + od.j2) / 2 + Jket + J2);
+            const double fac = hats * ph * ninej;
+            xchi -= fac * Chi(ab[0], cd[1], cd[0], ab[1], J1, J2);
+            xom -= fac * Eta.TwoBody.GetTBME_J(J1, J2, ab[0], cd[1], cd[0],
+                                               ab[1]);
+          }
+        }
+        Mchi(ibra, iket) = xchi;
+        Mom(ibra, iket) = xom;
+      }
+    }
+    tmp_chi[ip] = std::move(Mchi);
+    tmp_om[ip] = std::move(Mom);
+  }
+  std::map<std::array<int, 2>, arma::mat> bar_Chi, bar_Om;
+  for (int ip = 0; ip < (int)cc_pairs.size(); ++ip) {
+    bar_Chi[cc_pairs[ip]] = std::move(tmp_chi[ip]);
+    bar_Om[cc_pairs[ip]] = std::move(tmp_om[ip]);
+  }
+  Z.profiler.timer["_GIVc_pandya"] += omp_get_wtime() - t_pandya;
+
+  double t_gemm = omp_get_wtime();
   std::deque<arma::mat> barProd(n_cc);
 
 #pragma omp parallel for schedule(dynamic, 1)
@@ -4264,106 +4866,30 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
     const int nKets_cc = tbc_cc.GetNumberKets();
     if (nKets_cc < 1)
       continue;
-    const int J_cc = tbc_cc.J;
     const int n2 = nKets_cc * 2;
     const int parity_cc = tbc_cc.parity;
     const int Tz_cc = tbc_cc.Tz;
     barProd[ch_cc] = arma::mat(n2, n2, arma::fill::zeros);
-
     for (int Jmid = 0; Jmid <= max_J; ++Jmid) {
-      if (not AngMom::Triangle(J_cc, Jmid, lambda))
+      if (not AngMom::Triangle(tbc_cc.J, Jmid, lambda))
         continue;
       const int ch_mid =
           Z.modelspace->GetTwoBodyChannelIndex(Jmid, parity_cc, Tz_cc);
       if (ch_mid < 0 or ch_mid >= n_cc)
         continue;
-      TwoBodyChannel_CC &tbc_mid = Z.modelspace->GetTwoBodyChannel_CC(ch_mid);
-      const int nKm = tbc_mid.GetNumberKets();
-      if (nKm < 1)
+      auto itc = bar_Chi.find({ch_cc, ch_mid});
+      auto ito = bar_Om.find({ch_mid, ch_cc});
+      if (itc == bar_Chi.end() or ito == bar_Om.end())
         continue;
-      const int n2m = nKm * 2;
-      arma::mat Chi_L(n2, n2m, arma::fill::zeros);
-      arma::mat Om_R(n2m, n2, arma::fill::zeros);
-
-      for (int ibra = 0; ibra < n2; ++ibra) {
-        int p, r;
-        if (ibra < nKets_cc) {
-          Ket &bra = tbc_cc.GetKet(ibra);
-          p = bra.p;
-          r = bra.q;
-        } else {
-          Ket &bra = tbc_cc.GetKet(ibra - nKets_cc);
-          r = bra.p;
-          p = bra.q;
-        }
-        if (ibra >= nKets_cc and p == r)
-          continue;
-        Orbit &op = Z.modelspace->GetOrbit(p);
-        Orbit &orr = Z.modelspace->GetOrbit(r);
-        for (int iket = 0; iket < n2m; ++iket) {
-          int a, b;
-          if (iket < nKm) {
-            Ket &ket = tbc_mid.GetKet(iket);
-            a = ket.p;
-            b = ket.q;
-          } else {
-            Ket &ket = tbc_mid.GetKet(iket - nKm);
-            b = ket.p;
-            a = ket.q;
-          }
-          if (iket >= nKm and a == b)
-            continue;
-          Orbit &oa = Z.modelspace->GetOrbit(a);
-          Orbit &ob = Z.modelspace->GetOrbit(b);
-          if (std::abs(op.tz2 + ob.tz2 - orr.tz2 - oa.tz2) != Eta.GetTRank())
-            continue;
-          // AMC barχ(p,b,a,r) = IMSRG(p,r,a,b)
-          Chi_L(ibra, iket) = pandya_tensor(true, p, r, a, b, J_cc, Jmid);
-        }
-      }
-
-      for (int ibra = 0; ibra < n2m; ++ibra) {
-        int a, b;
-        if (ibra < nKm) {
-          Ket &bra = tbc_mid.GetKet(ibra);
-          a = bra.p;
-          b = bra.q;
-        } else {
-          Ket &bra = tbc_mid.GetKet(ibra - nKm);
-          b = bra.p;
-          a = bra.q;
-        }
-        if (ibra >= nKm and a == b)
-          continue;
-        Orbit &oa = Z.modelspace->GetOrbit(a);
-        Orbit &ob = Z.modelspace->GetOrbit(b);
-        for (int iket = 0; iket < n2; ++iket) {
-          int s, q;
-          if (iket < nKets_cc) {
-            Ket &ket = tbc_cc.GetKet(iket);
-            s = ket.p;
-            q = ket.q;
-          } else {
-            Ket &ket = tbc_cc.GetKet(iket - nKets_cc);
-            q = ket.p;
-            s = ket.q;
-          }
-          if (iket >= nKets_cc and s == q)
-            continue;
-          Orbit &os = Z.modelspace->GetOrbit(s);
-          Orbit &oq = Z.modelspace->GetOrbit(q);
-          if (std::abs(oa.tz2 + oq.tz2 - ob.tz2 - os.tz2) != Eta.GetTRank())
-            continue;
-          // AMC barΩ(a,q,s,b) = IMSRG(a,b,s,q)
-          Om_R(ibra, iket) = pandya_tensor(false, a, b, s, q, Jmid, J_cc);
-        }
-      }
-
-      const double pref =
-          hat_lambda_inv * AngMom::phase(Jmid + lambda);
-      barProd[ch_cc] += pref * Chi_L * Om_R;
+      if (itc->second.n_rows < 1 or ito->second.n_rows < 1)
+        continue;
+      const double pref = hat_lambda_inv * AngMom::phase(Jmid + lambda);
+      barProd[ch_cc] += pref * itc->second * ito->second;
     }
   }
+  bar_Chi.clear();
+  bar_Om.clear();
+  Z.profiler.timer["_GIVc_dgemm"] += omp_get_wtime() - t_gemm;
 
   // Bare X_pqsr from corrected inv Pandya (no sample minus):
   //   X = +Ĵ0 Σ_Jp Ĵp {jr js J0; jq jp Jp} · [(-1)^{Jp}/Ĵp barProd_Jp]
@@ -4500,6 +5026,166 @@ double occ_ab(double na, double nb) {
   return (1.0 - na) * nb - na * (1.0 - nb);
 }
 
+struct Pack132 {
+  std::vector<index_t> allorb;
+  int n_orb = 0, n_alloc = 0, max_J = 0, lambda = 0;
+  std::vector<int> compact, oj2;
+  std::vector<double> ojh, nocc, hatJ;
+  double hat_lam_inv = 1.0;
+  arma::mat W_ba; // occ(a,b) * η₁(b,a)  — ladder / 1bB
+  arma::mat W_ab; // occ(a,b) * η₁(a,b)  — cross
+  struct WPair {
+    int ia, ib;
+    double w;
+  };
+  std::vector<WPair> wpairs_ab;
+};
+
+Pack132 MakePack132(const Operator &Eta, const Operator &Z) {
+  Pack132 P;
+  P.lambda = Eta.GetJRank();
+  P.hat_lam_inv = 1.0 / std::sqrt(2.0 * P.lambda + 1.0);
+  P.allorb.assign(Z.modelspace->all_orbits.begin(),
+                  Z.modelspace->all_orbits.end());
+  P.n_orb = (int)P.allorb.size();
+  int max_j2 = 0;
+  for (auto o : P.allorb) {
+    max_j2 = std::max(max_j2, Z.modelspace->GetOrbit(o).j2);
+    P.n_alloc = std::max(P.n_alloc, (int)o + 1);
+  }
+  P.max_J = max_j2;
+  P.compact.assign(P.n_alloc, -1);
+  P.oj2.resize(P.n_orb);
+  P.ojh.resize(P.n_orb);
+  P.nocc.resize(P.n_orb);
+  P.hatJ.resize(P.max_J + 1);
+  for (int J = 0; J <= P.max_J; ++J)
+    P.hatJ[J] = std::sqrt(2.0 * J + 1.0);
+  for (int t = 0; t < P.n_orb; ++t) {
+    P.compact[(int)P.allorb[t]] = t;
+    Orbit &o = Z.modelspace->GetOrbit(P.allorb[t]);
+    P.oj2[t] = o.j2;
+    P.ojh[t] = 0.5 * o.j2;
+    P.nocc[t] = o.occ;
+  }
+  P.W_ba.zeros(P.n_orb, P.n_orb);
+  P.W_ab.zeros(P.n_orb, P.n_orb);
+  for (int ia = 0; ia < P.n_orb; ++ia) {
+    const int a = (int)P.allorb[ia];
+    for (int ib = 0; ib < P.n_orb; ++ib) {
+      if (not AngMom::Triangle(P.oj2[ia], P.oj2[ib], 2 * P.lambda))
+        continue;
+      const double occ = occ_ab(P.nocc[ia], P.nocc[ib]);
+      if (std::abs(occ) < 1e-12)
+        continue;
+      const int b = (int)P.allorb[ib];
+      const double eba = Eta.OneBody(b, a);
+      const double eab = Eta.OneBody(a, b);
+      if (std::abs(eba) > 1e-14)
+        P.W_ba(ia, ib) = occ * eba;
+      if (std::abs(eab) > 1e-14) {
+        P.W_ab(ia, ib) = occ * eab;
+        P.wpairs_ab.push_back({ia, ib, occ * eab});
+      }
+    }
+  }
+  return P;
+}
+
+double seed_cross_132(const Pack132 &P, const Operator &Eta,
+                      const Operator &Gamma, ModelSpace *ms, int i, int j,
+                      int k, int l, int J0) {
+  const int ci = P.compact[i], cj = P.compact[j], ck = P.compact[k],
+            cl = P.compact[l];
+  const double ji = P.ojh[ci], jj = P.ojh[cj], jk = P.ojh[ck], jl = P.ojh[cl];
+  const int ji2 = P.oj2[ci], jj2 = P.oj2[cj], jk2 = P.oj2[ck];
+  const int n_orb = P.n_orb;
+  double s = 0.0;
+  for (const auto &pr : P.wpairs_ab) {
+    const int ia = pr.ia, ib = pr.ib;
+    const double w = pr.w;
+    const double ja = P.ojh[ia];
+    const int a = (int)P.allorb[ia];
+    const int ja2 = P.oj2[ia];
+    const int J3min_ka = std::abs(jk2 - ja2) / 2;
+    const int J3max_ka = (jk2 + ja2) / 2;
+    const double jb = P.ojh[ib];
+    const int b = (int)P.allorb[ib];
+    const int jb2 = P.oj2[ib];
+    const int J2min_ib = std::abs(ji2 - jb2) / 2;
+    const int J2max_ib = (ji2 + jb2) / 2;
+    const int J4min_bj = std::abs(jb2 - jj2) / 2;
+    const int J4max_bj = (jb2 + jj2) / 2;
+    for (int ic = 0; ic < n_orb; ++ic) {
+        const int c = (int)P.allorb[ic];
+        const int jc2 = P.oj2[ic];
+        const double jc = P.ojh[ic];
+        const int J2min_ic = std::abs(ji2 - jc2) / 2;
+        const int J2max_ic = (ji2 + jc2) / 2;
+        const int J3min_kc = std::abs(jk2 - jc2) / 2;
+        const int J3max_kc = (jk2 + jc2) / 2;
+        const int J4min_cj = std::abs(jc2 - jj2) / 2;
+        const int J4max_cj = (jc2 + jj2) / 2;
+        // Term1: η_icka^{J2 J3} Γ_bjcl^{J4} — J2=(i,c), J3=(k,a), J4=(b,j)
+        for (int J2 = J2min_ic; J2 <= J2max_ic; ++J2) {
+          for (int J3 = J3min_ka; J3 <= J3max_ka; ++J3) {
+            if (not AngMom::Triangle(J2, J3, P.lambda))
+              continue;
+            const double sixj1 = ms->GetSixJ((double)J2, (double)J3,
+                                             (double)P.lambda, ja, jb, jk);
+            if (std::abs(sixj1) < 1e-12)
+              continue;
+            const double eta_icka = Eta.TwoBody.GetTBME_J(J2, J3, i, c, k, a);
+            if (std::abs(eta_icka) < 1e-14)
+              continue;
+            for (int J4 = J4min_bj; J4 <= J4max_bj; ++J4) {
+              const double g_bjcl = Gamma.TwoBody.GetTBME_J(J4, J4, b, j, c, l);
+              if (std::abs(g_bjcl) < 1e-14)
+                continue;
+              const double n9 = ms->GetNineJ(ji, jc, (double)J2, jj, (double)J4,
+                                             jb, (double)J0, jl, jk);
+              if (std::abs(n9) < 1e-12)
+                continue;
+              const int ph =
+                  ms->phase(J0 + jk2 / 2) * ms->phase(J4 + jc2 / 2);
+              s += ph * w * P.hatJ[J2] * P.hatJ[J3] * (2.0 * J4 + 1.0) *
+                   P.hat_lam_inv * sixj1 * n9 * eta_icka * g_bjcl;
+            }
+          }
+        }
+        // Term2: η_ibkc^{J2 J3} Γ_cjal^{J4} — J2=(i,b), J3=(k,c), J4=(c,j)
+        for (int J2 = J2min_ib; J2 <= J2max_ib; ++J2) {
+          for (int J3 = J3min_kc; J3 <= J3max_kc; ++J3) {
+            if (not AngMom::Triangle(J2, J3, P.lambda))
+              continue;
+            const double sixj2 = ms->GetSixJ((double)J3, (double)J2,
+                                             (double)P.lambda, jb, ja, ji);
+            if (std::abs(sixj2) < 1e-12)
+              continue;
+            const double eta_ibkc = Eta.TwoBody.GetTBME_J(J2, J3, i, b, k, c);
+            if (std::abs(eta_ibkc) < 1e-14)
+              continue;
+            for (int J4 = J4min_cj; J4 <= J4max_cj; ++J4) {
+              const double g_cjal = Gamma.TwoBody.GetTBME_J(J4, J4, c, j, a, l);
+              if (std::abs(g_cjal) < 1e-14)
+                continue;
+              const double n9 = ms->GetNineJ(ji, ja, (double)J3, jj, (double)J4,
+                                             jc, (double)J0, jl, jk);
+              if (std::abs(n9) < 1e-12)
+                continue;
+              const int ph =
+                  ms->phase(J0 + ji2 / 2) *
+                  ms->phase(J2 + J3 + J4 + (ja2 + jb2 + jc2) / 2);
+              s += ph * w * P.hatJ[J2] * P.hatJ[J3] * (2.0 * J4 + 1.0) *
+                   P.hat_lam_inv * sixj2 * n9 * eta_ibkc * g_cjal;
+            }
+          }
+        }
+      }
+  }
+  return s;
+}
+
 } // namespace
 
 void comm223_132_tts_ladder(const Operator &Eta, const Operator &Gamma,
@@ -4508,8 +5194,9 @@ void comm223_132_tts_ladder(const Operator &Eta, const Operator &Gamma,
   //   T1: Ĵ0^{-1} (−1)^{J2+ja+jc} Ĵ2 λ̂^{-1} {J0 J2 λ; ja jb jc} η_ba η_cakl Γ_ijcb
   //   T2: −(−1)^{J0} Ĵ0^{-1} (−1)^{ja+jc} Ĵ2 λ̂^{-1} {J0 J2 λ; jb ja jc} η_ba η_ijcb Γ_cakl
   // Convention 2 leftover: AMC λ̂^{-1}. No extra (1−P).
-  const int lambda = Eta.GetJRank();
-  const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+  // Per channel: for each dummy c, Γ tables G(ij,b) and Gg(kl,a) then (a,b) DGEMM in J2.
+  Z.modelspace->PreCalculateSixJ();
+  const Pack132 P = MakePack132(Eta, Z);
   auto &Z2 = Z.TwoBody;
   std::vector<size_t> ch_bra_list, ch_ket_list;
   for (auto &iter : Z2.MatEl) {
@@ -4517,8 +5204,8 @@ void comm223_132_tts_ladder(const Operator &Eta, const Operator &Gamma,
     ch_ket_list.push_back(iter.first[1]);
   }
   const int nch = (int)ch_bra_list.size();
+  const int n_orb = P.n_orb;
 
-#pragma omp parallel for schedule(dynamic, 1)
   for (int ich = 0; ich < nch; ich++) {
     size_t ch_bra = ch_bra_list[ich];
     size_t ch_ket = ch_ket_list[ich];
@@ -4530,79 +5217,126 @@ void comm223_132_tts_ladder(const Operator &Eta, const Operator &Gamma,
     const double hatJ0inv = 1.0 / std::sqrt(2.0 * J0 + 1.0);
     const int nbras = tbc_bra.GetNumberKets();
     const int nkets = tbc_ket.GetNumberKets();
-    for (int ibra = 0; ibra < nbras; ibra++) {
+    if (nbras < 1 or nkets < 1)
+      continue;
+
+    std::vector<int> bra_i(nbras), bra_j(nbras), ket_k(nkets), ket_l(nkets);
+    for (int ibra = 0; ibra < nbras; ++ibra) {
       Ket &bra = tbc_bra.GetKet(ibra);
-      const size_t i = bra.p, j = bra.q;
-      const int ketmin = (ch_bra == ch_ket) ? ibra : 0;
-      for (int iket = ketmin; iket < nkets; iket++) {
-        Ket &ket = tbc_ket.GetKet(iket);
-        const size_t k = ket.p, l = ket.q;
-        double zijkl = 0.0;
-        for (auto a : Z.modelspace->all_orbits) {
-          Orbit &oa = Z.modelspace->GetOrbit(a);
-          const double na = oa.occ;
-          const double ja = 0.5 * oa.j2;
-          for (auto b : Z.modelspace->all_orbits) {
-            Orbit &ob = Z.modelspace->GetOrbit(b);
-            if (not AngMom::Triangle(oa.j2, ob.j2, 2 * lambda))
+      bra_i[ibra] = (int)bra.p;
+      bra_j[ibra] = (int)bra.q;
+    }
+    for (int iket = 0; iket < nkets; ++iket) {
+      Ket &ket = tbc_ket.GetKet(iket);
+      ket_k[iket] = (int)ket.p;
+      ket_l[iket] = (int)ket.q;
+    }
+
+    arma::mat Zacc(nbras, nkets, arma::fill::zeros);
+#pragma omp parallel
+    {
+      arma::mat loc(nbras, nkets, arma::fill::zeros);
+#pragma omp for schedule(dynamic, 1)
+      for (int ic = 0; ic < n_orb; ++ic) {
+        const int c = (int)P.allorb[ic];
+        const int jc2 = P.oj2[ic];
+        const double jc = P.ojh[ic];
+
+        arma::mat G(nbras, n_orb, arma::fill::zeros);
+        arma::mat Gg(nkets, n_orb, arma::fill::zeros);
+        for (int ibra = 0; ibra < nbras; ++ibra) {
+          for (int ib = 0; ib < n_orb; ++ib)
+            G(ibra, ib) = Gamma.TwoBody.GetTBME_J(
+                J0, J0, bra_i[ibra], bra_j[ibra], c, (int)P.allorb[ib]);
+        }
+        for (int iket = 0; iket < nkets; ++iket) {
+          for (int ia = 0; ia < n_orb; ++ia)
+            Gg(iket, ia) = Gamma.TwoBody.GetTBME_J(
+                J0, J0, c, (int)P.allorb[ia], ket_k[iket], ket_l[iket]);
+        }
+
+        for (int J2 = 0; J2 <= P.max_J; ++J2) {
+          if (not AngMom::Triangle((double)J0, (double)J2, (double)P.lambda))
+            continue;
+          const double pref0 = hatJ0inv * P.hatJ[J2] * P.hat_lam_inv;
+
+          arma::mat PM(n_orb, n_orb, arma::fill::zeros);
+          bool anyP = false;
+          for (int ia = 0; ia < n_orb; ++ia) {
+            if (not AngMom::Triangle(jc2, P.oj2[ia], 2 * J2))
               continue;
-            const double occ = occ_ab(na, ob.occ);
-            if (std::abs(occ) < 1e-12)
-              continue;
-            const double eta1 = Eta.OneBody(b, a);
-            if (std::abs(eta1) < 1e-14)
-              continue;
-            const double jb = 0.5 * ob.j2;
-            for (auto c : Z.modelspace->all_orbits) {
-              Orbit &oc = Z.modelspace->GetOrbit(c);
-              const double jc = 0.5 * oc.j2;
-              const double g_ijcb = Gamma.TwoBody.GetTBME_J(J0, J0, i, j, c, b);
-              const double g_cakl = Gamma.TwoBody.GetTBME_J(J0, J0, c, a, k, l);
-              // Term1: η_cakl^{J2 J0} — J2 couples (c,a)
-              if (std::abs(g_ijcb) > 1e-14) {
-                int J2min = std::abs(oc.j2 - oa.j2) / 2;
-                int J2max = (oc.j2 + oa.j2) / 2;
-                for (int J2 = J2min; J2 <= J2max; J2++) {
-                  if (not AngMom::Triangle(J0, J2, lambda))
-                    continue;
-                  const double sixj = Z.modelspace->GetSixJ(
-                      (double)J0, (double)J2, (double)lambda, ja, jb, jc);
-                  if (std::abs(sixj) < 1e-12)
-                    continue;
-                  const double hatJ2 = std::sqrt(2.0 * J2 + 1.0);
-                  const int ph = Z.modelspace->phase(J2 + (oa.j2 + oc.j2) / 2);
-                  const double eta_cakl =
-                      Eta.TwoBody.GetTBME_J(J2, J0, c, a, k, l);
-                  zijkl += occ * eta1 * hatJ0inv * hatJ2 * hat_lambda_inv * ph * sixj *
-                           eta_cakl * g_ijcb;
-                }
-              }
-              // Term2: η_ijcb^{J0 J2} — J2 couples (c,b)
-              if (std::abs(g_cakl) > 1e-14) {
-                int J2min = std::abs(oc.j2 - ob.j2) / 2;
-                int J2max = (oc.j2 + ob.j2) / 2;
-                for (int J2 = J2min; J2 <= J2max; J2++) {
-                  if (not AngMom::Triangle(J0, J2, lambda))
-                    continue;
-                  const double sixj = Z.modelspace->GetSixJ(
-                      (double)J0, (double)J2, (double)lambda, jb, ja, jc);
-                  if (std::abs(sixj) < 1e-12)
-                    continue;
-                  const double hatJ2 = std::sqrt(2.0 * J2 + 1.0);
-                  const int ph =
-                      Z.modelspace->phase(J0 + (oa.j2 + oc.j2) / 2);
-                  const double eta_ijcb =
-                      Eta.TwoBody.GetTBME_J(J0, J2, i, j, c, b);
-                  zijkl -= occ * eta1 * hatJ0inv * hatJ2 * hat_lambda_inv * ph * sixj *
-                           eta_ijcb * g_cakl;
-                }
-              }
+            const int ph_a = Z.modelspace->phase(J2 + (P.oj2[ia] + jc2) / 2);
+            const double ja = P.ojh[ia];
+            for (int ib = 0; ib < n_orb; ++ib) {
+              const double w = P.W_ba(ia, ib);
+              if (std::abs(w) < 1e-16)
+                continue;
+              const double sixj = AngMom::SixJ((double)J0, (double)J2,
+                                               (double)P.lambda, ja, P.ojh[ib], jc);
+              if (std::abs(sixj) < 1e-12)
+                continue;
+              PM(ia, ib) = w * pref0 * ph_a * sixj;
+              anyP = true;
             }
           }
+          if (anyP) {
+            arma::mat E(nkets, n_orb, arma::fill::zeros);
+            for (int iket = 0; iket < nkets; ++iket) {
+              for (int ia = 0; ia < n_orb; ++ia) {
+                if (not AngMom::Triangle(jc2, P.oj2[ia], 2 * J2))
+                  continue;
+                E(iket, ia) = Eta.TwoBody.GetTBME_J(
+                    J2, J0, c, (int)P.allorb[ia], ket_k[iket], ket_l[iket]);
+              }
+            }
+            loc += G * PM.t() * E.t();
+          }
+
+          arma::mat P2(n_orb, n_orb, arma::fill::zeros);
+          bool anyP2 = false;
+          for (int ib = 0; ib < n_orb; ++ib) {
+            if (not AngMom::Triangle(jc2, P.oj2[ib], 2 * J2))
+              continue;
+            const double jb = P.ojh[ib];
+            for (int ia = 0; ia < n_orb; ++ia) {
+              const double w = P.W_ba(ia, ib);
+              if (std::abs(w) < 1e-16)
+                continue;
+              const double sixj = AngMom::SixJ((double)J0, (double)J2,
+                                               (double)P.lambda, jb, P.ojh[ia], jc);
+              if (std::abs(sixj) < 1e-12)
+                continue;
+              const int ph = Z.modelspace->phase(J0 + (P.oj2[ia] + jc2) / 2);
+              P2(ia, ib) = w * pref0 * ph * sixj;
+              anyP2 = true;
+            }
+          }
+          if (anyP2) {
+            arma::mat Om(nbras, n_orb, arma::fill::zeros);
+            for (int ibra = 0; ibra < nbras; ++ibra) {
+              for (int ib = 0; ib < n_orb; ++ib) {
+                if (not AngMom::Triangle(jc2, P.oj2[ib], 2 * J2))
+                  continue;
+                Om(ibra, ib) = Eta.TwoBody.GetTBME_J(
+                    J0, J2, bra_i[ibra], bra_j[ibra], c, (int)P.allorb[ib]);
+              }
+            }
+            loc -= Om * P2.t() * Gg.t();
+          }
         }
+      }
+#pragma omp critical
+      Zacc += loc;
+    }
+
+    for (int ibra = 0; ibra < nbras; ++ibra) {
+      const int i = bra_i[ibra], j = bra_j[ibra];
+      const int ketmin = (ch_bra == ch_ket) ? ibra : 0;
+      for (int iket = ketmin; iket < nkets; ++iket) {
+        double zijkl = Zacc(ibra, iket);
         if (i == j)
           zijkl /= PhysConst::SQRT2;
-        if (k == l)
+        if (ket_k[iket] == ket_l[iket])
           zijkl /= PhysConst::SQRT2;
         Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zijkl);
       }
@@ -4612,13 +5346,18 @@ void comm223_132_tts_ladder(const Operator &Eta, const Operator &Gamma,
 
 void comm223_132_tts_onebody(const Operator &Eta, const Operator &Gamma,
                               Operator &Z) {
-  const int lambda = Eta.GetJRank();
-  const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0); // Convention 2: AMC λ̂^{-1}.
+  const Pack132 P = MakePack132(Eta, Z);
+  const int lambda = P.lambda;
   auto &Z2 = Z.TwoBody;
+  const int n_orb = P.n_orb;
 
   // χ^η scalar 1b from AMC 1bA (η2 × η1), then (1-P) insert into scalar Γ.
   arma::mat CHI = Gamma.OneBody * 0;
-  for (auto p : Z.modelspace->all_orbits) {
+  std::vector<index_t> porb(Z.modelspace->all_orbits.begin(),
+                            Z.modelspace->all_orbits.end());
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int ip = 0; ip < (int)porb.size(); ++ip) {
+    auto p = porb[ip];
     Orbit &op = Z.modelspace->GetOrbit(p);
     const double jp = 0.5 * op.j2;
     const int ph_p = Z.modelspace->phase(op.j2 / 2);
@@ -4626,40 +5365,31 @@ void comm223_132_tts_onebody(const Operator &Eta, const Operator &Gamma,
     for (auto q : Z.OneBodyChannels.at({op.l, op.j2, op.tz2})) {
       Orbit &oq = Z.modelspace->GetOrbit(q);
       double chi = 0.0;
-      for (auto a : Z.modelspace->all_orbits) {
-        Orbit &oa = Z.modelspace->GetOrbit(a);
-        const double ja = 0.5 * oa.j2;
-        for (auto b : Z.modelspace->all_orbits) {
-          Orbit &ob = Z.modelspace->GetOrbit(b);
-          if (not AngMom::Triangle(oa.j2, ob.j2, 2 * lambda))
+      for (int ia = 0; ia < n_orb; ++ia) {
+        const int a = (int)P.allorb[ia];
+        const double ja = P.ojh[ia];
+        const int J2min = std::abs(op.j2 - P.oj2[ia]) / 2;
+        const int J2max = (op.j2 + P.oj2[ia]) / 2;
+        for (int ib = 0; ib < n_orb; ++ib) {
+          const double w = P.W_ba(ia, ib);
+          if (std::abs(w) < 1e-16)
             continue;
-          const double occ = occ_ab(oa.occ, ob.occ);
-          if (std::abs(occ) < 1e-12)
-            continue;
-          const double eta1 = Eta.OneBody(b, a);
-          if (std::abs(eta1) < 1e-14)
-            continue;
-          const double jb = 0.5 * ob.j2;
-          int J2min = std::abs(op.j2 - oa.j2) / 2;
-          int J2max = (op.j2 + oa.j2) / 2;
-          int J3min = std::abs(oq.j2 - ob.j2) / 2;
-          int J3max = (oq.j2 + ob.j2) / 2;
+          const int b = (int)P.allorb[ib];
+          const double jb = P.ojh[ib];
+          const int J3min = std::abs(oq.j2 - P.oj2[ib]) / 2;
+          const int J3max = (oq.j2 + P.oj2[ib]) / 2;
           for (int J2 = J2min; J2 <= J2max; J2++) {
             for (int J3 = J3min; J3 <= J3max; J3++) {
               if (not AngMom::Triangle(J3, lambda, J2))
                 continue;
-              const double sixj = Z.modelspace->GetSixJ(
+              const double sixj = AngMom::SixJ(
                   (double)J3, (double)lambda, (double)J2, ja, jp, jb);
               if (std::abs(sixj) < 1e-12)
                 continue;
-              const int ph = Z.modelspace->phase(J2 + oa.j2 / 2);
-              const double hatJ2 = std::sqrt(2.0 * J2 + 1.0);
-              const double hatJ3 = std::sqrt(2.0 * J3 + 1.0);
+              const int ph = Z.modelspace->phase(J2 + P.oj2[ia] / 2);
               const double eta2 = Eta.TwoBody.GetTBME_J(J2, J3, p, a, q, b);
-              // AMC prints (−1)^{j_p}; at λ=0 that extra phase vs scalar CHI_I
-              // is an overall minus (fermion 2j odd). Match scalar FDC CHI_I.
-              chi -= ph_p * diag * occ * ph * hatJ2 * hatJ3 * hat_lambda_inv * sixj *
-                     eta1 * eta2;
+              chi -= ph_p * diag * w * ph * P.hatJ[J2] * P.hatJ[J3] *
+                     P.hat_lam_inv * sixj * eta2;
             }
           }
         }
@@ -4675,7 +5405,6 @@ void comm223_132_tts_onebody(const Operator &Eta, const Operator &Gamma,
   }
   const int nch = (int)ch_bra_list.size();
 
-#pragma omp parallel for schedule(dynamic, 1)
   for (int ich = 0; ich < nch; ich++) {
     size_t ch_bra = ch_bra_list[ich];
     size_t ch_ket = ch_ket_list[ich];
@@ -4687,25 +5416,184 @@ void comm223_132_tts_onebody(const Operator &Eta, const Operator &Gamma,
     const double hatJ0inv = 1.0 / std::sqrt(2.0 * J0 + 1.0);
     const int nbras = tbc_bra.GetNumberKets();
     const int nkets = tbc_ket.GetNumberKets();
-    for (int ibra = 0; ibra < nbras; ibra++) {
+    if (nbras < 1 or nkets < 1)
+      continue;
+
+    std::vector<int> bra_i(nbras), bra_j(nbras), ket_k(nkets), ket_l(nkets);
+    std::vector<int> bra_i2(nbras), bra_j2(nbras), ket_k2(nkets), ket_l2(nkets);
+    for (int ibra = 0; ibra < nbras; ++ibra) {
       Ket &bra = tbc_bra.GetKet(ibra);
-      const size_t i = bra.p, j = bra.q;
-      Orbit &oi = Z.modelspace->GetOrbit(i);
-      Orbit &oj = Z.modelspace->GetOrbit(j);
-      const double ji = 0.5 * oi.j2;
-      const double jj = 0.5 * oj.j2;
+      bra_i[ibra] = (int)bra.p;
+      bra_j[ibra] = (int)bra.q;
+      bra_i2[ibra] = Z.modelspace->GetOrbit(bra.p).j2;
+      bra_j2[ibra] = Z.modelspace->GetOrbit(bra.q).j2;
+    }
+    for (int iket = 0; iket < nkets; ++iket) {
+      Ket &ket = tbc_ket.GetKet(iket);
+      ket_k[iket] = (int)ket.p;
+      ket_l[iket] = (int)ket.q;
+      ket_k2[iket] = Z.modelspace->GetOrbit(ket.p).j2;
+      ket_l2[iket] = Z.modelspace->GetOrbit(ket.q).j2;
+    }
+
+    arma::mat ZB(nbras, nkets, arma::fill::zeros);
+    arma::mat ZBkl(nbras, nkets, arma::fill::zeros);
+    arma::mat ZB2(nbras, nkets, arma::fill::zeros);
+    arma::mat ZB2ij(nbras, nkets, arma::fill::zeros);
+
+    // 1bB: F(k,l,c,J2) independent of bras; ZB.col(iket) += F * η(ij; k,c)
+#pragma omp parallel
+    {
+      arma::mat locB(nbras, nkets, arma::fill::zeros);
+      arma::mat locBkl(nbras, nkets, arma::fill::zeros);
+#pragma omp for schedule(dynamic, 1)
+      for (int iket = 0; iket < nkets; ++iket) {
+        const int k = ket_k[iket], l = ket_l[iket];
+        const int ck = P.compact[k], cl = P.compact[l];
+        const double jk = P.ojh[ck], jl = P.ojh[cl];
+        const int jk2 = P.oj2[ck], jl2 = P.oj2[cl];
+        const int ph_k = Z.modelspace->phase(J0 + jk2 / 2);
+        const int ph_l = Z.modelspace->phase(J0 + jl2 / 2);
+        for (int ic = 0; ic < n_orb; ++ic) {
+          const int c = (int)P.allorb[ic];
+          const int jc2 = P.oj2[ic];
+          const double jc = P.ojh[ic];
+          auto accum_B = [&](int kk, int ll, double jkk, double jll, int jkk2,
+                             int ph_outer, arma::mat &loc) {
+            const int J2min = std::abs(jkk2 - jc2) / 2;
+            const int J2max = (jkk2 + jc2) / 2;
+            for (int J2 = J2min; J2 <= J2max; ++J2) {
+              if (not AngMom::Triangle((double)J0, (double)J2, (double)lambda))
+                continue;
+              const double sixj2 = AngMom::SixJ((double)J2, (double)lambda,
+                                                (double)J0, jll, jkk, jc);
+              if (std::abs(sixj2) < 1e-12)
+                continue;
+              double F = 0.0;
+              for (int ia = 0; ia < n_orb; ++ia) {
+                const int J3min = std::abs(jc2 - P.oj2[ia]) / 2;
+                const int J3max = (jc2 + P.oj2[ia]) / 2;
+                const double ja = P.ojh[ia];
+                const int a = (int)P.allorb[ia];
+                for (int ib = 0; ib < n_orb; ++ib) {
+                  const double w = P.W_ba(ia, ib);
+                  if (std::abs(w) < 1e-16)
+                    continue;
+                  const double jb = P.ojh[ib];
+                  const int b = (int)P.allorb[ib];
+                  for (int J3 = J3min; J3 <= J3max; ++J3) {
+                    const double sixj3 = AngMom::SixJ(
+                        jll, jc, (double)lambda, ja, jb, (double)J3);
+                    if (std::abs(sixj3) < 1e-12)
+                      continue;
+                    const int ph = Z.modelspace->phase(J3 + P.oj2[ib] / 2);
+                    F += w * ph * (2.0 * J3 + 1.0) * sixj3 *
+                         Gamma.TwoBody.GetTBME_J(J3, J3, c, a, ll, b);
+                  }
+                }
+              }
+              const double scale = -ph_outer * hatJ0inv * P.hatJ[J2] *
+                                   P.hat_lam_inv * sixj2 * F;
+              if (std::abs(scale) < 1e-16)
+                continue;
+              for (int ibra = 0; ibra < nbras; ++ibra)
+                loc(ibra, iket) +=
+                    scale * Eta.TwoBody.GetTBME_J(J0, J2, bra_i[ibra],
+                                                  bra_j[ibra], kk, c);
+            }
+          };
+          accum_B(k, l, jk, jl, jk2, ph_k, locB);
+          accum_B(l, k, jl, jk, jl2, ph_l, locBkl);
+        }
+      }
+#pragma omp critical
+      {
+        ZB += locB;
+        ZBkl += locBkl;
+      }
+    }
+
+    // 1bB2: inner(a,b,J2) independent of kets; ZB2.row(ibra) += G * η(i,c; kl)
+#pragma omp parallel
+    {
+      arma::mat loc2(nbras, nkets, arma::fill::zeros);
+      arma::mat loc2ij(nbras, nkets, arma::fill::zeros);
+#pragma omp for schedule(dynamic, 1)
+      for (int ibra = 0; ibra < nbras; ++ibra) {
+        const int i = bra_i[ibra], j = bra_j[ibra];
+        const int ci = P.compact[i], cj = P.compact[j];
+        const double ji = P.ojh[ci], jj = P.ojh[cj];
+        const int ji2 = P.oj2[ci], jj2 = P.oj2[cj];
+        const int ph_i = Z.modelspace->phase(ji2 / 2);
+        const int ph_j = Z.modelspace->phase(jj2 / 2);
+        auto accum_B2 = [&](int ii, int jjv, double jii, double jjj, int jii2,
+                            int jjv2, int ph_outer, arma::mat &loc) {
+          for (int ic = 0; ic < n_orb; ++ic) {
+            const int c = (int)P.allorb[ic];
+            const int jc2 = P.oj2[ic];
+            const double jc = P.ojh[ic];
+            const int J3min = std::abs(jii2 - jc2) / 2;
+            const int J3max = (jii2 + jc2) / 2;
+            for (int J3 = J3min; J3 <= J3max; ++J3) {
+              if (not AngMom::Triangle((double)J0, (double)J3, (double)lambda))
+                continue;
+              const double sixj3 = AngMom::SixJ(
+                  (double)J0, (double)J3, (double)lambda, jc, jjj, jii);
+              if (std::abs(sixj3) < 1e-12)
+                continue;
+              double inner = 0.0;
+              for (int ia = 0; ia < n_orb; ++ia) {
+                const int J2min = std::abs(jjv2 - P.oj2[ia]) / 2;
+                const int J2max = (jjv2 + P.oj2[ia]) / 2;
+                const double ja = P.ojh[ia];
+                const int a = (int)P.allorb[ia];
+                for (int ib = 0; ib < n_orb; ++ib) {
+                  const double w = P.W_ba(ia, ib);
+                  if (std::abs(w) < 1e-16)
+                    continue;
+                  const double jb = P.ojh[ib];
+                  const int b = (int)P.allorb[ib];
+                  for (int J2 = J2min; J2 <= J2max; ++J2) {
+                    const double sixj2 = AngMom::SixJ(
+                        jc, jjj, (double)lambda, ja, jb, (double)J2);
+                    if (std::abs(sixj2) < 1e-12)
+                      continue;
+                    const int ph =
+                        Z.modelspace->phase(J2 + J3 + P.oj2[ib] / 2);
+                    inner += w * ph * (2.0 * J2 + 1.0) * sixj2 *
+                             Gamma.TwoBody.GetTBME_J(J2, J2, jjv, a, c, b);
+                  }
+                }
+              }
+              const double scale = -ph_outer * hatJ0inv * P.hatJ[J3] *
+                                   P.hat_lam_inv * sixj3 * inner;
+              if (std::abs(scale) < 1e-16)
+                continue;
+              for (int iket = 0; iket < nkets; ++iket)
+                loc(ibra, iket) +=
+                    scale * Eta.TwoBody.GetTBME_J(J3, J0, ii, c, ket_k[iket],
+                                                  ket_l[iket]);
+            }
+          }
+        };
+        accum_B2(i, j, ji, jj, ji2, jj2, ph_i, loc2);
+        accum_B2(j, i, jj, ji, jj2, ji2, ph_j, loc2ij);
+      }
+#pragma omp critical
+      {
+        ZB2 += loc2;
+        ZB2ij += loc2ij;
+      }
+    }
+
+    for (int ibra = 0; ibra < nbras; ibra++) {
+      const int i = bra_i[ibra], j = bra_j[ibra];
       const int ketmin = (ch_bra == ch_ket) ? ibra : 0;
       for (int iket = ketmin; iket < nkets; iket++) {
-        Ket &ket = tbc_ket.GetKet(iket);
-        const size_t k = ket.p, l = ket.q;
-        Orbit &ok = Z.modelspace->GetOrbit(k);
-        Orbit &ol = Z.modelspace->GetOrbit(l);
-        const double jk = 0.5 * ok.j2;
-        const double jl = 0.5 * ol.j2;
+        const int k = ket_k[iket], l = ket_l[iket];
         double zijkl = 0.0;
-
-        // χ^η × Γ (scalar 122)
-        for (auto a : Z.modelspace->all_orbits) {
+        for (int ia = 0; ia < n_orb; ++ia) {
+          const int a = (int)P.allorb[ia];
           const double xajkl = Gamma.TwoBody.GetTBME_J(J0, J0, a, j, k, l);
           const double xiakl = Gamma.TwoBody.GetTBME_J(J0, J0, i, a, k, l);
           const double xijal = Gamma.TwoBody.GetTBME_J(J0, J0, i, j, a, l);
@@ -4713,141 +5601,14 @@ void comm223_132_tts_onebody(const Operator &Eta, const Operator &Gamma,
           zijkl += CHI(i, a) * xajkl + CHI(j, a) * xiakl - xijal * CHI(a, k) -
                    xijka * CHI(a, l);
         }
-
-        // 1bB seed (1-P_kl) and −1bB2 (1-P_ij)
-        auto seed_B = [&](size_t ii, size_t jj, size_t kk, size_t ll) {
-          double s = 0.0;
-          Orbit &okk = Z.modelspace->GetOrbit(kk);
-          Orbit &oll = Z.modelspace->GetOrbit(ll);
-          const double jll = 0.5 * oll.j2;
-          const double jkk = 0.5 * okk.j2;
-          const int ph_outer = Z.modelspace->phase(J0 + okk.j2 / 2);
-          for (auto a : Z.modelspace->all_orbits) {
-            Orbit &oa = Z.modelspace->GetOrbit(a);
-            const double ja = 0.5 * oa.j2;
-            for (auto b : Z.modelspace->all_orbits) {
-              Orbit &ob = Z.modelspace->GetOrbit(b);
-              if (not AngMom::Triangle(oa.j2, ob.j2, 2 * lambda))
-                continue;
-              const double occ = occ_ab(oa.occ, ob.occ);
-              if (std::abs(occ) < 1e-12)
-                continue;
-              const double eta1 = Eta.OneBody(b, a);
-              if (std::abs(eta1) < 1e-14)
-                continue;
-              const double jb = 0.5 * ob.j2;
-              for (auto c : Z.modelspace->all_orbits) {
-                Orbit &oc = Z.modelspace->GetOrbit(c);
-                const double jc = 0.5 * oc.j2;
-                int J2min = std::abs(okk.j2 - oc.j2) / 2;
-                int J2max = (okk.j2 + oc.j2) / 2;
-                int J3min = std::abs(oc.j2 - oa.j2) / 2;
-                int J3max = (oc.j2 + oa.j2) / 2;
-                for (int J2 = J2min; J2 <= J2max; J2++) {
-                  if (not AngMom::Triangle(J0, J2, lambda))
-                    continue;
-                  const double eta_ijkc =
-                      Eta.TwoBody.GetTBME_J(J0, J2, ii, jj, kk, c);
-                  if (std::abs(eta_ijkc) < 1e-14)
-                    continue;
-                  const double hatJ2 = std::sqrt(2.0 * J2 + 1.0);
-                  const double sixj2 = Z.modelspace->GetSixJ(
-                      (double)J2, (double)lambda, (double)J0, jll, jkk, jc);
-                  if (std::abs(sixj2) < 1e-12)
-                    continue;
-                  for (int J3 = J3min; J3 <= J3max; J3++) {
-                    const double sixj3 = Z.modelspace->GetSixJ(
-                        jll, jc, (double)lambda, ja, jb, (double)J3);
-                    if (std::abs(sixj3) < 1e-12)
-                      continue;
-                    const int ph = Z.modelspace->phase(J3 + ob.j2 / 2);
-                    const double hatJ3 = (2.0 * J3 + 1.0); // Ĵ3^2
-                    const double g_calb =
-                        Gamma.TwoBody.GetTBME_J(J3, J3, c, a, ll, b);
-                    s += -ph_outer * hatJ0inv * occ * ph * hatJ2 * hatJ3 *
-                         hat_lambda_inv * sixj3 * sixj2 * eta1 * eta_ijkc * g_calb;
-                  }
-                }
-              }
-            }
-          }
-          return s;
-        };
-
-        auto seed_B2 = [&](size_t ii, size_t jj, size_t kk, size_t ll) {
-          double s = 0.0;
-          Orbit &oii = Z.modelspace->GetOrbit(ii);
-          Orbit &ojj = Z.modelspace->GetOrbit(jj);
-          const double jii = 0.5 * oii.j2;
-          const double jjj = 0.5 * ojj.j2;
-          const int ph_outer = Z.modelspace->phase(oii.j2 / 2);
-          for (auto a : Z.modelspace->all_orbits) {
-            Orbit &oa = Z.modelspace->GetOrbit(a);
-            const double ja = 0.5 * oa.j2;
-            for (auto b : Z.modelspace->all_orbits) {
-              Orbit &ob = Z.modelspace->GetOrbit(b);
-              if (not AngMom::Triangle(oa.j2, ob.j2, 2 * lambda))
-                continue;
-              const double occ = occ_ab(oa.occ, ob.occ);
-              if (std::abs(occ) < 1e-12)
-                continue;
-              const double eta1 = Eta.OneBody(b, a);
-              if (std::abs(eta1) < 1e-14)
-                continue;
-              const double jb = 0.5 * ob.j2;
-              for (auto c : Z.modelspace->all_orbits) {
-                Orbit &oc = Z.modelspace->GetOrbit(c);
-                const double jc = 0.5 * oc.j2;
-                int J2min = std::abs(ojj.j2 - oa.j2) / 2;
-                int J2max = (ojj.j2 + oa.j2) / 2;
-                int J3min = std::abs(oii.j2 - oc.j2) / 2;
-                int J3max = (oii.j2 + oc.j2) / 2;
-                for (int J2 = J2min; J2 <= J2max; J2++) {
-                  const double g_jacb =
-                      Gamma.TwoBody.GetTBME_J(J2, J2, jj, a, c, b);
-                  if (std::abs(g_jacb) < 1e-14)
-                    continue;
-                  const double sixj2 = Z.modelspace->GetSixJ(
-                      jc, jjj, (double)lambda, ja, jb, (double)J2);
-                  if (std::abs(sixj2) < 1e-12)
-                    continue;
-                  const double hatJ2sq = (2.0 * J2 + 1.0);
-                  for (int J3 = J3min; J3 <= J3max; J3++) {
-                    if (not AngMom::Triangle(J0, J3, lambda))
-                      continue;
-                    const double sixj3 = Z.modelspace->GetSixJ(
-                        (double)J0, (double)J3, (double)lambda, jc, jjj, jii);
-                    if (std::abs(sixj3) < 1e-12)
-                      continue;
-                    const int ph =
-                        Z.modelspace->phase(J2 + J3 + ob.j2 / 2);
-                    const double hatJ3 = std::sqrt(2.0 * J3 + 1.0);
-                    const double eta_ickl =
-                        Eta.TwoBody.GetTBME_J(J3, J0, ii, c, kk, ll);
-                    s += -ph_outer * hatJ0inv * occ * ph * hatJ2sq * hatJ3 *
-                         hat_lambda_inv * sixj2 * sixj3 * eta1 * g_jacb * eta_ickl;
-                  }
-                }
-              }
-            }
-          }
-          return s;
-        };
-
         const int ph_kl =
-            Z.modelspace->phase((ok.j2 + ol.j2) / 2 - J0);
+            Z.modelspace->phase((ket_k2[iket] + ket_l2[iket]) / 2 - J0);
         const int ph_ij =
-            Z.modelspace->phase((oi.j2 + oj.j2) / 2 - J0);
-        const double CB = seed_B(i, j, k, l);
-        const double CB_kl = seed_B(i, j, l, k);
-        const double CB2 = seed_B2(i, j, k, l);
-        const double CB2_ij = seed_B2(j, i, k, l);
-        zijkl += (CB - ph_kl * CB_kl) - (CB2 - ph_ij * CB2_ij);
-        // AMC χ^η had an extra minus to match scalar CHI_I at λ=0. Tensor
-        // leftover vs m-scheme Wick is the opposite overall sign.
+            Z.modelspace->phase((bra_i2[ibra] + bra_j2[ibra]) / 2 - J0);
+        zijkl += (ZB(ibra, iket) - ph_kl * ZBkl(ibra, iket)) -
+                 (ZB2(ibra, iket) - ph_ij * ZB2ij(ibra, iket));
         if (lambda > 0)
           zijkl = -zijkl;
-
         if (i == j)
           zijkl /= PhysConst::SQRT2;
         if (k == l)
@@ -4867,10 +5628,9 @@ void comm223_132_tts_cross(const Operator &Eta, const Operator &Gamma,
   //          {ji ja J3; jj J4 jc; J0 jl jk} η_ab η_ibkc Γ_cjal
   // Restore (1−Pij)(1−Pkl). Convention 2: AMC λ̂^{-1}.
   // AMC overall minus on both terms dropped: seed is (icka Γ − ibkc Γ).
+  // Skip order kept: 6j/η then 9j. W_ab = occ·η₁.
   Z.modelspace->PreCalculateSixJ();
-  Z.modelspace->PreCalculateNineJ();
-  const int lambda = Eta.GetJRank();
-  const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
+  const Pack132 P = MakePack132(Eta, Z);
   auto &Z2 = Z.TwoBody;
   std::vector<size_t> ch_bra_list, ch_ket_list;
   for (auto &iter : Z2.MatEl) {
@@ -4878,119 +5638,6 @@ void comm223_132_tts_cross(const Operator &Eta, const Operator &Gamma,
     ch_ket_list.push_back(iter.first[1]);
   }
   const int nch = (int)ch_bra_list.size();
-
-  auto seed = [&](size_t i, size_t j, size_t k, size_t l, int J0) {
-    Orbit &oi = Z.modelspace->GetOrbit(i);
-    Orbit &oj = Z.modelspace->GetOrbit(j);
-    Orbit &ok = Z.modelspace->GetOrbit(k);
-    Orbit &ol = Z.modelspace->GetOrbit(l);
-    const double ji = 0.5 * oi.j2, jj = 0.5 * oj.j2;
-    const double jk = 0.5 * ok.j2, jl = 0.5 * ol.j2;
-    double s = 0.0;
-    for (auto a : Z.modelspace->all_orbits) {
-      Orbit &oa = Z.modelspace->GetOrbit(a);
-      const double ja = 0.5 * oa.j2;
-      for (auto b : Z.modelspace->all_orbits) {
-        Orbit &ob = Z.modelspace->GetOrbit(b);
-        if (not AngMom::Triangle(oa.j2, ob.j2, 2 * lambda))
-          continue;
-        const double occ = occ_ab(oa.occ, ob.occ);
-        if (std::abs(occ) < 1e-12)
-          continue;
-        const double eta1 = Eta.OneBody(a, b);
-        if (std::abs(eta1) < 1e-14)
-          continue;
-        const double jb = 0.5 * ob.j2;
-        for (auto c : Z.modelspace->all_orbits) {
-          Orbit &oc = Z.modelspace->GetOrbit(c);
-          const double jc = 0.5 * oc.j2;
-          // Term1: η_icka^{J2 J3} Γ_bjcl^{J4} — J2=(i,c), J3=(k,a), J4=(b,j)
-          {
-            int J2min = std::abs(oi.j2 - oc.j2) / 2;
-            int J2max = (oi.j2 + oc.j2) / 2;
-            int J3min = std::abs(ok.j2 - oa.j2) / 2;
-            int J3max = (ok.j2 + oa.j2) / 2;
-            int J4min = std::abs(ob.j2 - oj.j2) / 2;
-            int J4max = (ob.j2 + oj.j2) / 2;
-            for (int J2 = J2min; J2 <= J2max; J2++) {
-              for (int J3 = J3min; J3 <= J3max; J3++) {
-                if (not AngMom::Triangle(J2, J3, lambda))
-                  continue;
-                const double sixj1 = Z.modelspace->GetSixJ(
-                    (double)J2, (double)J3, (double)lambda, ja, jb, jk);
-                if (std::abs(sixj1) < 1e-12)
-                  continue;
-                const double eta_icka =
-                    Eta.TwoBody.GetTBME_J(J2, J3, i, c, k, a);
-                if (std::abs(eta_icka) < 1e-14)
-                  continue;
-                const double hatJ2 = std::sqrt(2.0 * J2 + 1.0);
-                const double hatJ3 = std::sqrt(2.0 * J3 + 1.0);
-                for (int J4 = J4min; J4 <= J4max; J4++) {
-                  const double g_bjcl =
-                      Gamma.TwoBody.GetTBME_J(J4, J4, b, j, c, l);
-                  if (std::abs(g_bjcl) < 1e-14)
-                    continue;
-                  const double n9 = Z.modelspace->GetNineJ(
-                      ji, jc, (double)J2, jj, (double)J4, jb, (double)J0, jl,
-                      jk);
-                  if (std::abs(n9) < 1e-12)
-                    continue;
-                  const int ph = Z.modelspace->phase(J0 + ok.j2 / 2) *
-                                 Z.modelspace->phase(J4 + oc.j2 / 2);
-                  s += ph * occ * hatJ2 * hatJ3 * (2.0 * J4 + 1.0) * hat_lambda_inv *
-                       sixj1 * n9 * eta1 * eta_icka * g_bjcl;
-                }
-              }
-            }
-          }
-          // Term2: η_ibkc^{J2 J3} Γ_cjal^{J4} — J2=(i,b), J3=(k,c), J4=(c,j)
-          {
-            int J2min = std::abs(oi.j2 - ob.j2) / 2;
-            int J2max = (oi.j2 + ob.j2) / 2;
-            int J3min = std::abs(ok.j2 - oc.j2) / 2;
-            int J3max = (ok.j2 + oc.j2) / 2;
-            int J4min = std::abs(oc.j2 - oj.j2) / 2;
-            int J4max = (oc.j2 + oj.j2) / 2;
-            for (int J2 = J2min; J2 <= J2max; J2++) {
-              for (int J3 = J3min; J3 <= J3max; J3++) {
-                if (not AngMom::Triangle(J2, J3, lambda))
-                  continue;
-                const double sixj2 = Z.modelspace->GetSixJ(
-                    (double)J3, (double)J2, (double)lambda, jb, ja, ji);
-                if (std::abs(sixj2) < 1e-12)
-                  continue;
-                const double eta_ibkc =
-                    Eta.TwoBody.GetTBME_J(J2, J3, i, b, k, c);
-                if (std::abs(eta_ibkc) < 1e-14)
-                  continue;
-                const double hatJ2 = std::sqrt(2.0 * J2 + 1.0);
-                const double hatJ3 = std::sqrt(2.0 * J3 + 1.0);
-                for (int J4 = J4min; J4 <= J4max; J4++) {
-                  const double g_cjal =
-                      Gamma.TwoBody.GetTBME_J(J4, J4, c, j, a, l);
-                  if (std::abs(g_cjal) < 1e-14)
-                    continue;
-                  const double n9 = Z.modelspace->GetNineJ(
-                      ji, ja, (double)J3, jj, (double)J4, jc, (double)J0, jl,
-                      jk);
-                  if (std::abs(n9) < 1e-12)
-                    continue;
-                  const int ph =
-                      Z.modelspace->phase(J0 + oi.j2 / 2) *
-                      Z.modelspace->phase(J2 + J3 + J4 +
-                                          (oa.j2 + ob.j2 + oc.j2) / 2);
-                  s += ph * occ * hatJ2 * hatJ3 * (2.0 * J4 + 1.0) * hat_lambda_inv *
-                       sixj2 * n9 * eta1 * eta_ibkc * g_cjal;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    return s;
-  };
 
 #pragma omp parallel for schedule(dynamic, 1)
   for (int ich = 0; ich < nch; ich++) {
@@ -5005,22 +5652,24 @@ void comm223_132_tts_cross(const Operator &Eta, const Operator &Gamma,
     const int nkets = tbc_ket.GetNumberKets();
     for (int ibra = 0; ibra < nbras; ibra++) {
       Ket &bra = tbc_bra.GetKet(ibra);
-      const size_t i = bra.p, j = bra.q;
+      const int i = (int)bra.p, j = (int)bra.q;
       Orbit &oi = Z.modelspace->GetOrbit(i);
       Orbit &oj = Z.modelspace->GetOrbit(j);
       const int ketmin = (ch_bra == ch_ket) ? ibra : 0;
       for (int iket = ketmin; iket < nkets; iket++) {
         Ket &ket = tbc_ket.GetKet(iket);
-        const size_t k = ket.p, l = ket.q;
+        const int k = (int)ket.p, l = (int)ket.q;
         Orbit &ok = Z.modelspace->GetOrbit(k);
         Orbit &ol = Z.modelspace->GetOrbit(l);
         const int ph_ij = Z.modelspace->phase((oi.j2 + oj.j2) / 2 - J0);
         const int ph_kl = Z.modelspace->phase((ok.j2 + ol.j2) / 2 - J0);
         const int ph_ijkl =
             Z.modelspace->phase((oi.j2 + oj.j2 + ok.j2 + ol.j2) / 2);
-        double zijkl = seed(i, j, k, l, J0) - ph_ij * seed(j, i, k, l, J0) -
-                       ph_kl * seed(i, j, l, k, J0) +
-                       ph_ijkl * seed(j, i, l, k, J0);
+        double zijkl =
+            seed_cross_132(P, Eta, Gamma, Z.modelspace, i, j, k, l, J0) -
+            ph_ij * seed_cross_132(P, Eta, Gamma, Z.modelspace, j, i, k, l, J0) -
+            ph_kl * seed_cross_132(P, Eta, Gamma, Z.modelspace, i, j, l, k, J0) +
+            ph_ijkl * seed_cross_132(P, Eta, Gamma, Z.modelspace, j, i, l, k, J0);
         if (i == j)
           zijkl /= PhysConst::SQRT2;
         if (k == l)
@@ -5057,9 +5706,15 @@ void comm223_132_tts(const Operator &Eta, const Operator &Gamma, Operator &Z) {
   Z.modelspace->PreCalculateSixJ();
   Z.modelspace->PreCalculateNineJ();
 
+  double t0 = omp_get_wtime();
   comm223_132_tts_ladder(Eta, *Gammap, Z);
+  Z.profiler.timer["_132_ladder"] += omp_get_wtime() - t0;
+  t0 = omp_get_wtime();
   comm223_132_tts_onebody(Eta, *Gammap, Z);
+  Z.profiler.timer["_132_onebody"] += omp_get_wtime() - t0;
+  t0 = omp_get_wtime();
   comm223_132_tts_cross(Eta, *Gammap, Z);
+  Z.profiler.timer["_132_cross"] += omp_get_wtime() - t0;
 
   if (z_was_reduced)
     Z.MakeReduced();
