@@ -61,35 +61,21 @@ void ForceScalarMakeNotReduced(Operator &Z) {
 void SetUse_TypeGIVa_2b(bool tf) { use_TypeGIVa_2b = tf; }
 void SetUse_TypeGIVb_2b(bool tf) { use_TypeGIVb_2b = tf; }
 void SetUse_TypeGIVc_2b(bool tf) { use_TypeGIVc_2b = tf; }
+
+// Pandya CC Tz (TensorCommutators / ModelSpace::CalculatePandyaLookup).
+// CC Tz = |tz1−tz2|/2 ∈ {0,1}. Rank T:
+//   0 → (0,0),(1,1);  1 → (0,1),(1,0);  2 → (1,1).
+static bool CcTzCouples(int tz_bra, int tz_ket, int rank_T) {
+  return (tz_bra + tz_ket == rank_T) or
+         (std::abs(tz_bra - tz_ket) == rank_T);
+}
 // factorize double commutator [Eta, [Eta, Gamma]_3b ]_1b
-// Eta is tensor (reduced); Gamma and Z are scalar.
+// Eta is tensor (reduced). Gamma and Z are scalar unreduced.
 void comm223_231_st(const Operator &Eta, const Operator &Gamma, Operator &Z) {
-
-  const Operator *Etap = &Eta;
-  const Operator *Gammap = &Gamma;
-  Operator Gammatmp;
-
-  // Tensor operators stay reduced (MakeNotReduced refuses rank_J>0).
-  // Scalar Gamma may be un-reduced for consistency with scalar factorized code.
-  if (Gamma.IsReduced() and Gamma.GetJRank() == 0) {
-    Gammatmp = Gamma;
-    Gammatmp.MakeNotReduced();
-    Gammap = &Gammatmp;
-  }
-
-  bool z_was_reduced = Z.IsReduced();
-  if (z_was_reduced and Z.GetJRank() == 0)
-    Z.MakeNotReduced();
-
   if (use_1b_intermediates)
-    comm223_231_chi1b_tensor(*Etap, *Gammap, Z);
+    comm223_231_chi1b_tensor(Eta, Gamma, Z);
   if (use_2b_intermediates)
-    comm223_231_chi2b_tensor(*Etap, *Gammap, Z);
-
-  if (z_was_reduced and Z.GetJRank() == 0)
-    Z.MakeReduced();
-
-  return;
+    comm223_231_chi2b_tensor(Eta, Gamma, Z);
 } // comm223_231_st
 
 ////////////////////////////////////////////////////////////////////////////
@@ -1453,42 +1439,24 @@ void comm223_231_chi2b_tensor(const Operator &Eta, const Operator &Gamma,
 ////////////////////////////////////////////////////////////////////////////////////
 
 void comm223_232(const Operator &Eta, const Operator &Gamma, Operator &Z) {
-
-  // Scalar Ω/Γ/Z: un-reduce for consistency with the scalar Factorized path.
-  // Tensor Ω (rank_J>0) stays reduced — MakeNotReduced refuses rank_J>0
-  // (same convention as comm223_231_st).
+  // Tensor Ω stays reduced. Scalar Ω (λ=0) is Hamiltonian-like → unreduced.
+  // Gamma and Z are scalar unreduced.
   const Operator *Etap = &Eta;
-  const Operator *Gammap = &Gamma;
-  Operator Etatmp, Gammatmp;
-
+  Operator Etatmp;
   if (Eta.IsReduced() and Eta.GetJRank() == 0) {
     Etatmp = Eta;
     Etatmp.MakeNotReduced();
     Etap = &Etatmp;
   }
-  if (Gamma.IsReduced() and Gamma.GetJRank() == 0) {
-    Gammatmp = Gamma;
-    Gammatmp.MakeNotReduced();
-    Gammap = &Gammatmp;
-  }
-
-  bool z_was_reduced = Z.IsReduced();
-  if (z_was_reduced and Z.GetJRank() == 0)
-    Z.MakeNotReduced();
 
   if (use_1b_intermediates) {
-    comm223_232_chi1b_tensor(*Etap, *Gammap,
+    comm223_232_chi1b_tensor(*Etap, Gamma,
                              Z); // topology with 1-body intermediate (fast)
   }
   if (use_2b_intermediates) {
-    comm223_232_chi2b(*Etap, *Gammap,
+    comm223_232_chi2b(*Etap, Gamma,
                       Z); // topology with 2-body intermediate (slow)
   }
-
-  if (z_was_reduced and Z.GetJRank() == 0)
-    Z.MakeReduced();
-
-  return;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -2469,7 +2437,9 @@ void BuildChiEtaPathB(const Operator &Eta, Operator &Z,
         continue;
       if (not AngMom::Triangle(Jb, tk.J, lambda))
         continue;
-      if ((tb.parity + tk.parity + Eta.GetParity()) % 2 != 0 or tb.Tz != tk.Tz)
+      if ((tb.parity + tk.parity + Eta.GetParity()) % 2 != 0)
+        continue;
+      if (not CcTzCouples(tb.Tz, tk.Tz, Eta.GetTRank()))
         continue;
       const int Jk = tk.J;
       arma::mat Om(2 * nb, 2 * nk, arma::fill::zeros);
@@ -3273,15 +3243,6 @@ void comm223_232_GIIIc(const Operator &Eta, const Operator &Gamma, Operator &Z) 
   // χ^θ = MakeNotReduced(χ_k) + MakeNotReduced(χ_j) (same slots)
   Operator Chi_theta = ChiThetaToScalarOperator(*Z.modelspace, chi_k, chi_j);
 
-  // Gamma non-reduced for scalar Pandya
-  const Operator *Gp = &Gamma;
-  Operator Gtmp;
-  if (Gamma.IsReduced() and Gamma.GetJRank() == 0) {
-    Gtmp = Gamma;
-    Gtmp.MakeNotReduced();
-    Gp = &Gtmp;
-  }
-
   std::vector<size_t> ch_bra_list, ch_ket_list;
   for (auto &iter : Z.TwoBody.MatEl) {
     ch_bra_list.push_back(iter.first[0]);
@@ -3351,7 +3312,7 @@ void comm223_232_GIIIc(const Operator &Eta, const Operator &Gamma, Operator &Z) 
           double sixj1 = Z.modelspace->GetSixJ(ja, jb, J_cc, jc, jd, J_std);
           if (std::abs(sixj1) > 1e-8)
             Gammabar -= (2 * J_std + 1) * sixj1 *
-                        Gp->TwoBody.GetTBME_J(J_std, a, d, c, b);
+                        Gamma.TwoBody.GetTBME_J(J_std, a, d, c, b);
         }
         double flip_phase =
             Z.modelspace->phase((oa.j2 + ob.j2 + oc.j2 + od.j2) / 2);
@@ -3756,7 +3717,7 @@ void comm223_232_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z) {
         continue;
       if ((tb.parity + tk.parity) % 2 != 0)
         continue;
-      if (tb.Tz != tk.Tz)
+      if (not CcTzCouples(tb.Tz, tk.Tz, Eta.GetTRank()))
         continue;
       if (not AngMom::Triangle(tb.J, tk.J, lambda))
         continue;
@@ -4098,7 +4059,7 @@ void comm223_232_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z) {
         continue;
       if ((tb.parity + tk.parity) % 2 != 0)
         continue;
-      if (tb.Tz != tk.Tz)
+      if (not CcTzCouples(tb.Tz, tk.Tz, Eta.GetTRank()))
         continue;
       if (not AngMom::Triangle(tb.J, tk.J, lambda))
         continue;
@@ -4593,15 +4554,6 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
   const double hat_lambda_inv = 1.0 / hat_lambda;
   auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
 
-  // Unreduced Γ for AMC chi_lambda (no 6j)
-  const Operator *Gp = &Gamma;
-  Operator Gunred;
-  if (Gamma.IsReduced() and Gamma.GetJRank() == 0) {
-    Gunred = Gamma;
-    Gunred.MakeNotReduced();
-    Gp = &Gunred;
-  }
-
   int max_j2 = 0;
   for (auto x : Z.modelspace->all_orbits)
     max_j2 = std::max(max_j2, Z.modelspace->GetOrbit(x).j2);
@@ -4668,7 +4620,7 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
         if (ab[0] < 0)
           continue;
         G0(ib, ik) =
-            Gp->TwoBody.GetTBME_J(J0, J0, ij[0], ij[1], ab[0], ab[1]);
+            Gamma.TwoBody.GetTBME_J(J0, J0, ij[0], ij[1], ab[0], ab[1]);
       }
     }
     for (int c1 = 0; c1 < nch_tb; ++c1) {
@@ -4700,7 +4652,7 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
           if (kl[0] < 0)
             continue;
           G1(ib, ik) =
-              Gp->TwoBody.GetTBME_J(J1, J1, ab[0], ab[1], kl[0], kl[1]);
+              Gamma.TwoBody.GetTBME_J(J1, J1, ab[0], ab[1], kl[0], kl[1]);
         }
       }
 
@@ -4786,7 +4738,7 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
         continue;
       if ((tb.parity + tk.parity) % 2 != 0)
         continue;
-      if (tb.Tz != tk.Tz)
+      if (not CcTzCouples(tb.Tz, tk.Tz, Eta.GetTRank()))
         continue;
       if (not AngMom::Triangle(tb.J, tk.J, lambda))
         continue;
@@ -4818,7 +4770,7 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
           continue;
         Orbit &oc = Z.modelspace->GetOrbit(cd[0]);
         Orbit &od = Z.modelspace->GetOrbit(cd[1]);
-        if (std::abs(oa.tz2 + od.tz2 - ob.tz2 - oc.tz2) != Eta.GetTRank())
+        if (std::abs(oa.tz2 + od.tz2 - ob.tz2 - oc.tz2) != 2 * Eta.GetTRank())
           continue;
         const double jc = oc.j2 * 0.5, jd = od.j2 * 0.5;
         double xchi = 0.0, xom = 0.0;
@@ -4867,15 +4819,16 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
     if (nKets_cc < 1)
       continue;
     const int n2 = nKets_cc * 2;
-    const int parity_cc = tbc_cc.parity;
-    const int Tz_cc = tbc_cc.Tz;
     barProd[ch_cc] = arma::mat(n2, n2, arma::fill::zeros);
-    for (int Jmid = 0; Jmid <= max_J; ++Jmid) {
-      if (not AngMom::Triangle(tbc_cc.J, Jmid, lambda))
+    for (int ch_mid = 0; ch_mid < n_cc; ++ch_mid) {
+      TwoBodyChannel_CC &tmid = Z.modelspace->GetTwoBodyChannel_CC(ch_mid);
+      if (tmid.GetNumberKets() < 1)
         continue;
-      const int ch_mid =
-          Z.modelspace->GetTwoBodyChannelIndex(Jmid, parity_cc, Tz_cc);
-      if (ch_mid < 0 or ch_mid >= n_cc)
+      if (not AngMom::Triangle(tbc_cc.J, tmid.J, lambda))
+        continue;
+      if ((tbc_cc.parity + tmid.parity) % 2 != 0)
+        continue;
+      if (not CcTzCouples(tbc_cc.Tz, tmid.Tz, Eta.GetTRank()))
         continue;
       auto itc = bar_Chi.find({ch_cc, ch_mid});
       auto ito = bar_Om.find({ch_mid, ch_cc});
@@ -4883,7 +4836,7 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
         continue;
       if (itc->second.n_rows < 1 or ito->second.n_rows < 1)
         continue;
-      const double pref = hat_lambda_inv * AngMom::phase(Jmid + lambda);
+      const double pref = hat_lambda_inv * AngMom::phase(tmid.J + lambda);
       barProd[ch_cc] += pref * itc->second * ito->second;
     }
   }
@@ -5692,32 +5645,19 @@ void comm223_132_tts(const Operator &Eta, const Operator &Gamma, Operator &Z) {
     return;
   }
 
-  const Operator *Gammap = &Gamma;
-  Operator Gammatmp;
-  if (Gamma.IsReduced() and Gamma.GetJRank() == 0) {
-    Gammatmp = Gamma;
-    Gammatmp.MakeNotReduced();
-    Gammap = &Gammatmp;
-  }
-  bool z_was_reduced = Z.IsReduced();
-  if (z_was_reduced)
-    Z.MakeNotReduced();
-
   Z.modelspace->PreCalculateSixJ();
   Z.modelspace->PreCalculateNineJ();
 
   double t0 = omp_get_wtime();
-  comm223_132_tts_ladder(Eta, *Gammap, Z);
+  comm223_132_tts_ladder(Eta, Gamma, Z);
   Z.profiler.timer["_132_ladder"] += omp_get_wtime() - t0;
   t0 = omp_get_wtime();
-  comm223_132_tts_onebody(Eta, *Gammap, Z);
+  comm223_132_tts_onebody(Eta, Gamma, Z);
   Z.profiler.timer["_132_onebody"] += omp_get_wtime() - t0;
   t0 = omp_get_wtime();
-  comm223_132_tts_cross(Eta, *Gammap, Z);
+  comm223_132_tts_cross(Eta, Gamma, Z);
   Z.profiler.timer["_132_cross"] += omp_get_wtime() - t0;
 
-  if (z_was_reduced)
-    Z.MakeReduced();
   Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
 }
 
