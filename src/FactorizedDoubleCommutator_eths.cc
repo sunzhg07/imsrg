@@ -69,6 +69,29 @@ static bool CcTzCouples(int tz_bra, int tz_ket, int rank_T) {
   return (tz_bra + tz_ket == rank_T) or
          (std::abs(tz_bra - tz_ket) == rank_T);
 }
+
+// FDC.cc comm223_232_chi2b ~1227–1393: one Pandya of Ω and Γ, then occupancy
+// nnn (not a second transform). Tensor leftover is the same except Ω is
+// rank-λ (rectangular CC, 9j) and some χ need two copies (non-Hermitian).
+namespace {
+using CcPair = std::array<int, 2>;
+using CcMatMap = std::map<CcPair, arma::mat>;
+struct Tensor232Bars {
+  std::vector<CcPair> cc_pairs;
+  CcMatMap bar_Omega;   // IMSRG DoTensorPandya(adcb)
+  CcMatMap nnn_AbarBC;  // FDC nnnbar_Eta  → χ^ι / GIVb
+  CcMatMap nnn_ABbarD;  // FDC nnnbar_Eta_d → χ^κ / GIVa
+  const std::deque<arma::mat> *bar_Gamma = nullptr;
+};
+void FillTensor232Bars(const Operator &Eta, const Operator &Gamma, Operator &Z,
+                       Tensor232Bars &B);
+const std::deque<arma::mat> &CachedBarGammaScalarCC(const Operator &Gamma,
+                                                    Operator &Z, int hGamma);
+void comm223_232_GIVa_from_bars(const Operator &Eta, const Operator &Gamma,
+                               Operator &Z, const Tensor232Bars &B);
+void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
+                               Operator &Z, const Tensor232Bars &B);
+} // namespace
 // factorize double commutator [Eta, [Eta, Gamma]_3b ]_1b
 // Eta is tensor (reduced). Gamma and Z are scalar unreduced.
 void comm223_231_st(const Operator &Eta, const Operator &Gamma, Operator &Z) {
@@ -2071,16 +2094,30 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
     return;
   }
 
+  // FDC.cc comm223_232_chi2b block order (tensor Ω / scalar Γ,Z):
+  //   ~1227 allocate bar_Omega, bar_Gamma
+  //   ~1243 combined Pandya + nnn occupancy
+  //   ~1385 DGEMM χ  (ι,κ here; η is AMC Path B; θ,λ stay diagram-local)
+  //   ~1413 GIIIa  χ^η ladder
+  //   ~1528 GIVa   χ^κ
+  //   ~1906 GIVb   χ^ι
+  //   ~2393 GIIIc  χ^θ
+  //   ~2739 GIIIb  (ethS gold is leftover IIb/IId, not FDC recouple of χ^η)
+  //   ~2916 GIVc   χ^λ  (Pandya of χ^λ and Ω together, same 9j)
+  Tensor232Bars bars;
+  if (use_TypeGIVa_2b or use_TypeGIVb_2b)
+    FillTensor232Bars(Eta, Gamma, Z, bars);
+
   if (use_TypeGIIIa_2b)
     comm223_232_GIIIa(Eta, Gamma, Z);
-  if (use_TypeGIIIb_2b)
-    comm223_232_GIIIb(Eta, Gamma, Z);
+  if (use_TypeGIVa_2b)
+    comm223_232_GIVa_from_bars(Eta, Gamma, Z, bars);
+  if (use_TypeGIVb_2b)
+    comm223_232_GIVb_from_bars(Eta, Gamma, Z, bars);
   if (use_TypeGIIIc_2b)
     comm223_232_GIIIc(Eta, Gamma, Z);
-  if (use_TypeGIVa_2b)
-    comm223_232_GIVa(Eta, Gamma, Z);
-  if (use_TypeGIVb_2b)
-    comm223_232_GIVb(Eta, Gamma, Z);
+  if (use_TypeGIIIb_2b)
+    comm223_232_GIIIb(Eta, Gamma, Z);
   if (use_TypeGIVc_2b)
     comm223_232_GIVc(Eta, Gamma, Z);
 
@@ -3261,75 +3298,19 @@ void comm223_232_GIIIc(const Operator &Eta, const Operator &Gamma, Operator &Z) 
     PackChiThetaFactLayout(Chi_theta, Z, ch, tbc.J, CHI_IV[ch]);
   }
 
-  // Pandya Γ̄ and χ̄^θ
-  std::deque<arma::mat> bar_Gamma(n_nonzero);
+  // FDC ~1235 / ~2411: reuse scalar Γ̄; Pandya χ^θ in the same CC layout.
+  const std::deque<arma::mat> &bar_Gamma =
+      CachedBarGammaScalarCC(Gamma, Z, hGamma);
   std::deque<arma::mat> bar_CHI_IV(n_nonzero);
 #pragma omp parallel for schedule(dynamic, 1)
   for (int ch_cc = 0; ch_cc < n_nonzero; ++ch_cc) {
     TwoBodyChannel_CC &tbc_cc = Z.modelspace->GetTwoBodyChannel_CC(ch_cc);
     int nKets_cc = tbc_cc.GetNumberKets();
     int J_cc = tbc_cc.J;
-    bar_Gamma[ch_cc] =
-        arma::mat(2 * nKets_cc, 2 * nKets_cc, arma::fill::zeros);
     bar_CHI_IV[ch_cc] =
         arma::mat(2 * nKets_cc, 2 * nKets_cc, arma::fill::zeros);
     if (nKets_cc < 1)
       continue;
-
-    // bar_Gamma (same Pandya as Factorized)
-    for (int ibra_cc = 0; ibra_cc < nKets_cc; ++ibra_cc) {
-      Ket &bra_cc = tbc_cc.GetKet(ibra_cc);
-      int a = bra_cc.p, b = bra_cc.q;
-      Orbit &oa = Z.modelspace->GetOrbit(a);
-      Orbit &ob = Z.modelspace->GetOrbit(b);
-      double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5;
-      for (int iket_cc = 0; iket_cc < 2 * nKets_cc; ++iket_cc) {
-        if ((iket_cc % nKets_cc) < ibra_cc)
-          continue;
-        int c, d;
-        if (iket_cc < nKets_cc) {
-          Ket &ket_cc = tbc_cc.GetKet(iket_cc);
-          c = ket_cc.p;
-          d = ket_cc.q;
-        } else {
-          Ket &ket_cc = tbc_cc.GetKet(iket_cc - nKets_cc);
-          d = ket_cc.p;
-          c = ket_cc.q;
-        }
-        Orbit &oc = Z.modelspace->GetOrbit(c);
-        Orbit &od = Z.modelspace->GetOrbit(d);
-        double jc = oc.j2 * 0.5, jd = od.j2 * 0.5;
-        double Gammabar = 0.0;
-        int jmin =
-            std::max(std::abs(oa.j2 - od.j2), std::abs(oc.j2 - ob.j2)) / 2;
-        int jmax = std::min(oa.j2 + od.j2, oc.j2 + ob.j2) / 2;
-        int dJ_std = 1;
-        if ((a == d or b == c)) {
-          dJ_std = 2;
-          jmin += jmin % 2;
-        }
-        for (int J_std = jmin; J_std <= jmax; J_std += dJ_std) {
-          double sixj1 = Z.modelspace->GetSixJ(ja, jb, J_cc, jc, jd, J_std);
-          if (std::abs(sixj1) > 1e-8)
-            Gammabar -= (2 * J_std + 1) * sixj1 *
-                        Gamma.TwoBody.GetTBME_J(J_std, a, d, c, b);
-        }
-        double flip_phase =
-            Z.modelspace->phase((oa.j2 + ob.j2 + oc.j2 + od.j2) / 2);
-        if (iket_cc < nKets_cc or (iket_cc >= nKets_cc and c != d)) {
-          bar_Gamma[ch_cc](ibra_cc, iket_cc) = Gammabar;
-          if (iket_cc != ibra_cc)
-            bar_Gamma[ch_cc](iket_cc, ibra_cc) = hGamma * Gammabar;
-        }
-        if (a != b)
-          bar_Gamma[ch_cc](ibra_cc + nKets_cc,
-                           (iket_cc + nKets_cc) % (2 * nKets_cc)) =
-              Gammabar * flip_phase * hGamma;
-        if (iket_cc >= nKets_cc or (iket_cc < nKets_cc and c != d))
-          bar_Gamma[ch_cc]((iket_cc + nKets_cc) % (2 * nKets_cc),
-                           ibra_cc + nKets_cc) = Gammabar * flip_phase;
-      }
-    }
 
     // Pandya of CHI_IV → bar_CHI_IV
     for (int ibra_cc = 0; ibra_cc < 2 * nKets_cc; ++ibra_cc) {
@@ -3422,12 +3403,9 @@ void comm223_232_GIIIc(const Operator &Eta, const Operator &Gamma, Operator &Z) 
     }
     bar_CHI_gamma[ch_cc] = bar_CHI_IV[ch_cc] * bar_Gamma[ch_cc];
   }
-  for (int ch_cc = 0; ch_cc < n_nonzero; ++ch_cc) {
+  for (int ch_cc = 0; ch_cc < n_nonzero; ++ch_cc)
     bar_CHI_IV[ch_cc].clear();
-    bar_Gamma[ch_cc].clear();
-  }
   bar_CHI_IV.clear();
-  bar_Gamma.clear();
 
   // Inverse Pandya (+½)
 #pragma omp parallel for schedule(dynamic, 1)
@@ -3635,83 +3613,25 @@ const std::deque<arma::mat> &CachedBarGammaScalarCC(const Operator &Gamma,
   g_bar_gamma_cc.nch = nch;
   return g_bar_gamma_cc.bar;
 }
-} // namespace
 
-void comm223_232_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z) {
-  double t_start = omp_get_wtime();
+// FDC.cc ~1243: one ket loop writes Ω̄ and occupancy nnn. Tensor Ω uses 9j
+// DoTensorPandya(adcb); scalar Γ is 6j phss (cached). nnn is not a 2nd Pandya.
+void FillTensor232Bars(const Operator &Eta, const Operator &Gamma, Operator &Z,
+                       Tensor232Bars &B) {
   Z.modelspace->PreCalculateSixJ();
   Z.modelspace->PreCalculateNineJ();
-
   const int lambda = Eta.GetJRank();
-  const int hEta = Eta.IsHermitian() ? 1 : -1;
   const int hGamma = Gamma.IsHermitian() ? 1 : -1;
-  const double hat_lam_inv =
-      (lambda == 0) ? 1.0 : 1.0 / std::sqrt(2.0 * lambda + 1.0);
+  const int n_cc = Z.modelspace->GetNumberTwoBodyChannels_CC();
   auto hatJ = [](int J) { return std::sqrt(2.0 * J + 1.0); };
-  auto &Z2 = Z.TwoBody;
-  const int n_nonzero = Z.modelspace->GetNumberTwoBodyChannels_CC();
-  const int nch_tb = Z.modelspace->GetNumberTwoBodyChannels();
 
-  auto pq_cc = [](TwoBodyChannel_CC &tbc, int idx, int nK) -> std::array<int, 2> {
-    Ket &ket = tbc.GetKet(idx % nK);
-    if (idx < nK)
-      return {(int)ket.p, (int)ket.q};
-    if (ket.p == ket.q)
-      return {-1, -1};
-    return {(int)ket.q, (int)ket.p};
-  };
-  auto pq_tb = [](TwoBodyChannel &tbc, int idx, int nK) -> std::array<int, 2> {
-    Ket &ket = tbc.GetKet(idx % nK);
-    if (idx < nK)
-      return {(int)ket.p, (int)ket.q};
-    if (ket.p == ket.q)
-      return {-1, -1};
-    return {(int)ket.q, (int)ket.p};
-  };
-
-  // IMSRG DoTensorPandya (adcb) — hats × NineJ, no extra scale. λ=0 ⇒ Jbra=Jket.
-  auto pandya_eta = [&](int a, int b, int c, int d, int Jbra,
-                        int Jket) -> double {
-    Orbit &oa = Z.modelspace->GetOrbit(a);
-    Orbit &ob = Z.modelspace->GetOrbit(b);
-    Orbit &oc = Z.modelspace->GetOrbit(c);
-    Orbit &od = Z.modelspace->GetOrbit(d);
-    const double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5;
-    const double jc = oc.j2 * 0.5, jd = od.j2 * 0.5;
-    if (not AngMom::Triangle(Jbra, Jket, lambda))
-      return 0.0;
-    double Xbar = 0.0;
-    const int j1min = std::abs(oa.j2 - od.j2) / 2;
-    const int j1max = (oa.j2 + od.j2) / 2;
-    for (int J1 = j1min; J1 <= j1max; ++J1) {
-      const int j2min =
-          std::max(std::abs(oc.j2 - ob.j2) / 2, std::abs(J1 - lambda));
-      const int j2max = std::min((oc.j2 + ob.j2) / 2, J1 + lambda);
-      for (int J2 = j2min; J2 <= j2max; ++J2) {
-        const double ninej = Z.modelspace->GetNineJ(
-            ja, jd, J1, jb, jc, J2, Jbra, Jket, lambda);
-        if (std::abs(ninej) < 1e-14)
-          continue;
-        const double hats = hatJ(J1) * hatJ(J2) * hatJ(Jbra) * hatJ(Jket);
-        const double tbme = Eta.TwoBody.GetTBME_J(J1, J2, a, d, c, b);
-        Xbar -= hats * Z.modelspace->phase((ob.j2 + od.j2) / 2 + Jket + J2) *
-                ninej * tbme;
-      }
-    }
-    return Xbar;
-  };
-
-  // Scalar Pandya Γ per CC channel (cached; H is fixed in Arnoldi).
-  const std::deque<arma::mat> &bar_Gamma =
-      CachedBarGammaScalarCC(Gamma, Z, hGamma);
-
-  // Rectangular CC pairs: χ̄(il;kj)^{J0,J1} = hΩ (−1)^{J0+J1} Ω̄_occ^T · Γ̄^{J1}
-  std::vector<std::array<int, 2>> cc_pairs;
-  for (int ch_b = 0; ch_b < n_nonzero; ++ch_b) {
+  B.bar_Gamma = &CachedBarGammaScalarCC(Gamma, Z, hGamma);
+  B.cc_pairs.clear();
+  for (int ch_b = 0; ch_b < n_cc; ++ch_b) {
     TwoBodyChannel_CC &tb = Z.modelspace->GetTwoBodyChannel_CC(ch_b);
     if (tb.GetNumberKets() < 1)
       continue;
-    for (int ch_k = 0; ch_k < n_nonzero; ++ch_k) {
+    for (int ch_k = 0; ch_k < n_cc; ++ch_k) {
       TwoBodyChannel_CC &tk = Z.modelspace->GetTwoBodyChannel_CC(ch_k);
       if (tk.GetNumberKets() < 1)
         continue;
@@ -3721,10 +3641,120 @@ void comm223_232_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z) {
         continue;
       if (not AngMom::Triangle(tb.J, tk.J, lambda))
         continue;
-      cc_pairs.push_back({ch_b, ch_k});
+      B.cc_pairs.push_back({ch_b, ch_k});
     }
   }
 
+  const int np = (int)B.cc_pairs.size();
+  std::vector<arma::mat> tmpO(np), tmpBC(np), tmpBD(np);
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int ip = 0; ip < np; ++ip) {
+    const int ch_b = B.cc_pairs[ip][0], ch_k = B.cc_pairs[ip][1];
+    TwoBodyChannel_CC &tb = Z.modelspace->GetTwoBodyChannel_CC(ch_b);
+    TwoBodyChannel_CC &tk = Z.modelspace->GetTwoBodyChannel_CC(ch_k);
+    const int nb = tb.GetNumberKets(), nk = tk.GetNumberKets();
+    const int Jb = tb.J, Jk = tk.J;
+    arma::mat Om(2 * nb, 2 * nk, arma::fill::zeros);
+    arma::mat nBC(2 * nb, 2 * nk, arma::fill::zeros);
+    arma::mat nBD(2 * nb, 2 * nk, arma::fill::zeros);
+    for (int ibra = 0; ibra < 2 * nb; ++ibra) {
+      auto ab = PqCC(tb, ibra, nb);
+      if (ab[0] < 0)
+        continue;
+      Orbit &oa = Z.modelspace->GetOrbit(ab[0]);
+      Orbit &ob = Z.modelspace->GetOrbit(ab[1]);
+      const double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5;
+      const double n_a = oa.occ, nbar_a = 1.0 - n_a;
+      const double n_b = ob.occ, nbar_b = 1.0 - n_b;
+      for (int iket = 0; iket < 2 * nk; ++iket) {
+        auto cd = PqCC(tk, iket, nk);
+        if (cd[0] < 0)
+          continue;
+        Orbit &oc = Z.modelspace->GetOrbit(cd[0]);
+        Orbit &od = Z.modelspace->GetOrbit(cd[1]);
+        const double n_c = oc.occ, nbar_c = 1.0 - n_c;
+        const double n_d = od.occ, nbar_d = 1.0 - n_d;
+        const double occ_AbarBC = nbar_a * n_b * n_c + n_a * nbar_b * nbar_c;
+        const double occ_ABbarD = n_a * nbar_b * n_d + nbar_a * n_b * nbar_d;
+        if (std::abs(occ_AbarBC) < 1e-12 and std::abs(occ_ABbarD) < 1e-12)
+          continue;
+        const double jc = oc.j2 * 0.5, jd = od.j2 * 0.5;
+        double Xbar = 0.0;
+        const int j1min = std::abs(oa.j2 - od.j2) / 2;
+        const int j1max = (oa.j2 + od.j2) / 2;
+        for (int J1 = j1min; J1 <= j1max; ++J1) {
+          const int j2min =
+              std::max(std::abs(oc.j2 - ob.j2) / 2, std::abs(J1 - lambda));
+          const int j2max = std::min((oc.j2 + ob.j2) / 2, J1 + lambda);
+          for (int J2 = j2min; J2 <= j2max; ++J2) {
+            const double ninej = Z.modelspace->GetNineJ(
+                ja, jd, J1, jb, jc, J2, Jb, Jk, lambda);
+            if (std::abs(ninej) < 1e-14)
+              continue;
+            const double hats = hatJ(J1) * hatJ(J2) * hatJ(Jb) * hatJ(Jk);
+            const double tbme =
+                Eta.TwoBody.GetTBME_J(J1, J2, ab[0], cd[1], cd[0], ab[1]);
+            Xbar -= hats *
+                    Z.modelspace->phase((ob.j2 + od.j2) / 2 + Jk + J2) *
+                    ninej * tbme;
+          }
+        }
+        Om(ibra, iket) = Xbar;
+        if (std::abs(occ_AbarBC) >= 1e-12)
+          nBC(ibra, iket) = Xbar * occ_AbarBC;
+        if (std::abs(occ_ABbarD) >= 1e-12)
+          nBD(ibra, iket) = Xbar * occ_ABbarD;
+      }
+    }
+    tmpO[ip] = std::move(Om);
+    tmpBC[ip] = std::move(nBC);
+    tmpBD[ip] = std::move(nBD);
+  }
+  B.bar_Omega.clear();
+  B.nnn_AbarBC.clear();
+  B.nnn_ABbarD.clear();
+  for (int ip = 0; ip < np; ++ip) {
+    B.bar_Omega[B.cc_pairs[ip]] = std::move(tmpO[ip]);
+    B.nnn_AbarBC[B.cc_pairs[ip]] = std::move(tmpBC[ip]);
+    B.nnn_ABbarD[B.cc_pairs[ip]] = std::move(tmpBD[ip]);
+  }
+}
+} // namespace
+
+void comm223_232_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z) {
+  Tensor232Bars B;
+  FillTensor232Bars(Eta, Gamma, Z, B);
+  comm223_232_GIVa_from_bars(Eta, Gamma, Z, B);
+}
+
+namespace {
+void comm223_232_GIVa_from_bars(const Operator &Eta, const Operator &Gamma,
+                               Operator &Z, const Tensor232Bars &B) {
+  double t_start = omp_get_wtime();
+  Z.modelspace->PreCalculateSixJ();
+  Z.modelspace->PreCalculateNineJ();
+
+  const int lambda = Eta.GetJRank();
+  const int hEta = Eta.IsHermitian() ? 1 : -1;
+  const double hat_lam_inv =
+      (lambda == 0) ? 1.0 : 1.0 / std::sqrt(2.0 * lambda + 1.0);
+  auto hatJ = [](int J) { return std::sqrt(2.0 * J + 1.0); };
+  auto &Z2 = Z.TwoBody;
+  const int n_nonzero = Z.modelspace->GetNumberTwoBodyChannels_CC();
+  const int nch_tb = Z.modelspace->GetNumberTwoBodyChannels();
+
+  auto pq_tb = [](TwoBodyChannel &tbc, int idx, int nK) -> std::array<int, 2> {
+    Ket &ket = tbc.GetKet(idx % nK);
+    if (idx < nK)
+      return {(int)ket.p, (int)ket.q};
+    if (ket.p == ket.q)
+      return {-1, -1};
+    return {(int)ket.q, (int)ket.p};
+  };
+
+  // FDC ~1387: χ^κ = Γ̄ · nnnΩ̄_d  (two copies: this is the _II / T side)
+  const std::deque<arma::mat> &bar_Gamma = *B.bar_Gamma;
+  const auto &cc_pairs = B.cc_pairs;
   std::map<std::array<int, 2>, arma::mat> bar_CHI_VI_II;
   {
     std::vector<arma::mat> tmp(cc_pairs.size());
@@ -3733,32 +3763,10 @@ void comm223_232_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z) {
       const int ch_ab = cc_pairs[ip][0], ch_il = cc_pairs[ip][1];
       TwoBodyChannel_CC &tab = Z.modelspace->GetTwoBodyChannel_CC(ch_ab);
       TwoBodyChannel_CC &til = Z.modelspace->GetTwoBodyChannel_CC(ch_il);
-      const int nab = tab.GetNumberKets(), nil = til.GetNumberKets();
       const int J1 = tab.J, J0 = til.J;
-      arma::mat Omega_occ(2 * nab, 2 * nil, arma::fill::zeros);
-      for (int ibra = 0; ibra < 2 * nab; ++ibra) {
-        auto ab = pq_cc(tab, ibra, nab);
-        if (ab[0] < 0)
-          continue;
-        Orbit &oa = Z.modelspace->GetOrbit(ab[0]);
-        Orbit &ob = Z.modelspace->GetOrbit(ab[1]);
-        const double n_a = oa.occ, nbar_a = 1.0 - n_a;
-        const double n_b = ob.occ, nbar_b = 1.0 - n_b;
-        for (int iket = 0; iket < 2 * nil; ++iket) {
-          auto il = pq_cc(til, iket, nil);
-          if (il[0] < 0)
-            continue;
-          Orbit &od = Z.modelspace->GetOrbit(il[1]);
-          const double n_d = od.occ, nbar_d = 1.0 - n_d;
-          const double occ_ABbarD = n_a * nbar_b * n_d + nbar_a * n_b * nbar_d;
-          if (std::abs(occ_ABbarD) < 1e-12)
-            continue;
-          Omega_occ(ibra, iket) =
-              pandya_eta(ab[0], ab[1], il[0], il[1], J1, J0) * occ_ABbarD;
-        }
-      }
+      auto it = B.nnn_ABbarD.find({ch_ab, ch_il});
       const double phaseJJ = Z.modelspace->phase(J0 + J1);
-      tmp[ip] = hEta * phaseJJ * (Omega_occ.t() * bar_Gamma[ch_ab]);
+      tmp[ip] = hEta * phaseJJ * (it->second.t() * bar_Gamma[ch_ab]);
     }
     for (int ip = 0; ip < (int)cc_pairs.size(); ++ip)
       bar_CHI_VI_II[{cc_pairs[ip][1], cc_pairs[ip][0]}] = std::move(tmp[ip]);
@@ -3972,6 +3980,7 @@ void comm223_232_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z) {
 
   Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
 }
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////
 /// Gamma^IV_b / chi^iota — leftover AMC as two terms (right first).
@@ -3981,27 +3990,26 @@ void comm223_232_GIVa(const Operator &Eta, const Operator &Gamma, Operator &Z) {
 /// Do not pack χ_adbc−hZ χ_bcad with one Ω̄ (λ=0 identity Ω_jalb ≡ hΩ Ω_lbja).
 ////////////////////////////////////////////////////////////////////////////
 void comm223_232_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z) {
+  Tensor232Bars B;
+  FillTensor232Bars(Eta, Gamma, Z, B);
+  comm223_232_GIVb_from_bars(Eta, Gamma, Z, B);
+}
+
+namespace {
+void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
+                               Operator &Z, const Tensor232Bars &B) {
   double t_start = omp_get_wtime();
   Z.modelspace->PreCalculateSixJ();
   Z.modelspace->PreCalculateNineJ();
 
   const int lambda = Eta.GetJRank();
   const int hEta = Eta.IsHermitian() ? 1 : -1;
-  const int hGamma = Gamma.IsHermitian() ? 1 : -1;
   const double hat_lam_inv =
       (lambda == 0) ? 1.0 : 1.0 / std::sqrt(2.0 * lambda + 1.0);
   auto hatJ = [](int J) { return std::sqrt(2.0 * J + 1.0); };
   auto &Z2 = Z.TwoBody;
   const int n_nonzero = Z.modelspace->GetNumberTwoBodyChannels_CC();
 
-  auto pq_cc = [](TwoBodyChannel_CC &tbc, int idx, int nK) -> std::array<int, 2> {
-    Ket &ket = tbc.GetKet(idx % nK);
-    if (idx < nK)
-      return {(int)ket.p, (int)ket.q};
-    if (ket.p == ket.q)
-      return {-1, -1};
-    return {(int)ket.q, (int)ket.p};
-  };
   auto idx2n = [](TwoBodyChannel_CC &tbc, int p, int q, int nK) -> int {
     int loc = tbc.GetLocalIndex(std::min(p, q), std::max(p, q));
     if (loc < 0)
@@ -4011,96 +4019,17 @@ void comm223_232_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z) {
     return loc;
   };
 
-  // IMSRG DoTensorPandya (adcb) — hats × NineJ, no extra scale. λ=0 ⇒ Jbra=Jket.
-  auto pandya_eta = [&](int a, int b, int c, int d, int Jbra,
-                        int Jket) -> double {
-    Orbit &oa = Z.modelspace->GetOrbit(a);
-    Orbit &ob = Z.modelspace->GetOrbit(b);
-    Orbit &oc = Z.modelspace->GetOrbit(c);
-    Orbit &od = Z.modelspace->GetOrbit(d);
-    const double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5;
-    const double jc = oc.j2 * 0.5, jd = od.j2 * 0.5;
-    if (not AngMom::Triangle(Jbra, Jket, lambda))
-      return 0.0;
-    double Xbar = 0.0;
-    const int j1min = std::abs(oa.j2 - od.j2) / 2;
-    const int j1max = (oa.j2 + od.j2) / 2;
-    for (int J1 = j1min; J1 <= j1max; ++J1) {
-      const int j2min =
-          std::max(std::abs(oc.j2 - ob.j2) / 2, std::abs(J1 - lambda));
-      const int j2max = std::min((oc.j2 + ob.j2) / 2, J1 + lambda);
-      for (int J2 = j2min; J2 <= j2max; ++J2) {
-        const double ninej = Z.modelspace->GetNineJ(
-            ja, jd, J1, jb, jc, J2, Jbra, Jket, lambda);
-        if (std::abs(ninej) < 1e-14)
-          continue;
-        const double hats = hatJ(J1) * hatJ(J2) * hatJ(Jbra) * hatJ(Jket);
-        const double tbme = Eta.TwoBody.GetTBME_J(J1, J2, a, d, c, b);
-        Xbar -= hats * Z.modelspace->phase((ob.j2 + od.j2) / 2 + Jket + J2) *
-                ninej * tbme;
-      }
-    }
-    return Xbar;
-  };
-
-  // Scalar Pandya Γ per CC channel (cached; H is fixed in Arnoldi).
-  const std::deque<arma::mat> &bar_Gamma =
-      CachedBarGammaScalarCC(Gamma, Z, hGamma);
-
-  // Rectangular CC pairs. Triangle(Jb,Jk,λ) — λ=0 ⇒ Jb=Jk.
-  std::vector<std::array<int, 2>> cc_pairs;
-  for (int ch_b = 0; ch_b < n_nonzero; ++ch_b) {
-    TwoBodyChannel_CC &tb = Z.modelspace->GetTwoBodyChannel_CC(ch_b);
-    if (tb.GetNumberKets() < 1)
-      continue;
-    for (int ch_k = 0; ch_k < n_nonzero; ++ch_k) {
-      TwoBodyChannel_CC &tk = Z.modelspace->GetTwoBodyChannel_CC(ch_k);
-      if (tk.GetNumberKets() < 1)
-        continue;
-      if ((tb.parity + tk.parity) % 2 != 0)
-        continue;
-      if (not CcTzCouples(tb.Tz, tk.Tz, Eta.GetTRank()))
-        continue;
-      if (not AngMom::Triangle(tb.J, tk.J, lambda))
-        continue;
-      cc_pairs.push_back({ch_b, ch_k});
-    }
-  }
-
-  // Ω̄^{Jb Jk}(ab;kj) and χ̄ = Γ̄·(occ_AbarBC ⊙ Ω̄). No hΩ, no (−1)^{J0+J1}.
+  // FDC ~1386: χ^ι = Γ̄ · nnnΩ̄
+  const std::deque<arma::mat> &bar_Gamma = *B.bar_Gamma;
+  const auto &cc_pairs = B.cc_pairs;
   std::map<std::array<int, 2>, arma::mat> bar_CHI_V;
   {
     std::vector<arma::mat> tmp(cc_pairs.size());
 #pragma omp parallel for schedule(dynamic, 1)
     for (int ip = 0; ip < (int)cc_pairs.size(); ++ip) {
-      const int ch_b = cc_pairs[ip][0], ch_k = cc_pairs[ip][1];
-      TwoBodyChannel_CC &tb = Z.modelspace->GetTwoBodyChannel_CC(ch_b);
-      TwoBodyChannel_CC &tk = Z.modelspace->GetTwoBodyChannel_CC(ch_k);
-      const int nb = tb.GetNumberKets(), nk = tk.GetNumberKets();
-      const int Jb = tb.J, Jk = tk.J;
-      arma::mat Occ(2 * nb, 2 * nk, arma::fill::zeros);
-      for (int ibra = 0; ibra < 2 * nb; ++ibra) {
-        auto ab = pq_cc(tb, ibra, nb);
-        if (ab[0] < 0)
-          continue;
-        Orbit &oa = Z.modelspace->GetOrbit(ab[0]);
-        Orbit &ob = Z.modelspace->GetOrbit(ab[1]);
-        const double n_a = oa.occ, nbar_a = 1.0 - n_a;
-        const double n_b = ob.occ, nbar_b = 1.0 - n_b;
-        for (int iket = 0; iket < 2 * nk; ++iket) {
-          auto kj = pq_cc(tk, iket, nk);
-          if (kj[0] < 0)
-            continue;
-          Orbit &ok = Z.modelspace->GetOrbit(kj[0]);
-          const double n_k = ok.occ, nbar_k = 1.0 - n_k;
-          const double occ_AbarBC = nbar_a * n_b * n_k + n_a * nbar_b * nbar_k;
-          if (std::abs(occ_AbarBC) < 1e-12)
-            continue;
-          Occ(ibra, iket) =
-              pandya_eta(ab[0], ab[1], kj[0], kj[1], Jb, Jk) * occ_AbarBC;
-        }
-      }
-      tmp[ip] = bar_Gamma[ch_b] * Occ;
+      const int ch_b = cc_pairs[ip][0];
+      auto it = B.nnn_AbarBC.find(cc_pairs[ip]);
+      tmp[ip] = bar_Gamma[ch_b] * it->second;
     }
     for (int ip = 0; ip < (int)cc_pairs.size(); ++ip)
       bar_CHI_V[cc_pairs[ip]] = std::move(tmp[ip]);
@@ -4523,6 +4452,7 @@ void comm223_232_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z) {
   Z.profiler.timer["_GIVb_leftover"] += omp_get_wtime() - t_left;
   Z.profiler.timer[__func__] += omp_get_wtime() - t_start;
 }
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////
 /// Gamma^IV_c / chi^lambda — Pandya→DGEMM→inv ring (≡ m ≡ AMC direct).
