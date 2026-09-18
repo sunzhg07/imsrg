@@ -5,6 +5,9 @@
 //   ./build/test_tensor_factorized
 //   ./build/test_tensor_factorized 2 2 8 1
 //   ./build/test_tensor_factorized emax=2 lambda=2 max_m_cmp=8 diagrams=1
+//   ./build/test_tensor_factorized emax=2 lambda=2 step=1 diagrams=0
+// step: 0=all, 1=m-unfact≡J-unfact, 2=m-unfact≡m-fact, 3=diagrams only,
+//       4=J-unfact≡J-fact
 ///////////////////////////////////////////////////////////////////////////////////
 
 #include "ModelSpace.hh"
@@ -21,8 +24,9 @@ static void usage(const char *prog)
   std::cerr
       << "Usage:\n"
       << "  " << prog << " [emax] [lambda] [max_m_cmp] [diagrams]\n"
-      << "  " << prog << " emax=2 lambda=2 max_m_cmp=8 diagrams=1\n"
-      << "Defaults: emax=1 lambda=2 max_m_cmp=8 diagrams=1\n";
+      << "  " << prog << " emax=2 lambda=2 T=0 max_m_cmp=8 diagrams=1 step=1\n"
+      << "Defaults: emax=1 lambda=2 T=0 max_m_cmp=8 diagrams=1 step=0\n"
+      << "step: 0=all 1=m-unfact≡J-nested 2=m-unfact≡m-fact 3=diagrams 4=J-nested≡J-fact\n";
 }
 
 static bool starts_with(const char *s, const char *pre)
@@ -40,8 +44,11 @@ int main(int argc, char **argv)
 {
   int emax = 1;
   int lam = 2;
+  int trank = 0;
   int max_m = 8;
   int diagrams_i = 1;
+  int step = 0;
+  bool diagrams_set = false;
   const uint64_t seed = 17;
   int positional = 0;
 
@@ -59,10 +66,19 @@ int main(int argc, char **argv)
       lam = parse_kv_int(a, "lambda=");
     else if (starts_with(a, "lam="))
       lam = parse_kv_int(a, "lam=");
+    else if (starts_with(a, "T="))
+      trank = parse_kv_int(a, "T=");
+    else if (starts_with(a, "trank="))
+      trank = parse_kv_int(a, "trank=");
     else if (starts_with(a, "max_m_cmp="))
       max_m = parse_kv_int(a, "max_m_cmp=");
     else if (starts_with(a, "diagrams="))
+    {
       diagrams_i = parse_kv_int(a, "diagrams=");
+      diagrams_set = true;
+    }
+    else if (starts_with(a, "step="))
+      step = parse_kv_int(a, "step=");
     else if (a[0] == '-' and (a[1] < '0' or a[1] > '9'))
     {
       std::cerr << "Unknown option: " << a << std::endl;
@@ -90,11 +106,14 @@ int main(int argc, char **argv)
     }
   }
 
-  const bool diagrams = diagrams_i != 0;
+  if (not diagrams_set and step != 0 and step != 3)
+    diagrams_i = 0;
+  const bool diagrams = (step == 3) or (diagrams_i != 0 and step != 1 and step != 2 and step != 4);
+  const int threeway_step = (step == 3) ? -1 : step;
 
   std::cout << "test_tensor_factorized  emax=" << emax << "  λ=" << lam
-            << "  max_m_cmp=" << max_m << "  diagrams=" << diagrams
-            << "  seed=" << seed << std::endl;
+            << "  T=" << trank << "  max_m_cmp=" << max_m << "  diagrams=" << diagrams
+            << "  step=" << step << "  seed=" << seed << std::endl;
 
   // GetSixJ is not thread-safe on first fill; gold benches run single-threaded.
   omp_set_num_threads(1);
@@ -107,7 +126,9 @@ int main(int argc, char **argv)
   UnitTest ut(ms);
   ut.SetRandomSeed(seed);
 
-  bool ok = ut.TestTensorFactorizedThreeway(lam, max_m);
+  bool ok = true;
+  if (threeway_step >= 0)
+    ok = ut.TestTensorFactorizedThreeway(lam, max_m, threeway_step, trank);
   if (diagrams)
     ok = ut.TestTensorFactorizedDiagrams(lam, std::min(max_m, 4)) and ok;
 

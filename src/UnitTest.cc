@@ -7803,7 +7803,7 @@ void make_tensor_omega(Operator &omega)
 
 Operator nest_W(const Operator &H, const Operator &omega)
 {
-  Operator W(*H.modelspace, omega.GetJRank(), 0, omega.GetParity(), 3);
+  Operator W(*H.modelspace, omega.GetJRank(), omega.GetTRank(), omega.GetParity(), 3);
   W.SetHermitian();
   W.ThreeBody.SetMode("pn");
   W.ThreeBody.Allocate();
@@ -7891,13 +7891,26 @@ bool report_j_norm(const char *tag, const Operator &Zref, const Operator &Zoth, 
 
 } // namespace
 
-bool UnitTest::TestTensorFactorizedThreeway(int jrank, int max_m_cmp)
+bool UnitTest::TestTensorFactorizedThreeway(int jrank, int max_m_cmp, int step, int trank)
 {
-  std::cout << "\n======== " << __func__ << "  λ=" << jrank
-            << "  max_m_cmp=" << max_m_cmp << " ========" << std::endl;
+  std::cout << "\n======== " << __func__ << "  λ=" << jrank << "  T=" << trank
+            << "  max_m_cmp=" << max_m_cmp << "  step=" << step << " ========" << std::endl;
+  const bool do_s1 = (step == 0 or step == 1); // m-unfact Wick ≡ J nested
+  const bool do_s2 = (step == 0 or step == 2); // m-unfact ≡ m-fact
+  const bool do_s4 = (step == 0 or step == 4); // J nested ≡ J fact
+  if (not do_s1 and not do_s2 and not do_s4)
+  {
+    std::cout << "  FAIL: step must be 0, 1, 2, or 4" << std::endl;
+    return false;
+  }
   if (jrank < 0)
   {
     std::cout << "  FAIL: λ≥0" << std::endl;
+    return false;
+  }
+  if (trank < 0 or trank > 2)
+  {
+    std::cout << "  FAIL: T∈{0,1,2}" << std::endl;
     return false;
   }
   if (max_m_cmp < 1)
@@ -7910,12 +7923,14 @@ bool UnitTest::TestTensorFactorizedThreeway(int jrank, int max_m_cmp)
   Operator H = RandomOp(*modelspace, 0, 0, 0, 2, +1);
   if (H.IsReduced())
     H.MakeNotReduced();
-  Operator omega_e = RandomOp(*modelspace, jrank, 0, 0, 3, -1);
+  Operator omega_e = RandomOp(*modelspace, jrank, trank, 0, 3, -1);
   make_tensor_omega(omega_e);
-  Operator omega_o = RandomOp(*modelspace, jrank, 0, 1, 3, -1);
+  Operator omega_o = RandomOp(*modelspace, jrank, trank, 1, 3, -1);
   make_tensor_omega(omega_o);
-  std::cout << "  tensor Ω  even reduced=" << omega_e.IsReduced()
-            << "  odd reduced=" << omega_o.IsReduced() << std::endl;
+  std::cout << "  tensor Ω  even (π=0) reduced=" << omega_e.IsReduced()
+            << " T=" << omega_e.GetTRank()
+            << "  odd (π=1) reduced=" << omega_o.IsReduced()
+            << " T=" << omega_o.GetTRank() << std::endl;
 
   std::cout << "  ||H2||=" << H.TwoBodyNorm()
             << "  ||ω_even 1b||=" << omega_e.OneBodyNorm()
@@ -7932,37 +7947,54 @@ bool UnitTest::TestTensorFactorizedThreeway(int jrank, int max_m_cmp)
     We.is_reduced = true;
   std::cout << "  W=−comm223st  ||We3||=" << We.ThreeBodyNorm()
             << "  ||Wo3||=" << Wo.ThreeBodyNorm()
+            << "  We(JTπ)=(" << We.GetJRank() << "," << We.GetTRank() << ","
+            << We.GetParity() << ")"
+            << "  Wo(JTπ)=(" << Wo.GetJRank() << "," << Wo.GetTRank() << ","
+            << Wo.GetParity() << ")"
             << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
-  if (We.ThreeBodyNorm() < 1e-10 or Wo.ThreeBodyNorm() < 1e-10)
+  if (We.ThreeBodyNorm() < 1e-10 and Wo.ThreeBodyNorm() < 1e-10)
   {
-    std::cout << "  FAIL: W3 ~ 0" << std::endl;
+    std::cout << "  FAIL: W3 ~ 0 for both parities" << std::endl;
     return false;
   }
+  if (We.ThreeBodyNorm() < 1e-10)
+    std::cout << "  SKIP: even-Ω W3 ~ 0" << std::endl;
+  if (Wo.ThreeBodyNorm() < 1e-10)
+    std::cout << "  SKIP: odd-Ω W3 ~ 0" << std::endl;
 
   EthsFlagGuard flags;
   EthsFlagGuard::all_on();
   bool all_ok = true;
 
   // --- leftover 1b: nested 231tts vs Σf, plus m-unfact / m-fact / J unpack ---
-  std::cout << "\n=== 223st + 231tts  vs  Σf  (leftover 1b, even ω) ===" << std::endl;
+  std::cout << "\n=== 223st + 231tts  vs  Σf  (leftover 1b, Ω π=0) ===" << std::endl;
   Operator Z231 = make_leftover_Z(*modelspace);
   t0 = omp_get_wtime();
   Commutator::comm231tts(omega_e, We, Z231);
   std::cout << "  nested J  ||Z1||=" << Z231.OneBodyNorm()
             << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
   Operator Zf = make_leftover_Z(*modelspace);
-  t0 = omp_get_wtime();
-  ethS::comm223_231_st(omega_e, H, Zf);
-  std::cout << "  factorized Σf  ||Z1||=" << Zf.OneBodyNorm()
-            << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
+  if (do_s4)
+  {
+    t0 = omp_get_wtime();
+    ethS::comm223_231_st(omega_e, H, Zf);
+    std::cout << "  factorized Σf  ||Z1||=" << Zf.OneBodyNorm()
+              << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
+  }
   if (Z231.OneBodyNorm() < 1e-12)
   {
-    std::cout << "  FAIL: nested 231 leftover ~0 (need even ω / hh–pp)" << std::endl;
-    all_ok = false;
+    if (do_s4 and Zf.OneBodyNorm() > 1e-12)
+    {
+      std::cout << "  FAIL: nested 231 leftover ~0 but Σf is not" << std::endl;
+      all_ok = false;
+    }
+    else
+      std::cout << "  SKIP: nested 231 leftover ~0 (selection / hh–pp)" << std::endl;
   }
   else
   {
-    all_ok &= report_j_norm("J nested ≡ J Σf", Z231, Zf, true);
+    if (do_s4)
+      all_ok &= report_j_norm("J nested ≡ J Σf", Z231, Zf, true);
     double e_wn = 0, e_fj = 0, e_wf = 0, e_nj = 0;
     int n1 = 0, tr = 0;
     t0 = omp_get_wtime();
@@ -7977,116 +8009,170 @@ bool UnitTest::TestTensorFactorizedThreeway(int jrank, int max_m_cmp)
         Orbit &oj = modelspace->GetOrbit(j);
         const int mi = std::min(oi.j2, oj.j2);
         const int mj = mi;
-        const double wick = Mscheme_comm231tts_wick(omega_e, We, (int)i, mi, (int)j, mj);
-        const double fact = Mscheme_fact_fI(omega_e, H, (int)i, mi, (int)j, mj)
-                            + Mscheme_fact_fII(omega_e, H, (int)i, mi, (int)j, mj)
-                            + Mscheme_fact_fIIIa(omega_e, H, (int)i, mi, (int)j, mj)
-                            + Mscheme_fact_fIIIb(omega_e, H, (int)i, mi, (int)j, mj);
-        const double jn = GetMschemeMatrixElement_1b(Z231, (int)i, mi, (int)j, mj);
-        const double jf = GetMschemeMatrixElement_1b(Zf, (int)i, mi, (int)j, mj);
-        all_ok &= report_pair("231 wick≡J_nested", wick, jn, e_wn, tr);
-        all_ok &= report_pair("231 m-fact≡J_fact", fact, jf, e_fj, tr);
-        all_ok &= report_pair("231 wick≡m-fact", wick, fact, e_wf, tr);
-        all_ok &= report_pair("231 J_nested(m)≡J_fact(m)", jn, jf, e_nj, tr);
+        const double wick = (do_s1 or do_s2)
+                                ? Mscheme_comm231tts_wick(omega_e, We, (int)i, mi, (int)j, mj)
+                                : 0.0;
+        const double fact = do_s2 ? (Mscheme_fact_fI(omega_e, H, (int)i, mi, (int)j, mj)
+                                     + Mscheme_fact_fII(omega_e, H, (int)i, mi, (int)j, mj)
+                                     + Mscheme_fact_fIIIa(omega_e, H, (int)i, mi, (int)j, mj)
+                                     + Mscheme_fact_fIIIb(omega_e, H, (int)i, mi, (int)j, mj))
+                                  : 0.0;
+        const double jn = (do_s1 or do_s4)
+                              ? GetMschemeMatrixElement_1b(Z231, (int)i, mi, (int)j, mj)
+                              : 0.0;
+        const double jf = do_s4 ? GetMschemeMatrixElement_1b(Zf, (int)i, mi, (int)j, mj) : 0.0;
+        if (do_s1)
+          all_ok &= report_pair("231 wick≡J_nested", wick, jn, e_wn, tr);
+        if (do_s2)
+          all_ok &= report_pair("231 wick≡m-fact", wick, fact, e_wf, tr);
+        if (do_s2 and do_s4)
+          all_ok &= report_pair("231 m-fact≡J_fact", fact, jf, e_fj, tr);
+        if (do_s4)
+          all_ok &= report_pair("231 J_nested(m)≡J_fact(m)", jn, jf, e_nj, tr);
         n1++;
       }
     }
-    std::cout << "  m  n=" << n1
-              << "  wick≡J_nested Σe²=" << e_wn
-              << "  m-fact≡J_fact Σe²=" << e_fj
-              << "  wick≡m-fact Σe²=" << e_wf
-              << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
+    std::cout << "  m  n=" << n1;
+    if (do_s1)
+      std::cout << "  wick≡J_nested Σe²=" << e_wn;
+    if (do_s2)
+      std::cout << "  wick≡m-fact Σe²=" << e_wf;
+    if (do_s4)
+      std::cout << "  J_nested(m)≡J_fact(m) Σe²=" << e_nj;
+    std::cout << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
   }
 
   // --- leftover 2b 232 vs ΣG ---
-  std::cout << "\n=== 223st + 232tts  vs  ΣG  (leftover 2b, even ω) ===" << std::endl;
+  std::cout << "\n=== 223st + 232tts  vs  ΣG  (leftover 2b, Ω π=0) ===" << std::endl;
   Operator Z232 = make_leftover_Z(*modelspace);
   t0 = omp_get_wtime();
   Commutator::comm232tts(omega_e, We, Z232);
   std::cout << "  nested J  ||Z2||=" << Z232.TwoBodyNorm()
             << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
   Operator ZG = make_leftover_Z(*modelspace);
-  t0 = omp_get_wtime();
-  ethS::comm223_232(omega_e, H, ZG);
-  std::cout << "  factorized ΣG  ||Z2||=" << ZG.TwoBodyNorm()
-            << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
+  if (do_s4)
+  {
+    t0 = omp_get_wtime();
+    ethS::comm223_232(omega_e, H, ZG);
+    std::cout << "  factorized ΣG  ||Z2||=" << ZG.TwoBodyNorm()
+              << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
+  }
   if (Z232.TwoBodyNorm() < 1e-12)
   {
-    std::cout << "  FAIL: nested 232 leftover ~0" << std::endl;
-    all_ok = false;
+    if (do_s4 and ZG.TwoBodyNorm() > 1e-12)
+    {
+      std::cout << "  FAIL: nested 232 leftover ~0 but ΣG is not" << std::endl;
+      all_ok = false;
+    }
+    else
+      std::cout << "  SKIP: nested 232 leftover ~0 (selection)" << std::endl;
   }
   else
   {
-    all_ok &= report_j_norm("J nested ≡ J ΣG", Z232, ZG, false);
+    if (do_s4)
+      all_ok &= report_j_norm("J nested ≡ J ΣG", Z232, ZG, false);
     auto samp = sample_2b_mscheme(*modelspace, max_m_cmp);
     double e_wn = 0, e_fj = 0, e_wf = 0, e_nj = 0;
     int tr = 0;
     t0 = omp_get_wtime();
     for (const auto &s : samp)
     {
-      const double wick = Mscheme_comm232tts_wick(omega_e, We, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
-      const double fact = Mscheme_fact_GI(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
-                          + Mscheme_fact_GII(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
-                          + Mscheme_fact_GIIIa(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
-                          + Mscheme_fact_GIIIb(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
-                          + Mscheme_fact_GIIIc(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
-                          + Mscheme_fact_GIVa(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
-                          + Mscheme_fact_GIVb_chi(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
-                          + Mscheme_fact_GIVc(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
-      const double jn = GetMschemeMatrixElement_2b(Z232, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
-      const double jf = GetMschemeMatrixElement_2b(ZG, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
-      all_ok &= report_pair("232 wick≡J_nested", wick, jn, e_wn, tr);
-      all_ok &= report_pair("232 m-fact≡J_fact", fact, jf, e_fj, tr);
-      all_ok &= report_pair("232 wick≡m-fact", wick, fact, e_wf, tr);
-      all_ok &= report_pair("232 J_nested(m)≡J_fact(m)", jn, jf, e_nj, tr);
+      const double wick = (do_s1 or do_s2)
+                              ? Mscheme_comm232tts_wick(omega_e, We, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
+                              : 0.0;
+      const double fact = do_s2 ? (Mscheme_fact_GI(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
+                                   + Mscheme_fact_GII(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
+                                   + Mscheme_fact_GIIIa(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
+                                   + Mscheme_fact_GIIIb(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
+                                   + Mscheme_fact_GIIIc(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
+                                   + Mscheme_fact_GIVa(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
+                                   + Mscheme_fact_GIVb_chi(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
+                                   + Mscheme_fact_GIVc(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml))
+                                : 0.0;
+      const double jn = (do_s1 or do_s4)
+                            ? GetMschemeMatrixElement_2b(Z232, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
+                            : 0.0;
+      const double jf = do_s4 ? GetMschemeMatrixElement_2b(ZG, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml) : 0.0;
+      if (do_s1)
+        all_ok &= report_pair("232 wick≡J_nested", wick, jn, e_wn, tr);
+      if (do_s2)
+        all_ok &= report_pair("232 wick≡m-fact", wick, fact, e_wf, tr);
+      if (do_s2 and do_s4)
+        all_ok &= report_pair("232 m-fact≡J_fact", fact, jf, e_fj, tr);
+      if (do_s4)
+        all_ok &= report_pair("232 J_nested(m)≡J_fact(m)", jn, jf, e_nj, tr);
     }
-    std::cout << "  m  n=" << samp.size()
-              << "  wick≡J_nested Σe²=" << e_wn
-              << "  m-fact≡J_fact Σe²=" << e_fj
-              << "  wick≡m-fact Σe²=" << e_wf
-              << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
+    std::cout << "  m  n=" << samp.size();
+    if (do_s1)
+      std::cout << "  wick≡J_nested Σe²=" << e_wn;
+    if (do_s2)
+      std::cout << "  wick≡m-fact Σe²=" << e_wf;
+    if (do_s4)
+      std::cout << "  J_nested(m)≡J_fact(m) Σe²=" << e_nj;
+    std::cout << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
   }
 
   // --- leftover 2b 132 vs 223_132_tts ---
-  std::cout << "\n=== 223st + 132tts  vs  223_132_tts  (leftover 2b, odd ω) ===" << std::endl;
+  std::cout << "\n=== 223st + 132tts  vs  223_132_tts  (leftover 2b, Ω π=1) ===" << std::endl;
   Operator Z132 = make_leftover_Z(*modelspace);
   t0 = omp_get_wtime();
   Commutator::comm132tts(omega_o, Wo, Z132);
   std::cout << "  nested J  ||Z2||=" << Z132.TwoBodyNorm()
             << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
   Operator Zf132 = make_leftover_Z(*modelspace);
-  t0 = omp_get_wtime();
-  ethS::comm223_132_tts(omega_o, H, Zf132);
-  std::cout << "  factorized 223_132_tts  ||Z2||=" << Zf132.TwoBodyNorm()
-            << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
+  if (do_s4)
+  {
+    t0 = omp_get_wtime();
+    ethS::comm223_132_tts(omega_o, H, Zf132);
+    std::cout << "  factorized 223_132_tts  ||Z2||=" << Zf132.TwoBodyNorm()
+              << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
+  }
   if (Z132.TwoBodyNorm() < 1e-12)
   {
-    std::cout << "  FAIL: nested 132 leftover ~0 (need odd ω / emax≥1 ph)" << std::endl;
-    all_ok = false;
+    if (do_s4 and Zf132.TwoBodyNorm() > 1e-12)
+    {
+      std::cout << "  FAIL: nested 132 leftover ~0 but 223_132_tts is not" << std::endl;
+      all_ok = false;
+    }
+    else
+      std::cout << "  SKIP: nested 132 leftover ~0 (need odd Ω 1b / emax ph)" << std::endl;
   }
   else
   {
-    all_ok &= report_j_norm("J nested ≡ J 223_132_tts", Z132, Zf132, false);
+    if (do_s4)
+      all_ok &= report_j_norm("J nested ≡ J 223_132_tts", Z132, Zf132, false);
     auto samp = sample_2b_mscheme(*modelspace, max_m_cmp);
     double e_wn = 0, e_fj = 0, e_wf = 0, e_nj = 0;
     int tr = 0;
     t0 = omp_get_wtime();
     for (const auto &s : samp)
     {
-      const double wick = Mscheme_comm132tts_wick(omega_o, Wo, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
-      const double fact = Mscheme_fact_223_132(omega_o, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
-      const double jn = GetMschemeMatrixElement_2b(Z132, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
-      const double jf = GetMschemeMatrixElement_2b(Zf132, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
-      all_ok &= report_pair("132 wick≡J_nested", wick, jn, e_wn, tr);
-      all_ok &= report_pair("132 m-fact≡J_fact", fact, jf, e_fj, tr);
-      all_ok &= report_pair("132 wick≡m-fact", wick, fact, e_wf, tr);
-      all_ok &= report_pair("132 J_nested(m)≡J_fact(m)", jn, jf, e_nj, tr);
+      const double wick = (do_s1 or do_s2)
+                              ? Mscheme_comm132tts_wick(omega_o, Wo, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
+                              : 0.0;
+      const double fact = do_s2 ? Mscheme_fact_223_132(omega_o, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
+                                : 0.0;
+      const double jn = (do_s1 or do_s4)
+                            ? GetMschemeMatrixElement_2b(Z132, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml)
+                            : 0.0;
+      const double jf = do_s4 ? GetMschemeMatrixElement_2b(Zf132, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml) : 0.0;
+      if (do_s1)
+        all_ok &= report_pair("132 wick≡J_nested", wick, jn, e_wn, tr);
+      if (do_s2)
+        all_ok &= report_pair("132 wick≡m-fact", wick, fact, e_wf, tr);
+      if (do_s2 and do_s4)
+        all_ok &= report_pair("132 m-fact≡J_fact", fact, jf, e_fj, tr);
+      if (do_s4)
+        all_ok &= report_pair("132 J_nested(m)≡J_fact(m)", jn, jf, e_nj, tr);
     }
-    std::cout << "  m  n=" << samp.size()
-              << "  wick≡J_nested Σe²=" << e_wn
-              << "  m-fact≡J_fact Σe²=" << e_fj
-              << "  wick≡m-fact Σe²=" << e_wf
-              << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
+    std::cout << "  m  n=" << samp.size();
+    if (do_s1)
+      std::cout << "  wick≡J_nested Σe²=" << e_wn;
+    if (do_s2)
+      std::cout << "  wick≡m-fact Σe²=" << e_wf;
+    if (do_s4)
+      std::cout << "  J_nested(m)≡J_fact(m) Σe²=" << e_nj;
+    std::cout << "  (" << omp_get_wtime() - t0 << "s)" << std::endl;
   }
 
   std::cout << "\n" << __func__ << "  OVERALL: " << (all_ok ? "PASS" : "FAIL") << std::endl;
@@ -8271,32 +8357,6 @@ bool UnitTest::TestTensorFactorizedDiagrams(int jrank, int max_m_cmp)
     Operator Z = make_leftover_Z(*modelspace);
     ethS::comm223_232_GIVc(omega_e, H, Z);
     all_ok &= cmp_2b("GIVc", Z, omega_e, &UnitTest::Mscheme_fact_GIVc);
-
-    std::cout << "  GIVc samples:" << std::endl;
-    for (size_t is = 0; is < samp.size(); ++is)
-    {
-      const auto &s = samp[is];
-      const double jm = GetMschemeMatrixElement_2b(Z, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
-      const double fm = Mscheme_fact_GIVc(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
-      std::cout << "    [" << is << "] (" << s.i << "," << s.j << "," << s.k << "," << s.l
-                << ") m=(" << s.mi << "," << s.mj << "," << s.mk << "," << s.ml << ")"
-                << "  m=" << fm << " J=" << jm;
-      if (std::abs(jm) > 1e-12)
-        std::cout << " r=" << fm / jm;
-      std::cout << std::endl;
-      auto p_olab = [&](int o) {
-        Orbit &oo = modelspace->GetOrbit(o);
-        std::cout << " " << o << "(n=" << oo.n << " l=" << oo.l << " j=" << oo.j2
-                  << "/2 tz=" << oo.tz2 << " occ=" << oo.occ << ")";
-      };
-      std::cout << "     ";
-      p_olab(s.i);
-      p_olab(s.j);
-      std::cout << std::endl << "     ";
-      p_olab(s.k);
-      p_olab(s.l);
-      std::cout << std::endl;
-    }
   }
 
   std::cout << "\n--- 223_132 pieces (odd ω, J ethS vs m-fact) ---" << std::endl;

@@ -269,8 +269,10 @@ class UnitTest
   bool TestFactorizedDoubleCommutators(Operator& eta, Operator& H);
 
   /// Tensor leftover three-way, all in C++: m-unfact wick, m-fact strings, J nested tts, J ethS.
-  /// Same tensor kernels at λ=0 (hats = 1, Ω reduced). Even-parity Ω for 231/232; odd for 132.
-  bool TestTensorFactorizedThreeway(int jrank = 2, int max_m_cmp = 8);
+  /// Same tensor kernels at λ=0 (hats = 1, Ω reduced). trank = Ω isospin rank.
+  /// π=0 Ω → leftover 231/232; π=1 Ω → leftover 132. Leftover Z is unreduced scalar.
+  /// step=0 all; 1 = m-unfact Wick ≡ J nested; 2 = m-unfact ≡ m-fact; 4 = J nested ≡ J fact.
+  bool TestTensorFactorizedThreeway(int jrank = 2, int max_m_cmp = 8, int step = 0, int trank = 0);
   /// Isolated ethS diagrams: GetMscheme(J) vs Mscheme_fact_* on sampled MEs. λ=0 allowed.
   bool TestTensorFactorizedDiagrams(int jrank = 2, int max_m_cmp = 4);
 

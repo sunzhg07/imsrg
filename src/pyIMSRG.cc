@@ -1784,7 +1784,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
            &UnitTest::TestFactorizedDoubleCommutators)
       .def("TestTensorFactorizedThreeway",
            &UnitTest::TestTensorFactorizedThreeway,
-           py::arg("jrank") = 2, py::arg("max_m_cmp") = 8)
+           py::arg("jrank") = 2, py::arg("max_m_cmp") = 8, py::arg("step") = 0,
+           py::arg("trank") = 0)
       .def("TestTensorFactorizedDiagrams",
            &UnitTest::TestTensorFactorizedDiagrams,
            py::arg("jrank") = 2, py::arg("max_m_cmp") = 4)
