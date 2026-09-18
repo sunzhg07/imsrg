@@ -173,6 +173,9 @@ class UnitTest
   bool Test_evc_z1_jscheme( const Operator& T, const Operator& Z );
   bool Test_evc_z2_jscheme( const Operator& T, const Operator& Z );
   bool Test_evc_z0_jscheme( const Operator& T, const Operator& Z );
+  /// Closed 4-V 0-body: Z = 1/2 Σ V_abij V_cjml V_imkc V_klab.
+  /// Unreduced scalar AMC 9j vs physical m-scheme (learn/amc_tts/z_4v).
+  bool Test_z_4v_amc( const Operator& V );
   bool Test_evc_ode( const Operator& T );
   bool Test_evc_kernels( const Operator& H );
 
@@ -264,6 +267,12 @@ class UnitTest
 //  bool TestFactorizedDoubleCommutators(ModelSpace& ms);
 //  bool TestFactorizedDoubleCommutators();
   bool TestFactorizedDoubleCommutators(Operator& eta, Operator& H);
+
+  /// Tensor leftover three-way, all in C++: m-unfact wick, m-fact strings, J nested tts, J ethS.
+  /// Same tensor kernels at λ=0 (hats = 1, Ω reduced). Even-parity Ω for 231/232; odd for 132.
+  bool TestTensorFactorizedThreeway(int jrank = 2, int max_m_cmp = 8);
+  /// Isolated ethS diagrams: GetMscheme(J) vs Mscheme_fact_* on sampled MEs. λ=0 allowed.
+  bool TestTensorFactorizedDiagrams(int jrank = 2, int max_m_cmp = 4);
 
   bool TestPerturbativeTriples();
 

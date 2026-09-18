@@ -546,6 +546,17 @@ target_link_libraries(
     OpenMP::OpenMP_CXX
 )
 
+add_executable(
+    test_tensor_factorized
+    test_tensor_factorized.cc
+)
+target_link_libraries(
+    test_tensor_factorized
+    PUBLIC
+    IMSRG
+    OpenMP::OpenMP_CXX
+)
+
 
 
 #target_link_libraries(
@@ -591,6 +602,7 @@ list(APPEND CMAKE_CTEST_ARGUMENTS "--verbose")
 add_test(NAME Commutators2 COMMAND  python3 ../test/UnitTestCommutators2.py )
 add_test(NAME Commutators3 COMMAND  python3 ../test/UnitTestCommutators3.py )
 add_test(NAME Factorized   COMMAND  python3 ../test/UnitTestFactorized.py )
+add_test(NAME TensorFactorized COMMAND test_tensor_factorized)
 add_test(NAME Triples      COMMAND  python3 ../test/UnitTestTriples.py )
 add_test(NAME Tensor       COMMAND  python3 ../test/UnitTestTensor.py )
 add_test(NAME NormalOrdering    COMMAND  python3 ../test/UnitTestNormalOrdering.py )

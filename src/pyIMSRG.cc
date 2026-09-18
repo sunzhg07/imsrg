@@ -1782,11 +1782,18 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("SanityCheck", &UnitTest::SanityCheck)
       .def("TestFactorizedDoubleCommutators",
            &UnitTest::TestFactorizedDoubleCommutators)
+      .def("TestTensorFactorizedThreeway",
+           &UnitTest::TestTensorFactorizedThreeway,
+           py::arg("jrank") = 2, py::arg("max_m_cmp") = 8)
+      .def("TestTensorFactorizedDiagrams",
+           &UnitTest::TestTensorFactorizedDiagrams,
+           py::arg("jrank") = 2, py::arg("max_m_cmp") = 4)
       .def("TestPerturbativeTriples", &UnitTest::TestPerturbativeTriples)
       .def("Test_evc_rhs_ccsd", &UnitTest::Test_evc_rhs_ccsd)
       .def("Test_evc_z1_jscheme", &UnitTest::Test_evc_z1_jscheme)
       .def("Test_evc_z2_jscheme", &UnitTest::Test_evc_z2_jscheme)
       .def("Test_evc_z0_jscheme", &UnitTest::Test_evc_z0_jscheme)
+      .def("Test_z_4v_amc", &UnitTest::Test_z_4v_amc)
       .def("Test_evc_ode", &UnitTest::Test_evc_ode)
       .def("Test_evc_kernels", &UnitTest::Test_evc_kernels)
       .def("Test_comm110ss", &UnitTest::Test_comm110ss)
