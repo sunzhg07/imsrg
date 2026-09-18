@@ -41,6 +41,14 @@ extern bool use_TypeGIIIc_2b; // Gamma^III_c Factorized IIe/IIf (λ=0)
 extern bool use_TypeGIVa_2b;  // Gamma^IV_a Path B χ^κ (any λ; Pandya/DGEMM/inv)
 extern bool use_TypeGIVb_2b;  // Gamma^IV_b via chi^iota
 extern bool use_TypeGIVc_2b;  // Gamma^IV_c via chi^lambda
+/// Isolated-test helper: 0=both χ^λ terms, 1=T1 (ΓΩ, occ on l), 2=T2 (ΩΓ, occ on j).
+extern int givc_chi_which;
+extern bool givc_fold_as;
+/// 0: CG leftover (gold lock). 1: Pandya→DGEMM→inv (speed form).
+extern int givc_leftover_kind;
+void SetGIVcChiWhich(int which);
+void SetGIVcFoldAS(bool tf);
+void SetGIVcLeftoverKind(int kind);
 void SetUse_1b_Intermediates(bool tf);
 void SetUse_2b_Intermediates(bool tf);
 

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cctype>
 #include <random>
 #include <string>
 #include <set>
@@ -7736,6 +7737,9 @@ struct EthsFlagGuard
 {
   bool i1, i2, tI, tII, tIII, tIIIa;
   bool GI, GII, GIIIa, GIIIb, GIIIc, GIVa, GIVb, GIVc;
+  int givc_which;
+  bool fold_as;
+  int leftover_kind;
   EthsFlagGuard()
       : i1(ethS::use_1b_intermediates), i2(ethS::use_2b_intermediates),
         tI(ethS::use_TypeI_1b), tII(ethS::use_TypeII_1b),
@@ -7743,7 +7747,9 @@ struct EthsFlagGuard
         GI(ethS::use_TypeGI_2b), GII(ethS::use_TypeGII_2b),
         GIIIa(ethS::use_TypeGIIIa_2b), GIIIb(ethS::use_TypeGIIIb_2b),
         GIIIc(ethS::use_TypeGIIIc_2b), GIVa(ethS::use_TypeGIVa_2b),
-        GIVb(ethS::use_TypeGIVb_2b), GIVc(ethS::use_TypeGIVc_2b)
+        GIVb(ethS::use_TypeGIVb_2b), GIVc(ethS::use_TypeGIVc_2b),
+        givc_which(ethS::givc_chi_which), fold_as(ethS::givc_fold_as),
+        leftover_kind(ethS::givc_leftover_kind)
   {
   }
   ~EthsFlagGuard() { restore(); }
@@ -7763,6 +7769,9 @@ struct EthsFlagGuard
     ethS::SetUse_TypeGIVa_2b(GIVa);
     ethS::SetUse_TypeGIVb_2b(GIVb);
     ethS::SetUse_TypeGIVc_2b(GIVc);
+    ethS::SetGIVcChiWhich(givc_which);
+    ethS::SetGIVcFoldAS(fold_as);
+    ethS::SetGIVcLeftoverKind(leftover_kind);
   }
   static void all_on()
   {
@@ -7780,6 +7789,9 @@ struct EthsFlagGuard
     ethS::SetUse_TypeGIVa_2b(true);
     ethS::SetUse_TypeGIVb_2b(true);
     ethS::SetUse_TypeGIVc_2b(true);
+    ethS::SetGIVcChiWhich(0);
+    ethS::SetGIVcFoldAS(true);
+    ethS::SetGIVcLeftoverKind(0);
   }
 };
 
@@ -7822,40 +7834,70 @@ std::vector<Sample2b> sample_2b_mscheme(ModelSpace &ms, int maxn)
 {
   std::vector<Sample2b> out;
   const int nch = (int)ms.GetNumberTwoBodyChannels();
-  for (int ch = 0; ch < nch and (int)out.size() < maxn; ++ch)
+  auto try_add = [&](int ch, int ib, int ik) -> bool
   {
+    if ((int)out.size() >= maxn)
+      return false;
     TwoBodyChannel &tbc = ms.GetTwoBodyChannel(ch);
     const int J = tbc.J;
     const int nk = (int)tbc.GetNumberKets();
+    if (ib < 0 or ik < 0 or ib >= nk or ik >= nk)
+      return false;
+    Ket &bra = tbc.GetKet(ib);
+    Ket &ket = tbc.GetKet(ik);
+    const int i = (int)bra.p, j = (int)bra.q, k = (int)ket.p, l = (int)ket.q;
+    Orbit &oi = ms.GetOrbit(i);
+    Orbit &oj = ms.GetOrbit(j);
+    Orbit &ok = ms.GetOrbit(k);
+    Orbit &ol = ms.GetOrbit(l);
+    const int mi = oi.j2;
+    const int mj = 2 * J - mi;
+    if (std::abs(mj) > oj.j2)
+      return false;
+    if (i == j and mi == mj)
+      return false;
+    const int mk = mi, ml = mj;
+    if (std::abs(mk) > ok.j2 or std::abs(ml) > ol.j2)
+      return false;
+    if (k == l and mk == ml)
+      return false;
+    out.push_back({i, mi, j, mj, k, mk, l, ml});
+    return true;
+  };
+  // Pass 1: one ME per channel so high-J / even-ph are not skipped.
+  for (int ch = 0; ch < nch and (int)out.size() < maxn; ++ch)
+  {
+    TwoBodyChannel &tbc = ms.GetTwoBodyChannel(ch);
+    const int nk = (int)tbc.GetNumberKets();
+    if (nk < 1)
+      continue;
+    if (not try_add(ch, 0, 0) and nk > 1)
+      try_add(ch, 0, std::min(1, nk - 1));
+  }
+  // Pass 2: extra kets.
+  for (int ch = 0; ch < nch and (int)out.size() < maxn; ++ch)
+  {
+    TwoBodyChannel &tbc = ms.GetTwoBodyChannel(ch);
+    const int nk = (int)tbc.GetNumberKets();
     for (int ib = 0; ib < nk and (int)out.size() < maxn; ++ib)
-    {
-      Ket &bra = tbc.GetKet(ib);
-      const int i = (int)bra.p, j = (int)bra.q;
-      Orbit &oi = ms.GetOrbit(i);
-      Orbit &oj = ms.GetOrbit(j);
-      const int mi = oi.j2;
-      const int mj = 2 * J - mi;
-      if (std::abs(mj) > oj.j2)
-        continue;
-      if (i == j and mi == mj)
-        continue;
-      const int nket = std::min(nk, 2);
-      for (int ik = 0; ik < nket and (int)out.size() < maxn; ++ik)
-      {
-        Ket &ket = tbc.GetKet(ik);
-        const int k = (int)ket.p, l = (int)ket.q;
-        Orbit &ok = ms.GetOrbit(k);
-        Orbit &ol = ms.GetOrbit(l);
-        const int mk = mi, ml = mj;
-        if (std::abs(mk) > ok.j2 or std::abs(ml) > ol.j2)
-          continue;
-        if (k == l and mk == ml)
-          continue;
-        out.push_back({i, mi, j, mj, k, mk, l, ml});
-      }
-    }
+      for (int ik = 0; ik < nk and (int)out.size() < maxn; ++ik)
+        try_add(ch, ib, ik);
   }
   return out;
+}
+
+double tb_dot(const Operator &A, const Operator &B)
+{
+  double s = 0.0;
+  for (auto &it : A.TwoBody.MatEl)
+  {
+    const arma::mat &a = it.second;
+    const arma::mat &b = B.TwoBody.GetMatrix(it.first[0], it.first[1]);
+    if (a.n_rows != b.n_rows or a.n_cols != b.n_cols)
+      continue;
+    s += arma::accu(a % b);
+  }
+  return s;
 }
 
 bool report_pair(const char *tag, double a, double b, double &sum_err, int &n_trouble)
@@ -8179,10 +8221,15 @@ bool UnitTest::TestTensorFactorizedThreeway(int jrank, int max_m_cmp, int step, 
   return all_ok;
 }
 
-bool UnitTest::TestTensorFactorizedDiagrams(int jrank, int max_m_cmp)
+bool UnitTest::TestTensorFactorizedDiagrams(int jrank, int max_m_cmp,
+                                           const std::string &focus, int trank,
+                                           int parity)
 {
-  std::cout << "\n======== " << __func__ << "  λ=" << jrank
-            << "  max_m_cmp=" << max_m_cmp << " ========" << std::endl;
+  std::cout << "\n======== " << __func__ << "  λ=" << jrank << "  T=" << trank
+            << "  π=" << parity << "  max_m_cmp=" << max_m_cmp;
+  if (not focus.empty())
+    std::cout << "  focus=" << focus;
+  std::cout << " ========" << std::endl;
   if (jrank < 0)
   {
     std::cout << "  FAIL: λ≥0" << std::endl;
@@ -8191,6 +8238,18 @@ bool UnitTest::TestTensorFactorizedDiagrams(int jrank, int max_m_cmp)
   if (max_m_cmp < 1)
     max_m_cmp = 1;
 
+  std::string focus_lc = focus;
+  for (char &c : focus_lc)
+    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  const bool only_givc =
+      (focus_lc == "givc" or focus_lc == "ivc" or focus_lc == "g4c" or
+       focus_lc == "4c");
+  if (not focus.empty() and not only_givc)
+  {
+    std::cout << "  FAIL: unknown focus=" << focus << " (use GIVc)" << std::endl;
+    return false;
+  }
+
   omp_set_num_threads(1);
   modelspace->PreCalculateSixJ();
   modelspace->PreCalculateNineJ();
@@ -8198,10 +8257,8 @@ bool UnitTest::TestTensorFactorizedDiagrams(int jrank, int max_m_cmp)
   Operator H = RandomOp(*modelspace, 0, 0, 0, 2, +1);
   if (H.IsReduced())
     H.MakeNotReduced();
-  Operator omega_e = RandomOp(*modelspace, jrank, 0, 0, 3, -1);
+  Operator omega_e = RandomOp(*modelspace, jrank, trank, parity, 3, -1);
   make_tensor_omega(omega_e);
-  Operator omega_o = RandomOp(*modelspace, jrank, 0, 1, 3, -1);
-  make_tensor_omega(omega_o);
 
   EthsFlagGuard flags;
   bool all_ok = true;
@@ -8246,10 +8303,174 @@ bool UnitTest::TestTensorFactorizedDiagrams(int jrank, int max_m_cmp)
     {
       const double jm = GetMschemeMatrixElement_2b(ZJ, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
       const double fm = (this->*mfun)(Eta, H, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
-      ok &= report_pair(tag, fm, jm, sum_err, tr);
+      const bool one_ok = report_pair(tag, fm, jm, sum_err, tr);
+      if (not one_ok and tr <= 8)
+        std::cout << "      idx (" << s.i << "," << s.j << "," << s.k << "," << s.l
+                  << ") m=(" << s.mi << "," << s.mj << "," << s.mk << "," << s.ml << ")"
+                  << std::endl;
+      ok &= one_ok;
     }
     std::cout << "  " << tag << "  n=" << samp.size() << "  ||Z2||=" << ZJ.TwoBodyNorm()
               << "  Σe²=" << sum_err << "  => " << (ok ? "PASS" : "FAIL") << std::endl;
+    return ok;
+  };
+
+  auto chi_amc_J = [&](int which, int J0, int J1, int i, int j, int k, int l,
+                      int hat_side) -> double {
+    const int lam = omega_e.GetJRank();
+    if (not AngMom::Triangle(J0, J1, lam))
+      return 0.0;
+    double sm = 0.0;
+    for (auto a : modelspace->all_orbits)
+    {
+      Orbit &oa = modelspace->GetOrbit(a);
+      const double na = oa.occ, nna = 1.0 - na;
+      for (auto b : modelspace->all_orbits)
+      {
+        Orbit &ob = modelspace->GetOrbit(b);
+        const double nb = ob.occ, nnb = 1.0 - nb;
+        const double n_l = modelspace->GetOrbit(l).occ;
+        const double n_j = modelspace->GetOrbit(j).occ;
+        const double wl = nna * nnb * n_l + na * nb * (1.0 - n_l);
+        const double wj = nna * nnb * n_j + na * nb * (1.0 - n_j);
+        if (which != 2 and std::abs(wl) > 1e-12)
+        {
+          const double t = wl * H.TwoBody.GetTBME_J(J0, J0, i, j, a, b) *
+                           omega_e.TwoBody.GetTBME_J(J0, J1, a, b, k, l);
+          sm += (hat_side == 1 ? std::sqrt(2.0 * J0 + 1.0) * t : t);
+        }
+        if (which != 1 and std::abs(wj) > 1e-12)
+        {
+          const double t = wj * omega_e.TwoBody.GetTBME_J(J0, J1, i, j, a, b) *
+                           H.TwoBody.GetTBME_J(J1, J1, a, b, k, l);
+          sm += (hat_side == 2 ? std::sqrt(2.0 * J1 + 1.0) * t : t);
+        }
+      }
+    }
+    return sm;
+  };
+
+  auto unpack_chiJ = [&](int which, int hat_side, int i, int mi, int j, int mj,
+                         int k, int mk, int l, int ml) -> double {
+    if (i == j and mi == mj)
+      return 0.0;
+    if (k == l and mk == ml)
+      return 0.0;
+    const int Jop = omega_e.GetJRank();
+    if (std::abs(mi + mj - mk - ml) > 2 * Jop)
+      return 0.0;
+    Orbit &oi = modelspace->GetOrbit(i);
+    Orbit &oj = modelspace->GetOrbit(j);
+    Orbit &ok = modelspace->GetOrbit(k);
+    Orbit &ol = modelspace->GetOrbit(l);
+    const int M0 = (mi + mj) / 2;
+    const int M1 = (mk + ml) / 2;
+    double sm = 0.0;
+    const int J0min = std::abs(oi.j2 - oj.j2) / 2;
+    const int J0max = (oi.j2 + oj.j2) / 2;
+    const int J1min = std::abs(ok.j2 - ol.j2) / 2;
+    const int J1max = (ok.j2 + ol.j2) / 2;
+    for (int J0 = J0min; J0 <= J0max; ++J0)
+    {
+      if (std::abs(M0) > J0)
+        continue;
+      if (i == j and J0 % 2 > 0)
+        continue;
+      const double cab = AngMom::CG(0.5 * oi.j2, 0.5 * mi, 0.5 * oj.j2, 0.5 * mj, J0, M0);
+      if (std::abs(cab) < 1e-15)
+        continue;
+      for (int J1 = J1min; J1 <= J1max; ++J1)
+      {
+        if (std::abs(M1) > J1)
+          continue;
+        if (k == l and J1 % 2 > 0)
+          continue;
+        if (not AngMom::Triangle(J0, J1, Jop))
+          continue;
+        const double ccd = AngMom::CG(0.5 * ok.j2, 0.5 * mk, 0.5 * ol.j2, 0.5 * ml, J1, M1);
+        if (std::abs(ccd) < 1e-15)
+          continue;
+        const double cj = AngMom::CG(J1, M1, Jop, (M0 - M1), J0, M0);
+        if (std::abs(cj) < 1e-15)
+          continue;
+        const double v = chi_amc_J(which, J0, J1, i, j, k, l, hat_side);
+        sm += cj * cab * ccd / std::sqrt(2.0 * J0 + 1.0) * v;
+      }
+    }
+    return sm;
+  };
+
+  auto cmp_chi_unpack = [&](const char *tag, int which, int hat_side)
+  {
+    double sum_err = 0;
+    int tr = 0;
+    bool ok = true;
+    double maxm = 0.0;
+    int nnz = 0;
+    for (const auto &s : samp)
+    {
+      const double m = Mscheme_chi_lambda(omega_e, H, s.i, s.mi, s.j, s.mj, s.k, s.mk,
+                                          s.l, s.ml, which);
+      const double jv = unpack_chiJ(which, hat_side, s.i, s.mi, s.j, s.mj, s.k, s.mk,
+                                    s.l, s.ml);
+      maxm = std::max(maxm, std::abs(m));
+      if (std::abs(m) > 1e-12 or std::abs(jv) > 1e-12)
+        nnz++;
+      const bool one_ok = report_pair(tag, m, jv, sum_err, tr);
+      if (not one_ok and tr <= 8)
+        std::cout << "      idx (" << s.i << "," << s.j << "," << s.k << "," << s.l
+                  << ") m=(" << s.mi << "," << s.mj << "," << s.mk << "," << s.ml << ")"
+                  << std::endl;
+      ok &= one_ok;
+    }
+    std::cout << "  " << tag << "  n=" << samp.size() << "  nnz=" << nnz
+              << "  max|m|=" << maxm << "  Σe²=" << sum_err
+              << "  => " << (ok ? "PASS" : "FAIL") << std::endl;
+    return ok;
+  };
+
+  auto cmp_chi_ialb = [&](const char *tag, int which)
+  {
+    // Leftover contracts χ_ialb, not χ_ijkl. Probe dummies a,b on the first samples.
+    double sum_err = 0;
+    int tr = 0, n = 0, nnz = 0;
+    bool ok = true;
+    double maxm = 0.0;
+    const int ns = std::min(4, (int)samp.size());
+    std::vector<int> orbs(modelspace->all_orbits.begin(), modelspace->all_orbits.end());
+    const int nprobe = std::min(6, (int)orbs.size());
+    for (int is = 0; is < ns; ++is)
+    {
+      const auto &s = samp[is];
+      for (int ia = 0; ia < nprobe; ++ia)
+      {
+        const int a = orbs[ia];
+        Orbit &oa = modelspace->GetOrbit(a);
+        const int ma = oa.j2;
+        for (int ib = 0; ib < nprobe; ++ib)
+        {
+          const int b = orbs[ib];
+          Orbit &ob = modelspace->GetOrbit(b);
+          const int mb = ob.j2;
+          const double m = Mscheme_chi_lambda(omega_e, H, s.i, s.mi, a, ma, s.l, s.ml,
+                                              b, mb, which);
+          const double jv = unpack_chiJ(which, 0, s.i, s.mi, a, ma, s.l, s.ml, b, mb);
+          n++;
+          maxm = std::max(maxm, std::abs(m));
+          if (std::abs(m) > 1e-12 or std::abs(jv) > 1e-12)
+            nnz++;
+          const bool one_ok = report_pair(tag, m, jv, sum_err, tr);
+          if (not one_ok and tr <= 8)
+            std::cout << "      Z(" << s.i << "," << s.j << "," << s.k << "," << s.l
+                      << ") χ_ialb a=" << a << " ma=" << ma << " b=" << b
+                      << " mb=" << mb << std::endl;
+          ok &= one_ok;
+        }
+      }
+    }
+    std::cout << "  " << tag << "  n=" << n << "  nnz=" << nnz
+              << "  max|m|=" << maxm << "  Σe²=" << sum_err
+              << "  => " << (ok ? "PASS" : "FAIL") << std::endl;
     return ok;
   };
 
@@ -8270,7 +8491,13 @@ bool UnitTest::TestTensorFactorizedDiagrams(int jrank, int max_m_cmp)
     ethS::SetUse_TypeGIVb_2b(false);
     ethS::SetUse_TypeGIVc_2b(false);
   };
+  (void)isolate_1b;
+  (void)cmp_1b;
+  (void)isolate_1b;
+  (void)cmp_1b;
 
+  if (not only_givc)
+  {
   std::cout << "\n--- leftover 1b diagrams (even ω, J ethS vs m-fact) ---" << std::endl;
   {
     isolate_1b(true, false, false, false);
@@ -8296,84 +8523,385 @@ bool UnitTest::TestTensorFactorizedDiagrams(int jrank, int max_m_cmp)
     ethS::comm223_231_st(omega_e, H, Z);
     all_ok &= cmp_1b("fIIIb", Z, &UnitTest::Mscheme_fact_fIIIb);
   }
-
-  auto isolate_G = [](bool GI, bool GII)
-  {
-    ethS::SetUse_1b_Intermediates(GI or GII);
-    ethS::SetUse_2b_Intermediates(false);
-    ethS::SetUse_TypeI_1b(false);
-    ethS::SetUse_TypeII_1b(false);
-    ethS::SetUse_TypeIII_1b(false);
-    ethS::SetUse_TypeIIIa_1b(false);
-    ethS::SetUse_TypeGI_2b(GI);
-    ethS::SetUse_TypeGII_2b(GII);
-    ethS::SetUse_TypeGIIIa_2b(false);
-    ethS::SetUse_TypeGIIIb_2b(false);
-    ethS::SetUse_TypeGIIIc_2b(false);
-    ethS::SetUse_TypeGIVa_2b(false);
-    ethS::SetUse_TypeGIVb_2b(false);
-    ethS::SetUse_TypeGIVc_2b(false);
-  };
+  }
 
   std::cout << "\n--- leftover 2b diagrams (even ω, J ethS vs m-fact) ---" << std::endl;
+  struct GIso
   {
+    const char *name;
+    Operator Z;
+  };
+  std::vector<GIso> giso;
+  auto push_G = [&](const char *name, Operator &&Z,
+                    double (UnitTest::*mfun)(const Operator &, const Operator &, int, int, int, int, int, int, int, int))
+  {
+    all_ok &= cmp_2b(name, Z, omega_e, mfun);
+    giso.push_back({name, std::move(Z)});
+  };
+  if (not only_givc)
+  {
+    auto isolate_G = [](bool GI, bool GII)
+    {
+      ethS::SetUse_1b_Intermediates(GI or GII);
+      ethS::SetUse_2b_Intermediates(false);
+      ethS::SetUse_TypeI_1b(false);
+      ethS::SetUse_TypeII_1b(false);
+      ethS::SetUse_TypeIII_1b(false);
+      ethS::SetUse_TypeIIIa_1b(false);
+      ethS::SetUse_TypeGI_2b(GI);
+      ethS::SetUse_TypeGII_2b(GII);
+      ethS::SetUse_TypeGIIIa_2b(false);
+      ethS::SetUse_TypeGIIIb_2b(false);
+      ethS::SetUse_TypeGIIIc_2b(false);
+      ethS::SetUse_TypeGIVa_2b(false);
+      ethS::SetUse_TypeGIVb_2b(false);
+      ethS::SetUse_TypeGIVc_2b(false);
+    };
     isolate_G(true, false);
     Operator Z = make_leftover_Z(*modelspace);
     ethS::comm223_232(omega_e, H, Z);
-    all_ok &= cmp_2b("GI", Z, omega_e, &UnitTest::Mscheme_fact_GI);
+    push_G("GI", std::move(Z), &UnitTest::Mscheme_fact_GI);
+    {
+      isolate_G(false, true);
+      Operator Zg = make_leftover_Z(*modelspace);
+      ethS::comm223_232(omega_e, H, Zg);
+      push_G("GII", std::move(Zg), &UnitTest::Mscheme_fact_GII);
+    }
+    {
+      Operator Zg = make_leftover_Z(*modelspace);
+      ethS::comm223_232_GIIIa(omega_e, H, Zg);
+      push_G("GIIIa", std::move(Zg), &UnitTest::Mscheme_fact_GIIIa);
+    }
+    {
+      Operator Zg = make_leftover_Z(*modelspace);
+      ethS::comm223_232_GIIIb(omega_e, H, Zg);
+      push_G("GIIIb", std::move(Zg), &UnitTest::Mscheme_fact_GIIIb);
+    }
+    {
+      Operator Zg = make_leftover_Z(*modelspace);
+      ethS::comm223_232_GIIIc(omega_e, H, Zg);
+      push_G("GIIIc", std::move(Zg), &UnitTest::Mscheme_fact_GIIIc);
+    }
+    {
+      Operator Zg = make_leftover_Z(*modelspace);
+      ethS::comm223_232_GIVa(omega_e, H, Zg);
+      push_G("GIVa", std::move(Zg), &UnitTest::Mscheme_fact_GIVa);
+    }
+    {
+      Operator Zg = make_leftover_Z(*modelspace);
+      ethS::comm223_232_GIVb(omega_e, H, Zg);
+      push_G("GIVb", std::move(Zg), &UnitTest::Mscheme_fact_GIVb_chi);
+    }
   }
-  {
-    isolate_G(false, true);
-    Operator Z = make_leftover_Z(*modelspace);
-    ethS::comm223_232(omega_e, H, Z);
-    all_ok &= cmp_2b("GII", Z, omega_e, &UnitTest::Mscheme_fact_GII);
-  }
-  {
-    Operator Z = make_leftover_Z(*modelspace);
-    ethS::comm223_232_GIIIa(omega_e, H, Z);
-    all_ok &= cmp_2b("GIIIa", Z, omega_e, &UnitTest::Mscheme_fact_GIIIa);
-  }
-  {
-    Operator Z = make_leftover_Z(*modelspace);
-    ethS::comm223_232_GIIIb(omega_e, H, Z);
-    all_ok &= cmp_2b("GIIIb", Z, omega_e, &UnitTest::Mscheme_fact_GIIIb);
-  }
-  {
-    Operator Z = make_leftover_Z(*modelspace);
-    ethS::comm223_232_GIIIc(omega_e, H, Z);
-    all_ok &= cmp_2b("GIIIc", Z, omega_e, &UnitTest::Mscheme_fact_GIIIc);
-  }
-  {
-    Operator Z = make_leftover_Z(*modelspace);
-    ethS::comm223_232_GIVa(omega_e, H, Z);
-    all_ok &= cmp_2b("GIVa", Z, omega_e, &UnitTest::Mscheme_fact_GIVa);
-  }
-  {
-    Operator Z = make_leftover_Z(*modelspace);
-    ethS::comm223_232_GIVb(omega_e, H, Z);
-    all_ok &= cmp_2b("GIVb", Z, omega_e, &UnitTest::Mscheme_fact_GIVb_chi);
-  }
+  if (not only_givc)
   {
     Operator Z = make_leftover_Z(*modelspace);
     ethS::comm223_232_GIVc(omega_e, H, Z);
-    all_ok &= cmp_2b("GIVc", Z, omega_e, &UnitTest::Mscheme_fact_GIVc);
+    push_G("GIVc", std::move(Z), &UnitTest::Mscheme_fact_GIVc);
+  }
+  else
+  {
+    std::cout << "\n--- GIVc χ m vs WE-unpack of AMC-J ---" << std::endl;
+    cmp_chi_unpack("chi_T1_ijkl", 1, 0);
+    cmp_chi_unpack("chi_T2_ijkl", 2, 0);
+    std::cout << "  leftover samples:" << std::endl;
+    for (int is = 0; is < (int)samp.size(); ++is)
+    {
+      const auto &s = samp[is];
+      std::cout << "    [" << is << "] (" << s.i << "," << s.j << "," << s.k << ","
+                << s.l << ") m=(" << s.mi << "," << s.mj << "," << s.mk << ","
+                << s.ml << ")" << std::endl;
+    }
+    cmp_chi_ialb("chi_T1_ialb", 1);
+    cmp_chi_ialb("chi_T2_ialb", 2);
+
+    // Probe χ_ialb on the known T1 leftover failures (0,6) and (0,7).
+    auto probe_pair = [&](int i, int j, int k, int l, int mi, int mj, int mk, int ml,
+                          int which, const char *tag) {
+      (void)j;
+      (void)k;
+      (void)mj;
+      (void)mk;
+      double sum_err = 0;
+      int tr = 0, n = 0, nnz = 0;
+      bool ok = true;
+      double maxm = 0.0;
+      std::vector<int> orbs(modelspace->all_orbits.begin(), modelspace->all_orbits.end());
+      const int nprobe = std::min(6, (int)orbs.size());
+      for (int ia = 0; ia < nprobe; ++ia)
+      {
+        const int a = orbs[ia];
+        Orbit &oa = modelspace->GetOrbit(a);
+        const int ma = oa.j2;
+        for (int ib = 0; ib < nprobe; ++ib)
+        {
+          const int b = orbs[ib];
+          Orbit &ob = modelspace->GetOrbit(b);
+          const int mb = ob.j2;
+          const double m = Mscheme_chi_lambda(omega_e, H, i, mi, a, ma, l, ml, b, mb, which);
+          const double jv = unpack_chiJ(which, 0, i, mi, a, ma, l, ml, b, mb);
+          n++;
+          maxm = std::max(maxm, std::abs(m));
+          if (std::abs(m) > 1e-12 or std::abs(jv) > 1e-12)
+            nnz++;
+          const bool one_ok = report_pair(tag, m, jv, sum_err, tr);
+          if (not one_ok and tr <= 6)
+            std::cout << "      a=" << a << " ma=" << ma << " b=" << b
+                      << " mb=" << mb << std::endl;
+          ok &= one_ok;
+        }
+      }
+      std::cout << "  " << tag << "  n=" << n << "  nnz=" << nnz
+                << "  max|m|=" << maxm << "  Σe²=" << sum_err
+                << "  => " << (ok ? "PASS" : "FAIL") << std::endl;
+    };
+    std::cout << "\n--- χ_ialb on failing leftover kets ---" << std::endl;
+    {
+      auto dump_orb = [&](int o) {
+        Orbit &oo = modelspace->GetOrbit(o);
+        std::cout << "    orb " << o << " n=" << oo.n << " l=" << oo.l
+                  << " j2=" << oo.j2 << " tz2=" << oo.tz2 << " occ=" << oo.occ
+                  << std::endl;
+      };
+      std::cout << "  orbits 0,6,7:" << std::endl;
+      dump_orb(0);
+      dump_orb(6);
+      dump_orb(7);
+    }
+    probe_pair(0, 6, 0, 6, 1, 3, 1, 3, 1, "chi_T1_ialb@0606");
+    probe_pair(0, 6, 0, 6, 1, 3, 1, 3, 2, "chi_T2_ialb@0606");
+    if (not samp.empty())
+    {
+      const auto &s0 = samp[0];
+      auto dump_orb = [&](int o) {
+        Orbit &oo = modelspace->GetOrbit(o);
+        std::cout << "    orb " << o << " n=" << oo.n << " l=" << oo.l
+                  << " j2=" << oo.j2 << " tz2=" << oo.tz2 << " occ=" << oo.occ
+                  << std::endl;
+      };
+      std::cout << "  first leftover sample (" << s0.i << "," << s0.j << ","
+                << s0.k << "," << s0.l << ") m=(" << s0.mi << "," << s0.mj << ","
+                << s0.mk << "," << s0.ml << ")" << std::endl;
+      dump_orb(s0.i);
+      dump_orb(s0.j);
+      dump_orb(s0.k);
+      dump_orb(s0.l);
+    }
+  }
+  {
+    ethS::SetGIVcChiWhich(1);
+    Operator Z = make_leftover_Z(*modelspace);
+    ethS::comm223_232_GIVc(omega_e, H, Z);
+    all_ok &= cmp_2b("GIVc_T1", Z, omega_e, &UnitTest::Mscheme_fact_GIVc_T1);
+    ethS::SetGIVcChiWhich(0);
+  }
+  {
+    ethS::SetGIVcChiWhich(2);
+    Operator Z = make_leftover_Z(*modelspace);
+    ethS::comm223_232_GIVc(omega_e, H, Z);
+    all_ok &= cmp_2b("GIVc_T2", Z, omega_e, &UnitTest::Mscheme_fact_GIVc_T2);
+    ethS::SetGIVcChiWhich(0);
+  }
+  if (only_givc)
+  {
+    std::cout << "\n--- GIVc Pandya→DGEMM→inv vs m (kind=1; not in OVERALL) ---"
+              << std::endl;
+    ethS::SetGIVcLeftoverKind(1);
+    {
+      ethS::SetGIVcChiWhich(1);
+      Operator Z = make_leftover_Z(*modelspace);
+      ethS::comm223_232_GIVc(omega_e, H, Z);
+      cmp_2b("GIVc_T1_Pandya", Z, omega_e, &UnitTest::Mscheme_fact_GIVc_T1);
+      ethS::SetGIVcChiWhich(0);
+    }
+    {
+      ethS::SetGIVcChiWhich(2);
+      Operator Z = make_leftover_Z(*modelspace);
+      ethS::comm223_232_GIVc(omega_e, H, Z);
+      cmp_2b("GIVc_T2_Pandya", Z, omega_e, &UnitTest::Mscheme_fact_GIVc_T2);
+      ethS::SetGIVcChiWhich(0);
+    }
+    ethS::SetGIVcLeftoverKind(0);
   }
 
-  std::cout << "\n--- 223_132 pieces (odd ω, J ethS vs m-fact) ---" << std::endl;
+  if (only_givc)
   {
-    Operator Z = make_leftover_Z(*modelspace);
-    ethS::comm223_132_tts_ladder(omega_o, H, Z);
-    all_ok &= cmp_2b("132_ladder", Z, omega_o, &UnitTest::Mscheme_fact_223_132_ladder);
+    auto m_kernel = [&](int which, int i, int mi, int j, int mj, int k, int mk,
+                        int l, int ml) -> double {
+      double sm = 0.0;
+      for (auto a : modelspace->all_orbits)
+      {
+        Orbit &oa = modelspace->GetOrbit(a);
+        for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+          for (auto b : modelspace->all_orbits)
+          {
+            Orbit &ob = modelspace->GetOrbit(b);
+            for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
+            {
+              const double chi = Mscheme_chi_lambda(omega_e, H, i, mi, a, ma, l, ml,
+                                                    b, mb, which);
+              if (std::abs(chi) < 1e-16)
+                continue;
+              const int lam = omega_e.GetJRank();
+              double cg = 1.0;
+              if (lam != 0)
+              {
+                const double mu = 0.5 * ((mi + ma) - (ml + mb));
+                if (std::abs(mu) > lam + 1e-9)
+                  continue;
+                cg = AngMom::CG(1.0 * lam, mu, 1.0 * lam, -mu, 0.0, 0.0);
+              }
+              sm += cg * chi *
+                    GetMschemeMatrixElement_2b(omega_e, b, mb, j, mj, a, ma, k, mk);
+            }
+          }
+      }
+      return sm;
+    };
+    auto cmp_kernel = [&](const char *tag, const Operator &ZJ, int which)
+    {
+      double sum_err = 0;
+      int tr = 0;
+      bool ok = true;
+      for (const auto &s : samp)
+      {
+        const double jm = GetMschemeMatrixElement_2b(ZJ, s.i, s.mi, s.j, s.mj, s.k,
+                                                     s.mk, s.l, s.ml);
+        const double fm = m_kernel(which, s.i, s.mi, s.j, s.mj, s.k, s.mk, s.l, s.ml);
+        const bool one_ok = report_pair(tag, fm, jm, sum_err, tr);
+        std::cout << "      " << tag << " (" << s.i << "," << s.j << "," << s.k << ","
+                  << s.l << ") m=(" << s.mi << "," << s.mj << "," << s.mk << ","
+                  << s.ml << ")  m=" << fm << "  J=" << jm;
+        if (std::abs(jm) > 1e-12)
+          std::cout << "  m/J=" << fm / jm;
+        std::cout << std::endl;
+        ok &= one_ok;
+      }
+      std::cout << "  " << tag << "  n=" << samp.size() << "  ||Z2||=" << ZJ.TwoBodyNorm()
+                << "  Σe²=" << sum_err << "  => " << (ok ? "PASS" : "FAIL") << std::endl;
+      return ok;
+    };
+    std::cout << "\n--- m kernels on (0,6,0,6) m=(1,3,1,3) ---" << std::endl;
+    for (int which = 1; which <= 2; ++which)
+    {
+      const int i = 0, j = 6, k = 0, l = 6, mi = 1, mj = 3, mk = 1, ml = 3;
+      const double K = m_kernel(which, i, mi, j, mj, k, mk, l, ml);
+      const double Kij = m_kernel(which, j, mj, i, mi, k, mk, l, ml);
+      const double Kkl = m_kernel(which, i, mi, j, mj, l, ml, k, mk);
+      const double Kijkl = m_kernel(which, j, mj, i, mi, l, ml, k, mk);
+      const double as = 0.5 * (K - Kij - Kkl + Kijkl);
+      std::cout << "  T" << which << " K=" << K << " Kij=" << Kij << " Kkl=" << Kkl
+                << " Kijkl=" << Kijkl << "  ½(1−P)²=" << as << std::endl;
+    }
+    ethS::SetGIVcFoldAS(false);
+    std::cout << "\n--- GIVc ring_X only (no ½(1−P)²) vs m kernel ---" << std::endl;
+    {
+      ethS::SetGIVcChiWhich(1);
+      Operator Z = make_leftover_Z(*modelspace);
+      ethS::comm223_232_GIVc(omega_e, H, Z);
+      cmp_kernel("GIVc_T1_noAS", Z, 1);
+      ethS::SetGIVcChiWhich(0);
+    }
+    {
+      ethS::SetGIVcChiWhich(2);
+      Operator Z = make_leftover_Z(*modelspace);
+      ethS::comm223_232_GIVc(omega_e, H, Z);
+      cmp_kernel("GIVc_T2_noAS", Z, 2);
+      ethS::SetGIVcChiWhich(0);
+    }
+    ethS::SetGIVcFoldAS(true);
   }
+
+  if (not only_givc)
   {
-    Operator Z = make_leftover_Z(*modelspace);
-    ethS::comm223_132_tts_onebody(omega_o, H, Z);
-    all_ok &= cmp_2b("132_onebody", Z, omega_o, &UnitTest::Mscheme_fact_223_132_onebody);
+    Operator We = nest_W(H, omega_e);
+    if (jrank == 0 and We.GetParity() == 0 and not We.IsReduced())
+      We.is_reduced = true;
+    Operator Znest = make_leftover_Z(*modelspace);
+    Commutator::comm232tts(omega_e, We, Znest);
+    Operator Zsum = make_leftover_Z(*modelspace);
+    for (auto &g : giso)
+      Zsum += g.Z;
+    std::cout << "\n--- 232 J nested vs Σ isolated G (same seed Ω) ---" << std::endl;
+    all_ok &= report_j_norm("J nested ≡ ΣG isolated", Znest, Zsum, false);
+    Operator R = Znest;
+    R -= Zsum;
+    const double nR = R.TwoBodyNorm();
+    std::cout << "  residual ||R||=" << nR << "  (R = nested − ΣG)" << std::endl;
+    if (nR > 1e-8)
+    {
+      for (auto &g : giso)
+      {
+        const double nd = std::sqrt(std::max(0.0, tb_dot(g.Z, g.Z)));
+        const double nRr = std::sqrt(std::max(0.0, tb_dot(R, R)));
+        const double ip = tb_dot(R, g.Z);
+        const double corr = (nRr > 1e-16 and nd > 1e-16) ? ip / (nRr * nd) : 0.0;
+        std::cout << "    <R," << g.name << "> / (||R||||G||) = " << corr
+                  << "  ||" << g.name << "||_F=" << nd << "  dot=" << ip << std::endl;
+      }
+      struct Hit
+      {
+        double absd;
+        int chb, chk, Jb, Jk, par, Tz, ib, ik, p, q, r, s;
+        double vn, vs;
+      };
+      std::vector<Hit> hits;
+      for (auto &it : R.TwoBody.MatEl)
+      {
+        const int chb = (int)it.first[0], chk = (int)it.first[1];
+        TwoBodyChannel &tb = modelspace->GetTwoBodyChannel(chb);
+        TwoBodyChannel &tk = modelspace->GetTwoBodyChannel(chk);
+        const arma::mat &rm = it.second;
+        const arma::mat &nm = Znest.TwoBody.GetMatrix(chb, chk);
+        const arma::mat &sm = Zsum.TwoBody.GetMatrix(chb, chk);
+        for (arma::uword ib = 0; ib < rm.n_rows; ++ib)
+          for (arma::uword ik = 0; ik < rm.n_cols; ++ik)
+          {
+            const double d = rm(ib, ik);
+            if (std::abs(d) < 1e-8)
+              continue;
+            Ket &bra = tb.GetKet((int)ib);
+            Ket &ket = tk.GetKet((int)ik);
+            hits.push_back({std::abs(d), chb, chk, tb.J, tk.J, tb.parity, tb.Tz,
+                            (int)ib, (int)ik, (int)bra.p, (int)bra.q, (int)ket.p,
+                            (int)ket.q, nm(ib, ik), sm(ib, ik)});
+          }
+      }
+      std::sort(hits.begin(), hits.end(),
+                [](const Hit &a, const Hit &b) { return a.absd > b.absd; });
+      const int nshow = std::min(12, (int)hits.size());
+      std::cout << "  top |" << nshow << "| residual TBMEs:" << std::endl;
+      for (int i = 0; i < nshow; ++i)
+      {
+        const Hit &h = hits[i];
+        std::cout << "    ch(" << h.chb << "," << h.chk << ") J=" << h.Jb << "/"
+                  << h.Jk << " π=" << h.par << " Tz=" << h.Tz << " ket "
+                  << h.p << h.q << " × " << h.r << h.s << "  nested=" << h.vn
+                  << "  ΣG=" << h.vs << "  Δ=" << (h.vn - h.vs) << std::endl;
+      }
+    }
   }
+
+  if (not only_givc)
   {
-    Operator Z = make_leftover_Z(*modelspace);
-    ethS::comm223_132_tts_cross(omega_o, H, Z);
-    all_ok &= cmp_2b("132_cross", Z, omega_o, &UnitTest::Mscheme_fact_223_132_cross);
+    Operator omega_o = RandomOp(*modelspace, jrank, 0, 1, 3, -1);
+    make_tensor_omega(omega_o);
+    std::cout << "\n--- 223_132 pieces (odd ω, J ethS vs m-fact) ---" << std::endl;
+    {
+      Operator Z = make_leftover_Z(*modelspace);
+      ethS::comm223_132_tts_ladder(omega_o, H, Z);
+      all_ok &= cmp_2b("132_ladder", Z, omega_o, &UnitTest::Mscheme_fact_223_132_ladder);
+    }
+    {
+      Operator Z = make_leftover_Z(*modelspace);
+      ethS::comm223_132_tts_onebody(omega_o, H, Z);
+      all_ok &= cmp_2b("132_onebody", Z, omega_o, &UnitTest::Mscheme_fact_223_132_onebody);
+    }
+    {
+      Operator Z = make_leftover_Z(*modelspace);
+      ethS::comm223_132_tts_cross(omega_o, H, Z);
+      all_ok &= cmp_2b("132_cross", Z, omega_o, &UnitTest::Mscheme_fact_223_132_cross);
+    }
   }
 
   std::cout << "\n" << __func__ << "  OVERALL: " << (all_ok ? "PASS" : "FAIL") << std::endl;
@@ -11903,6 +12431,35 @@ double cg_OmOm0(const Operator &Eta, int twoM_left, int twoM_right)
   return AngMom::CG(1.0 * lam, mu, 1.0 * lam, -mu, 0.0, 0.0);
 }
 
+double fact_GIVc_which(UnitTest *self, const Operator &Eta, const Operator &Gamma,
+                      int i, int mi, int j, int mj, int k, int mk, int l, int ml,
+                      int which_term)
+{
+  auto kernel = [&](int ii, int mii, int jj, int mjj, int kk, int mkk, int ll, int mll) -> double {
+    double sm = 0.0;
+    for (auto a : Eta.modelspace->all_orbits)
+    {
+      Orbit &oa = Eta.modelspace->GetOrbit(a);
+      for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
+        for (auto b : Eta.modelspace->all_orbits)
+        {
+          Orbit &ob = Eta.modelspace->GetOrbit(b);
+          for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
+          {
+            double chi = self->Mscheme_chi_lambda(Eta, Gamma, ii, mii, a, ma, ll, mll, b, mb, which_term);
+            if (std::abs(chi) < 1e-16)
+              continue;
+            double cg = cg_OmOm0(Eta, mii + ma, mll + mb);
+            sm += cg * chi * self->GetMschemeMatrixElement_2b(Eta, b, mb, jj, mjj, a, ma, kk, mkk);
+          }
+        }
+    }
+    return sm;
+  };
+  return 0.5 * (kernel(i, mi, j, mj, k, mk, l, ml) - kernel(j, mj, i, mi, k, mk, l, ml)
+                - kernel(i, mi, j, mj, l, ml, k, mk) + kernel(j, mj, i, mi, l, ml, k, mk));
+}
+
 } // namespace
 
 
@@ -12295,9 +12852,9 @@ double UnitTest::Mscheme_chi_kappa(const Operator &Eta, const Operator &Gamma, i
   return sm;
 }
 
-double UnitTest::Mscheme_chi_lambda(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
+double UnitTest::Mscheme_chi_lambda(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml, int which_term)
 {
-  // run/test_chi_lambda_mscheme.py
+  // run/test_chi_lambda_mscheme.py  which_term: 0 both, 1 T1 ΓΩ, 2 T2 ΩΓ
   double sm = 0.0;
   for (auto a : Eta.modelspace->all_orbits)
   {
@@ -12312,13 +12869,13 @@ double UnitTest::Mscheme_chi_lambda(const Operator &Eta, const Operator &Gamma, 
         double wj = nna * nnb * m_occ(Eta, j) + na * nb * m_nbar(Eta, j);
         for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
         {
-          if (std::abs(wl) > 1e-12)
+          if (which_term != 2 and std::abs(wl) > 1e-12)
           {
             double g = GetMschemeMatrixElement_2b(Gamma, i, mi, j, mj, a, ma, b, mb);
             if (std::abs(g) > 1e-16)
               sm += wl * g * GetMschemeMatrixElement_2b(Eta, a, ma, b, mb, k, mk, l, ml);
           }
-          if (std::abs(wj) > 1e-12)
+          if (which_term != 1 and std::abs(wj) > 1e-12)
           {
             double o = GetMschemeMatrixElement_2b(Eta, i, mi, j, mj, a, ma, b, mb);
             if (std::abs(o) > 1e-16)
@@ -12716,29 +13273,17 @@ double UnitTest::Mscheme_fact_GIVb_chi(const Operator &Eta, const Operator &Gamm
 
 double UnitTest::Mscheme_fact_GIVc(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
 {
-  auto kernel = [&](int ii, int mii, int jj, int mjj, int kk, int mkk, int ll, int mll) -> double {
-    double sm = 0.0;
-    for (auto a : Eta.modelspace->all_orbits)
-    {
-      Orbit &oa = Eta.modelspace->GetOrbit(a);
-      for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
-        for (auto b : Eta.modelspace->all_orbits)
-        {
-          Orbit &ob = Eta.modelspace->GetOrbit(b);
-          for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
-          {
-            double chi = Mscheme_chi_lambda(Eta, Gamma, ii, mii, a, ma, ll, mll, b, mb);
-            if (std::abs(chi) < 1e-16)
-              continue;
-            double cg = cg_OmOm0(Eta, mii + ma, mll + mb);
-            sm += cg * chi * GetMschemeMatrixElement_2b(Eta, b, mb, jj, mjj, a, ma, kk, mkk);
-          }
-        }
-    }
-    return sm;
-  };
-  return 0.5 * (kernel(i, mi, j, mj, k, mk, l, ml) - kernel(j, mj, i, mi, k, mk, l, ml)
-                - kernel(i, mi, j, mj, l, ml, k, mk) + kernel(j, mj, i, mi, l, ml, k, mk));
+  return fact_GIVc_which(this, Eta, Gamma, i, mi, j, mj, k, mk, l, ml, 0);
+}
+
+double UnitTest::Mscheme_fact_GIVc_T1(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
+{
+  return fact_GIVc_which(this, Eta, Gamma, i, mi, j, mj, k, mk, l, ml, 1);
+}
+
+double UnitTest::Mscheme_fact_GIVc_T2(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
+{
+  return fact_GIVc_which(this, Eta, Gamma, i, mi, j, mj, k, mk, l, ml, 2);
 }
 
 double UnitTest::Mscheme_fact_223_132_ladder(const Operator &Eta, const Operator &Gamma,

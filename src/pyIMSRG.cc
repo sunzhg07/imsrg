@@ -1157,6 +1157,15 @@ PYBIND11_MODULE(pyIMSRG, m) {
        "SetUse_TypeGIVc_2b",
        &Commutator::FactorizedDoubleCommutator_eths::SetUse_TypeGIVc_2b);
   FactorizedDoubleCommutator_eths.def(
+       "SetGIVcChiWhich",
+       &Commutator::FactorizedDoubleCommutator_eths::SetGIVcChiWhich);
+  FactorizedDoubleCommutator_eths.def(
+       "SetGIVcFoldAS",
+       &Commutator::FactorizedDoubleCommutator_eths::SetGIVcFoldAS);
+  FactorizedDoubleCommutator_eths.def(
+       "SetGIVcLeftoverKind",
+       &Commutator::FactorizedDoubleCommutator_eths::SetGIVcLeftoverKind);
+  FactorizedDoubleCommutator_eths.def(
        "comm223_232_GIVa",
        &Commutator::FactorizedDoubleCommutator_eths::comm223_232_GIVa);
   FactorizedDoubleCommutator_eths.def(
@@ -1788,7 +1797,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("trank") = 0)
       .def("TestTensorFactorizedDiagrams",
            &UnitTest::TestTensorFactorizedDiagrams,
-           py::arg("jrank") = 2, py::arg("max_m_cmp") = 4)
+           py::arg("jrank") = 2, py::arg("max_m_cmp") = 4,
+           py::arg("focus") = "", py::arg("trank") = 0, py::arg("parity") = 0)
       .def("TestPerturbativeTriples", &UnitTest::TestPerturbativeTriples)
       .def("Test_evc_rhs_ccsd", &UnitTest::Test_evc_rhs_ccsd)
       .def("Test_evc_z1_jscheme", &UnitTest::Test_evc_z1_jscheme)
@@ -1932,7 +1942,10 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("Mscheme_chi_theta", &UnitTest::Mscheme_chi_theta)
       .def("Mscheme_chi_iota", &UnitTest::Mscheme_chi_iota)
       .def("Mscheme_chi_kappa", &UnitTest::Mscheme_chi_kappa)
-      .def("Mscheme_chi_lambda", &UnitTest::Mscheme_chi_lambda)
+      .def("Mscheme_chi_lambda", &UnitTest::Mscheme_chi_lambda,
+           py::arg("Eta"), py::arg("Gamma"), py::arg("i"), py::arg("mi"),
+           py::arg("j"), py::arg("mj"), py::arg("k"), py::arg("mk"),
+           py::arg("l"), py::arg("ml"), py::arg("which_term") = 0)
       .def("Mscheme_fact_fI", &UnitTest::Mscheme_fact_fI)
       .def("Mscheme_fact_fII", &UnitTest::Mscheme_fact_fII)
       .def("Mscheme_fact_fIIIa", &UnitTest::Mscheme_fact_fIIIa)
@@ -1945,6 +1958,8 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("Mscheme_fact_GIVa", &UnitTest::Mscheme_fact_GIVa)
       .def("Mscheme_fact_GIVb_chi", &UnitTest::Mscheme_fact_GIVb_chi)
       .def("Mscheme_fact_GIVc", &UnitTest::Mscheme_fact_GIVc)
+      .def("Mscheme_fact_GIVc_T1", &UnitTest::Mscheme_fact_GIVc_T1)
+      .def("Mscheme_fact_GIVc_T2", &UnitTest::Mscheme_fact_GIVc_T2)
       .def("Mscheme_fact_223_132_ladder", &UnitTest::Mscheme_fact_223_132_ladder)
       .def("Mscheme_fact_223_132_onebody", &UnitTest::Mscheme_fact_223_132_onebody)
       .def("Mscheme_fact_223_132_cross", &UnitTest::Mscheme_fact_223_132_cross)

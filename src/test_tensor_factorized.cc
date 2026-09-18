@@ -25,8 +25,10 @@ static void usage(const char *prog)
       << "Usage:\n"
       << "  " << prog << " [emax] [lambda] [max_m_cmp] [diagrams]\n"
       << "  " << prog << " emax=2 lambda=2 T=0 max_m_cmp=8 diagrams=1 step=1\n"
+      << "  " << prog << " emax=2 lambda=3 step=3 focus=GIVc\n"
       << "Defaults: emax=1 lambda=2 T=0 max_m_cmp=8 diagrams=1 step=0\n"
-      << "step: 0=all 1=m-unfact≡J-nested 2=m-unfact≡m-fact 3=diagrams 4=J-nested≡J-fact\n";
+      << "step: 0=all 1=m-unfact≡J-nested 2=m-unfact≡m-fact 3=diagrams 4=J-nested≡J-fact\n"
+      << "focus: empty=all leftover diagrams; GIVc=only IVc (full+T1+T2)\n";
 }
 
 static bool starts_with(const char *s, const char *pre)
@@ -45,9 +47,11 @@ int main(int argc, char **argv)
   int emax = 1;
   int lam = 2;
   int trank = 0;
+  int parity = 0;
   int max_m = 8;
   int diagrams_i = 1;
   int step = 0;
+  std::string focus;
   bool diagrams_set = false;
   const uint64_t seed = 17;
   int positional = 0;
@@ -70,6 +74,10 @@ int main(int argc, char **argv)
       trank = parse_kv_int(a, "T=");
     else if (starts_with(a, "trank="))
       trank = parse_kv_int(a, "trank=");
+    else if (starts_with(a, "parity="))
+      parity = parse_kv_int(a, "parity=");
+    else if (starts_with(a, "pi="))
+      parity = parse_kv_int(a, "pi=");
     else if (starts_with(a, "max_m_cmp="))
       max_m = parse_kv_int(a, "max_m_cmp=");
     else if (starts_with(a, "diagrams="))
@@ -79,6 +87,8 @@ int main(int argc, char **argv)
     }
     else if (starts_with(a, "step="))
       step = parse_kv_int(a, "step=");
+    else if (starts_with(a, "focus="))
+      focus = a + std::strlen("focus=");
     else if (a[0] == '-' and (a[1] < '0' or a[1] > '9'))
     {
       std::cerr << "Unknown option: " << a << std::endl;
@@ -112,8 +122,10 @@ int main(int argc, char **argv)
   const int threeway_step = (step == 3) ? -1 : step;
 
   std::cout << "test_tensor_factorized  emax=" << emax << "  λ=" << lam
-            << "  T=" << trank << "  max_m_cmp=" << max_m << "  diagrams=" << diagrams
-            << "  step=" << step << "  seed=" << seed << std::endl;
+            << "  T=" << trank << "  π=" << parity << "  max_m_cmp=" << max_m
+            << "  diagrams=" << diagrams
+            << "  step=" << step << "  focus=" << (focus.empty() ? "(all)" : focus)
+            << "  seed=" << seed << std::endl;
 
   // GetSixJ is not thread-safe on first fill; gold benches run single-threaded.
   omp_set_num_threads(1);
@@ -130,7 +142,7 @@ int main(int argc, char **argv)
   if (threeway_step >= 0)
     ok = ut.TestTensorFactorizedThreeway(lam, max_m, threeway_step, trank);
   if (diagrams)
-    ok = ut.TestTensorFactorizedDiagrams(lam, std::min(max_m, 4)) and ok;
+    ok = ut.TestTensorFactorizedDiagrams(lam, max_m, focus, trank, parity) and ok;
 
   std::cout << "\ntest_tensor_factorized  OVERALL: "
             << (ok ? "PASS" : "FAIL") << std::endl;

@@ -4,6 +4,7 @@
 #include "ModelSpace.hh"
 #include "Operator.hh"
 #include "evc.hh"
+#include <string>
 //#include "Commutator.hh"
 
 class UnitTest
@@ -51,7 +52,8 @@ class UnitTest
   double Mscheme_chi_theta(const Operator &Eta, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_chi_iota(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_chi_kappa(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
-  double Mscheme_chi_lambda(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  /// which_term: 0 both, 1 T1 (w_l ΓΩ), 2 T2 (w_j ΩΓ).
+  double Mscheme_chi_lambda(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml, int which_term = 0);
 
   double Mscheme_fact_fI(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj);
   double Mscheme_fact_fII(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj);
@@ -70,6 +72,8 @@ class UnitTest
   double Mscheme_fact_GIVa(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_fact_GIVb_chi(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_fact_GIVc(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_fact_GIVc_T1(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
+  double Mscheme_fact_GIVc_T2(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   /// 223_132 leftover 2b, tensor ω × scalar H. Physical m of the factorized strings
   /// (ladder / χ^η 122 + 1bB / cross). T×T→S via cg_OmOm0. Cross restores (1−Pij)(1−Pkl).
   double Mscheme_fact_223_132_ladder(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
@@ -274,7 +278,10 @@ class UnitTest
   /// step=0 all; 1 = m-unfact Wick ≡ J nested; 2 = m-unfact ≡ m-fact; 4 = J nested ≡ J fact.
   bool TestTensorFactorizedThreeway(int jrank = 2, int max_m_cmp = 8, int step = 0, int trank = 0);
   /// Isolated ethS diagrams: GetMscheme(J) vs Mscheme_fact_* on sampled MEs. λ=0 allowed.
-  bool TestTensorFactorizedDiagrams(int jrank = 2, int max_m_cmp = 4);
+  /// focus: empty = all diagrams; "GIVc" / "IVc" = only χ^λ leftover (full + T1 + T2).
+  bool TestTensorFactorizedDiagrams(int jrank = 2, int max_m_cmp = 4,
+                                   const std::string &focus = "", int trank = 0,
+                                   int parity = 0);
 
   bool TestPerturbativeTriples();
 
