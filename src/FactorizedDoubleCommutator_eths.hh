@@ -44,11 +44,8 @@ extern bool use_TypeGIVc_2b;  // Gamma^IV_c via chi^lambda
 /// Isolated-test helper: 0=both χ^λ terms, 1=T1 (ΓΩ, occ on l), 2=T2 (ΩΓ, occ on j).
 extern int givc_chi_which;
 extern bool givc_fold_as;
-/// 0: CG leftover (gold lock). 1: Pandya→DGEMM→inv (speed form).
-extern int givc_leftover_kind;
 void SetGIVcChiWhich(int which);
 void SetGIVcFoldAS(bool tf);
-void SetGIVcLeftoverKind(int kind);
 void SetUse_1b_Intermediates(bool tf);
 void SetUse_2b_Intermediates(bool tf);
 

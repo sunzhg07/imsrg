@@ -1163,9 +1163,6 @@ PYBIND11_MODULE(pyIMSRG, m) {
        "SetGIVcFoldAS",
        &Commutator::FactorizedDoubleCommutator_eths::SetGIVcFoldAS);
   FactorizedDoubleCommutator_eths.def(
-       "SetGIVcLeftoverKind",
-       &Commutator::FactorizedDoubleCommutator_eths::SetGIVcLeftoverKind);
-  FactorizedDoubleCommutator_eths.def(
        "comm223_232_GIVa",
        &Commutator::FactorizedDoubleCommutator_eths::comm223_232_GIVa);
   FactorizedDoubleCommutator_eths.def(

@@ -7739,7 +7739,6 @@ struct EthsFlagGuard
   bool GI, GII, GIIIa, GIIIb, GIIIc, GIVa, GIVb, GIVc;
   int givc_which;
   bool fold_as;
-  int leftover_kind;
   EthsFlagGuard()
       : i1(ethS::use_1b_intermediates), i2(ethS::use_2b_intermediates),
         tI(ethS::use_TypeI_1b), tII(ethS::use_TypeII_1b),
@@ -7748,8 +7747,7 @@ struct EthsFlagGuard
         GIIIa(ethS::use_TypeGIIIa_2b), GIIIb(ethS::use_TypeGIIIb_2b),
         GIIIc(ethS::use_TypeGIIIc_2b), GIVa(ethS::use_TypeGIVa_2b),
         GIVb(ethS::use_TypeGIVb_2b), GIVc(ethS::use_TypeGIVc_2b),
-        givc_which(ethS::givc_chi_which), fold_as(ethS::givc_fold_as),
-        leftover_kind(ethS::givc_leftover_kind)
+        givc_which(ethS::givc_chi_which), fold_as(ethS::givc_fold_as)
   {
   }
   ~EthsFlagGuard() { restore(); }
@@ -7771,7 +7769,6 @@ struct EthsFlagGuard
     ethS::SetUse_TypeGIVc_2b(GIVc);
     ethS::SetGIVcChiWhich(givc_which);
     ethS::SetGIVcFoldAS(fold_as);
-    ethS::SetGIVcLeftoverKind(leftover_kind);
   }
   static void all_on()
   {
@@ -7791,7 +7788,6 @@ struct EthsFlagGuard
     ethS::SetUse_TypeGIVc_2b(true);
     ethS::SetGIVcChiWhich(0);
     ethS::SetGIVcFoldAS(true);
-    ethS::SetGIVcLeftoverKind(0);
   }
 };
 
@@ -8702,28 +8698,6 @@ bool UnitTest::TestTensorFactorizedDiagrams(int jrank, int max_m_cmp,
     all_ok &= cmp_2b("GIVc_T2", Z, omega_e, &UnitTest::Mscheme_fact_GIVc_T2);
     ethS::SetGIVcChiWhich(0);
   }
-  if (only_givc)
-  {
-    std::cout << "\n--- GIVc Pandya→DGEMM→inv vs m (kind=1; not in OVERALL) ---"
-              << std::endl;
-    ethS::SetGIVcLeftoverKind(1);
-    {
-      ethS::SetGIVcChiWhich(1);
-      Operator Z = make_leftover_Z(*modelspace);
-      ethS::comm223_232_GIVc(omega_e, H, Z);
-      cmp_2b("GIVc_T1_Pandya", Z, omega_e, &UnitTest::Mscheme_fact_GIVc_T1);
-      ethS::SetGIVcChiWhich(0);
-    }
-    {
-      ethS::SetGIVcChiWhich(2);
-      Operator Z = make_leftover_Z(*modelspace);
-      ethS::comm223_232_GIVc(omega_e, H, Z);
-      cmp_2b("GIVc_T2_Pandya", Z, omega_e, &UnitTest::Mscheme_fact_GIVc_T2);
-      ethS::SetGIVcChiWhich(0);
-    }
-    ethS::SetGIVcLeftoverKind(0);
-  }
-
   if (only_givc)
   {
     auto m_kernel = [&](int which, int i, int mi, int j, int mj, int k, int mk,

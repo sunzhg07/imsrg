@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""λ=3: lock ONE bare mid-J leftover ME vs CG gold (no fermionic AS).
+"""λ=3: lock bare mid-J leftover vs ethS Path B (Pandya→DGEMM→inv).
 
-Gold: ethS kind=0, FoldAS=False, T1 only → Z_unred = K recoupled
-      K(m)=Σ_ab CG(λμ,λ−μ;00) χ_ialb(m) Ω_bjak(m)
+Gold: ethS production leftover, FoldAS=False, T1 only → Z_unred = K recoupled
+      K ≡ tts_ring X_pqsr = Σ χ_pbar Ω_aqsb
 
-Mid-J candidate (tts_ring Path A, NOTES §Γ^{IV_c}):
-  X_red = ring_X(i,j,k,l;J) with χ_pbar Ω_aqsb  (p=i,q=j,s=k,r=l)
-  X_unred = X_red / Ĵ
+Mid-J candidates:
+  Path A: ring_X (tts_ring)
+  Path B: adcb Pandya mid+inv (same ring; drop AMC-sample minus)
+  Diagnostic: printed AMC G4c_from_chi_noperm (known wrong vs m)
 
-Also diagnose printed AMC G4c_from_chi_noperm (known wrong vs m).
+See learn/amc_tts/tensor_pro_final/GIVc/03_pathB/LESSON.md
 
 Usage:
   PYTHONPATH=build python3 -B run/test_givc_midj_bare_vs_cg.py [emax=1] [lambda=3]
@@ -123,12 +124,12 @@ print(f"  nonzero={len(chiJ)}")
 cm = Commutator.FactorizedDoubleCommutator_eths
 cm.SetGIVcChiWhich(1)
 cm.SetGIVcFoldAS(False)
-cm.SetGIVcLeftoverKind(0)
+# Production leftover = Path B only; gold here is ethS bare K.
 Zg = Operator(ms, 0, 0, 0, 2)
 Zg.SetHermitian()
 Zg *= 0.0
 cm.comm223_232_GIVc(Eta, Gamma, Zg)
-print(f"  CG bare ||Z||={Zg.TwoBodyNorm():.6g}")
+print(f"  ethS bare PathB ||Z||={Zg.TwoBodyNorm():.6g}")
 
 
 def ring_X_red(p, q, s, r, J0) -> float:
@@ -452,13 +453,12 @@ for ch in range(nch):
 
 cm.SetGIVcChiWhich(0)
 cm.SetGIVcFoldAS(True)
-cm.SetGIVcLeftoverKind(0)
 
 ok = ok_ring and ok_b
 print(
-    "\nPASS — Path A + Path B bare ≡ CG bare"
+    "\nPASS — Path A + Path B bare ≡ ethS Path B"
     if ok
-    else "\nFAIL — bare mid-J not locked to CG"
+    else "\nFAIL — bare mid-J not locked"
 )
 if ok_ring and not ok_b:
     print("  (Path A OK; Path B still open)")

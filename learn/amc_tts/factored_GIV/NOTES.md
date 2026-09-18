@@ -737,11 +737,13 @@ Use Factorized **2×nKets** layout consistently, **or** full `TensorCommutators`
 | Path A / TTS ≟ χ-fold | **OPEN** — TTS DIRECT ≠ χ-fold; do not retune ring to Path A |
 | ethS Path B (Pandya→DGEMM→inv) | **PASS** `use_TypeGIVc_factorized` → `run/test_tts_GIVc_pathB.py` |
 
-### Fold angular gold (locked 2026-07-29)
+### Fold angular gold (locked 2026-07-29; Path B ≡ ring locked 2026-09-18)
 
 Printed AMC `G4c_from_chi*_ninej.tex` is **wrong** vs m (~1–3% on e.g. `2345`; non-Hermitian under bra↔ket).
 
-Correct kernel = locked **tts_ring** Path A (`z_pbar_aqsb_direct`) with χ≡Ω₁, Ω≡Ω₂:
+Correct kernel = locked **tts_ring** Path A (`z_pbar_aqsb_direct`) with χ≡Ω₁, Ω≡Ω₂. See `tensor_pro_final/GIVc/03_pathB/LESSON.md` for the long Path B debug (wrong print, adcb map, missing \((-1)^{J_p}/\hat J_p\)).
+
+ethS production leftover is **Path B only** (CG recouple removed).
 
 \[
 X_{pqsr}=\sum_{ab}\chi_{pbar}\,\Omega_{aqsb},
@@ -758,8 +760,8 @@ Z_{ijkl}=\tfrac12\bigl(
 
 **Path B speed form (λ≠0):** IMSRG tensor Pandya (`adcb`) with map
 AMC \(\bar\chi(p,b,a,r)=\) IMSRG\((p,r,a,b)\), mid-J DGEMM
-\(\bar X^{J}\mathrel{+}=\lambdâ^{-1}(-1)^{J'+\lambda}\bar\chi^{JJ'}\bar\Omega^{J'J}\),
-corrected inv (drop AMC-sample minus), then fermionic AS. λ=0 stays Factorized CHI_VII.
+\(\bar X^{J}\mathrel{+}=(-1)^{J}/\hat J\cdot\lambdâ^{-1}(-1)^{J'+\lambda}\bar\chi^{JJ'}\bar\Omega^{J'J}\),
+corrected inv (drop AMC-sample minus), then fermionic AS.
 
 ### Path B AMC (starting point for ethS)
 
