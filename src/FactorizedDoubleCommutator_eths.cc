@@ -2006,6 +2006,85 @@ double PandyaChiAdcb(const ChiTabJJ &Chi, ModelSpace *ms, int lambda, int a,
   return sm;
 }
 
+// (ia)(lb) → (il)(ab): χ̄_{il,ab} from occupancy-AS χ_{ialb}.
+// AMC scheme=((1,-3),(2,-4)) on labels (i,a,l,b) — lands on (il)|(ab) so the
+// gold product Σ χ_ialb Ω_bjak is the same DGEMM mid as tts_ring.
+// Locked: ≡ PandyaChiAdcb when T1 χ is AS (even π); ≡ m-gold on odd π T1
+// (run/tmp givc_gold_dgemm_lock + learn/.../G4c_gold_il_ab_pandya.txt).
+double PandyaChiIalb(const ChiTabJJ &Chi, ModelSpace *ms, int lambda, int i,
+                     int l, int a, int b, int Jil, int Jab) {
+  if (not AngMom::Triangle(Jil, Jab, lambda))
+    return 0.0;
+  Orbit &oi = ms->GetOrbit(i);
+  Orbit &ol = ms->GetOrbit(l);
+  Orbit &oa = ms->GetOrbit(a);
+  Orbit &ob = ms->GetOrbit(b);
+  const double ji = oi.j2 * 0.5, jl = ol.j2 * 0.5, ja = oa.j2 * 0.5,
+               jb = ob.j2 * 0.5;
+  if (not AngMom::Triangle(ji, jl, (double)Jil) or
+      not AngMom::Triangle(ja, jb, (double)Jab))
+    return 0.0;
+  double sm = 0.0;
+  const int jiamin = std::abs(oi.j2 - oa.j2) / 2;
+  const int jiamax = (oi.j2 + oa.j2) / 2;
+  for (int Jia = jiamin; Jia <= jiamax; ++Jia) {
+    const int jlbmin =
+        std::max(std::abs(ol.j2 - ob.j2) / 2, std::abs(Jia - lambda));
+    const int jlbmax = std::min((ol.j2 + ob.j2) / 2, Jia + lambda);
+    for (int Jlb = jlbmin; Jlb <= jlbmax; ++Jlb) {
+      // ninej{λ, Jil, Jab; Jlb, jl, jb; Jia, ji, ja}
+      const double ninej =
+          ms->GetNineJ(lambda, Jil, Jab, Jlb, jl, jb, Jia, ji, ja);
+      if (std::abs(ninej) < 1e-14)
+        continue;
+      const double tbme = Chi(i, a, l, b, Jia, Jlb);
+      sm += ms->phase(Jia + Jlb) * HatJ(Jia) * HatJ(Jlb) * ninej * tbme;
+    }
+  }
+  const double pref =
+      -ms->phase(Jil + Jab + lambda +
+                 (oi.j2 + oa.j2 + ol.j2 + ob.j2) / 2) *
+      HatJ(Jil) * HatJ(Jab);
+  return pref * sm;
+}
+
+// (bj)(ak) → (ab)(kj): Ω̄_{ab,kj} from Ω_{bjak}.
+// AMC scheme=((3,-1),(4,-2)) on labels (b,j,a,k). Twin of PandyaChiIalb.
+double PandyaOmegaBjak(const Operator &Eta, int a, int b, int k, int j, int Jab,
+                       int Jkj) {
+  const int lambda = Eta.GetJRank();
+  if (not AngMom::Triangle(Jab, Jkj, lambda))
+    return 0.0;
+  ModelSpace *ms = Eta.modelspace;
+  Orbit &oa = ms->GetOrbit(a);
+  Orbit &ob = ms->GetOrbit(b);
+  Orbit &ok = ms->GetOrbit(k);
+  Orbit &oj = ms->GetOrbit(j);
+  const double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5, jk = ok.j2 * 0.5,
+               jj = oj.j2 * 0.5;
+  if (not AngMom::Triangle(ja, jb, (double)Jab) or
+      not AngMom::Triangle(jk, jj, (double)Jkj))
+    return 0.0;
+  double sm = 0.0;
+  const int jbjmin = std::abs(ob.j2 - oj.j2) / 2;
+  const int jbjmax = (ob.j2 + oj.j2) / 2;
+  for (int Jbj = jbjmin; Jbj <= jbjmax; ++Jbj) {
+    const int jakmin =
+        std::max(std::abs(oa.j2 - ok.j2) / 2, std::abs(Jbj - lambda));
+    const int jakmax = std::min((oa.j2 + ok.j2) / 2, Jbj + lambda);
+    for (int Jak = jakmin; Jak <= jakmax; ++Jak) {
+      // ninej{λ, Jab, Jkj; Jak, ja, jk; Jbj, jb, jj}
+      const double ninej =
+          ms->GetNineJ(lambda, Jab, Jkj, Jak, ja, jk, Jbj, jb, jj);
+      if (std::abs(ninej) < 1e-14)
+        continue;
+      const double tbme = Eta.TwoBody.GetTBME_J(Jbj, Jak, b, j, a, k);
+      sm += ms->phase(Jbj + Jak) * HatJ(Jbj) * HatJ(Jak) * ninej * tbme;
+    }
+  }
+  return -ms->phase(lambda) * HatJ(Jab) * HatJ(Jkj) * sm;
+}
+
 // Scalar Pandya adcb (Python bar_Gamma). Identical legs: even Jstd only.
 double PandyaGammaAdcb(const Operator &Gamma, int a, int b, int c, int d,
                        int Jcc) {
@@ -4095,9 +4174,9 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
 /// Gamma^IV_c / chi^lambda — χ DGEMM then leftover of χ_{ialb} Ω_{bjak}.
 /// Rank: T×S / S×T → tensor χ^λ. Fold T×T→S.
 ///
-/// χ^λ is occupancy-AS (no h_χ). Default leftover (kind=0) is the CG gold:
-/// WE-unpack of ChiTab × Ω, CG(λμ,λ−μ;00), ½(1−P)² in m, two leftover CGs.
-/// kind=1 is the speed form: all-orbit Pandya(χ,Ω) → mid-J DGEMM → inv 6j.
+/// χ^λ is occupancy-AS (no h_χ). Leftover is gold Path B for all π:
+/// PandyaChiIalb / PandyaOmegaBjak → mid-J DGEMM → inv 6j.
+/// (Ring adcb ≡ gold only when T1 χ is accidentally AS — even π.)
 ////////////////////////////////////////////////////////////////////////////
 static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
                                    Operator &Z) {
@@ -4248,20 +4327,26 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
 
   Z.profiler.timer["_GIVc_chi"] += omp_get_wtime() - t_start;
 
-
-  // Speed form = tts_ring Path B (locked run/test_givc_midj_bare_vs_cg.py):
-  //   X_pqsr = Σ_ab χ_pbar Ω_aqsb  (Path A) ≡ CG bare K
-  //   Path B: adcb Pandya → mid → inv (drop AMC-sample overall minus)
+  // ------------------------------------------------------------------
+  // Leftover: gold Path B Pandya → DGEMM → inv (all π).
   //
-  // Index map (AMC bar(i,j,k,l) ≡ IMSRG adcb(i,l,k,j)):
-  //   mid Σ_ab λ̂^{-1}(−1)^{J_ab+λ} χ̄_adcb(p,r;a,b) Ω̄_adcb(a,b;s,q)
-  //   then × (−1)^{Jp}/Ĵp on CC channel Jp=(p,r)=(s,q)
-  //   inv: Ĵ0 Σ_Jp Ĵp {jr js J0; jq jp Jp} barG  (no overall minus)
+  // m-gold is Σ χ_ialb Ω_bjak. Ring adcb implements χ_ibal Ω_ajkb, which
+  // equals gold only when T1 χ is accidentally AS (even π). Odd-π T1 fails.
   //
-  // Packaging: χ/Ω WE-reduced; barG/Z reduce=true; store Z_unred=Z_red/Ĵ.
-  // 2n unnormalized (GetTBME_J); ÷√2 only on AddToTBME.
+  // Gold fills (AMC scheme (il)|(ab) / (ab)|(kj)):
+  //   PandyaChiIalb  — scheme=((1,-3),(2,-4)) on χ_ialb
+  //   PandyaOmegaBjak — scheme=((3,-1),(4,-2)) on Ω_bjak
+  // Same ring mid w = (−1)^{Jp}/Ĵp · λ̂^{-1}(−1)^{Jab+λ} and corrected inv.
+  // Locked: even ≡ adcb; odd T1 ≡ CG/m (givc_gold_dgemm_lock).
+  //
+  // T1-only leftover is not Hermitian (T1† ≡ T2); store NonHerm when
+  // givc_chi_which != 0 so each fold(p,g,q,h) is kept.
+  // ------------------------------------------------------------------
   const double hat_lam_inv =
       1.0 / std::sqrt(2.0 * std::max(lambda, 0) + 1.0);
+
+  // Packaging: χ/Ω WE-reduced; barG/Z reduce=true; store Z_unred=Z_red/Ĵ.
+  // 2n unnormalized (GetTBME_J); ÷√2 only on AddToTBME.
   const int n_cc = Z.modelspace->GetNumberTwoBodyChannels_CC();
   const int parity_eta = Eta.GetParity();
   const int rank_T = Eta.GetTRank();
@@ -4307,8 +4392,8 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
     const int Jb = tb.J, Jk = tk.J;
     arma::mat &bChi = *chi_ptr[ip];
     arma::mat &bO = *o_ptr[ip];
-    // adcb: bar(a,b,c,d) ← O(a,d,c,b). (ch_il,ch_ab) → χ̄(i,l;a,b);
-    // (ch_ab,ch_il) → Ω̄(a,b;k,j) for all (k,j) in ch_il.
+    // Gold: (ch_il,ch_ab) → χ̄(i,l;a,b) from χ(i,a,l,b);
+    //       (ch_ab,ch_il) → Ω̄(a,b;k,j) from Ω(b,j,a,k).
     for (int ibra = 0; ibra < 2 * nb; ++ibra) {
       auto pq_b = PqCC(tb, ibra, nb);
       if (pq_b[0] < 0)
@@ -4317,10 +4402,12 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
         auto pq_k = PqCC(tk, iket, nk);
         if (pq_k[0] < 0)
           continue;
-        bChi(ibra, iket) = PandyaChiAdcb(Chi, Z.modelspace, lambda, pq_b[0],
-                                         pq_b[1], pq_k[0], pq_k[1], Jb, Jk);
-        bO(ibra, iket) =
-            PandyaOmegaAdcb(Eta, pq_b[0], pq_b[1], pq_k[0], pq_k[1], Jb, Jk);
+        bChi(ibra, iket) =
+            PandyaChiIalb(Chi, Z.modelspace, lambda, pq_b[0], pq_b[1],
+                          pq_k[0], pq_k[1], Jb, Jk);
+        // Ω̄(a,b;k,j) from Ω(b,j,a,k); same (bra,ket) slot layout as adcb.
+        bO(ibra, iket) = PandyaOmegaBjak(Eta, pq_b[0], pq_b[1], pq_k[0],
+                                         pq_k[1], Jb, Jk);
       }
     }
   }
@@ -4335,7 +4422,7 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
     TwoBodyChannel_CC &til = Z.modelspace->GetTwoBodyChannel_CC(ch_il);
     if (til.GetNumberKets() < 1)
       continue;
-    // mid overall (−1)^{Jp}/Ĵp  (tts_ring Path B / test_z_ring)
+    // mid overall (−1)^{Jp}/Ĵp  (same channel factor as tts_ring Path B)
     const double wL =
         Z.modelspace->phase(til.J) / std::sqrt(2.0 * til.J + 1.0);
     for (int ch_ab = 0; ch_ab < n_cc; ++ch_ab) {
@@ -4358,7 +4445,7 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
 
   auto inv_red = [&](index_t i, index_t j, index_t k, index_t l,
                      int J0) -> double {
-    // ring X_pqsr with (p,q,s,r)=(i,j,k,l); barG on (i,l)×(k,j).
+    // barG on (i,l)×(k,j) from χ_ialb×Ω_bjak product.
     // Corrected inv: +Ĵ0 Σ Ĵp sixj barG  (drop AMC-sample minus).
     Orbit &oi = Z.modelspace->GetOrbit(i);
     Orbit &oj = Z.modelspace->GetOrbit(j);
@@ -4419,6 +4506,9 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
                   pij * pkl * inv_red(j, i, l, k, J0));
   };
 
+  // T1/T2-only leftover is not Hermitian (T1† ≡ T2). Full-matrix NonHerm
+  // keeps fold(p,g,q,h) ≠ fold(q,h,p,g). Both χ terms → Hermitian, upper OK.
+  const bool nonherm = (givc_chi_which != 0);
   auto &Z2p = Z.TwoBody;
   std::vector<size_t> ch_bra_list, ch_ket_list;
   for (auto &iter : Z.TwoBody.MatEl) {
@@ -4441,7 +4531,8 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
     for (size_t ibra = 0; ibra < nbras; ++ibra) {
       Ket &bra = tbc_bra.GetKet(ibra);
       const index_t p = bra.p, g = bra.q;
-      const size_t ketmin = (ch_bra == ch_ket) ? ibra : 0;
+      const size_t ketmin =
+          (nonherm or ch_bra != ch_ket) ? 0 : ibra;
       for (size_t iket = ketmin; iket < nkets; ++iket) {
         Ket &ket = tbc_ket.GetKet(iket);
         const index_t q = ket.p, h = ket.q;
@@ -4450,7 +4541,10 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
           z /= PhysConst::SQRT2;
         if (q == h)
           z /= PhysConst::SQRT2;
-        Z2p.AddToTBME(ch_bra, ch_ket, ibra, iket, z);
+        if (nonherm)
+          Z2p.AddToTBMENonHerm(ch_bra, ch_ket, ibra, iket, z);
+        else
+          Z2p.AddToTBME(ch_bra, ch_ket, ibra, iket, z);
       }
     }
   }
@@ -4461,7 +4555,7 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
 
 ////////////////////////////////////////////////////////////////////////////
 void comm223_232_GIVc(const Operator &Eta, const Operator &Gamma, Operator &Z) {
-  // Γ^{IV_c}: χ^λ DGEMM + leftover (tts_ring Pandya→DGEMM→inv).
+  // Γ^{IV_c}: gold Pandya (ialb/bjak) → DGEMM → inv (all π).
   comm223_232_GIVc_pathB(Eta, Gamma, Z);
 }
 

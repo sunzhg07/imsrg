@@ -1,0 +1,61 @@
+# Gold GIVc Path B with Pandya scheme that lands χ_ialb on (il)|(ab)
+# so the mid is a true DGEMM over (ab), twin of tts_ring / z_pbar_aqsb.
+#
+# Standard G4c_chi_omega_pandya.txt uses scheme=((1,-4),(3,-2)):
+#   barChi_ialb → CC (ib)|(la)  — product is NOT (ab)-channel DGEMM.
+#
+# This file:
+#   barChi scheme=((1,-3),(2,-4)) on labels i,a,l,b → (i,l)|(a,b)
+#   barO   scheme=((3,-1),(4,-2)) on labels b,j,a,k → (a,b)|(k,j)
+#   product barChi_ialb * barO_bjak contracts the shared (ab) channel.
+#
+# Inv: drop AMC-sample overall minus (tts_ring / G4c rule).
+# Compare ninej print to m / ethS CG gold on odd π T1.
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\lambda}",
+    scalar=false
+}
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+# (ia)(lb) → (il)(ab)
+declare barChi {
+    mode=4,
+    latex="\\bar{\\chi}^{\\lambda}",
+    scalar=false,
+    scheme=((1,-3),(2,-4))
+}
+barChi_ijkl = - Chi_ijkl;
+
+# (bj)(ak) → (ab)(kj)   [indices b,j,a,k → pairs (a,-b),(k,-j)]
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((3,-1),(4,-2))
+}
+barO_ijkl = - Omega_ijkl;
+
+declare barG4c {
+    mode=4,
+    latex="\\bar{\\Gamma}^{(IV_c)}",
+    scalar=true,
+    reduce=true,
+    scheme=((1,-4),(3,-2))
+}
+# Bare Term1 topology (P stripped for mid lock). Full AS via ethS FoldAS.
+barG4c_ijkl = sum_ab(barChi_ialb * barO_bjak);
+
+declare G4c {
+    mode=4,
+    latex="\\Gamma^{(IV_c)}",
+    scalar=true,
+    reduce=true
+}
+G4c_ijkl = barG4c_ijkl;

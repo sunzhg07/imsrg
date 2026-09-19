@@ -756,7 +756,9 @@ Z_{ijkl}=\tfrac12\bigl(
 \bigr).
 \]
 
-(m-products \(\chi_{ialb}\Omega_{bjak}\equiv\chi_{ibal}\Omega_{ajkb}\).)
+(m-products \(\chi_{ialb}\Omega_{bjak}\equiv\chi_{ibal}\Omega_{ajkb}\)
+**only when T1 χ is AS**, i.e. even π on He4 emax=1; fails odd-π T1 —
+see `tensor_pro_final/GIVc/03_pathB/LESSON.md` §6.)
 
 **Path B speed form (λ≠0):** IMSRG tensor Pandya (`adcb`) with map
 AMC \(\bar\chi(p,b,a,r)=\) IMSRG\((p,r,a,b)\), mid-J DGEMM

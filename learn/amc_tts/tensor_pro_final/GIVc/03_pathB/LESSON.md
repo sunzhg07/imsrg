@@ -6,29 +6,24 @@ CG recouple was gold during the lock, then removed.
 Bench that locked the mid-J identity:
 `run/test_givc_midj_bare_vs_cg.py` (bare \(K\), FoldAS off, T1, λ=3).
 
+**Odd-π channel equations:** [PARITY_CHANNELS.md](PARITY_CHANNELS.md).
+
 ---
 
 ## What finally matched
 
-m-scheme / CG gold for the bare ring:
+m-scheme / CG gold for the bare ring (even π, where χ is accidentally AS):
 
 \[
 K=\sum_{ab}\mathrm{CG}(\lambda\mu,\lambda{-}\mu;00)\,
 \chi^\lambda_{ialb}(m)\,\Omega_{bjak}(m)
+\;\equiv\;
+\sum_{ab}\mathrm{CG}\,
+\chi^\lambda_{ibal}(m)\,\Omega_{ajkb}(m)
 \]
 
-is **exactly** the J-scheme **tts_ring** Path A
-
-\[
-X_{pqsr}
-=\sum_{ab}
-\chi_{p\,\bar a\,r\,b}\,\Omega_{a\,q\,s\,b}
-\qquad(p,q,s,r)=(i,j,k,l)
-\]
-
-(WE-reduced χ/Ω; \(X\) reduced; store \(Z_{\mathrm{unred}}=X/\hat J\)).
-
-Path B speed form of **that same ring** (not of printed `G4c_from_chi`):
+Production Path B implements the **right-hand** (tts_ring) form. For odd-π T1
+the two sides disagree — see §6 / PARITY_CHANNELS.
 
 1. IMSRG **adcb** Pandya of χ and Ω into 2n×2n CC  
    with map \(\mathrm{AMC}\,\bar O(i,j,k,l)\equiv\mathrm{IMSRG\,adcb}(i,l,k,j)\).
@@ -42,7 +37,8 @@ Path B speed form of **that same ring** (not of printed `G4c_from_chi`):
    \{j_r\,j_s\,J_0;\,j_q\,j_p\,J_p\}\,\bar G^{J_p}\).
 4. Fermionic \(\tfrac12(1-P)^2\) on the leftover.
 
-Locked: Path A ≡ Path B ≡ CG/m for λ=1,2,3 (T1/T2/both) at emax=1.
+Locked: Path A ≡ Path B ≡ CG/m for λ=1,2,3 (T1/T2/both) at emax=1
+**even parity**. Odd-π T1 is open (parity-channel rethink, not mid scratch).
 
 ---
 
@@ -54,9 +50,10 @@ Printed `G4c_from_chi*_ninej.tex` (χ on `ialb`, Ω on `bjak` with that 6j/9j se
 is **wrong vs m** (~1–3%, non-Hermitian under bra↔ket). NOTES already said so
 (2026-07-29), but Path B wiring still chased that print.
 
-**Correct mid-J** was already locked for Ω×Ω as **tts_ring**
+**Correct mid-J for even π** was already locked for Ω×Ω as **tts_ring**
 (`learn/amc_tts/factored_fIIIa/tts_ring.md`, `run/test_z_ring_mscheme_sign.py`).
-GIVc leftover is the same ring with χ in place of the first Ω.
+GIVc leftover uses that ring with χ in place of the first Ω — **only valid when
+χ is accidentally fermionic-AS** (see §6).
 
 ### 2. Same-label AMC Pandya ≠ IMSRG adcb without an explicit map
 
@@ -72,7 +69,9 @@ Must use:
 | \(\bar\chi(p,b,a,r)\) | `adcb(p,r,a,b)` ← reads `χ(p,b,a,r)` |
 | \(\bar\Omega(a,q,s,b)\) | `adcb(a,b,s,q)` ← reads `Ω(a,q,s,b)` |
 
-Do **not** invent `PandyaChiIalb` / `(ia)(lb)` helpers for production.
+`PandyaChiIalb` / `PandyaOmegaBjak` (χ_ialb / Ω_bjak → same CC layout) are in
+ethS for the odd-π fix, but their mid/inv factors are **not** the ring ones —
+do not drop them in as a rename of adcb.
 
 ### 3. Missing mid factor \((-1)^{J_p}/\hat J_p\)
 
@@ -93,7 +92,38 @@ avoids that class of fake FAIL.
 \(S/\hat J\). Dividing √2 again when comparing to `GetTBME_J` fakes 0.5 / 0.707.
 See `learn/amc_tts/REDUCED_UNREDUCED.md`.
 
-### 6. 2n pack: unnormalized vs normalized
+### 6. Odd-π T1: parity cross-coupling, not a scratch mid bug
+
+Keep DGEMM+Pandya. Full channel equations:
+[PARITY_CHANNELS.md](PARITY_CHANNELS.md).
+
+Short version:
+
+- Odd \(\pi_\eta\) ⇒ ordinary bra≠ket parity ⇒ CC DGEMM only on **opp-π** pairs
+  (filter already correct).
+- Gold \(\chi_{ialb}\) is born in \((ia)|(lb)\); ring/adcb reads \(\chi_{ibal}\)
+  born in \((ib)|(al)\). For odd π those naturals land on **swapped**
+  \((\pi,\pi')\) before Pandya, but both map into the **same** target CC slot
+  \((il)|(ab)\). Content differs; AS identity fails (\(n_l\neq n_b\)).
+- Even π: same-π naturals, T1 χ accidentally AS → ring ≡ gold (locked).
+- Fix = gold Pandya maps into those opp-π slots (`PandyaChiIalb` /
+  `PandyaOmegaBjak` with AMC schemes `((1,-3),(2,-4))` /
+  `((3,-1),(4,-2))`), not mid-factor retunes or χ antisymmetrization.
+
+| Case | \(n_l=n_b\) on nnz T1 χ? | ethS leftover ≡ m-gold? |
+|---|---|---|
+| even π, He4 emax=1 | yes (only hh/pp) | **yes** — gold DGEMM (≡ ring) |
+| odd π T1 | **no** (hp pairs) | **yes** — gold DGEMM + NonHerm |
+| odd π T2 | (T2 always AS) | **yes** — gold DGEMM |
+
+Production (`comm223_232_GIVc_pathB`): **all π** → `PandyaChiIalb` /
+`PandyaOmegaBjak` → ring mid DGEMM → inv. AMC schemes
+`((1,-3),(2,-4))` / `((3,-1),(4,-2))` land gold \(\chi_{ialb}\Omega_{bjak}\)
+on the same \((il)|(ab)\) CC slots as ring. See
+`factored_GIV/input/G4c_gold_il_ab_pandya.txt`.
+
+---
+### 7. 2n pack: unnormalized vs normalized
 
 `GetTBME_J` / ChiTab = **unnormalized**. `GetMatrix` = normalized.
 Pandya 2n packs unnormalized; ÷√2 only on `AddToTBME`.
@@ -109,7 +139,9 @@ Pandya 2n packs unnormalized; ÷√2 only on `AddToTBME`.
 4. For Path B: lock fwd Pandya alone, then mid product, then inv — separately.
 5. Use IMSRG adcb + explicit AMC↔adcb map; do not mix same-label ninejs into
    adcb slots.
-6. Do not retune \(\hat J\)/√2/phases until (1)–(5) are clean.
+6. For **odd π**: list natural vs Pandya parity pairs before trusting ring≡gold
+   (see PARITY_CHANNELS).
+7. Do not retune \(\hat J\)/√2/phases until (1)–(6) are clean.
 
 ---
 
@@ -118,3 +150,4 @@ Pandya 2n packs unnormalized; ÷√2 only on `AddToTBME`.
 - ethS: `comm223_232_GIVc` → Pandya+DGEMM+inv only
   (`src/FactorizedDoubleCommutator_eths.cc`).
 - Packaging table: this directory’s `EQUATION.md`.
+- Odd-π channels: `PARITY_CHANNELS.md`.
