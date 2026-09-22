@@ -1,5 +1,8 @@
 # EOM N-kernel: m-scheme → scalar AMC → tensor AMC
 
+Human walkthrough of each diagram (dagger, AMC print, implemented \(N\)):
+`computenorm_tensor.md`.
+
 `ConstructNormMatrix` is a bilinear kernel: `ComputeNorm(Op1,Op2) = v1^T N v2`.
 Each diagram is a Wick string of χ† ρ χ contracted to a **0-body**. There is no Pandya;
 J-scheme hats/6j/9j come from recoupling only.
