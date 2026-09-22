@@ -2706,7 +2706,8 @@ bool UnitTest::Mscheme_Test_comm220tts(const Operator &X, const Operator &Y)
           Orbit &ob = X.modelspace->GetOrbit(b);
           if ((oi.l + oj.l + oa.l + ob.l) % 2 > 0)
             continue;
-          if ((oi.tz2 + oj.tz2) != (oa.tz2 + ob.tz2))
+          // rank_T is |ΔTz|, not coupled T. T=1 needs |Tz_ij-Tz_ab|=1.
+          if (std::abs((oi.tz2 + oj.tz2) - (oa.tz2 + ob.tz2)) != 2 * X.GetTRank())
             continue;
           double occ = oi.occ * oj.occ * (1. - oa.occ) * (1. - ob.occ);
           if (std::abs(occ) < 1e-8)
@@ -3207,7 +3208,8 @@ bool UnitTest::Mscheme_Test_comm222_pp_hhtts(const Operator &X, const Operator &
           continue;
         if ((oi.l + oj.l + oa.l + ob.l) % 2 > 0)
           continue;
-        if ((oi.tz2 + oj.tz2) != (oa.tz2 + ob.tz2))
+        // Intermediate pair: |ΔTz| = T of X/Y. Leftover Z is T=0 (equal Tz below).
+        if (std::abs((oi.tz2 + oj.tz2) - (oa.tz2 + ob.tz2)) != 2 * X.GetTRank())
           continue;
         for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
         {
@@ -4346,7 +4348,9 @@ bool UnitTest::Mscheme_Test_comm222_pp_hhst(const Operator &X, const Operator &Y
 
                   if ((oi.l + oj.l + oa.l + ob.l) % 2 > 0)
                     continue;
-                  if ((oi.tz2 + oj.tz2) != (oa.tz2 + ob.tz2))
+                  // Intermediate: |ΔTz| matches X or Y. Leftover Z uses Z.GetTRank() above.
+                  if (std::abs((oi.tz2 + oj.tz2) - (oa.tz2 + ob.tz2)) != 2 * X.GetTRank()
+                      and std::abs((oi.tz2 + oj.tz2) - (oa.tz2 + ob.tz2)) != 2 * Y.GetTRank())
                     continue;
 
                   for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
@@ -10991,7 +10995,8 @@ bool UnitTest::RME_Test_comm232tts_bare(const Operator &X_in, const Operator &Y_
       for (int iket = ket_min; iket < nkets; iket++)
       {
         Ket &ket = tbc_ket.GetKet(iket);
-        unique_kets.insert({bra.p, bra.q, ket.p, ket.q});
+        unique_kets.insert({static_cast<int>(bra.p), static_cast<int>(bra.q),
+                            static_cast<int>(ket.p), static_cast<int>(ket.q)});
       }
     }
   }

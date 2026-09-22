@@ -962,262 +962,6 @@ void EOM::ConstructNormMatrix() {
 }
 
 
-namespace {
-
-std::array<int, 2> PqCC_eom(TwoBodyChannel_CC &tbc, int idx, int nK) {
-  Ket &ket = tbc.GetKet(idx % nK);
-  if (idx < nK)
-    return {(int)ket.p, (int)ket.q};
-  if (ket.p == ket.q)
-    return {-1, -1};
-  return {(int)ket.q, (int)ket.p};
-}
-
-double TensorPandyaBar_eom(const Operator &Op, int i, int j, int k, int l,
-                             int Jbra, int Jket) {
-  const int lambda = Op.GetJRank();
-  if (not AngMom::Triangle((double)Jbra, (double)Jket, (double)lambda))
-    return 0.0;
-  Orbit &oi = Op.modelspace->GetOrbit(i);
-  Orbit &oj = Op.modelspace->GetOrbit(j);
-  Orbit &ok = Op.modelspace->GetOrbit(k);
-  Orbit &ol = Op.modelspace->GetOrbit(l);
-  const double ji = oi.j2 * 0.5, jj = oj.j2 * 0.5;
-  const double jk = ok.j2 * 0.5, jl = ol.j2 * 0.5;
-  double sm = 0.0;
-  const int J2min = std::abs(oi.j2 - oj.j2) / 2;
-  const int J2max = (oi.j2 + oj.j2) / 2;
-  const int J3min = std::abs(ok.j2 - ol.j2) / 2;
-  const int J3max = (ok.j2 + ol.j2) / 2;
-  for (int J2 = J2min; J2 <= J2max; ++J2) {
-    for (int J3 = J3min; J3 <= J3max; ++J3) {
-      if (not AngMom::Triangle((double)J2, (double)J3, (double)lambda))
-        continue;
-      const double n9 = AngMom::NineJ((double)lambda, (double)Jbra, (double)Jket,
-                                       (double)J3, jl, jk, (double)J2, ji, jj);
-      if (std::abs(n9) < 1e-16)
-        continue;
-      const double hats = std::sqrt((2.0 * J2 + 1.0) * (2.0 * J3 + 1.0));
-      sm += AngMom::phase(J2) * hats * n9 *
-            Op.TwoBody.GetTBME_J(J2, J3, i, j, k, l);
-    }
-  }
-  const double pref = -AngMom::phase(Jbra + (oi.j2 + ok.j2) / 2 + lambda) *
-                      std::sqrt((2.0 * Jbra + 1.0) * (2.0 * Jket + 1.0));
-  return pref * sm;
-}
-
-struct PandyaTrip {
-  int chb, ibra, chk, iket;
-  double val;
-};
-
-std::vector<PandyaTrip> FillPandyaTrips(const Operator &Op,
-                                         const std::set<int> &S) {
-  std::vector<PandyaTrip> out;
-  const int lambda = Op.GetJRank();
-  const int n_cc = Op.modelspace->GetNumberTwoBodyChannels_CC();
-  auto inS = [&](int p, int q) { return S.count(p) && S.count(q); };
-  for (int ch_b = 0; ch_b < n_cc; ++ch_b) {
-    TwoBodyChannel_CC &tb = Op.modelspace->GetTwoBodyChannel_CC(ch_b);
-    const int nb = tb.GetNumberKets();
-    if (nb < 1)
-      continue;
-    const int Jb = tb.J;
-    for (int ch_k = 0; ch_k < n_cc; ++ch_k) {
-      TwoBodyChannel_CC &tk = Op.modelspace->GetTwoBodyChannel_CC(ch_k);
-      const int nk = tk.GetNumberKets();
-      if (nk < 1)
-        continue;
-      if (not AngMom::Triangle((double)Jb, (double)tk.J, (double)lambda))
-        continue;
-      if ((tb.parity + tk.parity + Op.GetParity()) % 2 != 0 || tb.Tz != tk.Tz)
-        continue;
-      for (int ibra = 0; ibra < 2 * nb; ++ibra) {
-        auto il = PqCC_eom(tb, ibra, nb);
-        if (il[0] < 0 || !inS(il[0], il[1]))
-          continue;
-        for (int iket = 0; iket < 2 * nk; ++iket) {
-          auto ba = PqCC_eom(tk, iket, nk);
-          if (ba[0] < 0 || !inS(ba[0], ba[1]))
-            continue;
-          double v = TensorPandyaBar_eom(Op, il[0], ba[1], ba[0], il[1], Jb,
-                                           tk.J);
-          if (std::abs(v) < 1e-16)
-            continue;
-          out.push_back({ch_b, ibra, ch_k, iket, v});
-        }
-      }
-    }
-  }
-  return out;
-}
-
-double C4FromPandyaBars(EOM &eom, const std::vector<PandyaTrip> &barX,
-                         const std::vector<PandyaTrip> &barY, int lambda) {
-  if (barX.empty() || barY.empty())
-    return 0.0;
-  ModelSpace *ms = eom.modelspace;
-  const int n_cc = ms->GetNumberTwoBodyChannels_CC();
-  const double hat_lambda_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
-
-  std::map<std::array<int, 2>, arma::mat> Xmats, Ymats;
-  auto ensure = [&](std::map<std::array<int, 2>, arma::mat> &M, int chb,
-                      int chk) -> arma::mat & {
-    std::array<int, 2> key{chb, chk};
-    auto it = M.find(key);
-    if (it != M.end())
-      return it->second;
-    TwoBodyChannel_CC &tb = ms->GetTwoBodyChannel_CC(chb);
-    TwoBodyChannel_CC &tk = ms->GetTwoBodyChannel_CC(chk);
-    const int nb = std::max(1, (int)tb.GetNumberKets());
-    const int nk = std::max(1, (int)tk.GetNumberKets());
-    arma::mat z(2 * nb, 2 * nk, arma::fill::zeros);
-    return M.emplace(key, std::move(z)).first->second;
-  };
-  for (auto &t : barX)
-    ensure(Xmats, t.chb, t.chk)(t.ibra, t.iket) = t.val;
-  for (auto &t : barY)
-    ensure(Ymats, t.chb, t.chk)(t.ibra, t.iket) = t.val;
-
-  std::vector<arma::mat> barZ(n_cc);
-  for (int ch_b = 0; ch_b < n_cc; ++ch_b) {
-    int nb = (int)ms->GetTwoBodyChannel_CC(ch_b).GetNumberKets();
-    barZ[ch_b] = arma::mat(2 * std::max(1, nb), 2 * std::max(1, nb),
-                           arma::fill::zeros);
-  }
-
-  auto scale_occ_rows = [&](arma::mat &R, int ch_k) {
-    TwoBodyChannel_CC &tk = ms->GetTwoBodyChannel_CC(ch_k);
-    const int nk = tk.GetNumberKets();
-    for (int ibra = 0; ibra < 2 * nk; ++ibra) {
-      auto ba = PqCC_eom(tk, ibra, nk);
-      if (ba[0] < 0)
-        continue;
-      const double nanb =
-          ms->GetOrbit(ba[1]).occ - ms->GetOrbit(ba[0]).occ;
-      R.row(ibra) *= nanb;
-    }
-  };
-
-  for (int ch_b = 0; ch_b < n_cc; ++ch_b) {
-    TwoBodyChannel_CC &tb = ms->GetTwoBodyChannel_CC(ch_b);
-    const int nb = tb.GetNumberKets();
-    if (nb < 1)
-      continue;
-    const int Jb = tb.J;
-    const double wL = AngMom::phase(Jb) / (2.0 * Jb + 1.0);
-    for (int ch_k = 0; ch_k < n_cc; ++ch_k) {
-      TwoBodyChannel_CC &tk = ms->GetTwoBodyChannel_CC(ch_k);
-      const int nk = tk.GetNumberKets();
-      if (nk < 1)
-        continue;
-      const int Jk = tk.J;
-      const double pref =
-          wL * AngMom::phase(Jk + lambda) * hat_lambda_inv;
-      auto itX = Xmats.find({ch_b, ch_k});
-      auto itYr = Ymats.find({ch_k, ch_b});
-      if (itX != Xmats.end() && itYr != Ymats.end()) {
-        arma::mat RY = itYr->second;
-        scale_occ_rows(RY, ch_k);
-        barZ[ch_b] += pref * (itX->second * RY);
-      }
-      auto itY = Ymats.find({ch_b, ch_k});
-      auto itXr = Xmats.find({ch_k, ch_b});
-      if (itY != Ymats.end() && itXr != Xmats.end()) {
-        arma::mat RX = itXr->second;
-        scale_occ_rows(RX, ch_k);
-        barZ[ch_b] -= pref * (itY->second * RX);
-      }
-    }
-  }
-
-  auto zbar_at = [&](int p, int q, int r, int s, int Jp) -> double {
-    Orbit &op = ms->GetOrbit(p);
-    Orbit &oq = ms->GetOrbit(q);
-    Orbit &oR = ms->GetOrbit(r);
-    Orbit &os = ms->GetOrbit(s);
-    const int parity_cc = (op.l + os.l) % 2;
-    const int Tz_cc = std::abs(op.tz2 - os.tz2) / 2;
-    const size_t ch_cc =
-        ms->GetTwoBodyChannelIndex(Jp, parity_cc, Tz_cc);
-    if ((int)ch_cc >= n_cc)
-      return 0.0;
-    TwoBodyChannel_CC &tbc_cc = ms->GetTwoBodyChannel_CC(ch_cc);
-    const int nkets_cc = tbc_cc.GetNumberKets();
-    if (nkets_cc < 1 || barZ[ch_cc].n_rows < 1)
-      return 0.0;
-    int indx_il = tbc_cc.GetLocalIndex(std::min(p, s), std::max(p, s));
-    int indx_kj = tbc_cc.GetLocalIndex(std::min(r, q), std::max(r, q));
-    if (indx_il < 0 || indx_kj < 0)
-      return 0.0;
-    indx_il += (p > s ? nkets_cc : 0);
-    indx_kj += (r > q ? nkets_cc : 0);
-    if (indx_il >= (int)barZ[ch_cc].n_rows ||
-        indx_kj >= (int)barZ[ch_cc].n_cols)
-      return 0.0;
-    return barZ[ch_cc](indx_il, indx_kj);
-  };
-
-  double ovlp2 = 0.0;
-  const size_t nch = ms->GetNumberTwoBodyChannels();
-  for (size_t ch = 0; ch < nch; ++ch) {
-    TwoBodyChannel &tbc = ms->GetTwoBodyChannel(ch);
-    const int J = tbc.J;
-    const auto &vv = tbc.GetKetIndex_vv();
-    if (vv.empty())
-      continue;
-    const double hatJ = std::sqrt(2.0 * J + 1.0);
-    for (size_t ia = 0; ia < vv.size(); ++ia) {
-      const int ibra = (int)vv[ia];
-      Ket &bra = tbc.GetKet(ibra);
-      const size_t i = bra.p, j = bra.q;
-      Orbit &oi = ms->GetOrbit(i);
-      Orbit &oj = ms->GetOrbit(j);
-      for (size_t ik = ia; ik < vv.size(); ++ik) {
-        const int iket = (int)vv[ik];
-        Ket &ket = tbc.GetKet(iket);
-        const size_t k = ket.p, l = ket.q;
-        Orbit &ok = ms->GetOrbit(k);
-        Orbit &ol = ms->GetOrbit(l);
-        double zijkl = 0.0;
-        int Jpmin =
-            std::min(std::max(std::abs(oi.j2 - ol.j2), std::abs(oj.j2 - ok.j2)),
-                     std::max(std::abs(oj.j2 - ol.j2),
-                              std::abs(oi.j2 - ok.j2))) /
-            2;
-        int Jpmax =
-            std::max(std::min(oi.j2 + ol.j2, oj.j2 + ok.j2),
-                     std::min(oj.j2 + ol.j2, oi.j2 + ok.j2)) /
-            2;
-        for (int Jp = Jpmin; Jp <= Jpmax; ++Jp) {
-          const double sixj_ijkl = AngMom::SixJ(
-              oi.j2 * 0.5, oj.j2 * 0.5, J, ok.j2 * 0.5, ol.j2 * 0.5, Jp);
-          const double sixj_jikl = AngMom::SixJ(
-              oj.j2 * 0.5, oi.j2 * 0.5, J, ok.j2 * 0.5, ol.j2 * 0.5, Jp);
-          const int phase_ij = AngMom::phase((oi.j2 + oj.j2 - 2 * J) / 2);
-          zijkl -= (2 * Jp + 1) * sixj_ijkl *
-                   zbar_at((int)i, (int)j, (int)k, (int)l, Jp);
-          zijkl += (2 * Jp + 1) * sixj_jikl *
-                   zbar_at((int)j, (int)i, (int)k, (int)l, Jp) * phase_ij;
-        }
-        if (i == j)
-          zijkl /= PhysConst::SQRT2;
-        if (k == l)
-          zijkl /= PhysConst::SQRT2;
-        double rho = eom.RdmTB_J((double)J, i, j, k, l);
-        ovlp2 += zijkl * rho * hatJ;
-        if (ibra != iket) {
-          double rho2 = eom.RdmTB_J((double)J, k, l, i, j);
-          ovlp2 += zijkl * rho2 * hatJ;
-        }
-      }
-    }
-  }
-  return ovlp2 / 2.0;
-}
-
-} // namespace
 
 void EOM::ConstructNormMatrix_tensor() {
   // Tensor N-kernel: same Wick strings as ConstructNormMatrix, AMC with
@@ -1226,9 +970,15 @@ void EOM::ConstructNormMatrix_tensor() {
   // ρ is always scalar 0+.
   // Empirical hats vs ½[Q⁺,Q⁻] (He4-core, TTS leftover × GetVSEOM_Overlap):
   //   110/220 (A1, A2): λ̂^{-2}  (AMC had λ̂^{-1}; 0-body m-trace is λ̂^{-2})
-  //   leftover 2b×ρ (C1, C2, C3, C4, C5): λ̂^{-2}
+  //   leftover 2b×ρ C1 (comm222 × ρ·Ĵ): Ĵ_vv^{-1} λ̂^{-1}
+  //     (not λ̂^{-2}; that only matches when J_vv=λ)
+  //   leftover 2b×ρ C3 (comm222 × ρ·Ĵ): Ĵ_pp^{-1} λ̂^{-1}
+  //     (same leftover packaging as C1; λ̂^{-2} only matches when J_pp=λ)
+  //   C2/C5 (comm122 leftover × ρ·Ĵ): Ĵ_other λ̂^{-1}
+  //   C4 is the unreduced XY scalar, λ̂^{-1}, not the XY−YX commutator
   //   leftover 1b×ρ (B4, B1, B2, B5, B3): λ̂^{-1} / ĵ of the contracted orbit
-  // C4 is ½⟨comm222_phtts(χ, Q)⟩_ρ (Pandya leftover), not the AMC Wick XρY.
+  // C4 is the scalar four-perm pipeline on Core_Diagram_tensor
+  // (X daggered: X_cdab ρ_dfae Y_bfce).
   // Y_ia / Y_ijab folded into stored Y_ai / Y_abij via IMSRG tensor flip:
   //   1b: O_ji = (-1)^{j_i-j_j} O_ij   (Hermitian)
   //   2b: ⟨J1||O||J0⟩ = (-1)^{J1-J0} ⟨J0||O||J1⟩
@@ -1274,12 +1024,16 @@ void EOM::ConstructNormMatrix_tensor() {
     return is_pp_ket(kbra) && is_hv_ket(kket);
   };
 
-  // B4 qv-qv leftover 1b×ρ: λ̂^{-1} / ĵ_v
+  // B4 qv-qv: 110 identity (Fermi n_v(1-n_q), same hats as A1) plus leftover 1b×ρ
   if (qv_dim != 0) {
     for (index_t i = qv_start; i <= qv_end; i++) {
       auto &cf_bra = eom_confs.at(i);
       Orbit &oa = modelspace->GetOrbit(cf_bra[0]);
       Orbit &oi = modelspace->GetOrbit(cf_bra[1]);
+      const double phase = ph((oa.j2 + oi.j2) / 2 + lam);
+      const double wocc = oi.occ * (1.0 - oa.occ);
+      if (std::abs(wocc) > 1e-8)
+        Nkernel(i, i) += -phase * lamhatinv2 * we1(oa, oi) * wocc;
       for (index_t j = qv_start; j <= qv_end; j++) {
         auto &cf_ket = eom_confs.at(j);
         if (cf_bra[0] != cf_ket[0])
@@ -1288,7 +1042,7 @@ void EOM::ConstructNormMatrix_tensor() {
         if (oj.j2 != oi.j2)
           continue;
         Nkernel(i, j) +=
-            -ph((oa.j2 + oi.j2) / 2 + lam) * lamhatinv / jhat(oi) *
+            -phase * lamhatinv / jhat(oi) *
             we1(oa, oj) * RdmOB(cf_bra[1], cf_ket[1]);
       }
     }
@@ -1317,15 +1071,43 @@ void EOM::ConstructNormMatrix_tensor() {
     }
   }
 
-  // C1 ppvv leftover 2b×ρ: λ̂^{-2}
+  // C1 ppvv leftover 2b×ρ. Plus 220 identity on ⟨qq||vv⟩
+  // (ladder drops swapped ⟨vv||qq⟩, so do not put identity there).
+  // comm222 leftover at J_vv has Ĵ_vv^{-2} λ̂^{-1}; overlap supplies
+  // ρ·Ĵ_vv, so N keeps Ĵ_vv^{-1} λ̂^{-1}. Using λ̂^{-2} only matches
+  // when J_vv=λ (the P=1 random-op case).
   if (ppvv_dim != 0) {
+    auto ket_qq_qv = [&](const Ket &k) {
+      int ca = modelspace->GetOrbit(k.p).cvq;
+      int cb = modelspace->GetOrbit(k.q).cvq;
+      return ca >= 2 || cb >= 2;
+    };
+    auto ket_vv = [&](const Ket &k) {
+      return modelspace->GetOrbit(k.p).cvq == 1 &&
+             modelspace->GetOrbit(k.q).cvq == 1;
+    };
     for (index_t i = ppvv_start; i <= ppvv_end; i++) {
       auto &cf_bra = eom_confs.at(i);
       TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
       TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
-      Ket &kvvX = tkX.GetKet(cf_bra[1]);
+      Ket &k0 = tbX.GetKet(cf_bra[0]);
+      Ket &k1 = tkX.GetKet(cf_bra[1]);
       const int J0 = tbX.J;
       const int J1 = tkX.J;
+      if (ket_qq_qv(k0) && ket_vv(k1)) {
+        Orbit &oq1 = modelspace->GetOrbit(k0.p);
+        Orbit &oq2 = modelspace->GetOrbit(k0.q);
+        Orbit &ov1 = modelspace->GetOrbit(k1.p);
+        Orbit &ov2 = modelspace->GetOrbit(k1.q);
+        const double wocc =
+            ov1.occ * ov2.occ * (1.0 - oq1.occ) * (1.0 - oq2.occ);
+        if (std::abs(wocc) > 1e-8)
+          Nkernel(i, i) +=
+              ph(J0 + J1 + lam) * lamhatinv2 * we2(J0, J1) * wocc;
+      }
+      if (!(ket_qq_qv(k0) && ket_vv(k1)))
+        continue;
+      Ket &kvvX = k1;
       for (index_t j = ppvv_start; j <= ppvv_end; j++) {
         auto &cf_ket = eom_confs.at(j);
         if (cf_bra[0] != cf_ket[0] || cf_bra[2] != cf_ket[2])
@@ -1333,22 +1115,97 @@ void EOM::ConstructNormMatrix_tensor() {
         TwoBodyChannel &tkY = modelspace->GetTwoBodyChannel(cf_ket[3]);
         if (tkY.J != J1)
           continue;
-        Ket &kvvY = tkY.GetKet(cf_ket[1]);
+        Ket &k0Y = modelspace->GetTwoBodyChannel(cf_ket[2]).GetKet(cf_ket[0]);
+        Ket &k1Y = tkY.GetKet(cf_ket[1]);
+        if (!(ket_qq_qv(k0Y) && ket_vv(k1Y)))
+          continue;
+        Ket &kvvY = k1Y;
         double val = RdmTB_J(J1, kvvX.p, kvvX.q, kvvY.p, kvvY.q);
-        Nkernel(i, j) += ph(J0 + J1 + lam) * lamhatinv2 * we2(J0, J1) * val;
+        // qv bra (exactly one occupied leg): leftover 2b flips vs qq||vv.
+        const int nocc_bra =
+            (modelspace->GetOrbit(k0.p).occ > 1e-8 ? 1 : 0) +
+            (modelspace->GetOrbit(k0.q).occ > 1e-8 ? 1 : 0);
+        const double qv_sign = (nocc_bra == 1) ? -1.0 : 1.0;
+        Nkernel(i, j) += qv_sign * ph(J0 + J1 + lam) * (lamhatinv / hat(J1)) *
+                         we2(J0, J1) * val;
+      }
+    }
+    // ppvv leftover 1b×ρ: B2 on valence, spectator is the other valence.
+    // comm221 Nocc = n̄_q n̄_q n_spectator → keep occupied spectator
+    // (opposite of pphh, where the pair is hh and Nocc needs n̄_spectator).
+    for (index_t i = ppvv_start; i <= ppvv_end; i++) {
+      auto &cf_bra = eom_confs.at(i);
+      TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
+      TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
+      Ket &kqq = tbX.GetKet(cf_bra[0]);
+      Ket &kvv = tkX.GetKet(cf_bra[1]);
+      if (!(ket_qq_qv(kqq) && ket_vv(kvv)))
+        continue;
+      // comm221 pair is the qq ket: Nocc ∝ n̄_q1 n̄_q2. A qv bra has n̄_v=0.
+      if ((1.0 - modelspace->GetOrbit(kqq.p).occ) < 1e-8 ||
+          (1.0 - modelspace->GetOrbit(kqq.q).occ) < 1e-8)
+        continue;
+      size_t a = kvv.p, b = kvv.q;
+      Orbit &oa = modelspace->GetOrbit(a);
+      Orbit &ob = modelspace->GetOrbit(b);
+      const int J0 = tbX.J;
+      const int J1 = tkX.J;
+      const double ph_vv = kvv.Phase(J1);
+      const double w0 =
+          ph(J0 + J1 + lam) * lamhatinv * we2(J0, J1);
+      const double norm_fact1 = (a == b) ? std::sqrt(2.) : 1.;
+      for (index_t j = ppvv_start; j <= ppvv_end; j++) {
+        auto &cf_ket = eom_confs.at(j);
+        if (cf_bra[0] != cf_ket[0] || cf_bra[2] != cf_ket[2])
+          continue;
+        TwoBodyChannel &tkY = modelspace->GetTwoBodyChannel(cf_ket[3]);
+        if (tkY.J != J1)
+          continue;
+        Ket &k0Y = modelspace->GetTwoBodyChannel(cf_ket[2]).GetKet(cf_ket[0]);
+        Ket &kvvY = tkY.GetKet(cf_ket[1]);
+        if (!(ket_qq_qv(k0Y) && ket_vv(kvvY)))
+          continue;
+        size_t c = kvvY.p, d = kvvY.q;
+        Orbit &oc = modelspace->GetOrbit(c);
+        Orbit &od = modelspace->GetOrbit(d);
+        const double ph_vvY = kvvY.Phase(J1);
+        const double nf = norm_fact1 * ((c == d) ? std::sqrt(2.) : 1.);
+        const bool occ_b = ob.occ > 1e-8;
+        const bool occ_a = oa.occ > 1e-8;
+        if (occ_b && b == d && oc.j2 == oa.j2)
+          Nkernel(i, j) += w0 * nf * RdmOB(c, a) / jhat(oa);
+        if (occ_a && b != a && a == d && oc.j2 == ob.j2)
+          Nkernel(i, j) += w0 * nf * RdmOB(c, b) * ph_vv / jhat(ob);
+        if (occ_b && c != d && b == c && od.j2 == oa.j2)
+          Nkernel(i, j) += w0 * nf * RdmOB(d, a) * ph_vvY / jhat(oa);
+        if (occ_a && b != a && c != d && a == c && od.j2 == ob.j2)
+          Nkernel(i, j) +=
+              w0 * nf * RdmOB(d, b) * ph_vv * ph_vvY / jhat(ob);
       }
     }
   }
 
-  // B1 pphv leftover 1b×ρ: λ̂^{-1} / ĵ_c
-  if (pphv_dim != 0) {
+  // B1 pphv leftover 1b×ρ: λ̂^{-1} / ĵ_c  (+ 220 identity)
+  if (pphv_dim != 0 && include_norm_B1) {
     for (index_t i = pphv_start; i <= pphv_end; i++) {
       auto &cf_bra = eom_confs.at(i);
+      TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
       TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
+      Ket &kpp = tbX.GetKet(cf_bra[0]);
       Ket &kvcX = tkX.GetKet(cf_bra[1]);
+      if (pphv_is_pp_hv(i)) {
+        Orbit &oa = modelspace->GetOrbit(kpp.p);
+        Orbit &ob = modelspace->GetOrbit(kpp.q);
+        Orbit &oh = modelspace->GetOrbit(kvcX.p);
+        Orbit &ov = modelspace->GetOrbit(kvcX.q);
+        const double wocc =
+            oh.occ * ov.occ * (1.0 - oa.occ) * (1.0 - ob.occ);
+        if (std::abs(wocc) > 1e-8)
+          Nkernel(i, i) += ph(tbX.J + tkX.J + lam) * lamhatinv2 *
+                           we2(tbX.J, tkX.J) * wocc;
+      }
       size_t e1 = kvcX.p;
       size_t c1 = kvcX.q;
-      Orbit &oe1 = modelspace->GetOrbit(e1);
       Orbit &oc1 = modelspace->GetOrbit(c1);
       if (oc1.cvq != 1)
         continue;
@@ -1370,84 +1227,187 @@ void EOM::ConstructNormMatrix_tensor() {
         if (oc2.cvq != 1 || oc2.j2 != oc1.j2 || oc1.l != oc2.l ||
             oc1.tz2 != oc2.tz2)
           continue;
+        // Dagger ⟨ab|hv⟩† → ⟨hv|ab⟩ gives (-1)^{J_ab-J_hv}.
+        // AMC of X_eiab ρ Y_abej: J_0 couples (e,i), J_1 couples (a,b),
+        // phase (-1)^{J_0+J_1+λ} λ̂^{-1}/ĵ_c.
+        const int Jab = tbX.J;
+        const int Jhv = J1;
         Nkernel(i, j) +=
-            ph((oe1.j2 + oc1.j2) / 2 + lam) * lamhatinv / jhat(oc1) *
+            ph(Jab - Jhv) * ph(Jhv + Jab + lam) * lamhatinv / jhat(oc1) *
             RdmOB(c1, c2);
       }
     }
   }
 
-  // C4 pphv-pphv leftover 2b×ρ. Gold is ½⟨comm222_phtts(χ_i, Q_j)⟩_ρ,
-  // not the unrestricted Wick X ρ Y (that 9j misses XY−YX on the ph line).
-  if (pphv_dim != 0) {
-    std::vector<std::vector<PandyaTrip>> bar_chi(eom_dims), bar_Q(eom_dims);
-    std::vector<char> is_typeA(eom_dims, 0);
-    Operator chi_u(*modelspace, lam, itz, parity, 2);
-    chi_u.SetHermitian();
-    arma::vec ej(eom_dims, arma::fill::zeros);
+  // C4 pphv-pphv. Same four permutations as the scalar loop.
+  // Each perm is one (e,f) of ⟨af|ce⟩^{j1 j2} ⟨eb|fd⟩^{j3 j4}.
+  // Dagger phase (−1)^{J_ab−J_hv} and Ket::Phase sit in the caller.
+  if (pphv_dim != 0 && include_norm_C4) {
     for (index_t i = pphv_start; i <= pphv_end; i++) {
       if (!pphv_is_pp_hv(i))
         continue;
-      is_typeA[i] = 1;
-      auto &cf = eom_confs.at(i);
-      Ket &kbra = modelspace->GetTwoBodyChannel(cf[2]).GetKet(cf[0]);
-      Ket &kket = modelspace->GetTwoBodyChannel(cf[3]).GetKet(cf[1]);
-      std::set<int> S{(int)kbra.p, (int)kbra.q, (int)kket.p, (int)kket.q};
-      ej.zeros();
-      ej(i) = 1.0;
-      UnflattenOperator(chi_u, ej);
-      bar_chi[i] = FillPandyaTrips(chi_u, S);
-      Operator Q = GetVSEOM_ladder_multiref(chi_u, -1);
-      bar_Q[i] = FillPandyaTrips(Q, S);
-    }
-    for (index_t i = pphv_start; i <= pphv_end; i++) {
-      if (!is_typeA[i])
+      auto &cf_bra = eom_confs.at(i);
+      TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
+      TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
+      Ket &kpp1 = tbX.GetKet(cf_bra[0]);
+      Ket &khv1 = tkX.GetKet(cf_bra[1]);
+      const size_t a1 = kpp1.p, b1 = kpp1.q, h1 = khv1.p, d1 = khv1.q;
+      Orbit &oa1 = modelspace->GetOrbit(a1);
+      Orbit &ob1 = modelspace->GetOrbit(b1);
+      Orbit &od1 = modelspace->GetOrbit(d1);
+      if (oa1.cvq != 1 && ob1.cvq != 1)
         continue;
+      if (od1.cvq != 1)
+        continue;
+      const int JabX = tbX.J;
+      const int JhvX = tkX.J;
+      const double ph_dag = ph(JabX - JhvX);
+      const double ph_hv = (double)khv1.Phase(JhvX);
+      const double norm1 = (a1 == b1) ? std::sqrt(2.) : 1.;
       for (index_t j = pphv_start; j <= pphv_end; j++) {
-        if (!is_typeA[j])
+        if (!pphv_is_pp_hv(j))
           continue;
-        Nkernel(i, j) += C4FromPandyaBars(*this, bar_chi[i], bar_Q[j], lam);
+        auto &cf_ket = eom_confs.at(j);
+        TwoBodyChannel &tbY = modelspace->GetTwoBodyChannel(cf_ket[2]);
+        TwoBodyChannel &tkY = modelspace->GetTwoBodyChannel(cf_ket[3]);
+        Ket &kpp2 = tbY.GetKet(cf_ket[0]);
+        Ket &khv2 = tkY.GetKet(cf_ket[1]);
+        const size_t a2 = kpp2.p, b2 = kpp2.q, h2 = khv2.p, d2 = khv2.q;
+        Orbit &oa2 = modelspace->GetOrbit(a2);
+        Orbit &ob2 = modelspace->GetOrbit(b2);
+        Orbit &od2 = modelspace->GetOrbit(d2);
+        if (oa2.cvq != 1 && ob2.cvq != 1)
+          continue;
+        if (od2.cvq != 1)
+          continue;
+        if (h1 != h2)
+          continue;
+        const int JabY = tbY.J;
+        const int JhvY = tkY.J;
+        const double norm =
+            norm1 * ((a2 == b2) ? std::sqrt(2.) : 1.);
+        const double base = ph_dag * ph_hv * norm;
+        double val = 0.;
+        // Same orbit slots as scalar Core_Diagram: ⟨af|ce⟩^{j1 j2} ⟨eb|fd⟩^{j3 j4}.
+        // j1 couples (a,f)=(d1,h), j2 couples (c,e), j3 couples (e,b), j4 couples (f,d).
+        if (b1 == a2 && oa1.cvq == 1 && ob2.cvq == 1)
+          val += base * Core_Diagram_tensor(d1, b2, a1, d2, a2, h1, JhvX,
+                                            JabX, JabY, JhvY, lam);
+        if (a1 == a2 && ob1.cvq == 1 && ob2.cvq == 1 && a1 != b1)
+          val += base * kpp1.Phase(JabX) *
+                 Core_Diagram_tensor(d1, b2, b1, d2, a2, h1, JhvX, JabX,
+                                     JabY, JhvY, lam);
+        if (b1 == b2 && oa1.cvq == 1 && oa2.cvq == 1 && a2 != b2)
+          val += base * kpp2.Phase(JabY) *
+                 Core_Diagram_tensor(d1, a2, a1, d2, b2, h1, JhvX, JabX,
+                                     JabY, JhvY, lam);
+        if (a1 == b2 && ob1.cvq == 1 && oa2.cvq == 1 && a1 != b1 &&
+            a2 != b2)
+          val += base * kpp1.Phase(JabX) * kpp2.Phase(JabY) *
+                 Core_Diagram_tensor(d1, a2, b1, d2, b2, h1, JhvX, JabX,
+                                     JabY, JhvY, lam);
+        Nkernel(i, j) += val;
       }
     }
   }
 
-  // A2 pphh identity (220): λ̂^{-2}
+  // Logical pp/hh legs. Tensor storage also keeps the swapped ⟨hh||χ||pp⟩
+  // block (ch_bra ≤ ch_ket); those must not be read as if cf[0] were particles.
+  auto ket_noncore = [&](const Ket &k) {
+    return modelspace->GetOrbit(k.p).cvq != 0 &&
+           modelspace->GetOrbit(k.q).cvq != 0;
+  };
+  auto ket_hh = [&](const Ket &k) {
+    return modelspace->GetOrbit(k.p).cvq == 0 &&
+           modelspace->GetOrbit(k.q).cvq == 0;
+  };
+  auto pphh_legs = [&](index_t idx, size_t &a, size_t &b, size_t &h1,
+                       size_t &h2, int &Jpp, int &Jhh, int &Jst0, int &Jst1,
+                       double &ph_pp, double &ph_hh_unused) -> bool {
+    (void)ph_hh_unused;
+    auto &cf = eom_confs.at(idx);
+    TwoBodyChannel &tb = modelspace->GetTwoBodyChannel(cf[2]);
+    TwoBodyChannel &tk = modelspace->GetTwoBodyChannel(cf[3]);
+    Ket &k0 = tb.GetKet(cf[0]);
+    Ket &k1 = tk.GetKet(cf[1]);
+    Jst0 = tb.J;
+    Jst1 = tk.J;
+    if (ket_noncore(k0) && ket_hh(k1)) {
+      a = k0.p;
+      b = k0.q;
+      h1 = k1.p;
+      h2 = k1.q;
+      Jpp = tb.J;
+      Jhh = tk.J;
+      ph_pp = k0.Phase(Jpp);
+      return true;
+    }
+    if (ket_hh(k0) && ket_noncore(k1)) {
+      a = k1.p;
+      b = k1.q;
+      h1 = k0.p;
+      h2 = k0.q;
+      Jpp = tk.J;
+      Jhh = tb.J;
+      ph_pp = k1.Phase(Jpp);
+      return true;
+    }
+    return false;
+  };
+
+  // A2 pphh identity (220): λ̂^{-2}, Fermi n_h n_h nbar_p nbar_p
   if (pphh_dim != 0) {
     for (index_t i = pphh_start; i <= pphh_end; i++) {
-      auto &cf = eom_confs.at(i);
-      TwoBodyChannel &tb = modelspace->GetTwoBodyChannel(cf[2]);
-      TwoBodyChannel &tk = modelspace->GetTwoBodyChannel(cf[3]);
-      Nkernel(i, i) += ph(tb.J + tk.J + lam) * lamhatinv2 * we2(tb.J, tk.J);
+      size_t a, b, h1, h2;
+      int Jpp, Jhh, Jst0, Jst1;
+      double ph_pp, dummy = 0.0;
+      if (!pphh_legs(i, a, b, h1, h2, Jpp, Jhh, Jst0, Jst1, ph_pp, dummy))
+        continue;
+      Orbit &oa = modelspace->GetOrbit(a);
+      Orbit &ob = modelspace->GetOrbit(b);
+      Orbit &oh1 = modelspace->GetOrbit(h1);
+      Orbit &oh2 = modelspace->GetOrbit(h2);
+      const double wocc = oh1.occ * oh2.occ * (1.0 - oa.occ) * (1.0 - ob.occ);
+      if (std::abs(wocc) < 1e-8)
+        continue;
+      Nkernel(i, i) +=
+          ph(Jst0 + Jst1 + lam) * lamhatinv2 * we2(Jst0, Jst1) * wocc;
     }
   }
 
-  // C3 pphh leftover 2b×ρ: λ̂^{-2}
+  // C3 pphh leftover 2b×ρ. Same leftover packaging as C1: comm222 at J_pp
+  // has Ĵ_pp^{-2} λ̂^{-1}; overlap supplies ρ·Ĵ_pp, so N keeps
+  // Ĵ_pp^{-1} λ̂^{-1}. Using λ̂^{-2} only matches when J_pp=λ (T=0
+  // even-P cases where the only firing C3 is J_pp=λ). Even-P T=1 C3
+  // lives on p-shell vv (even pair parity) at J_pp=2 ≠ λ=3.
   if (pphh_dim != 0) {
     for (index_t i = pphh_start; i <= pphh_end; i++) {
-      auto &cf_bra = eom_confs.at(i);
-      TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
-      TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
-      Ket &kppX = tbX.GetKet(cf_bra[0]);
-      Orbit &oa = modelspace->GetOrbit(kppX.p);
-      Orbit &ob = modelspace->GetOrbit(kppX.q);
+      size_t a, b, h1, h2;
+      int Jpp, Jhh, Jst0, Jst1;
+      double ph_pp, dummy = 0.0;
+      if (!pphh_legs(i, a, b, h1, h2, Jpp, Jhh, Jst0, Jst1, ph_pp, dummy))
+        continue;
+      Orbit &oa = modelspace->GetOrbit(a);
+      Orbit &ob = modelspace->GetOrbit(b);
       if (oa.cvq != 1 || ob.cvq != 1)
         continue;
-      const int J0 = tbX.J;
-      const int J1 = tkX.J;
       for (index_t j = pphh_start; j <= pphh_end; j++) {
-        auto &cf_ket = eom_confs.at(j);
-        if (cf_ket[1] != cf_bra[1] || cf_ket[3] != cf_bra[3])
+        size_t c, d, h1b, h2b;
+        int JppY, JhhY, Jst0Y, Jst1Y;
+        double ph_ppY;
+        if (!pphh_legs(j, c, d, h1b, h2b, JppY, JhhY, Jst0Y, Jst1Y, ph_ppY,
+                       dummy))
           continue;
-        TwoBodyChannel &tbY = modelspace->GetTwoBodyChannel(cf_ket[2]);
-        if (tbY.J != J0)
+        if (h1b != h1 || h2b != h2 || JhhY != Jhh || JppY != Jpp)
           continue;
-        Ket &kppY = tbY.GetKet(cf_ket[0]);
-        Orbit &oc = modelspace->GetOrbit(kppY.p);
-        Orbit &od = modelspace->GetOrbit(kppY.q);
+        Orbit &oc = modelspace->GetOrbit(c);
+        Orbit &od = modelspace->GetOrbit(d);
         if (oc.cvq != 1 || od.cvq != 1)
           continue;
-        double val = RdmTB_J(J0, kppX.p, kppX.q, kppY.p, kppY.q);
-        Nkernel(i, j) += ph(J0 + J1 + lam) * lamhatinv2 * we2(J0, J1) * val;
+        double val = RdmTB_J(Jpp, a, b, c, d);
+        Nkernel(i, j) +=
+            ph(Jst0 + Jst1 + lam) * (lamhatinv / hat(Jpp)) * we2(Jst0, Jst1) *
+            val;
       }
     }
   }
@@ -1455,49 +1415,55 @@ void EOM::ConstructNormMatrix_tensor() {
   // B2 pphh leftover 1b×ρ: λ̂^{-1} / ĵ of the contracted particle
   if (pphh_dim != 0) {
     for (index_t i = pphh_start; i <= pphh_end; i++) {
-      auto &cf_bra = eom_confs.at(i);
-      TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
-      TwoBodyChannel &tkX = modelspace->GetTwoBodyChannel(cf_bra[3]);
-      Ket &kppX = tbX.GetKet(cf_bra[0]);
-      size_t a = kppX.p, b = kppX.q;
+      size_t a, b, h1, h2;
+      int Jpp, Jhh, Jst0, Jst1;
+      double ph_pp, dummy = 0.0;
+      if (!pphh_legs(i, a, b, h1, h2, Jpp, Jhh, Jst0, Jst1, ph_pp, dummy))
+        continue;
       Orbit &oa = modelspace->GetOrbit(a);
       Orbit &ob = modelspace->GetOrbit(b);
       if (oa.cvq != 1 && ob.cvq != 1)
         continue;
       double norm_fact1 = (a == b) ? std::sqrt(2.) : 1.;
-      const int J0 = tbX.J;
-      const int J1 = tkX.J;
-      const double w0 = -ph(J0 + J1 + lam) * lamhatinv * we2(J0, J1);
+      const double w0 =
+          -ph(Jst0 + Jst1 + lam) * lamhatinv * we2(Jst0, Jst1);
       for (index_t j = pphh_start; j <= pphh_end; j++) {
-        auto &cf_ket = eom_confs.at(j);
-        if (cf_ket[1] != cf_bra[1] || cf_ket[3] != cf_bra[3])
+        size_t c, d, h1b, h2b;
+        int JppY, JhhY, Jst0Y, Jst1Y;
+        double ph_ppY;
+        if (!pphh_legs(j, c, d, h1b, h2b, JppY, JhhY, Jst0Y, Jst1Y, ph_ppY,
+                       dummy))
           continue;
-        TwoBodyChannel &tbY = modelspace->GetTwoBodyChannel(cf_ket[2]);
-        if (tbY.J != J0)
+        if (h1b != h1 || h2b != h2 || JhhY != Jhh || JppY != Jpp)
           continue;
-        Ket &kppY = tbY.GetKet(cf_ket[0]);
-        size_t c = kppY.p, d = kppY.q;
         double norm_fact2 = (c == d) ? std::sqrt(2.) : 1.;
         Orbit &oc = modelspace->GetOrbit(c);
         Orbit &od = modelspace->GetOrbit(d);
         double nf = norm_fact1 * norm_fact2;
-        if (b == d && oc.j2 == oa.j2)
+        // comm221 Nocc needs a Fermi-empty spectator on the uncontracted
+        // particle. Occupied-occupied (He8 valence) has Nocc=0.
+        const bool nbar_b = (1.0 - ob.occ) > 1e-8;
+        const bool nbar_a = (1.0 - oa.occ) > 1e-8;
+        if (nbar_b && b == d && oc.j2 == oa.j2)
           Nkernel(i, j) += w0 * nf * RdmOB(c, a) / jhat(oa);
-        if (b != a && ob.cvq == 1 && a == d && oc.j2 == ob.j2)
+        if (nbar_a && b != a && ob.cvq == 1 && a == d && oc.j2 == ob.j2)
+          Nkernel(i, j) += w0 * nf * RdmOB(c, b) * ph_pp / jhat(ob);
+        if (nbar_b && c != d && od.cvq == 1 && b == c && od.j2 == oa.j2)
+          Nkernel(i, j) += w0 * nf * RdmOB(d, a) * ph_ppY / jhat(oa);
+        if (nbar_a && b != a && c != d && od.cvq == 1 && ob.cvq == 1 &&
+            a == c && od.j2 == ob.j2)
           Nkernel(i, j) +=
-              w0 * nf * RdmOB(c, b) * kppX.Phase(J0) / jhat(ob);
-        if (c != d && od.cvq == 1 && b == c && od.j2 == oa.j2)
-          Nkernel(i, j) +=
-              w0 * nf * RdmOB(d, a) * kppY.Phase(tbY.J) / jhat(oa);
-        if (b != a && c != d && od.cvq == 1 && ob.cvq == 1 && a == c &&
-            od.j2 == ob.j2)
-          Nkernel(i, j) += w0 * nf * RdmOB(d, b) * kppX.Phase(J0) *
-                          kppY.Phase(tbY.J) / jhat(ob);
+              w0 * nf * RdmOB(d, b) * ph_pp * ph_ppY / jhat(ob);
       }
     }
   }
 
-  // B3 pphv-ph leftover 1b×ρ: λ̂^{-1} / ĵ of the contracted valence
+  // B3 pphv-ph leftover 1b×ρ.
+  // Bra is stored ⟨ab|cd⟩ (pp-hv). Dagger → X_cdab, phase (−1)^{J_ab−J_hv}.
+  // Ket is stored ph Y_ac. AMC: X_cdab ρ_bd Y_ac,
+  //   δ_{jd jb} (−1)^{J_ab+ja+jb} Ĵ_ab Ĵ_hv λ̂^{-1}
+  //   6j{λ J_ab J_hv; jb jc ja} / ĵ_b
+  // Other particle: Y_bc, ρ_ad, Ket::Phase on the pp swap.
   if (pphv_dim != 0 && ph_dim != 0) {
     for (index_t i = pphv_start; i <= pphv_end; i++) {
       auto &cf_bra = eom_confs.at(i);
@@ -1516,31 +1482,32 @@ void EOM::ConstructNormMatrix_tensor() {
         continue;
       if (!pphv_is_pp_hv(i))
         continue;
-      const int J0 = tbX.J;
-      const int J1 = tkX.J;
-      double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5, jc = oc.j2 * 0.5;
-      double six = AngMom::SixJ((double)lam, (double)J1, (double)J0, ja, jb, jc);
-      // -we2: leftover 1b gold flips when J0=J1 (Hermitian X in one channel).
-      double w = -ph(J0 + J1 + (ob.j2 + oc.j2) / 2) * hat(J0) * hat(J1) *
-                 lamhatinv / jhat(oa) * six * (-we2(J0, J1));
-      double norm_fact = (a == b) ? std::sqrt(2.) : 1.;
+      const int Jab = tbX.J;
+      const int Jhv = tkX.J;
+      const double ja = oa.j2 * 0.5, jb = ob.j2 * 0.5, jc = oc.j2 * 0.5;
+      const double ph_dag = ph(Jab - Jhv);
+      const double ph_amc = ph(Jab + (oa.j2 + ob.j2) / 2);
+      const double hats = hat(Jab) * hat(Jhv) * lamhatinv;
+      const double norm_fact = (a == b) ? std::sqrt(2.) : 1.;
       for (index_t j = ph_start; j <= ph_end; j++) {
         auto &cf_ket = eom_confs.at(j);
         size_t c1 = cf_ket[0];
         size_t b1 = cf_ket[1];
         if (b1 != c)
           continue;
-        if (c1 == b && od.j2 == oa.j2) {
-          double val = w * norm_fact * we1(ob, oc) * kpp.Phase(J0) * RdmOB(a, d);
+        if (c1 == a && od.j2 == ob.j2) {
+          double six =
+              AngMom::SixJ((double)lam, (double)Jab, (double)Jhv, jb, jc, ja);
+          double val = ph_dag * ph_amc * hats / jhat(ob) * six * norm_fact *
+                       RdmOB(b, d);
           Nkernel(i, j) += val;
           Nkernel(j, i) += val;
         }
-        if (c1 == a && a != b && od.j2 == ob.j2) {
-          double six2 = AngMom::SixJ((double)lam, (double)J1, (double)J0,
-                                      ob.j2 * 0.5, oa.j2 * 0.5, jc);
-          double w2 = -ph(J0 + J1 + (oa.j2 + oc.j2) / 2) * hat(J0) * hat(J1) *
-                      lamhatinv / jhat(ob) * six2 * (-we2(J0, J1));
-          double val = w2 * norm_fact * we1(oa, oc) * RdmOB(b, d);
+        if (c1 == b && a != b && od.j2 == oa.j2) {
+          double six =
+              AngMom::SixJ((double)lam, (double)Jab, (double)Jhv, ja, jc, jb);
+          double val = ph_dag * ph_amc * hats / jhat(oa) * six * norm_fact *
+                       kpp.Phase(Jab) * RdmOB(a, d);
           Nkernel(i, j) += val;
           Nkernel(j, i) += val;
         }
@@ -1548,7 +1515,12 @@ void EOM::ConstructNormMatrix_tensor() {
     }
   }
 
-  // C5 pphv-ph leftover 2b×ρ: λ̂^{-2}
+  // C5 pphv-ph leftover 2b×ρ.
+  // Bra is stored ⟨ab|cd⟩. Dagger → X_cdab, phase (−1)^{J_ab−J_hv}.
+  // Ket is stored ph Y_ec. AMC of −X_cdab ρ_abed Y_ec:
+  //   −(−1)^{J_ab+jd+je} Ĵ_hv Ĵ_ab λ̂^{-1} 6j{J_hv J_ab λ; je jc jd}
+  // comm122 leftover at J_ab has Ĵ_ab^{-1} Ĵ_hv λ̂^{-1}; overlap supplies
+  // ρ·Ĵ_ab, so N keeps Ĵ_hv λ̂^{-1} (same packaging as C2).
   if (pphv_dim != 0 && ph_dim != 0) {
     for (index_t i = pphv_start; i <= pphv_end; i++) {
       auto &cf_bra = eom_confs.at(i);
@@ -1565,8 +1537,9 @@ void EOM::ConstructNormMatrix_tensor() {
         continue;
       if (!pphv_is_pp_hv(i))
         continue;
-      const int J0 = tbX.J;
-      const int J1 = tkX.J;
+      const int Jab = tbX.J;
+      const int Jhv = tkX.J;
+      const double ph_dag = ph(Jab - Jhv);
       for (index_t j = ph_start; j <= ph_end; j++) {
         auto &cf_ket = eom_confs.at(j);
         size_t e = cf_ket[0];
@@ -1574,19 +1547,23 @@ void EOM::ConstructNormMatrix_tensor() {
         if (b1 != c)
           continue;
         Orbit &oe = modelspace->GetOrbit(e);
-        double six = AngMom::SixJ((double)J1, (double)J0, (double)lam,
+        double six = AngMom::SixJ((double)Jhv, (double)Jab, (double)lam,
                                    oe.j2 * 0.5, oc.j2 * 0.5, od.j2 * 0.5);
         double nf = (e == d) ? std::sqrt(2.) : 1.;
-        double val = -ph(J1 + (oc.j2 + od.j2) / 2) * hat(J0) * hat(J1) *
-                     lamhatinv2 * six * we1(oe, oc) * (-we2(J0, J1)) *
-                     RdmTB_J(J0, a, b, e, d) * nf;
+        double val = -ph_dag * ph(Jab + (od.j2 + oe.j2) / 2) * hat(Jhv) *
+                     lamhatinv * six * RdmTB_J(Jab, a, b, e, d) * nf;
         Nkernel(i, j) += val;
         Nkernel(j, i) += val;
       }
     }
   }
 
-  // C2 ppvv-qv leftover 2b×ρ: λ̂^{-2}
+  // C2 ppvv-qv leftover 2b×ρ.
+  // AMC of X_abij ρ_akij Y_kb prints Ĵ_qv Ĵ_vv λ̂^{-1}. comm122tts leftover
+  // at J_vv already has Ĵ_vv^{-1} Ĵ_qv λ̂^{-1}; GetVSEOM_Overlap then multiplies
+  // ρ·Ĵ_vv, so the gold is Ĵ_qv λ̂^{-1}. The extra AMC Ĵ_vv is that overlap
+  // weight, not a second factor in N. Using Ĵ_qv Ĵ_vv λ̂^{-2} (the C1 leftover-2b
+  // rule) only matches when Ĵ_vv=λ̂, i.e. J_vv=λ.
   if (ppvv_dim != 0 && qv_dim != 0) {
     for (index_t i = ppvv_start; i <= ppvv_end; i++) {
       auto &cf_bra = eom_confs.at(i);
@@ -1613,9 +1590,8 @@ void EOM::ConstructNormMatrix_tensor() {
         double six = AngMom::SixJ((double)J0, (double)J1, (double)lam,
                                    ok.j2 * 0.5, ob.j2 * 0.5, oa.j2 * 0.5);
         double nf = (a == k) ? std::sqrt(2.) : 1.;
-        double val = ph(J0 + (oa.j2 + ob.j2) / 2) * hat(J0) * hat(J1) *
-                     lamhatinv2 * six * we1(ob, ok) *
-                     RdmTB_J(J1, a, k, cv, dv) * nf;
+        double val = ph(J0 + (oa.j2 + ob.j2) / 2) * hat(J0) * lamhatinv *
+                     six * we1(ob, ok) * RdmTB_J(J1, a, k, cv, dv) * nf;
         Nkernel(i, j) += val;
         Nkernel(j, i) += val;
       }
@@ -1623,7 +1599,9 @@ void EOM::ConstructNormMatrix_tensor() {
   }
 
   std::cout << "ConstructNormMatrix_tensor: λ=" << lam
-            << " eom_dims=" << eom_dims << std::endl;
+            << " eom_dims=" << eom_dims
+            << " pphv_B1=" << (include_norm_B1 ? 1 : 0)
+            << " pphv_C4=" << (include_norm_C4 ? 1 : 0) << std::endl;
 }
 
 std::vector<std::tuple<size_t,size_t,size_t,double>> EOM::ThreeBody_Diagram_Entries(size_t a, size_t b, size_t c, size_t d, size_t e,
@@ -1844,12 +1822,14 @@ double EOM::Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
 }
 
 double EOM::Core_Diagram_tensor(size_t a, size_t b, size_t c, size_t d,
-                                 size_t e, size_t f, int J0, int J1, int J4,
-                                 int J5, int lam) {
-  // leftover 2b×ρ: λ̂^{-2} (AMC had λ̂^{-1}).
-  //   (-1)^{J0+λ+J3+J4+J5+ja+jb+jd+jf} Ĵ0 Ĵ1 λ̂^{-2} Ĵ3² Ĵ4 Ĵ5 ĵ0²
-  //   6j{J1 λ J0; jb ja j0} 6j{J4 λ J5; jb jf j0}
-  //   9j{jc jd J1; je J3 ja; J4 jf j0}
+                                 size_t e, size_t f, int j1, int j2, int j3,
+                                 int j4, int lam) {
+  // One orbit pair (e,f). Unreduced scalar Z_abcd^J from
+  // ⟨af|ce⟩^{j1 j2 λ} ⟨eb|fd⟩^{j3 j4 λ}. lam is the rank of Q.
+  //   −(−1)^{J+j1+j2+j3+j4+ja+jd+je+jf+λ} Ĵ1 Ĵ2 Ĵ3 Ĵ4 ĵ0² λ̂^{-1}
+  //   6j{j2 λ j1; jf ja j0} 6j{j3 λ j4; jf jd j0}
+  //   9j{jc je j2; jd j3 j0; J jb ja}
+  // Times ρ^J_abcd Ĵ and the identical-orbit √2, as in Core_Diagram.
   double val = 0.;
   Orbit &oa = modelspace->GetOrbit(a);
   Orbit &ob = modelspace->GetOrbit(b);
@@ -1858,9 +1838,9 @@ double EOM::Core_Diagram_tensor(size_t a, size_t b, size_t c, size_t d,
   Orbit &oe = modelspace->GetOrbit(e);
   Orbit &of = modelspace->GetOrbit(f);
 
-  if (((oa.l + oe.l) & 1) != ((od.l + of.l) & 1))
+  if (((oa.l + ob.l) & 1) != ((oc.l + od.l) & 1))
     return val;
-  if ((oa.tz2 + oe.tz2) != (od.tz2 + of.tz2))
+  if ((oa.tz2 + ob.tz2) != (oc.tz2 + od.tz2))
     return val;
 
   const double ja = oa.j2 * 0.5;
@@ -1870,53 +1850,55 @@ double EOM::Core_Diagram_tensor(size_t a, size_t b, size_t c, size_t d,
   const double je = oe.j2 * 0.5;
   const double jf = of.j2 * 0.5;
   const double dlam = (double)lam;
-  const double dJ0 = (double)J0;
-  const double dJ1 = (double)J1;
-  const double dJ4 = (double)J4;
-  const double dJ5 = (double)J5;
+  const double dj1 = (double)j1;
+  const double dj2 = (double)j2;
+  const double dj3 = (double)j3;
+  const double dj4 = (double)j4;
+  if (!AngMom::Triangle(dj1, ja, jf) || !AngMom::Triangle(dj2, jc, je) ||
+      !AngMom::Triangle(dj3, je, jb) || !AngMom::Triangle(dj4, jf, jd) ||
+      !AngMom::Triangle(dj2, dlam, dj1) || !AngMom::Triangle(dj3, dlam, dj4))
+    return val;
 
   double norm_fact = 1.;
-  if (d == f)
+  if (a == b)
     norm_fact *= std::sqrt(2.);
-  if (a == e)
+  if (c == d)
     norm_fact *= std::sqrt(2.);
 
-  const double lamhatinv2 = 1.0 / (2.0 * lam + 1.0);
-  const double hats_xy = std::sqrt(2.0 * J0 + 1.0) * std::sqrt(2.0 * J1 + 1.0) *
-                         lamhatinv2 * std::sqrt(2.0 * J4 + 1.0) *
-                         std::sqrt(2.0 * J5 + 1.0);
+  const double hats = std::sqrt(2.0 * j1 + 1.0) * std::sqrt(2.0 * j2 + 1.0) *
+                      std::sqrt(2.0 * j3 + 1.0) * std::sqrt(2.0 * j4 + 1.0) /
+                      std::sqrt(2.0 * lam + 1.0);
+  const int phase_j =
+      (oa.j2 + od.j2 + oe.j2 + of.j2) / 2;
 
-  const int J3min =
-      std::max(std::abs(od.j2 - of.j2), std::abs(oa.j2 - oe.j2)) / 2;
-  const int J3max = std::min(od.j2 + of.j2, oa.j2 + oe.j2) / 2;
-
-  const int two_j0_min =
-      std::max(std::max(std::abs(2 * J1 - oa.j2), std::abs(ob.j2 - 2 * lam)),
-               std::abs(2 * J4 - of.j2));
+  const int Jmin = std::max(std::abs(oa.j2 - ob.j2), std::abs(oc.j2 - od.j2)) / 2;
+  const int Jmax = std::min(oa.j2 + ob.j2, oc.j2 + od.j2) / 2;
+  const int two_j0_min = std::max(std::max(std::abs(2 * j2 - oa.j2),
+                                           std::abs(of.j2 - 2 * lam)),
+                                  std::abs(2 * j3 - od.j2));
   const int two_j0_max =
-      std::min(std::min(2 * J1 + oa.j2, ob.j2 + 2 * lam), 2 * J4 + of.j2);
+      std::min(std::min(2 * j2 + oa.j2, of.j2 + 2 * lam), 2 * j3 + od.j2);
 
-  for (int J3 = J3min; J3 <= J3max; ++J3) {
-    if (!AngMom::Triangle(jd, jf, (double)J3) ||
-        !AngMom::Triangle(ja, je, (double)J3))
+  for (int J = Jmin; J <= Jmax; ++J) {
+    if (!AngMom::Triangle(ja, jb, (double)J) ||
+        !AngMom::Triangle(jc, jd, (double)J))
       continue;
-    double rho = RdmTB_J((double)J3, d, f, a, e);
+    double rho = RdmTB_J((double)J, a, b, c, d);
     if (std::abs(rho) < 1e-16)
       continue;
-    const double hatJ3sq = 2.0 * J3 + 1.0;
+    const double hatJ = std::sqrt(2.0 * J + 1.0);
+    const double phaseJ = -(double)AngMom::phase(J + j1 + j2 + j3 + j4 + lam +
+                                                 phase_j);
     for (int two_j0 = two_j0_min; two_j0 <= two_j0_max; two_j0 += 2) {
       double j0 = 0.5 * two_j0;
-      if (!AngMom::Triangle(dJ1, ja, j0) || !AngMom::Triangle(jb, dlam, j0) ||
-          !AngMom::Triangle(dJ4, jf, j0))
+      if (!AngMom::Triangle(dj2, ja, j0) || !AngMom::Triangle(jf, dlam, j0) ||
+          !AngMom::Triangle(dj3, jd, j0))
         continue;
-      double six1 = AngMom::SixJ(dJ1, dlam, dJ0, jb, ja, j0);
-      double six2 = AngMom::SixJ(dJ4, dlam, dJ5, jb, jf, j0);
-      double nine = AngMom::NineJ(jc, jd, dJ1, je, (double)J3, ja, dJ4, jf, j0);
-      double phase = (double)AngMom::phase(
-          J0 + lam + J3 + J4 + J5 +
-          (oa.j2 + ob.j2 + od.j2 + of.j2) / 2);
-      val += phase * hats_xy * hatJ3sq * (2.0 * j0 + 1.0) * six1 * six2 *
-             nine * rho;
+      double six1 = AngMom::SixJ(dj2, dlam, dj1, jf, ja, j0);
+      double six2 = AngMom::SixJ(dj3, dlam, dj4, jf, jd, j0);
+      double nine = AngMom::NineJ(jc, je, dj2, jd, dj3, j0, (double)J, jb, ja);
+      val += phaseJ * hats * (2.0 * j0 + 1.0) * six1 * six2 * nine * rho *
+             hatJ;
     }
   }
   return val * norm_fact;

@@ -4502,7 +4502,7 @@ namespace Commutator
 
   /// Tensor 2b × tensor 2b → scalar 1b. AMC: comm221tts_unred.tex. Restore 1/2 omitted by AMC.
   /// Convention 2 leftover: AMC λ̂^{-1}.
-  /// GEMM: ConstructScalar-style Mpp/Mhh (no Ĵ0^{-2}; phase (−1)^{J0+J2}), then leftover-1b trace without (2J+1).
+  /// GEMM: ConstructScalar-style Mpp/Mhh (no Ĵ0^{-2}; phase (−1)^{J0+J2+λ}), then leftover-1b trace without (2J+1).
   void comm221tts(const Operator &X, const Operator &Y, Operator &Z)
   {
     if (Z.GetJRank() != 0 or X.GetJRank() != Y.GetJRank())
@@ -4585,7 +4585,7 @@ namespace Commutator
         if (not has_block(X.TwoBody, ch_bra, ch_ab) or not has_block(Y.TwoBody, ch_ab, ch_ket))
           continue;
 
-        const double pref = hat_lambda_inv * AngMom::phase(J0 + J2);
+        const double pref = hat_lambda_inv * AngMom::phase(J0 + J2 + lambda0);
         arma::mat X_ijab = block(X, ch_bra, ch_ab, hX);
         arma::mat Y_abkl = block(Y, ch_ab, ch_ket, hY);
 
@@ -4889,7 +4889,11 @@ namespace Commutator
           continue;
         if (not AngMom::Triangle((double)Jb, (double)tk.J, (double)lambda0))
           continue;
-        if ((tb.parity + tk.parity + X.GetParity()) % 2 != 0 or tb.Tz != tk.Tz)
+        if ((tb.parity + tk.parity + X.GetParity()) % 2 != 0)
+          continue;
+        // CC Tz is |tz1-tz2|. RankT=0: (0,0),(1,1). RankT=1: (0,1),(1,0). RankT=2: (1,1).
+        // Do not require tb.Tz == tk.Tz; that zeros every T=1 Pandya block.
+        if (not ((tb.Tz + tk.Tz == X.GetTRank()) or (std::abs(tb.Tz - tk.Tz) == X.GetTRank())))
           continue;
         pairs.push_back({ch_b, ch_k});
       }

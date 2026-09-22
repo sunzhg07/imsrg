@@ -604,7 +604,7 @@ namespace ReferenceImplementations
                   if (not AngMom::Triangle(oc.j2, oj.j2, 2 * J0))
                     continue;
                   const double pref = 0.5 * Nocc / (oi.j2 + 1.0) * hat_lambda_inv
-                                      * AngMom::phase(J0 + J1);
+                                      * AngMom::phase(J0 + J1 + lambda0);
                   const double xciab = X2.GetTBME_J(J0, J1, c, i, a, b);
                   const double yabcj = Y2.GetTBME_J(J1, J0, a, b, c, j);
                   const double yciab = Y2.GetTBME_J(J0, J1, c, i, a, b);

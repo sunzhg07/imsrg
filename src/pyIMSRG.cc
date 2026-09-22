@@ -1564,6 +1564,9 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("qv"), py::arg("ph"), py::arg("ppvv"), py::arg("pphv"),
            py::arg("pphh"),
            "Select EOM config blocks (qv,ph,ppvv,pphv,pphh); call before ConstructConfigs")
+      .def("SetNormPphvDiagrams", &EOM::SetNormPphvDiagrams,
+           py::arg("B1"), py::arg("C4"),
+           "pphv–pphv N: B1 (220+leftover 1b) and/or C4 (222_ph). Default both.")
       .def("PrintIncludeConfigs", &EOM::PrintIncludeConfigs)
       .def("SetArnoldiPreferPositive", &EOM::SetArnoldiPreferPositive,
            py::arg("prefer"),

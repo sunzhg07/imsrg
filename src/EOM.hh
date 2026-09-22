@@ -124,6 +124,10 @@ public:
   bool include_ppvv = true;
   bool include_pphv = true;
   bool include_pphh = true;
+  /// pphv–pphv N diagrams (default both). B1 = 220 identity + leftover 1b×ρ;
+  /// C4 = leftover 2b×ρ (Pandya / comm222_phtts). Independent of configs.
+  bool include_norm_B1 = true;
+  bool include_norm_C4 = true;
   double dcom_time_ladder = 0.0;
   double dcom_time_223_231 = 0.0;
   double dcom_time_223_232 = 0.0;
@@ -162,6 +166,12 @@ public:
   /// Must be called before ConstructConfigs (and ideally before ladders).
   void SetIncludeConfigs(bool qv, bool ph, bool ppvv, bool pphv, bool pphh);
   void PrintIncludeConfigs() const;
+  /// Isolate pphv diagonal: B1 (220+221) vs C4 (222_ph). Call before
+  /// ConstructNormMatrix_tensor.
+  void SetNormPphvDiagrams(bool B1, bool C4) {
+    include_norm_B1 = B1;
+    include_norm_C4 = C4;
+  }
   /// Legacy API: EraseValence + E_val*N was incorrect and is disabled.
   /// ClearReferenceEnergyShift / GetReferenceEnergyShift remain for compatibility
   /// (shift is always zero in production paths).
@@ -204,10 +214,10 @@ public:
 
   double Core_Diagram(size_t a, size_t b, size_t c, size_t d, size_t e,
                       size_t f, double j1, double j2);
-  /// Tensor C4: AMC of X_abcd ρ_dfae Y_cebf (Y reversed). J0,J1 = X pp,hv;
-  /// J4,J5 = Y hv,pp of the reversed ME (stored Y is pp,hv = J5,J4).
+  /// One term of sum_ef ⟨af|ce⟩^{j1 j2 λ} ⟨eb|fd⟩^{j3 j4 λ}.
+  /// Z_abcd is an unreduced scalar. lam is the rank of Q.
   double Core_Diagram_tensor(size_t a, size_t b, size_t c, size_t d, size_t e,
-                              size_t f, int J0, int J1, int J4, int J5,
+                              size_t f, int j1, int j2, int j3, int j4,
                               int lam);
   // Debug/inspection helper: return the direct-term 3-body diagram entries before
   // RDM contraction. The public scalar API applies the same direct-only convention.
