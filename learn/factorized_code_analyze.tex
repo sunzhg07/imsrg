@@ -1,0 +1,1341 @@
+\documentclass[enabledeprecatedfontcommands]{scrartcl}
+
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{parskip}
+\usepackage{hyperref}
+
+\newcommand{\codename}[1]{\texttt{#1}}
+\definecolor{codeblue}{rgb}{0.10,0.35,0.60}
+\newcommand{\coderef}[1]{\textcolor{codeblue}{\texttt{[L.\,#1]}}}
+\newcommand{\MyRomanNum}[1]{%
+  \ifcase#1\or I\or II\or III\or IV\or V\or VI\or VII\or VIII\or IX\or X\else #1\fi}
+\newcommand{\sixj}[6]{\begingroup\setlength{\arraycolsep}{0.2em}%
+  \begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \end{Bmatrix}\endgroup}
+\newcommand{\ninej}[9]{\begingroup\setlength{\arraycolsep}{0.2em}%
+  \begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \\ #7 & #8 & #9 \end{Bmatrix}\endgroup}
+\newcommand{\CGleftover}{\langle\lambda\,\mu,\,\lambda\,{-\mu}\,|\,00\rangle}
+
+\begin{document}
+
+\title{Factorized Double Commutator:\\
+M-scheme Gold, Factorized Code, and J-scheme AMC}
+\subtitle{Leftover $[\Omega,[\Omega,\Gamma]_3]$:
+unfactorized 3-op $\equiv$ nested $223{\tt st}\to{\tt tts}$ $\equiv$ ethS}
+\date{}
+\maketitle
+
+\begin{abstract}
+\noindent
+The M-scheme \emph{unfactorized} 3-operator formulas
+(Sec.~\ref{sec:unfact}) are the leftover gold.
+They are locked as printed and have been checked, for both hermiticities of
+$\Omega$ and for scalar and tensor $\Omega$, against
+$\mathtt{GetMscheme}(\mathtt{comm223st}\to\mathtt{comm231tts}
++\mathtt{comm232tts}+\mathtt{comm132tts})$
+(and the scalar $ss$ path when $\lambda=0$).
+Section~\ref{sec:fact} prints the \emph{factorized} M-scheme that
+\codename{UnitTest::Mscheme\_fact\_*} / \codename{Mscheme\_chi\_*} actually
+evaluate (slots, occupations, leftover CG), not an older compact print.
+Section~\ref{sec:jscheme} writes the J-scheme AMC formulas that
+\codename{FactorizedDoubleCommutator\_eths.cc} implements.
+Section~\ref{sec:code} is the scalar packed path in
+\codename{FactorizedDoubleCommutator.cc} (default $h_\Omega=-1$);
+it is not leftover gold.
+Unreduced scalar $\Omega$ is \codename{MakeReduced} on entry
+(\codename{ReducedRMEView}) in \codename{comm223st}, leftover
+\codename{*tts}, and ethS, then takes the same tensor leftover path.
+\end{abstract}
+
+\tableofcontents
+
+% =============================================================================
+\section{Conventions}
+\label{sec:conv}
+% =============================================================================
+
+Two-body matrix elements are antisymmetrized:
+$O_{pqrs}=-O_{qprs}=-O_{pqsr}=O_{qpsr}$.
+Hermiticity (when it holds) is
+\begin{equation}
+  O_{pqrs}=h_O\,O_{rspq},\qquad h_O=\pm 1.
+\end{equation}
+We write $\Omega$ for the generator (code: \codename{Eta}) and $\Gamma$ for
+the Hamiltonian-like operator.
+The double commutator contributes to one-body $f$ and two-body $\Gamma$ pieces
+of the output $Z$.
+Occupation numbers: $n_a\in\{0,1\}$, $\bar n_a=1-n_a$.
+$\hat P_{ij}$ exchanges free indices $i\leftrightarrow j$.
+\codename{GetMschemeMatrixElement\_*} is always the physical (unreduced) $m$
+ME. AMC \codename{reduce=true} is a reduced RME; default scalar
+\codename{IsReduced()=false} is unreduced.
+
+\paragraph{Leftover CG.}
+When two rank-$\lambda$ $\Omega$ couple to a leftover scalar, the m-scheme
+code multiplies
+\begin{equation}\label{eq:cg-leftover}
+  C_\lambda(\mu)
+  =\CGleftover
+  =(-1)^{\lambda-\mu}/\hat\lambda,
+  \qquad
+  \mu=\tfrac12(M_{\mathrm{bra}}-M_{\mathrm{ket}})\ \text{of the first $\Omega$}.
+\end{equation}
+(\codename{cg\_OmOm0} in \codename{UnitTest.cc}.) For $\lambda=0$, $C_0=1$.
+This CG sits on every $[\Omega\times\Omega]^{(0)}$ intermediate
+($\chi^{\alpha,\gamma,\delta,\varepsilon,\eta,\theta}$) and on every leftover
+fold that multiplies a second $\Omega$
+($f^{\mathrm{II}}$, $\Gamma^{\mathrm{II,IV_a,IV_b,IV_c}}$, III$_b$ 3-op).
+It is \emph{not} inside $\Omega\times\Gamma$ or $\Gamma\times\Omega$
+intermediates ($\chi^{\beta,\zeta,\Omega\Gamma,\iota,\kappa,\lambda}$).
+
+Pandya (particle--hole) and cross-coupled (CC) forms used below follow the
+code conventions in Sec.~\ref{sec:transforms}.
+
+\subsection{Verification chain (no tune)}
+\label{sec:verify-chain}
+
+The intended workflow---especially for tensor / TTS ethS diagrams---is:
+\begin{enumerate}
+  \item \textbf{M-scheme equation is golden.}
+    Unreduced physical $\langle m|\cdots|m\rangle$
+    (Sec.~\ref{sec:unfact}, or the AMC analyze string with the correct
+    scalar projection when the LHS is scalar and factors are tensors).
+    Compare J-scheme results to m only via
+    \codename{UnitTest::GetMschemeMatrixElement\_*}; do not invent m-scheme
+    phases or partner swaps to force a match.
+  \item \textbf{AMC derives DIRECT and Path~B} from that string
+    (ordinary-channel RME vs Pandya / intermediate factorization).
+    If DIRECT and Path~B disagree, fix the AMC inputs or the angular
+    reduction---not the m-scheme oracle.
+  \item \textbf{Code implements the AMC formulas literally}
+    (\codename{tts\_*} reference = DIRECT; ethS factorized = Path~B).
+    They must match m and each other \emph{with no tune}: no extra overall
+    phases, hat factors, or index swaps added ``to match the other J path.''
+\end{enumerate}
+A mismatch means a bug in AMC packaging or in the code transcription.
+The $f^{\MyRomanNum{2}}$ ethS outer
+$(-1)^{(j_2+1)/2}$ (Sec.~\ref{sec:code-fII}) is an example of a forbidden
+tune: it made DIRECT$\equiv$Path~B while both disagreed with m.
+
+% =============================================================================
+\section{M-scheme unfactorized 3-op equations (verified gold)}
+\label{sec:unfact}
+% =============================================================================
+
+These are the leftover definition. Do not edit them to match a factorized
+term. Gold is the \emph{sum} versus nested
+$W=-{\tt comm223st}(H,\Omega)$ then
+${\tt comm231tts}+{\tt comm232tts}+{\tt comm132tts}$
+(tensor leftover CG \eqref{eq:cg-leftover} on the first $\Omega$).
+Checked for $h_\Omega=\pm1$, $\lambda=0$ (unreduced $\Omega$ auto-reduced)
+and $\lambda>0$, and for $T,\pi$ on the He8 emax=2 grid.
+The printed III$_b$ occupations and slots (lines 170--178) are the working
+form.
+
+\subsection{One-body}
+\label{sec:unfact1b}
+
+\begin{subequations}\label{eq:unfact1b}
+\begin{align}
+ f^{\MyRomanNum{1}}_{ij}
+  =&\frac12\sum_{abcde}
+    \bigl(\bar n_a\bar n_b n_c n_d-n_a n_b\bar n_c\bar n_d\bigr)
+    \nonumber\\
+  &\times\bigl(
+    \Omega_{cdab}\Omega_{abce}\Gamma_{eidj}
+   +\Omega_{cdab}\Omega_{abce}\Gamma_{diej}
+   \bigr),\\
+ f^{\MyRomanNum{2}}_{ij}
+  =&\frac12\sum_{abcde}
+    \bigl(n_a n_b\bar n_c\bar n_e-\bar n_a\bar n_b n_c n_e\bigr)
+    \nonumber\\
+  &\times\bigl(
+    \Gamma_{cdab}\Omega_{abce}\Omega_{eidj}
+   +h_\Omega h_\Gamma\,
+    \Gamma_{cdab}\Omega_{abce}\Omega_{diej}
+   \bigr),\\
+ f^{\MyRomanNum{3}_a}_{ij}
+  =&\sum_{abcde}
+    \bigl(\bar n_a\bar n_b n_c n_d-n_a n_b\bar n_c\bar n_d\bigr)
+    \nonumber\\
+  &\times\bigl(
+    \Omega_{abcd}\Omega_{idae}\Gamma_{cejb}
+   -\Omega_{abcd}\Omega_{edaj}\Gamma_{cieb}
+   \bigr),\\
+ f^{\MyRomanNum{3}_b}_{ij}
+  =&\frac14\sum_{abcde}
+    \bigl(\bar n_a\bar n_b n_c n_d-n_a n_b\bar n_c\bar n_d\bigr)
+    \nonumber\\
+  &\times\bigl(
+    \Omega_{abcd}\Omega_{cdej}\Gamma_{eiab}
+   -\Omega_{abcd}\Omega_{eiab}\Gamma_{cdej}
+   \bigr).
+\end{align}
+\end{subequations}
+The factor $h_\Omega h_\Gamma$ in $f^{\MyRomanNum{2}}$ is required for general
+hermiticity (Sec.~\ref{sec:herm}).
+
+\subsection{Two-body}
+\label{sec:unfact2b}
+
+\begin{subequations}\label{eq:unfact2b}
+\begin{align}
+\Gamma^{\MyRomanNum{1}}_{ijkl}
+  =&\frac12\sum_{abcd}
+    \bigl(\bar n_a\bar n_b n_c+n_a n_b\bar n_c\bigr)
+    \nonumber\\
+  &\times\Bigl\{
+    (1-\hat P_{ij})\,\Omega_{ciab}\Omega_{abcd}\Gamma_{djkl}
+   +(1-\hat P_{kl})\,\Omega_{cdab}\Omega_{abcl}\Gamma_{ijkd}
+  \Bigr\},\\
+\Gamma^{\MyRomanNum{2}}_{ijkl}
+  =&-\frac12\sum_{abcd}
+    \bigl(\bar n_a\bar n_b n_c+\bar n_c n_a n_b\bigr)
+    \nonumber\\
+  &\times\Bigl\{
+    (1-\hat P_{ij})\,\Omega_{cjab}\Gamma_{abcd}\Omega_{idkl}
+   +(1-\hat P_{kl})\,\Gamma_{cdab}\Omega_{abcl}\Omega_{ijkd}
+  \Bigr\},\\
+\Gamma^{\MyRomanNum{3}_a}_{ijkl}
+  =&-\sum_{abcd}
+    \bigl(\bar n_c\bar n_d n_a+\bar n_a n_c n_d\bigr)
+    \nonumber\\
+  &\times\Bigl\{
+    (1-\hat P_{ij})\,\Omega_{ajcd}\Omega_{idab}\Gamma_{cbkl}
+   +(1-\hat P_{kl})\,\Omega_{cdka}\Omega_{bacl}\Gamma_{ijbd}
+  \Bigr\},\\
+\Gamma^{\MyRomanNum{3}_b}_{ijkl}
+  =&-\sum_{abcd}
+    \bigl(\bar n_b n_c \bar n_d+n_b\bar n_c  n_d\bigr)
+    (1-\hat P_{ij})(1-\hat P_{kl})
+    \nonumber\\
+  &\times\bigl(
+    \Omega_{dbck}\Omega_{ciab}\Gamma_{jald}
+   +\Omega_{jcbd}\Omega_{balc}\Gamma_{diak}
+  \bigr),\\
+\Gamma^{\MyRomanNum{3}_c}_{ijkl}
+  =&-\frac12\sum_{abcd}
+    \bigl(\bar n_a\bar n_b n_c+n_a n_b\bar n_c\bigr)
+    (1-\hat P_{ij})(1-\hat P_{kl})
+    \nonumber\\
+  &\times\bigl(
+    \Omega_{abcl}\Omega_{idab}\Gamma_{cjkd}
+   +\Omega_{icab}\Omega_{abdl}\Gamma_{djkc}
+  \bigr),\\
+\Gamma^{\MyRomanNum{4}_a}_{ijkl}
+  =&-\sum_{abcd}
+    \bigl(\bar n_c\bar n_d n_a+n_c n_d\bar n_a\bigr)
+    \nonumber\\
+  &\times\Bigl\{
+    (1-\hat P_{ij})\,\Omega_{aicd}\Omega_{dbkl}\Gamma_{jcba}
+   +(1-\hat P_{kl})\,\Omega_{dcak}\Omega_{ijcb}\Gamma_{bald}
+  \Bigr\},\\
+\Gamma^{\MyRomanNum{4}_b}_{ijkl}
+  =&(1-\hat P_{ij})(1-\hat P_{kl})
+    \sum_{abcd}
+    \bigl(\bar n_a n_b\bar n_c+n_a\bar n_b n_c\bigr)
+    \nonumber\\
+  &\times\bigl(
+    \Omega_{bica}\Omega_{jcld}\Gamma_{dabk}
+   +\Omega_{cabk}\Omega_{jdlc}\Gamma_{bida}
+  \bigr),\\
+\Gamma^{\MyRomanNum{4}_c}_{ijkl}
+  =&\frac12(1-\hat P_{ij})(1-\hat P_{kl})
+    \sum_{abcd}
+    \bigl(\bar n_a\bar n_b n_d+n_a n_b\bar n_d\bigr)
+    \nonumber\\
+  &\times\bigl(
+    \Omega_{abld}\Omega_{djck}\Gamma_{icab}
+   +\Omega_{idab}\Omega_{cjdk}\Gamma_{ablc}
+  \bigr).
+\end{align}
+\end{subequations}
+
+% =============================================================================
+\section{Factorized M-scheme as coded (\codename{UnitTest})}
+\label{sec:fact}
+% =============================================================================
+
+This section is a transcription of
+\codename{UnitTest::Mscheme\_chi\_*} and \codename{Mscheme\_fact\_*},
+up to dummy-index names. Every $\Omega\times\Omega$ product and leftover
+$\chi\times\Omega$ fold includes $C_\lambda$ \eqref{eq:cg-leftover}
+(omitted only when $\lambda=0$).
+Slots and occupations are what the loops evaluate, not an older compact
+print. The sum of these diagrams matches Sec.~\ref{sec:unfact} / nested
+${\tt st}+{\tt tts}$.
+
+\subsection{One-body intermediates and factorized $f$}
+\label{sec:fact1b}
+
+\begin{subequations}\label{eq:chi1b}
+\begin{align}
+\chi^{\alpha}_{ij}
+  =&\frac12\sum_{abc}
+    \bigl(\bar n_a\bar n_b n_c n_i-n_a n_b\bar n_c\bar n_i\bigr)
+    C_\lambda\,\Omega_{ciab}\Omega_{abcj},\\
+\chi^{\beta}_{de}
+  =&\frac12\sum_{abc}
+    \bigl(n_a n_b\bar n_c\bar n_e-\bar n_a\bar n_b n_c n_e\bigr)
+    \Gamma_{cdab}\Omega_{abce},
+  \label{eq:chibeta}\\
+\chi^{\gamma}_{ijkl}
+  =&\sum_{ab}
+    \bigl(n_a\bar n_b n_j\bar n_k-\bar n_a n_b\bar n_j n_k\bigr)
+    C_\lambda\,\Omega_{ajkb}\Omega_{ibal},\\
+\chi^{\delta}_{ijkl}
+  =&\frac12\sum_{ab}
+    \bigl(n_a n_b\bar n_k\bar n_l-\bar n_a\bar n_b n_k n_l\bigr)
+    C_\lambda\,\Omega_{ijab}\Omega_{abkl}.
+  \label{eq:chidelta}
+\end{align}
+\end{subequations}
+$\chi^\beta$ is $\Gamma\times\Omega$ with occupation on the free ket $e$,
+not $\Omega\times\Gamma$ with occupation on the bra
+(\codename{Mscheme\_chi\_beta}).
+$\chi^\delta$ is Type~A (free sum, unnormalized GetMscheme); the
+$\tfrac12$ is in $\chi$, not an extra $\tfrac14$
+(\codename{Mscheme\_chi\_delta}).
+
+\begin{subequations}\label{eq:fact1b}
+\begin{align}
+ f^{\MyRomanNum{1}}_{ij}
+  =&\sum_{ab}\bigl(
+    \chi^{\alpha}_{ab}\Gamma_{biaj}
+   +\chi^{\alpha}_{ab}\Gamma_{aibj}
+  \bigr),\\
+ f^{\MyRomanNum{2}}_{ij}
+  =&\sum_{de}C_\lambda\,\chi^{\beta}_{de}
+    \bigl(\Omega_{eidj}+h_\Gamma\,\Omega_{ejdi}\bigr),
+  \label{eq:fII}\\
+ f^{\MyRomanNum{3}_a}_{ij}
+  =&\sum_{abc}\bigl(
+    \Gamma_{ciab}\chi^{\gamma}_{abcj}
+   -\chi^{\gamma}_{icab}\Gamma_{abjc}
+  \bigr),
+  \label{eq:fIIIa}\\
+ f^{\MyRomanNum{3}_b}_{ij}
+  =&\frac12\sum_{cad}
+    \chi^{\delta}_{ciad}\Gamma_{adcj}
+   +\frac12\sum_{cad}
+    \chi^{\delta}_{cjad}\Gamma_{ciad}.
+  \label{eq:fIIIb}
+\end{align}
+\end{subequations}
+$f^{\mathrm{II}}$ is $f_a+h_\Gamma f_b$ with $\Omega_{ejdi}$ (not
+$\Omega_{diej}$; that is not a 1b contraction). There is no extra $h_\Omega$
+on $f_b$ (\codename{Mscheme\_fact\_fII}).
+$f^{\mathrm{III}_b}$ is II$_b+$II$_d$ as coded, not
+$\chi\Gamma-\Gamma\chi$ with those slots
+(\codename{Mscheme\_fact\_fIIIb}).
+
+\subsection{Two-body intermediates}
+\label{sec:chi2b}
+
+\begin{subequations}\label{eq:chi2b}
+\begin{align}
+\chi^{\epsilon}_{ij}
+  =&\frac12\sum_{abc}
+    \bigl(\bar n_a\bar n_b n_c+n_a n_b\bar n_c\bigr)
+    C_\lambda\,\Omega_{ciab}\Omega_{abcj},\\
+\chi^{\zeta}_{ij}
+  =&\frac12\sum_{abc}
+    \bigl(n_a n_b\bar n_c+\bar n_a\bar n_b n_c\bigr)
+    \Gamma_{ciab}\Omega_{abcj},
+  \label{eq:chizeta}\\
+\chi^{\Omega\Gamma}_{ij}
+  =&\frac12\sum_{abc}
+    \bigl(n_a n_b\bar n_c+\bar n_a\bar n_b n_c\bigr)
+    \Omega_{ciab}\Gamma_{abcj},
+  \label{eq:chiOG}\\
+\chi^{\eta}_{ijkl}
+  =&\sum_{ab}
+    \bigl(\bar n_a n_b\bar n_k+n_a\bar n_b n_k\bigr)
+    C_\lambda\,\Omega_{iabl}\Omega_{bjka},\\
+\chi^{\theta}_{ijkl}
+  =&\sum_{ab}
+    \Bigl(
+      n_a n_b\bar n_k+\bar n_a\bar n_b n_k
+     +n_a n_b\bar n_j+\bar n_a\bar n_b n_j
+    \Bigr)
+    C_\lambda\,\Omega_{ijab}\Omega_{abkl},\\
+\chi^{\iota}_{ijkl}
+  =&\sum_{ab}
+    \bigl(\bar n_a n_b\bar n_k+n_a\bar n_b n_k\bigr)
+    \Gamma_{iabl}\Omega_{bjka},\\
+\chi^{\kappa}_{ijkl}
+  =&\sum_{ac}
+    \bigl(\bar n_c\bar n_l n_a+n_c n_l\bar n_a\bigr)
+    \Omega_{aicl}\Gamma_{jcka},
+  \label{eq:chikappa}\\
+\chi^{\lambda}_{ijkl}
+  =&\sum_{ab}\Bigl\{
+    \bigl(\bar n_a\bar n_b n_l+n_a n_b\bar n_l\bigr)
+    \Gamma_{ijab}\Omega_{abkl}
+   +\bigl(\bar n_a\bar n_b n_j+n_a n_b\bar n_j\bigr)
+    \Omega_{ijab}\Gamma_{abkl}
+  \Bigr\}.
+\end{align}
+\end{subequations}
+$\chi^{\Omega\Gamma}$ is the leftover G$^{\mathrm{II}}$ \emph{bra} grouping
+($\Omega\times\Gamma$); $\chi^\zeta$ is the ket grouping
+($\Gamma\times\Omega$). They are not $h_\Omega$ times each other at the same
+$m$ (\codename{Mscheme\_chi\_OmegaGamma}, \codename{Mscheme\_chi\_zeta}).
+$\chi^\kappa_{ijkl}$ uses occupation on the free ket $l$
+(\codename{Mscheme\_chi\_kappa}; analyze $d\leftrightarrow l$).
+
+\subsection{Factorized two-body}
+\label{sec:fact2b}
+
+\begin{subequations}\label{eq:fact2b}
+\begin{align}
+\Gamma^{\MyRomanNum{1}}_{ijkl}
+  =&\sum_{a}\Bigl\{
+    (1-\hat P_{ij})\,\chi^{\epsilon}_{ia}\Gamma_{ajkl}
+   +(1-\hat P_{kl})\,\chi^{\epsilon}_{ak}\Gamma_{ijal}
+  \Bigr\},\\
+\Gamma^{\MyRomanNum{2}}_{ijkl}
+  =&-\sum_{a}\Bigl\{
+    (1-\hat P_{ij})\,C_\lambda\,\chi^{\Omega\Gamma}_{ja}\Omega_{iakl}
+   +(1-\hat P_{kl})\,C_\lambda\,\chi^{\zeta}_{ak}\Omega_{ijal}
+  \Bigr\},
+  \label{eq:GII}\\
+\Gamma^{\MyRomanNum{3}_a}_{ijkl}
+  =&-\sum_{ab}\Bigl\{
+    (1-\hat P_{ij})\,\chi^{\eta}_{ijab}\Gamma_{abkl}
+   +(1-\hat P_{kl})\,\Gamma_{ijab}\chi^{\eta}_{klab}
+  \Bigr\},
+  \label{eq:GIIIa}\\
+\Gamma^{\MyRomanNum{3}_b}_{ijkl}
+  =&(1-\hat P_{ij})(1-\hat P_{kl})\,W^{\mathrm{III}_b}_{ijkl},
+  \label{eq:GIIIb}\\
+\Gamma^{\MyRomanNum{3}_c}_{ijkl}
+  =&-\frac12(1-\hat P_{ij})(1-\hat P_{kl})
+    \sum_{ab}\chi^{\theta}_{iabl}\Gamma_{bjka},\\
+\Gamma^{\MyRomanNum{4}_a}_{ijkl}
+  =&(1-\hat P_{ij})\,W^{\mathrm{IV}_a}_{ijkl}
+    +(1-\hat P_{kl})\,W^{\mathrm{IV}_a}_{klij},
+  \label{eq:GIVa}\\
+\Gamma^{\MyRomanNum{4}_b}_{ijkl}
+  =&(1-\hat P_{ij})(1-\hat P_{kl})
+    \sum_{ab}C_\lambda
+    \bigl(
+      \chi^{\iota}_{aibk}\Omega_{jbla}
+     +\chi^{\iota}_{akbi}\Omega_{lbja}
+    \bigr),
+  \label{eq:GIVb}\\
+\Gamma^{\MyRomanNum{4}_c}_{ijkl}
+  =&\frac12(1-\hat P_{ij})(1-\hat P_{kl})
+    \sum_{ab}C_\lambda\,\chi^{\lambda}_{ialb}\Omega_{bjak}.
+\end{align}
+\end{subequations}
+Leftover kernels coded as free sums (no GetMscheme slot swap):
+\begin{align}
+  W^{\mathrm{IV}_a}_{ijkl}
+  &=-\sum_{bd}C_\lambda\,\chi^{\kappa}_{ijbd}\Omega_{dbkl},
+  \label{eq:WIVa}\\
+  W^{\mathrm{III}_b}_{ijkl}
+  &=-\sum_{abcd}C_\lambda\Bigl[
+    w_b\,\Omega_{dcbk}\Omega_{biac}\Gamma_{jald}
+   +w_d\,\Omega_{jcbd}\Omega_{balc}\Gamma_{diak}
+  \Bigr],
+  \label{eq:WIIb}
+\end{align}
+with $w_b=\bar n_b n_c n_d+n_b\bar n_c\bar n_d$ and
+$w_d=\bar n_c n_b n_d+n_c\bar n_b\bar n_d$
+(\codename{Mscheme\_fact\_GIIIb}: IIb$+$IId, then $(1-\hat P)^2$).
+This is the same-weight rewrite of unfactored III$_b$ \eqref{eq:unfact2b}.
+The J-scheme ethS path builds the same $Z$ via the CC chain
+\eqref{eq:GIIIb-CC}, not by forming two independent $\chi^\eta\Gamma$
+products.
+
+\eqref{eq:GIVb} has \emph{no} extra $h_\Omega$ on $W_2=+\chi^\iota_{akbi}\Omega_{lbja}$.
+$+h_\Omega\,\Omega_{jalb}$ is a scalar slot swap only.
+$-h_\Omega h_\Gamma\,\Omega_{lbja}$ is AH-only and cancels $S_1$ when
+$\Omega$ is Hermitian.
+
+The computational definition of $\Gamma^{\MyRomanNum{3}_b}$ (what the code
+actually evaluates) is the CC contraction
+\begin{equation}\label{eq:GIIIb-CC}
+\begin{aligned}
+\overline{\overline\chi}{}^{\eta}
+  &= \mathrm{RC}\bigl[\bar\chi^\eta+\bar\chi^\eta_{\mathrm{swap}}\bigr]
+     \quad\text{\eqref{eq:RC}},\\
+\mathrm{CHI\_III\_final}
+  &= \bar\Gamma\cdot\overline{\overline\chi}{}^\eta,\\
+\Gamma^{\MyRomanNum{3}_b}
+  &= \mathrm{InvPandya}_{(1-\hat P_{ij})(1-\hat P_{kl})}
+     \bigl[\mathrm{CHI\_III\_final}\bigr].
+\end{aligned}
+\end{equation}
+M-scheme leftover gold for III$_b$ is the 3-op kernel \eqref{eq:WIIb}
+(IIb$+$IId), not a second $\chi^\eta_{lajb}\Gamma_{aibk}$ with occupation
+on a free index. The $ad\leftrightarrow bc$ swap inside \eqref{eq:RC}
+together with $(1-\hat P)^2$ is the ethS J-scheme realization of that
+partner.
+
+\textbf{Honest differences vs.\ older compact print / scalar FDC shortcuts:}
+\begin{itemize}
+  \item $f^{\mathrm{II}}$: $h_\Gamma$ on $\Omega_{ejdi}$, no $h_\Omega$.
+  \item $f^{\mathrm{III}_b}$: II$_b+$II$_d$, not $\chi\Gamma-\Gamma\chi$.
+  \item $\Gamma^{\mathrm{II}}$: two intermediates $\chi^{\Omega\Gamma}$ and
+    $\chi^\zeta$, not one $\chi^\zeta$ at $h_\Omega=-1$.
+  \item $\Gamma^{\mathrm{IV}_a}$: second brace is $W_{klij}$, not
+    $\Omega\chi^{\kappa'}$ at the same $m$.
+  \item $\Gamma^{\mathrm{III}_a}$: second brace uses $\chi^{\eta}_{klab}$.
+\end{itemize}
+
+% =============================================================================
+\section{Transforms used in the code}
+\label{sec:transforms}
+% =============================================================================
+
+Forward Pandya (normal $\to$ Pandya), as implemented
+(\coderef{1289--1296}):
+\begin{equation}\label{eq:pandya-fwd}
+\bar O^{J}_{a\bar b\,c\bar d}
+  =-\sum_{J'}(2J'+1)\,
+   \sixj{j_a}{j_b}{J}{j_c}{j_d}{J'}\,
+   O^{J'}_{a\,d\,c\,b}.
+\end{equation}
+Inverse Pandya for a single $(1-\hat P_{ij})$ (used for $\chi^\eta\to$ normal,
+\coderef{1380--1470}):
+\begin{equation}\label{eq:pandya-inv-1P}
+O^{J}_{ijkl}
+  =-(1-\hat P_{ij})\sum_{J'}(2J'+1)\,
+   \sixj{j_i}{j_j}{J}{j_k}{j_l}{J'}\,
+   \bar O^{J'}_{i\bar l\,k\bar j}.
+\end{equation}
+Inverse Pandya with full $(1-\hat P_{ij})(1-\hat P_{kl})$ (used for
+$\Gamma^{\MyRomanNum{3}_b}$, \coderef{2719--2849}), schematically
+\begin{equation}\label{eq:pandya-inv-2P}
+O^{J}_{ijkl}
+  =-(1-\hat P_{ij})(1-\hat P_{kl})\,(-1)^{J+j_i+j_j}
+   \sum_{J'}(2J'+1)\,(-1)^{J'+j_i+j_k}\,
+   \sixj{j_j}{j_i}{J}{j_k}{j_l}{J'}\,
+   \bar O^{J'}_{j\bar l\,k\bar i},
+\end{equation}
+with all four exchange channels $(jl,ki)$, $(ki,jl)$, $(il,jk)$, $(jk,il)$
+accumulated explicitly in the code.
+
+Pandya$\to$CC recoupling for $\chi^\eta$
+(\codename{barCHI\_III\_RC}, \coderef{1749--1841}):
+\begin{equation}\label{eq:RC}
+\begin{aligned}
+\overline{\overline\chi}{}^{\eta\,J}_{a\bar b\,c\bar d}
+&=-\sum_{J'}(2J'+1)\,(-1)^{j_b+j_c+J'}
+  \sixj{j_a}{j_b}{J}{j_c}{j_d}{J'}\\
+&\quad\times\Bigl(
+  \bar\chi^{\eta\,J'}_{b\bar c\,a\bar d}
+ +\bar\chi^{\eta\,J'}_{a\bar d\,b\bar c}
+\Bigr).
+\end{aligned}
+\end{equation}
+
+% =============================================================================
+\section{Scalar packed path (\codename{FactorizedDoubleCommutator.cc})}
+\label{sec:code}
+% =============================================================================
+
+This section is the \emph{scalar} packed implementation
+(\codename{src/FactorizedDoubleCommutator.cc}, default $h_\Omega=-1$).
+Leftover gold for tensor / general hermiticity is Sec.~\ref{sec:fact}
+and Sec.~\ref{sec:jscheme}, not the $A+A^{T}$ shortcuts below.
+Do not edit this file to match leftover TTS.
+
+Functions: \codename{comm223\_231\_*} (one-body),
+\codename{comm223\_232\_chi1b/chi2b} (two-body).
+
+\subsection{$f^{\MyRomanNum{1}}$ and $\chi^\alpha$}
+\label{sec:code-fI}
+
+\coderef{99--254}.
+Ordinary-channel product $\Omega\,(\mathrm{occ})\,\Omega$, then trace to
+one body; contraction
+$\sum_{ab}\chi^\alpha_{ab}(\Gamma_{biaj}+\Gamma_{aibj})$.
+Matches \eqref{eq:chi1b}--\eqref{eq:fact1b}.
+
+\subsection{$f^{\MyRomanNum{2}}$ and $\chi^\beta$ (hermiticity-aware)}
+\label{sec:code-fII}
+
+\coderef{255--376} (scalar
+\codename{FactorizedDoubleCommutator.cc}).
+\begin{itemize}
+  \item Build $\chi^\beta_{de}$ from $\Omega\Gamma$ with the same occ kernel as
+    $\chi^\alpha$ (\coderef{255--334}).
+  \item Contract (\coderef{335--369}):
+  \begin{equation}
+    z_{pq}\propto\sum_{de J}
+    \bigl[\chi^\beta_{de}\,\Omega^{J}_{epdq}
+         -h_Z\,\chi^\beta_{ed}\,\Omega^{J}_{epdq}\bigr],
+  \end{equation}
+  with $h_Z=h_\Gamma$ in the present code, and the relative minus between
+  $\chi_{de}$ and $\chi_{ed}$ implementing the second unfactorized string when
+  $h_\Omega=-1$.
+  Leftover M-scheme \eqref{eq:fII} is
+  $C_\lambda\chi^\beta_{de}(\Omega_{eidj}+h_\Gamma\Omega_{ejdi})$
+  (no $h_\Omega$). The $\chi_{ed}$ minus here is the $h_\Omega=-1$ shortcut.
+\end{itemize}
+\textbf{Limitation:} older prints omitted $h_\Omega h_\Gamma$ and only matched
+the standard IMSRG case $h_\Omega=-1$, $h_\Gamma=+1$.
+
+\paragraph{TTS / AMC path
+(\codename{FactorizedDoubleCommutator\_eths.cc}).}
+\label{sec:code-fII-tts}
+When $\Omega$ has tensor rank $\lambda$, $\chi^\beta$ is a reduced rank-$\lambda$
+one-body intermediate and the final $f^{\MyRomanNum{2}}$ is scalar.
+AMC (\codename{factored\_fII/output/f2a\_from\_chi.tex}) gives the RME fold
+\begin{equation}
+\label{eq:fII-amc-fold}
+\begin{aligned}
+  f^{(II)}_{ij}
+  &=
+  \delta_{j_i j_j}\,(-1)^{j_i}\,\hat\jmath_i^{-2}
+  \sum_{de J_0 J_1}
+  (-1)^{J_1+j_d}\,
+  \hat J_0\hat J_1\hat\lambda^{-1}
+  \sixj{J_1}{\lambda}{J_0}{j_e}{j_i}{j_d}
+  \\
+  &\qquad\times
+  \chi^{\beta\,\lambda}_{de}\,
+  \Omega^{J_0 J_1\lambda}_{eidj},
+\end{aligned}
+\end{equation}
+assembled with the partner $f_a+h_\Gamma f_b$ where $f_b$ uses
+$\Omega_{ejdi}$ (AMC cannot orient $\Omega_{diej}$).
+The factor $\hat\lambda^{-1}$ is the $K{=}0$ projection
+$[\chi^\lambda\otimes\Omega^\lambda]^{(0)}$;
+\[
+  \mathrm{CG}(\lambda\mu,\lambda{-\mu};00)=(-1)^{\lambda-\mu}/\hat\lambda.
+\]
+A naive m-scheme sum $\sum\chi_{de}\Omega_{eidj}$ without that CG is
+\emph{not} scalar ($m$-dependent for $j\ge\tfrac32$) and is not a valid
+oracle for~\eqref{eq:fII-amc-fold}.
+
+\textbf{Half-integer phases.}
+Printed $(-1)^{j_i}(-1)^{J_1+j_d}$ must be read as the \emph{combined}
+integer phase
+\begin{equation}
+\label{eq:fII-phase-combined}
+  (-1)^{j_i+J_1+j_d}
+  \;=\;
+  (-1)^{(j_{2i}+j_{2d})/2+J_1},
+\end{equation}
+not as a separate real factor $(-1)^{j_i}$ for half-integer $j_i$.
+With~\eqref{eq:fII-phase-combined}, the body of~\eqref{eq:fII-amc-fold}
+(6j, hats, $\hat\lambda^{-1}$) matches m-scheme
+$[\chi\otimes\Omega]^{(0)}$ to machine precision
+(\codename{run/test\_fII\_fold\_isolate.py}; $\chi^\beta$ itself already
+verified in \codename{run/test\_chi\_beta\_mscheme.py}).
+AMC is therefore mathematically correct for this fold.
+
+\textbf{Spurious outer phase in ethS (fixed).}
+ethS implements~\eqref{eq:fII-phase-combined} as the inner loop phase.
+An extra $(-1)^{(j_{2p}+1)/2}$ was previously multiplied ``to match''
+\codename{tts\_fII}; that double-counted AMC's $(-1)^{j_i}$ already inside
+\eqref{eq:fII-phase-combined} and violated Sec.~\ref{sec:verify-chain}.
+Removed from ethS. DIRECT (\codename{tts\_fII}) applies AMC $(-1)^{j_i}$
+\emph{once} via $\mathtt{phase((jp2+1)/2)}$ because its unfactored loop phase
+only contains $j_c{+}j_d{+}j_e$.
+
+\textbf{Three-way status.}
+After removing the ethS double-count and applying AMC $(-1)^{j_i}$ once in
+\codename{tts\_fII} (loop sum had $j_c{+}j_d{+}j_e$ only):
+$\mathrm{m}\equiv\mathrm{DIRECT}\equiv\mathrm{Path\,B}$
+(\codename{run/test\_tts\_f\_mscheme.py}).
+
+\subsection{$f^{\MyRomanNum{3}_b}$ and $\chi^\delta$}
+\label{sec:code-fIIIb}
+
+\coderef{395--544}.
+$\chi=(\Omega)\,(\mathrm{occ}\cdot\Omega)$ (occ on second factor), then
+$\chi\Gamma-\Gamma\chi$ (or $A+A^{T}$ when $h_\Omega=-1$).
+Matches $f^{\MyRomanNum{3}_b}$ in \eqref{eq:unfact1b}.
+
+\subsection{$f^{\MyRomanNum{3}_a}$ and $\chi^\gamma$ (Pandya)}
+\label{sec:code-fIIIa}
+
+\coderef{545--799}.
+\begin{enumerate}
+  \item Forward Pandya of $\Omega$ and $\Gamma$ via \eqref{eq:pandya-fwd}.
+  \item Occupancy-weighted product in Pandya space
+    $\bar\chi^\gamma=\bar\Omega\,(\mathrm{occ})\,\bar\Omega$ with
+    $w_\gamma=-w_{\mathrm{unfact}}$.
+  \item Reduce as $\mathrm{IIa}-\mathrm{IIc}$:
+    $z_{pq}\propto\sum_e\bigl[M(pe,qe)-M(eq,ep)\bigr]$.
+\end{enumerate}
+Pandya minuses and $(\pm\mathrm{occ})$ fills cancel the printed
+$w_\gamma=-w$ so the code yields $+f^{\MyRomanNum{3}_a}$.
+The corrected M-scheme statement is \eqref{eq:fIIIa}.
+
+\subsection{$\Gamma^{\MyRomanNum{1}}$, $\Gamma^{\MyRomanNum{2}}$ and
+$\chi^\epsilon$, $\chi^\zeta$}
+\label{sec:code-GI-II}
+
+\coderef{882--1140}.
+\begin{itemize}
+  \item $\chi^\epsilon=\mathrm{CHI\_I}$: both loops build
+    $\Omega\Omega$ with weight
+    $\bar n_a\bar n_b n_c+n_a n_b\bar n_c$
+    $\Rightarrow$ \eqref{eq:chi2b}.
+  \item $\chi^\zeta=\mathrm{CHI\_II}$:
+    $\tfrac12\bar n_a n_i n_j\,\Gamma_{apij}\Omega_{ijaq}$ and
+    $\tfrac12\bar n_a\bar n_b n_i\,\Gamma_{ipab}\Omega_{abiq}$,
+    i.e.\ $\Gamma_{ciab}\Omega_{abcj}$ as in \eqref{eq:chizeta}.
+  \item Insertions (\coderef{1053--1121}):
+    $\chi^\epsilon\Gamma$ with $(1-\hat P)$ on bra/ket legs, and
+    $h_Z\,\chi^\zeta\Omega$ with a relative minus on the ket side,
+    matching $\Gamma^{\MyRomanNum{1}}$ and $\Gamma^{\MyRomanNum{2}}$ in
+    \eqref{eq:fact2b}.
+\end{itemize}
+
+\subsection{Pandya build of $\chi^\eta$, $\chi^\iota$, $\chi^\kappa$}
+\label{sec:code-pandya-chi}
+
+\coderef{1191--1357}.
+After filling $\bar\Omega$, $\bar\Gamma$ by \eqref{eq:pandya-fwd},
+\begin{align}
+  \mathtt{nnnbar\_Eta}
+    &\leftarrow\bar\Omega\cdot
+      (\bar n_a n_b n_c+n_a\bar n_b\bar n_c)
+      \quad(\codename{occ\_AbarBC}),\\
+  \mathtt{nnnbar\_Eta\_d}
+    &\leftarrow\bar\Omega\cdot
+      (n_a\bar n_b n_d+\bar n_a n_b\bar n_d)
+      \quad(\codename{occ\_ABbarD}),\\
+  \bar\chi^\eta
+    &=\bar\Omega\cdot\mathtt{nnnbar\_Eta}
+      \quad(\codename{barCHI\_III}),\\
+  \bar\chi^\iota
+    &=\bar\Gamma\cdot\mathtt{nnnbar\_Eta}
+      \quad(\codename{bar\_CHI\_V}),\\
+  \bar\chi^\kappa
+    &=\bar\Gamma\cdot\mathtt{nnnbar\_Eta\_d}
+      \quad(\codename{bar\_CHI\_VI}),\\
+  \bar\chi^{\kappa,\mathrm{II}}
+    &=h_\Omega\,(\mathtt{nnnbar\_Eta\_d})^{T}\cdot\bar\Gamma
+      \quad(\codename{bar\_CHI\_VI\_II}).
+\end{align}
+The $\kappa$ weight with ket index $d$ on \codename{nnnbar\_Eta\_d} becomes
+occupation on the fourth normal index after inverse Pandya for the
+$\Omega\Gamma$ ordering (\codename{Chi\_VI\_II}), justifying \eqref{eq:chikappa}.
+
+\subsection{$\Gamma^{\MyRomanNum{3}_a}$: ladder from normal $\chi^\eta$}
+\label{sec:code-GIIIa}
+
+\begin{enumerate}
+  \item Inverse Pandya \eqref{eq:pandya-inv-1P} of $\bar\chi^\eta$
+    $\to$ \codename{Chi\_III\_Op} (\coderef{1377--1483}), including
+    bra $(1-\hat P_{ij})$ and an overall minus:
+    \[
+      X^{J}_{ijkl}=-(1-\hat P_{ij})\sum_{J'}(2J'+1)\,
+      \sixj{j_i}{j_j}{J}{j_k}{j_l}{J'}\,
+      \bar X^{J'}_{i\bar l\,k\bar j}.
+    \]
+  \item Ladder (\coderef{1706--1709}):
+  \begin{equation}
+    Z\;{+}{=}\;
+    \chi\,\Gamma
+   +h_Z\,\Gamma\,(\chi)^{T}.
+  \end{equation}
+\end{enumerate}
+This is exactly \eqref{eq:GIIIa}: the transpose supplies
+$\Gamma_{ijab}\chi_{klab}$, not $\chi_{abkl}$.
+
+\subsection{$\Gamma^{\MyRomanNum{4}_a}$: ladder from normal $\chi^\kappa$}
+\label{sec:code-GIVa}
+
+\begin{enumerate}
+  \item Inverse Pandya of $\bar\chi^\kappa=\mathtt{bar\_CHI\_VI}$
+    ($\Gamma\cdot\mathrm{occ}\cdot\Omega$) and
+    $\bar\chi^{\kappa,\mathrm{II}}=\mathtt{bar\_CHI\_VI\_II}$
+    ($h_\Omega\,(\mathrm{occ}\cdot\Omega)^{T}\cdot\Gamma$)
+    (\coderef{1519--1674}).
+  \item Ladder (\coderef{1711--1714}):
+  \begin{equation}
+    Z\;{+}{=}\;
+    -\Omega\,\chi_{\mathrm{VI}}
+    -\chi_{\mathrm{VI,II}}\,\Omega.
+  \end{equation}
+\end{enumerate}
+Identifying $\chi_{\mathrm{VI,II}}\leftrightarrow\chi^\kappa$ of
+\eqref{eq:chikappa} and $\chi_{\mathrm{VI}}\leftrightarrow\chi^{\kappa'}$,
+this is \eqref{eq:GIVa}:
+$-\chi_{\mathrm{VI,II}}\Omega$ is the first unfactorized brace
+($\Omega\Gamma$ then $\Omega_{dbkl}$);
+$-\Omega\chi_{\mathrm{VI}}$ is the second.
+Forward and inverse Pandya each contribute a minus; they cancel in the
+round trip, so no extra overall $-1$ remains.
+
+\subsection{$\Gamma^{\MyRomanNum{3}_b}$: CC path from $\chi^\eta$}
+\label{sec:code-GIIIb}
+
+Exact RC used in the code (\coderef{1828--1831}):
+\begin{equation}
+\begin{aligned}
+\overline{\overline\chi}{}^{\eta\,J}_{a\bar b\,c\bar d}
+&=-\sum_{J'}(2J'+1)\,(-1)^{j_b+j_c+J'}
+  \sixj{j_a}{j_b}{J}{j_c}{j_d}{J'}\\
+&\quad\times\Bigl(
+  \bar\chi^{\eta\,J'}_{b\bar c\,a\bar d}
+ +\bar\chi^{\eta\,J'}_{a\bar d\,b\bar c}
+\Bigr).
+\end{aligned}
+\end{equation}
+Then:
+\begin{enumerate}
+  \item GEMM (\coderef{2703}):
+    $\mathrm{CHI\_III\_final}=\bar\Gamma\cdot\overline{\overline\chi}{}^\eta$.
+  \item Inverse Pandya with full $(1-\hat P_{ij})(1-\hat P_{kl})$ and all
+    exchange channels $(jl,ki)$, $(ki,jl)$, $(il,jk)$, $(jk,il)$
+    (\coderef{2719--2849}).
+\end{enumerate}
+This is \eqref{eq:GIIIb-CC}; it does not form two independent M-scheme
+$\chi\Gamma$ products.
+
+\subsection{$\Gamma^{\MyRomanNum{4}_b}$ via $\chi^\iota$}
+\label{sec:code-GIVb}
+
+RC for $\chi^\iota$ (\coderef{1833--1836}):
+\begin{equation}
+\begin{aligned}
+\overline{\overline\chi}{}^{\iota\,J}_{a\bar b\,c\bar d}
+&=+\sum_{J'}(2J'+1)\,(-1)^{j_b+j_c+J'}
+  \sixj{j_a}{j_b}{J}{j_c}{j_d}{J'}\\
+&\quad\times\Bigl(
+  \bar\chi^{\iota\,J'}_{a\bar d\,b\bar c}
+ -h_Z\,\bar\chi^{\iota\,J'}_{b\bar c\,a\bar d}
+\Bigr).
+\end{aligned}
+\end{equation}
+Accumulated in Pandya as \codename{CHI\_V\_final}, then inverse Pandya
+(\coderef{1866--2024}). The $h_Z$ in the RC is a Pandya triangle fill,
+not the IVb leftover sign.
+ethS leftover is two AMC strings \eqref{eq:GIVb}:
+$W=W^{(1)}+W^{(2)}_{\Omega_{lbja}}$ (no extra $h_\Omega$).
+
+\subsection{$\Gamma^{\MyRomanNum{3}_c}$, $\Gamma^{\MyRomanNum{4}_c}$}
+\label{sec:code-rest}
+
+\begin{itemize}
+  \item $\chi^\theta$: normal product
+    $\Omega\cdot\Omega$ with occ on $k$ and on $j$
+    (\coderef{2031--2170}); forward Pandya; Pandya ladder
+    \[
+      \bar\Gamma^{(\mathrm{III}_c)}
+      =-\tfrac12\sum_{ab}
+        \bar\chi^{\theta}_{iabl}\,\bar\Gamma_{bjka};
+    \]
+    inverse Pandya (\coderef{2505--}).
+  \item $\chi^\lambda$: normal
+    $\Gamma\Omega+h_\Omega\,\Omega^{T}\Gamma$ with occ on $l$ and $j$
+    (\coderef{2173--2346}); forward CC; CC ladder
+    \[
+      \overline{\overline\Gamma}^{(\mathrm{IV}_c)}
+      =\tfrac12(-1)^{j_i+j_j+j_k+j_l}
+        \sum_{ab}
+        \overline{\overline\chi}{}^{\lambda}_{ialb}\,
+        \overline{\overline\Omega}_{bjak};
+    \]
+    inverse CC (\coderef{2867--3049}).
+\end{itemize}
+
+% =============================================================================
+\section{J-scheme factorized equations (AMC $\to$ ethS)}
+\label{sec:jscheme}
+% =============================================================================
+
+File: \codename{src/FactorizedDoubleCommutator\_eths.cc}.
+Unreduced $\lambda=0$ $\Omega$ is \codename{ReducedRMEView} (copy $+$
+\codename{MakeReduced}) on every leftover entry; $\lambda>0$ is already
+reduced. $\Gamma$ and leftover $Z$ stay scalar unreduced.
+Hats: $\hat x=\sqrt{2x+1}$, $\hat\jmath_i^{-2}=1/(j_{i,2}+1)$.
+Two-body tensor access is \codename{GetTBME\_J}$(J_{\mathrm{bra}},J_{\mathrm{ket}},\ldots)$;
+scalar is same-$J$ only. Channel matrices are \emph{normalized};
+physical ME $=\sqrt{(1+\delta_{ab})(1+\delta_{cd})}$ times the entry.
+AMC inputs live under \codename{learn/amc\_tts/factored\_*};
+the implemented map is \codename{learn/amc\_tts/FACTORIZED\_TTS\_IMPLEMENTED.md}.
+
+Nested leftover gold (no 3b store on the factored side):
+\[
+  W=-{\tt comm223st}(H,\Omega),\quad
+  Z={\tt comm231tts}(\Omega,W)+{\tt comm232tts}(\Omega,W)+{\tt comm132tts}(\Omega,W).
+\]
+ethS evaluates the same $Z$ as
+\codename{comm223\_231\_st}+\codename{comm223\_232}+\codename{comm223\_132\_tts}.
+$W$ is Hermitian iff $\Omega$ is anti-Hermitian ($H$ Hermitian).
+
+\subsection{$f^{\mathrm{I}}$ / $\chi^\alpha$
+(\codename{use\_TypeI\_1b})}
+\label{sec:js-fI}
+
+AMC: unfactored \codename{output/f1.tex}; $\chi$ is scalar 1b
+($j_d=j_e$). Overall $\tfrac12$ is on the write, not inside $\chi$ in ethS.
+\begin{equation}\label{eq:js-chia}
+\begin{aligned}
+\chi^\alpha_{de}
+&=\hat\jmath_d^{-2}
+\sum_{abc\,J_0 J_1}
+w_\alpha\,
+(-1)^{J_0+J_1+\lambda}\,\hat\lambda^{-1}\,
+\Omega^{J_0 J_1\lambda}_{cdab}\,
+\Omega^{J_1 J_0\lambda}_{abce},\\
+w_\alpha
+&=\bar n_a\bar n_b n_c n_d-n_a n_b\bar n_c\bar n_d,
+\end{aligned}
+\end{equation}
+\begin{equation}\label{eq:js-fI}
+Z_{pq}
+\mathrel{+}=
+\frac{1}{2\,\hat\jmath_p^{2}}
+\sum_{de\,J}
+\hat J^{2}\,
+\chi^\alpha_{de}
+\bigl(\Gamma^{J}_{epdq}+\Gamma^{J}_{depq}\bigr),
+\qquad
+Z_{qp}\mathrel{+}=h_Z Z_{pq}\ (p\neq q).
+\end{equation}
+Independent $J$ windows for the two $\Gamma$ strings; do not share one
+$J_{\min}/J_{\max}$.
+
+\subsection{$f^{\mathrm{II}}$ / $\chi^\beta$
+(\codename{use\_TypeII\_1b})}
+\label{sec:js-fII}
+
+AMC: \codename{factored\_fII/output/chi\_beta.tex},
+\codename{f2a\_from\_chi.tex}. $\chi^\beta$ is reduced rank-$\lambda$ 1b
+(triangle $j_d,j_e,\lambda$; no $\hat\jmath_d^{-2}$).
+\begin{equation}\label{eq:js-chib}
+\begin{aligned}
+\chi^{\beta\,\lambda}_{de}
+&=\tfrac12(-1)^{j_e+\lambda}
+\sum_{abc\,J_0 J_1}
+w_\beta\,(-1)^{J_0+j_c}\,
+\hat J_0\hat J_1
+\sixj{\lambda}{J_1}{J_0}{j_c}{j_d}{j_e}
+\Gamma^{J_0}_{cdab}\,
+\Omega^{J_0 J_1\lambda}_{abce},\\
+w_\beta
+&=n_a n_b\bar n_c\bar n_e-\bar n_a\bar n_b n_c n_e
+\quad\text{(depends on free $e$, not $d$)}.
+\end{aligned}
+\end{equation}
+Fold $f_a+h_\Gamma f_b$ (AMC cannot orient $\Omega_{diej}$; use
+$\Omega_{ejdi}$):
+\begin{equation}\label{eq:js-fII}
+\begin{aligned}
+Z_{pq}
+\mathrel{+}=
+\hat\jmath_p^{-2}
+\sum_{de\,J_3 J_4}
+(-1)^{j_p+J_4+j_d}\,
+\hat J_3\hat J_4\,\hat\lambda^{-1}
+\sixj{J_4}{\lambda}{J_3}{j_e}{j_p}{j_d}
+\chi^{\beta\,\lambda}_{de}
+\bigl(\Omega^{J_3 J_4\lambda}_{eidj}
++h_\Gamma\,\Omega^{J_3 J_4\lambda}_{ejdi}\bigr).
+\end{aligned}
+\end{equation}
+Half-integer phases are the \emph{combined} integer
+$(-1)^{(j_{2p}+j_{2d})/2+J_4}$, not a separate real $(-1)^{j_p}$.
+No extra outer $(-1)^{(j_{2p}+1)/2}$.
+
+\subsection{$f^{\mathrm{III}_b}$ / $\chi^\delta$
+(\codename{use\_TypeIII\_1b})}
+\label{sec:js-fIIIb}
+
+AMC: \codename{factored\_fIIIb/output/chi\_delta.tex}.
+$\chi^\delta$ is scalar 2b, \emph{non-Hermitian} (occ on the second
+$\Omega$); store full $(ibra,iket)$ same-channel squares.
+Physical ladder before normalization:
+\begin{equation}\label{eq:js-chid}
+P^{J}_{ij,kl}
+=\sum_{ab\,J_2}
+w_\delta\,(-1)^{J+J_2+\lambda}\,\hat\lambda^{-1}\,
+\Omega^{J\,J_2\lambda}_{ijab}\,
+\Omega^{J_2\,J\lambda}_{abkl},
+\quad
+w_\delta=n_a n_b\bar n_k\bar n_l-\bar n_a\bar n_b n_k n_l.
+\end{equation}
+Write $P_{\mathrm{norm}}=P_{\mathrm{phys}}/\sqrt{(1+\delta_{ij})(1+\delta_{kl})}$.
+Per scalar key $(ch_b,ch_k)$ with $J_b=J_k$:
+\begin{equation}\label{eq:js-fIIIb}
+\begin{aligned}
+M&=\chi(ch_b)\,\Gamma(ch_b,ch_k),\\
+M&\leftarrow
+\begin{cases}
+M+M^{T} & ch_b=ch_k,\\
+M-\Gamma\,\chi(ch_k) & ch_b\neq ch_k,
+\end{cases}
+\qquad
+M\leftarrow 2M,\\
+Z_{pq}
+&\mathrel{+}=
+\frac{1}{4\,\hat\jmath_p^{2}}
+\sum_{c\,J}M^{J}_{cp,\,cq}.
+\end{aligned}
+\end{equation}
+
+\subsection{$f^{\mathrm{III}_a}$ / $\chi^\gamma$
+(\codename{use\_TypeIIIa\_1b})}
+\label{sec:js-fIIIa}
+
+AMC direct: \codename{factored\_fIIIa/output/chi\_gamma.tex},
+\codename{fIIIa\_from\_chi.tex}. $\chi^\gamma$ is always scalar
+(rank $0$), non-AS. Production Path~B (any $\lambda$): tensor Pandya of
+$\Omega$ $\to$ occ$\odot\bar\Omega$ $\to$ CC DGEMM $\to$ inverse Pandya
+into no-Pauli 2n blocks, then
+\begin{equation}\label{eq:js-fIIIa}
+z_{pq}
+=\hat\jmath_p^{-2}
+\sum_{c\,J_0}(2J_0+1)
+\Bigl[
+(\Gamma\chi)^{J_0}_{cp,cq}
+-(\chi\Gamma)^{J_0}_{pc,qc}
+\Bigr].
+\end{equation}
+Occ on the Pandya product:
+$w=n_p\bar n_q n_j\bar n_k-\bar n_p n_q\bar n_j n_k$
+(\codename{BuildChiGammaPathB}). Keep the $(c,c)$ slot at odd $J_0$
+($\chi_{cc,ab}^{\mathrm{odd}}\neq0$).
+
+\subsection{$\Gamma^{\mathrm{I}}$ / $\chi^\varepsilon$
+(\codename{use\_TypeGI\_2b})}
+\label{sec:js-GI}
+
+Ordinary-channel DGEMM (not Pandya). Per $(J_0,J_1)$
+\begin{equation}\label{eq:js-chie}
+\begin{aligned}
+\mathrm{ang}
+&=
+\begin{cases}
+2J+1 & \lambda=0,\\
+(-1)^{J_0+J_1+\lambda}\hat\lambda^{-1} & \lambda>0,
+\end{cases}
+\\
+T&=2\cdot\mathrm{ang}\cdot\mathrm{Left}\,W\,\mathrm{Right},\\
+\chi^\varepsilon_{pq}
+&\mathrel{+}=
+\tfrac12\,\hat\jmath^{-2}
+\sum_c N_{cp}N_{cq}
+\bigl(n_c T_{\mathrm{pp}}+\bar n_c T_{\mathrm{hh}}\bigr)_{(cp),(cq)},
+\end{aligned}
+\end{equation}
+with $W_c=n_c(\bar n_a\bar n_b)+\bar n_c(n_a n_b)$ and
+$N=\sqrt{1+\delta}$. Insertions are \eqref{eq:fact2b} GI
+(\codename{GetTBME\_J} $+$ $\sqrt2$).
+
+\subsection{$\Gamma^{\mathrm{II}}$ / $\chi^{\Omega\Gamma},\chi^\zeta$
+(\codename{use\_TypeGII\_2b})}
+\label{sec:js-GII}
+
+Leftover uses \emph{two} tensor 1b intermediates. AMC
+\codename{factored\_GII/output/chi\_omega\_gamma.tex} /
+\codename{chi\_zeta.tex} and the four-term fold
+\codename{G2\_from\_chi\_analyze\_alt.tex}
+(one-$\chi^\zeta$ print; bra at $\lambda\neq0$ must use $\chi^{\Omega\Gamma}$).
+Reduced $\chi^{\zeta\,\lambda}_{ij}$ / $\chi^{\Omega\Gamma\,\lambda}_{ij}$
+from the m-scheme \eqref{eq:chizeta}--\eqref{eq:chiOG} with the same 6j
+skeleton as $\chi^\beta$ (scalar $\Gamma$, tensor $\Omega$).
+Leftover $Z$ ($J_0=J_1$, $\hat\lambda^{-1}$):
+\begin{equation}\label{eq:js-GII}
+\begin{aligned}
+Z^{J_0}_{ijkl}
+&\mathrel{+}=
+\hat J_0^{-1}
+\sum_{a J_2}
+\hat J_2\hat\lambda^{-1}
+\sixj{J_0}{J_2}{\lambda}{j_a}{j_j}{j_i}
+(-1)^{j_i+J_2+j_a}
+\chi^{\Omega\Gamma\,\lambda}_{ja}\,
+\Omega^{J_2 J_0\lambda}_{iakl}
+\\
+&\quad
+-(i\leftrightarrow j)
+-\bigl(\chi^{\zeta\,\lambda}_{ak}\,\Omega^{J_0 J_2\lambda}_{ijal}
+-(k\leftrightarrow l)\bigr)
+\quad\text{(ket phase as in AMC Term 3--4)}.
+\end{aligned}
+\end{equation}
+This is \eqref{eq:GII} after leftover CG $\leftrightarrow\hat\lambda^{-1}$.
+
+\subsection{$\Gamma^{\mathrm{III}_a}$ / $\chi^\eta$
+(\codename{comm223\_232\_GIIIa})}
+\label{sec:js-GIIIa}
+
+Path~B: same-label tensor Pandya
+\begin{equation}\label{eq:js-pandya-tensor}
+\bar\Omega^{J_b J_k\lambda}_{il;pq}
+=(-1)^{J_b}/\hat J_b
+\sum_{J'}(-1)^{J'+\lambda}/\hat\lambda
+\ \text{(9j)}\
+\Omega^{J'J''\lambda},
+\end{equation}
+then
+\begin{equation}\label{eq:js-chieta}
+\bar\chi^{\eta\,J_b}_{il;kj}
+=\sum_{pq}
+\bar\Omega^{J_b J_k}(il;pq)\,
+w(p,q,k,j)\,
+\bar\Omega^{J_k J_b}(pq;kj),
+\end{equation}
+$w=\bar n_q n_p\bar n_k+n_q\bar n_p n_k$.
+Inverse Pandya (AMC: $\chi_{\mathrm{red}}=\hat J_0\sum_{J'}\hat J'\,6j\,\bar\chi_{\mathrm{CC}}$,
+no $(1-\hat P)$) $\to$ ordinary 2n $\chi^\eta$, then ladder
+\begin{equation}\label{eq:js-GIIIa}
+Z
+\mathrel{+}=
+-\chi\,\Gamma
+-h_Z\,\Gamma\,(\chi)^{T},
+\end{equation}
+which is \eqref{eq:GIIIa} ($\chi_{klab}$ from the transpose, not
+$\chi_{abkl}$).
+
+\subsection{$\Gamma^{\mathrm{III}_b}$ / $\chi^\eta$ RC
+(\codename{comm223\_232\_GIIIb})}
+\label{sec:js-GIIIb}
+
+After $\bar\chi^\eta$ (same Path~B as III$_a$), the scalar FDC.cc chain
+with tensor $\chi$:
+\begin{equation}\label{eq:js-GIIIb}
+\begin{aligned}
+\overline{\overline\chi}{}^{\eta\,J}_{a\bar b\,c\bar d}
+&=-\sum_{J'}(2J'+1)\,(-1)^{j_b+j_c+J'}
+\sixj{j_a}{j_b}{J}{j_c}{j_d}{J'}
+\bigl(\bar\chi^{\eta\,J'}_{b\bar c\,a\bar d}
++\bar\chi^{\eta\,J'}_{a\bar d\,b\bar c}\bigr),\\
+\mathrm{CHI\_III\_final}
+&=\bar\Gamma\cdot\overline{\overline\chi}{}^\eta,\\
+Z
+&=\mathrm{InvPandya}_{(1-\hat P_{ij})(1-\hat P_{kl})}
+  [\mathrm{CHI\_III\_final}]
+\quad\text{channels }(jl,ki),\ (ki,jl),\ (il,jk),\ (jk,il).
+\end{aligned}
+\end{equation}
+This is the coded Path~B; the AMC Pandya$\to$CC print is \emph{not}
+required to match this RC (documented open). M-scheme gold remains
+\eqref{eq:WIIb}.
+
+\subsection{$\Gamma^{\mathrm{III}_c}$ / $\chi^\theta$
+(\codename{comm223\_232\_GIIIc})}
+\label{sec:js-GIIIc}
+
+$\chi^\theta$ is $[\Omega\times\Omega]^{(0)}$ (scalar 2b). DIRECT Case-2
+9j in \codename{factored\_GIIIc}; Path~B is Pandya of $\chi^\theta$ then
+\begin{equation}\label{eq:js-GIIIc}
+\bar\Gamma^{(\mathrm{III}_c)}
+=-\tfrac12\sum_{ab}
+\bar\chi^{\theta}_{iabl}\,\bar\Gamma_{bjka},
+\end{equation}
+inverse Pandya with $(1-\hat P_{ij})(1-\hat P_{kl})$.
+
+\subsection{$\Gamma^{\mathrm{IV}_a}$ / $\chi^\kappa$
+(\codename{comm223\_232\_GIVa})}
+\label{sec:js-GIVa}
+
+Path~B any $\lambda$: Pandya $\Omega,\Gamma$ $\to$
+$\bar\chi^\kappa=\bar\Gamma\cdot(\mathrm{occ}\odot\bar\Omega)$ and the
+reduced-tensor transpose partner
+\begin{equation}\label{eq:js-chik-T}
+\bar\chi^{J_0 J_1}
+=h_\Omega\,(-1)^{J_0+J_1}
+\sum\mathrm{occ}\,
+\bar\Omega^{J_1 J_0}\,
+\bar\Gamma^{J_1},
+\end{equation}
+inverse Pandya, then leftover
+$Z=(1-\hat P_{ij})W_{ijkl}+(1-\hat P_{kl})W_{klij}$ with
+$W=-\chi^\kappa\Omega$ \eqref{eq:WIVa}.
+AMC: \codename{factored\_GIV/} $\chi^\kappa$, \codename{G4a\_Wklij}.
+
+\subsection{$\Gamma^{\mathrm{IV}_b}$ / $\chi^\iota$
+(\codename{comm223\_232\_GIVb})}
+\label{sec:js-GIVb}
+
+AMC leftover (P stripped; restore $(1-\hat P)^2$ in C++):
+\codename{factored\_GIV/input/G4b\_W1\_leftover.txt},
+\codename{G4b\_W2\_leftover.txt}.
+\begin{equation}\label{eq:js-GIVb}
+\begin{aligned}
+W^{(1)}_{ijkl}
+&\propto
+\sum_{ab}
+\chi^{\iota\,\lambda}_{aibk}\,
+\Omega^{J J'\lambda}_{jbla},\\
+W^{(2)}_{ijkl}
+&\propto
+\sum_{ab}
+\chi^{\iota\,\lambda}_{akbi}\,
+\Omega^{J J'\lambda}_{lbja},\\
+Z
+&=(1-\hat P_{ij})(1-\hat P_{kl})\bigl(W^{(1)}+W^{(2)}\bigr).
+\end{aligned}
+\end{equation}
+No extra $h_\Omega$ on $W^{(2)}$. ethS fold accumulates
+$w=w_1+w_2$ in the CC inverse
+(\codename{FactorizedDoubleCommutator\_eths.cc} leftover GIVb).
+The 6j skeleton of $W^{(1)}$ is the AMC print
+\codename{G4b\_W1\_leftover.tex}:
+\begin{equation}\label{eq:js-GIVb-W1}
+\begin{aligned}
+W^{(1)\,J_0}_{ijkl}
+&=
+-\delta_{J_0 J_1}(-1)^{J_0+j_j+j_k}
+\sum_{ab\,J_2\ldots J_6 j_0}
+(-1)^{j_a+j_b+\lambda}\,
+\hat J_2\hat J_3\hat J_4\hat J_5\,\hat J_6^{2}\,\hat\jmath_0^{2}\,\hat\lambda^{-1}
+\\
+&\quad\times
+\sixj{J_3}{\lambda}{J_2}{j_a}{j_i}{j_0}
+\sixj{J_4}{\lambda}{J_5}{j_a}{j_l}{j_0}
+\sixj{j_i}{j_k}{J_6}{j_b}{j_0}{J_3}
+\sixj{j_l}{j_j}{J_6}{j_b}{j_0}{J_4}
+\sixj{j_k}{j_l}{J_0}{j_j}{j_i}{J_6}
+\\
+&\quad\times
+\chi^{\iota\,J_2 J_3\lambda}_{aibk}\,
+\Omega^{J_4 J_5\lambda}_{jbla}.
+\end{aligned}
+\end{equation}
+$W^{(2)}$ is the same packaging with slots $\chi_{akbi}\,\Omega_{lbja}$.
+
+\subsection{$\Gamma^{\mathrm{IV}_c}$ / $\chi^\lambda$
+(\codename{comm223\_232\_GIVc})}
+\label{sec:js-GIVc}
+
+AMC: \codename{factored\_GIV/input/chi\_lambda\_T1.txt},
+\codename{chi\_lambda\_T2.txt}.
+$\chi^\lambda=\chi^{T_1}(\Gamma\Omega)+\chi^{T_2}(\Omega\Gamma)$
+\eqref{eq:chi2b}. Path~B: Pandya $\to$ DGEMM $\to$ inverse.
+Fold \eqref{eq:fact2b} GIVc with leftover $\hat\lambda^{-1}$.
+
+\subsection{Leftover $132$
+(\codename{comm223\_132\_tts})}
+\label{sec:js-132}
+
+Three AMC seeds, then sum
+(\codename{comm223\_132\_tts\_ladder}+\codename{\_onebody}+\codename{\_cross}).
+Ladder (channel DGEMM, \codename{comm223\_132tts\_ladder\_seed.tex}):
+\begin{equation}\label{eq:js-132-lad}
+\begin{aligned}
+T_1&:
+\hat J_0^{-1}(-1)^{J_2+j_a+j_c}\hat J_2\hat\lambda^{-1}
+\sixj{J_0}{J_2}{\lambda}{j_a}{j_b}{j_c}
+W_{ba}\,\Omega^{J_2 J_0}_{cakl}\,\Gamma^{J_0}_{ijcb},\\
+T_2&:
+-\hat J_0^{-1}(-1)^{J_0+j_a+j_c}\hat J_2\hat\lambda^{-1}
+\sixj{J_0}{J_2}{\lambda}{j_b}{j_a}{j_c}
+W_{ba}\,\Omega^{J_0 J_2}_{ijcb}\,\Gamma^{J_2}_{cakl},
+\end{aligned}
+\end{equation}
+$W_{ba}=\Omega_{ba}(\bar n_a n_b-n_a\bar n_b)$,
+$Z(ch_0)\mathrel{+}=\Gamma(ch_0)\,M_1\,\Omega(ch_2,ch_0)
+-\Omega(ch_0,ch_2)\,M_2\,\Gamma(ch_2)$.
+One-body and cross: AMC
+\codename{comm223\_132tts\_onebodyA/B/B2\_seed.tex},
+\codename{comm223\_132tts\_cross\_seed.tex}
+(Path~A 9j resolved into the Pandya chain).
+
+\subsection{Packaging}
+\label{sec:js-pack}
+
+Reduced vs unreduced must be named on both sides
+(\codename{learn/amc\_tts/REDUCED\_UNREDUCED.md}).
+GetMscheme is always physical. Ratios clustering at
+$\hat J^{\pm1}$ or $1/\sqrt{2J+1}$ are packaging, not a wrong 6j.
+He8 emax=2 leftover grid ($\lambda=0\ldots5$, $T=0,1,2$, both $\pi$,
+$h_\Omega=\pm1$): nested ${\tt st}+{\tt tts}$ $\equiv$ ethS at
+$\sim10^{-15}$.
+
+% =============================================================================
+\section{Hermiticity assumptions and known gaps}
+\label{sec:herm}
+% =============================================================================
+
+Throughout \codename{FactorizedDoubleCommutator.cc},
+\begin{equation}
+  h_\Omega=\begin{cases}+1&\Omega\text{ Hermitian}\\-1&\Omega\text{ anti-Hermitian}\end{cases},
+  \qquad
+  h_\Gamma=\begin{cases}+1&\Gamma\text{ Hermitian}\\-1&\Gamma\text{ anti-Hermitian}\end{cases},
+\end{equation}
+and often $h_Z=h_\Gamma$.
+
+\subsection{Standard IMSRG case (code default path)}
+Most packed products and ``$A+A^{T}$'' shortcuts are derived for
+\begin{equation}
+  h_\Omega=-1,\qquad h_\Gamma=+1
+  \qquad\Rightarrow\qquad h_\Omega h_\Gamma=-1.
+\end{equation}
+In that case the formulas of Sec.~\ref{sec:fact} match the unfactorized
+Sec.~\ref{sec:unfact} and the present implementation.
+
+\subsection{What still needs care for general $(h_\Omega,h_\Gamma)$}
+\begin{enumerate}
+  \item \textbf{$f^{\MyRomanNum{2}}$.}
+    Must keep $h_\Omega h_\Gamma$ on the second $\Omega$ string
+    \eqref{eq:fact1b}. The code path \coderef{361--362} uses
+    $\chi_{de}\Omega-\,h_Z\chi_{ed}\Omega$ with $h_Z=h_\Gamma$; this is
+    equivalent for $h_\Omega=-1$ but should be checked if both signs flip.
+  \item \textbf{$\Gamma^{\MyRomanNum{2}}$.}
+    Leftover m-scheme: two $\chi$ (bra $\chi^{\Omega\Gamma}$, ket $\chi^\zeta$).
+    J-scheme one-copy partner is $-h_\Omega h_\Gamma\chi^{T}$ (upstream
+    $-h_\eta h_Z$). Do not replace $\chi^{\Omega\Gamma}$ by $h_Z\chi^\zeta$
+    at the same $m$.
+  \item \textbf{$\Gamma^{\MyRomanNum{4}_a}$.}
+    Leftover m-scheme: ket is $W_{klij}$, not $h_\Omega\chi^\kappa_{klcb}$.
+  \item \textbf{$\Gamma^{\MyRomanNum{4}_b}$.}
+    Leftover m-scheme $W_2=+\chi^\iota_{akbi}\Omega_{lbja}$
+    \eqref{eq:GIVb}. J-scheme leftover is the AMC pair
+    $W_1+W_2$ (\codename{G4b\_W\{1,2\}\_leftover}); do not multiply $W_2$
+    by $-h_\Omega h_\Gamma$. Do not replace leftover $W_2$ by
+    $+h_\Omega\,\Omega_{jalb}$ (scalar slot swap; fails for tensor).
+    Packed FDC \(\chi-h_Z\chi^{T}\) with one \(\bar\Omega\) is still
+    \(h_\Omega=-1\) only.
+  \item \textbf{$\chi^\lambda$ / $\chi^{\kappa,\mathrm{II}}$.}
+    Transposes are converted with $h_\Omega$
+    (\codename{hEta} in \coderef{1354}, \coderef{2335}).
+    Wrong $h_\Omega$ flips the $\Omega\Gamma$ vs $\Gamma\Omega$ partner.
+  \item \textbf{Pandya hermiticity fills.}
+    $\bar O_{cd,ab}=h_O\bar O_{ab,cd}$ (\coderef{1308--1313}).
+    Nonstandard $h_O$ changes every occupied product that uses the upper
+    triangle fill.
+\end{enumerate}
+
+\subsection{Recommended statement in papers / docs}
+Quote the unfactorized 3-op M-scheme of Sec.~\ref{sec:unfact} as leftover
+gold (sum vs nested ${\tt st}+{\tt tts}$).
+Quote Sec.~\ref{sec:fact} as the factorized M-scheme that
+\codename{UnitTest} evaluates, and Sec.~\ref{sec:jscheme} as the AMC/ethS
+J-scheme. Scalar \codename{FactorizedDoubleCommutator.cc} is the
+$h_\Omega=-1$ packed path only.
+
+% =============================================================================
+\section{Summary: gold vs older print}
+\label{sec:summary}
+% =============================================================================
+
+\begin{center}
+\begin{tabular}{@{}llp{0.46\textwidth}@{}}
+\hline
+Object & Older print / shortcut & What the leftover code does \\
+\hline
+3-op unfact & --- & locked gold \eqref{eq:unfact2b} \\
+leftover CG & omitted (scalar only) & \eqref{eq:cg-leftover} on $[\Omega\times\Omega]^{(0)}$ and leftover folds \\
+$f^{\mathrm{II}}$ & $h_\Omega h_\Gamma\,\Omega_{aibj}$ &
+  $C_\lambda\chi(\Omega_{eidj}+h_\Gamma\Omega_{ejdi})$ \eqref{eq:fII} \\
+$f^{\mathrm{III}_b}$ & $\chi\Gamma-\Gamma\chi$ & II$_b+$II$_d$ \eqref{eq:fIIIb} \\
+$\chi^\beta$ & $\Omega\Gamma$, occ on bra $i$ & $\Gamma\Omega$, occ on ket $e$ \eqref{eq:chibeta} \\
+$\Gamma^{\mathrm{II}}$ & one $\chi^\zeta$ at $h_\Omega=-1$ &
+  $\chi^{\Omega\Gamma}$ bra $+$ $\chi^\zeta$ ket \eqref{eq:GII} \\
+$\Gamma^{\mathrm{III}_b}$ & second $\chi^\eta_{lajb}$ &
+  IIb$+$IId \eqref{eq:WIIb}; ethS CC \eqref{eq:js-GIIIb} \\
+$\Gamma^{\mathrm{IV}_a}$ & $\Omega\chi^{\kappa'}$ at same $m$ &
+  $W_{ijkl}+W_{klij}$ \eqref{eq:GIVa} \\
+$\Gamma^{\mathrm{IV}_b}$ & $-h_\Omega h_\Gamma$ or $+h_\Omega\Omega_{jalb}$ &
+  $+\chi_{akbi}\Omega_{lbja}$ \eqref{eq:GIVb} \\
+$\lambda=0$ $\Omega$ & fall back to $ss$ & \codename{ReducedRMEView} then leftover TTS \\
+\hline
+\end{tabular}
+\end{center}
+
+\end{document}
