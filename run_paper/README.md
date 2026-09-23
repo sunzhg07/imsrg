@@ -42,6 +42,9 @@ python3 he8_spectrum.py
 
 # leftover benchmarks (emax=2 He8 / He4+p-shell). Grid via LAMBDAS, TS, PARITIES.
 python3 test_computenorm_tensor.py          # v^T N v vs ½[Q,Q⁻]
+python3 test_proj_preserves_norm_tensor.py  # ⟨χ|N|ψ⟩ = ⟨Pχ|N|Pψ⟩ (SVD P)
+python3 test_hab_hba_tensor.py              # H_ab²+H_ab³ = H_ba²+H_ba³
+python3 test_arnoldi_tensor.py              # ArnoldiSolveH2 Rayleigh = ⟨H⟩
 python3 test_fact_unfact_223_tts.py         # nested 223st→132+231+232 vs ethS
 LAMBDAS=3 TS=1 PARITIES=0,1 python3 test_computenorm_tensor.py
 ```

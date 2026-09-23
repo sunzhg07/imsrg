@@ -21,7 +21,7 @@ from pyIMSRG import *
 
 from he8_io import RUN2
 
-EMAX = int(os.environ.get("EMAX", "2"))
+EMAX = int(os.environ.get("EMAX", "4"))
 N_PAIR = int(os.environ.get("N_PAIR", "2"))
 TOL = float(os.environ.get("NORM_TOL", "1e-6"))
 LAMBDAS = [int(x) for x in os.environ.get("LAMBDAS", "1,2,3,4").split(",")]

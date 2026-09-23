@@ -26,7 +26,7 @@ from contextlib import contextmanager
 from pyIMSRG import *
 
 EMAX = int(os.environ.get("EMAX", "2"))
-LAMBDAS = [int(x) for x in os.environ.get("LAMBDAS", "0,4").split(",")]
+LAMBDAS = [int(x) for x in os.environ.get("LAMBDAS", "0,1,2,3,4").split(",")]
 TS = [int(x) for x in os.environ.get("TS", "0,1,2").split(",")]
 PARITIES = [int(x) for x in os.environ.get("PARITIES", "0,1").split(",")]
 TOL = float(os.environ.get("FACT_TOL", "1e-6"))

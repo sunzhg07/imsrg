@@ -4,17 +4,17 @@
 
 
 # Configuration directories and files
-SourceDirectory: /Users/antoinebelley/Documents/TRIUMF/imsrg
-BuildDirectory: /Users/antoinebelley/Documents/TRIUMF/imsrg
+SourceDirectory: /Users/wolf/work/imsrg/src
+BuildDirectory: /Users/wolf/work/imsrg
 
 # Where to place the cost data store
 CostDataFile: 
 
 # Site is something like machine.domain, i.e. pragmatic.crd
-Site: Antoines-MacBook-Pro.local
+Site: Zhonghaos-MacBook-Air.local
 
 # Build name is osname-revision-compiler, i.e. Linux-2.4.2-2smp-c++
-BuildName: Darwin-c++
+BuildName: Darwin-g++-16
 
 # Subprojects
 LabelsForSubprojects: 
@@ -27,8 +27,8 @@ SubmitInactivityTimeout:
 NightlyStartTime: 00:00:00 EDT
 
 # Commands for the build/test/submit cycle
-ConfigureCommand: "/usr/local/bin/cmake" "/Users/antoinebelley/Documents/TRIUMF/imsrg"
-MakeCommand: /usr/local/bin/cmake --build . --config "${CTEST_CONFIGURATION_TYPE}"
+ConfigureCommand: "/opt/homebrew/bin/cmake" "/Users/wolf/work/imsrg/src"
+MakeCommand: /opt/homebrew/bin/cmake --build . --config "${CTEST_CONFIGURATION_TYPE}"
 DefaultCTestConfigurationType: Release
 
 # version control
@@ -63,8 +63,8 @@ UpdateOptions:
 UpdateType: 
 
 # Compiler info
-Compiler: /usr/bin/c++
-CompilerVersion: 17.0.0.17000013
+Compiler: /opt/homebrew/bin/g++-16
+CompilerVersion: 16.2.0
 
 # Dynamic analysis (MemCheck)
 PurifyCommand: 
@@ -76,7 +76,7 @@ CudaSanitizerCommand:
 CudaSanitizerCommandOptions: 
 MemoryCheckType: 
 MemoryCheckSanitizerOptions: 
-MemoryCheckCommand: /usr/local/bin/valgrind
+MemoryCheckCommand: MEMORYCHECK_COMMAND-NOTFOUND
 MemoryCheckCommandOptions: 
 MemoryCheckSuppressionFile: 
 
@@ -107,3 +107,8 @@ CurlOptions:
 # specify behavior for retrying the submission
 CTestSubmitRetryDelay: 5
 CTestSubmitRetryCount: 3
+
+# Invoke each test with environment variables configuring tool's collection.
+CTestTestCoverageTool: 
+CTestTestCoverageMergeExecutable: 
+CTestTestCoverageDataExecutable: 
