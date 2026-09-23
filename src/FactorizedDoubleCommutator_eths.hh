@@ -83,7 +83,7 @@ void comm223_232_GIVb(const Operator &Eta, const Operator &Gamma, Operator &Z);
 void comm223_232_GIVc(const Operator &Eta, const Operator &Gamma, Operator &Z);
 /// Tensor ω, scalar H: leftover 2b of [ω1,[ω2,H2]_3]_2 without storing 3b.
 /// Nested gold: W = −comm223st(H, ω), then comm132tts(ω, W).
-/// λ=0 falls back to scalar FactorizedDoubleCommutator::comm223_132.
+/// λ=0 unreduced Ω is MakeReduced on entry (ReducedRMEView), then this kernel.
 void comm223_132_tts(const Operator &Eta, const Operator &Gamma, Operator &Z);
 void comm223_132_tts_ladder(const Operator &Eta, const Operator &Gamma,
                             Operator &Z);

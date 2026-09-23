@@ -1586,6 +1586,13 @@ namespace Commutator
   ///
   void comm223st(const Operator &X, const Operator &Y, Operator &Z)
   {
+    // Y is Ω: λ=0 unreduced → reduced RMEs, then the tensor leftover path.
+    if (Y.GetJRank() == 0 and not Y.IsReduced())
+    {
+      ReducedRMEView Yr(Y);
+      comm223st(X, Yr.ref, Z);
+      return;
+    }
     auto &X2 = X.TwoBody;
     auto &Y2 = Y.TwoBody;
     auto &Z3 = Z.ThreeBody;
@@ -2341,6 +2348,13 @@ namespace Commutator
   /// Naive J-scheme in Reference. Leftover 6js are not a drop-in of comm232ss_srs_optimized.
   void comm232tts(const Operator &X, const Operator &Y, Operator &Z)
   {
+    // X is Ω: λ=0 unreduced → reduced RMEs, then leftover tts (not comm232ss).
+    if (X.GetJRank() == 0 and not X.IsReduced())
+    {
+      ReducedRMEView Xr(X);
+      comm232tts(Xr.ref, Y, Z);
+      return;
+    }
     ReferenceImplementations::comm232tts(X, Y, Z);
   }
 
@@ -2672,6 +2686,13 @@ namespace Commutator
   /// Naive J-scheme lives in Reference (ss has no dgemm for this diagram).
   void comm132tts(const Operator &X, const Operator &Y, Operator &Z)
   {
+    // X is Ω: λ=0 unreduced → reduced RMEs, then leftover tts (not comm132ss).
+    if (X.GetJRank() == 0 and not X.IsReduced())
+    {
+      ReducedRMEView Xr(X);
+      comm132tts(Xr.ref, Y, Z);
+      return;
+    }
     ReferenceImplementations::comm132tts(X, Y, Z);
   }
 
@@ -4145,6 +4166,13 @@ namespace Commutator
   /// Naive J-scheme lives in Reference (ss has no dgemm for this diagram).
   void comm231tts(const Operator &X, const Operator &Y, Operator &Z)
   {
+    // X is Ω: λ=0 unreduced → reduced RMEs, then leftover tts (not comm231ss).
+    if (X.GetJRank() == 0 and not X.IsReduced())
+    {
+      ReducedRMEView Xr(X);
+      comm231tts(Xr.ref, Y, Z);
+      return;
+    }
     ReferenceImplementations::comm231tts(X, Y, Z);
   }
 

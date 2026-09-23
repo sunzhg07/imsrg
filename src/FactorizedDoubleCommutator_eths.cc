@@ -19,28 +19,9 @@ namespace Commutator {
 
 namespace FactorizedDoubleCommutator_eths {
 
-// ethS takes Ω as a reduced RME for every λ, including λ=0. The IMSRG scalar
-// convention (RandomOp, EOM η at J=0, IMSRG generators) is unreduced; convert
-// on entry so λ=0 reproduces the scalar FactorizedDoubleCommutator exactly
-// (gold: scalar comm223ss→231ss+232ss+132ss, agreement ~1e-11).
-// No copy is made when Ω is already reduced or has λ>0.
-namespace {
-struct ReducedEtaView {
-  std::unique_ptr<Operator> copy;
-  const Operator &ref;
-  explicit ReducedEtaView(const Operator &Eta) : ref(Pick(Eta, copy)) {}
-
-private:
-  static const Operator &Pick(const Operator &Eta,
-                              std::unique_ptr<Operator> &copy) {
-    if (Eta.GetJRank() != 0 or Eta.IsReduced())
-      return Eta;
-    copy = std::make_unique<Operator>(Eta);
-    copy->MakeReduced();
-    return *copy;
-  }
-};
-} // namespace
+// Ω is a reduced RME for every λ, including λ=0 (ReducedRMEView).
+// IMSRG scalar convention is unreduced; convert on entry so the tensor
+// leftover path matches comm223st + 231tts+232tts+132tts.
 
 void comm223_231_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
                               Operator &Z);
@@ -142,7 +123,7 @@ void TensorChannelPairs(const Operator &Eta, ModelSpace *ms,
 // Eta is tensor (reduced). Gamma and Z are scalar unreduced.
 void comm223_231_st(const Operator &Eta_in, const Operator &Gamma,
                     Operator &Z) {
-  const ReducedEtaView E(Eta_in);
+  const ReducedRMEView E(Eta_in);
   const Operator &Eta = E.ref;
   if (use_1b_intermediates)
     comm223_231_chi1b_tensor(Eta, Gamma, Z);
@@ -625,7 +606,7 @@ void comm223_231_chi2b_tensor(const Operator &Eta, const Operator &Gamma,
 
 void comm223_232(const Operator &Eta_in, const Operator &Gamma, Operator &Z) {
   // Ω is reduced RME (including λ=0). Gamma and Z are scalar unreduced.
-  const ReducedEtaView E(Eta_in);
+  const ReducedRMEView E(Eta_in);
   const Operator &Eta = E.ref;
   if (use_1b_intermediates) {
     comm223_232_chi1b_tensor(Eta, Gamma,
@@ -2200,7 +2181,7 @@ void comm223_232_GIIIa(const Operator &Eta_in, const Operator &Gamma,
   // Γ^{III_a}: AMC Path B χ^η (same-label Pandya → occ DGEMM → inv)
   // then ordinary-channel Chi_AS×Γ ladder. χ is scalar and not AS.
   // Gold: test_chi_eta_mscheme.py + test_GIIIa_ladder_mscheme.py
-  const ReducedEtaView E(Eta_in);
+  const ReducedRMEView E(Eta_in);
   const Operator &Eta = E.ref;
   double t_start = omp_get_wtime();
   Z.modelspace->PreCalculateSixJ();
@@ -2298,7 +2279,7 @@ void comm223_232_GIIIa(const Operator &Eta_in, const Operator &Gamma,
 ////////////////////////////////////////////////////////////////////////////
 void comm223_232_GIIIb(const Operator &Eta_in, const Operator &Gamma,
                        Operator &Z) {
-  const ReducedEtaView E(Eta_in);
+  const ReducedRMEView E(Eta_in);
   const Operator &Eta = E.ref;
   double t_start = omp_get_wtime();
   Z.modelspace->PreCalculateSixJ();
@@ -2590,7 +2571,7 @@ void comm223_232_GIIIc(const Operator &Eta_in, const Operator &Gamma,
                        Operator &Z) {
   // χ^θ = T×T→S (FDC.cc CHI_IV / IIe+IIf): ordinary-channel DGEMM χ^θ →
   // Pandya χ̄^θ (bar_CHI_IV) → DGEMM with bar_Gamma → inverse Pandya.
-  const ReducedEtaView E(Eta_in);
+  const ReducedRMEView E(Eta_in);
   const Operator &Eta = E.ref;
   const int lambda = Eta.GetJRank();
   double t_start = omp_get_wtime();
@@ -3185,7 +3166,7 @@ void FillPandyaBars232(const Operator &Eta, const Operator &Gamma, Operator &Z,
 
 void comm223_232_GIVa(const Operator &Eta_in, const Operator &Gamma,
                       Operator &Z) {
-  const ReducedEtaView E(Eta_in);
+  const ReducedRMEView E(Eta_in);
   PandyaBars232 B;
   comm223_232_GIVa_from_bars(E.ref, Gamma, Z, B);
 }
@@ -3335,13 +3316,13 @@ void comm223_232_GIVa_from_bars(const Operator &Eta, const Operator &Gamma,
 ////////////////////////////////////////////////////////////////////////////
 /// Gamma^IV_b / chi^iota — leftover AMC as two terms (right first).
 /// χ^ι: Path B Pandya→DGEMM→invPlus (≡ m ≡ AMC). Do not dagger χ.
-/// Folds (P stripped): W1 = Σ CG χ_aibk Ω_jbla, W2 = −hΩ Σ CG χ_akbi Ω_lbja.
-/// AMC: G4b_W{1,2}_leftover.tex (unreduced leftover). Z = (1−Pij)(1−Pkl) W.
+/// Folds (P stripped): W1 = Σ CG χ_aibk Ω_jbla, W2 = Σ CG χ_akbi Ω_lbja.
+/// AMC: G4b_W{1,2}_leftover.tex (unreduced leftover). Z = (1−Pij)(1−Pkl)(W1+W2).
 /// Do not pack χ_adbc−hZ χ_bcad with one Ω̄ (λ=0 identity Ω_jalb ≡ hΩ Ω_lbja).
 ////////////////////////////////////////////////////////////////////////////
 void comm223_232_GIVb(const Operator &Eta_in, const Operator &Gamma,
                       Operator &Z) {
-  const ReducedEtaView E(Eta_in);
+  const ReducedRMEView E(Eta_in);
   PandyaBars232 B;
   comm223_232_GIVb_from_bars(E.ref, Gamma, Z, B);
 }
@@ -3354,8 +3335,8 @@ namespace {
 ///   2. inverse Pandya on ch_bra×ch_ket (9j) → Chi_V_Op (2n, non-AS)
 ///   3. leftover: per CC channel (J6) Pandya-shaped DGEMM over (a,b) for
 ///      each half-integer j0, then the 6j inverse on Z's ch_bra×ch_ket.
-/// AMC G4b_W{1,2}_leftover.tex (unreduced leftover), Z = (1−Pij)(1−Pkl) W:
-///   W1 = Σ CG χ_aibk Ω_jbla,   W2 = −hΩ Σ CG χ_akbi Ω_lbja.
+/// AMC G4b_W{1,2}_leftover.tex (unreduced leftover), Z = (1−Pij)(1−Pkl)(W1+W2):
+///   W1 = Σ CG χ_aibk Ω_jbla,   W2 = Σ CG χ_akbi Ω_lbja  (no extra h_Ω).
 /// Do not dagger χ; do not pack χ_adbc − hZ χ_bcad with one Ω̄ (that identity
 /// Ω_jalb ≡ hΩ Ω_lbja holds only at λ = 0).
 ////////////////////////////////////////////////////////////////////////////
@@ -3379,7 +3360,6 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
 
   ModelSpace *ms = Z.modelspace;
   const int lambda = Eta.GetJRank();
-  const int hEta = Eta.IsHermitian() ? 1 : -1;
   const int rank_T = Eta.GetTRank();
   const int parity_eta = Eta.GetParity();
   const double hat_lam_inv = 1.0 / HatJ(lambda);
@@ -3412,7 +3392,7 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
   //   W1(ij;kl) = −(−1)^{J0+jj+jk} Σ_{J6} (2J6+1) {jk jl J0} CHI_V_final_1(ik;jl)
   //                                                {jj ji J6}
   //   W2(ij;kl) = −(−1)^{J0+ji+jl} Σ_{J6} (2J6+1) {..} CHI_V_final_2(ik;jl)
-  //   Z2 += (1−Pij)(1−Pkl) (W1 − hΩ W2)
+  //   Z2 += (1−Pij)(1−Pkl) (W1 + W2)
   const int n_cc = (int)ms->GetNumberTwoBodyChannels_CC();
   std::vector<index_t> allorb(ms->all_orbits.begin(), ms->all_orbits.end());
   int max_j2 = 0;
@@ -3724,7 +3704,7 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
           const double pref = (2.0 * J6 + 1.0) * six5;
           const double w1 = ph1 * pref * CHI_V_final_1[ch_cc](indx_ik, indx_jl);
           const double w2 = ph2 * pref * CHI_V_final_2[ch_cc](indx_ik, indx_jl);
-          w += w1 - hEta * w2;
+          w += w1 + w2;
         }
         W2n(ibra, iket) = w;
       }
@@ -4248,7 +4228,7 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
 void comm223_232_GIVc(const Operator &Eta_in, const Operator &Gamma,
                       Operator &Z) {
   // Γ^{IV_c}: gold Pandya (ialb/bjak) → DGEMM → inv (all π).
-  const ReducedEtaView E(Eta_in);
+  const ReducedRMEView E(Eta_in);
   comm223_232_GIVc_pathB(E.ref, Gamma, Z);
 }
 
@@ -4388,7 +4368,7 @@ int MaxJ2(ModelSpace *ms) {
 ////////////////////////////////////////////////////////////////////////////
 void comm223_132_tts_ladder(const Operator &Eta_in, const Operator &Gamma,
                             Operator &Z) {
-  const ReducedEtaView E(Eta_in);
+  const ReducedRMEView E(Eta_in);
   const Operator &Eta = E.ref;
   double t_start = omp_get_wtime();
   ModelSpace *ms = Z.modelspace;
@@ -4521,7 +4501,7 @@ void comm223_132_tts_ladder(const Operator &Eta_in, const Operator &Gamma,
 ////////////////////////////////////////////////////////////////////////////
 void comm223_132_tts_onebody(const Operator &Eta_in, const Operator &Gamma,
                               Operator &Z) {
-  const ReducedEtaView E(Eta_in);
+  const ReducedRMEView E(Eta_in);
   const Operator &Eta = E.ref;
   double t_start = omp_get_wtime();
   ModelSpace *ms = Z.modelspace;
@@ -4776,7 +4756,7 @@ void comm223_132_tts_onebody(const Operator &Eta_in, const Operator &Gamma,
 ////////////////////////////////////////////////////////////////////////////
 void comm223_132_tts_cross(const Operator &Eta_in, const Operator &Gamma,
                             Operator &Z) {
-  const ReducedEtaView E(Eta_in);
+  const ReducedRMEView E(Eta_in);
   const Operator &Eta = E.ref;
   double t_start = omp_get_wtime();
   ModelSpace *ms = Z.modelspace;
@@ -5036,7 +5016,7 @@ void comm223_132_tts(const Operator &Eta_in, const Operator &Gamma,
   const double t_start = omp_get_wtime();
   if (Z.GetJRank() != 0)
     return;
-  const ReducedEtaView E(Eta_in);
+  const ReducedRMEView E(Eta_in);
   const Operator &Eta = E.ref;
 
   Z.modelspace->PreCalculateSixJ();

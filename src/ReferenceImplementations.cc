@@ -3806,6 +3806,13 @@ namespace ReferenceImplementations
   ///
   void comm223st(const Operator &X, const Operator &Y, Operator &Z)
   {
+    // Y is Ω: λ=0 unreduced → reduced RMEs, then the tensor leftover path.
+    if (Y.GetJRank() == 0 and not Y.IsReduced())
+    {
+      ReducedRMEView Yr(Y);
+      comm223st(X, Yr.ref, Z);
+      return;
+    }
     double t_start = omp_get_wtime();
     auto &X2 = X.TwoBody;
     auto &Y2 = Y.TwoBody;
@@ -8065,10 +8072,7 @@ namespace ReferenceImplementations
     auto hat = [](double x) { return std::sqrt(2.0 * x + 1.0); };
     const double hat_lam_inv = 1.0 / hat(lambda);
 
-    // Gold A AMC, unreduced Γ and Z (AMC default). W2 via Ω_jalb = −Ω_lbja.
-    // Source: learn/amc_tts/input/G4b_goldA_unred.txt
-    //         learn/amc_tts/output/g4b_rerun/G4b_goldA_unred.tex
-    // Ω is reduced; Γ/Z unreduced so GetMscheme(Z) matches gold A.
+    // Isolated GIVb AMC TTS. Unreduced Γ and Z (AMC default).
     Operator Gunred = Gamma;
     if (Gunred.IsReduced())
       Gunred.MakeNotReduced();
@@ -24339,11 +24343,11 @@ namespace ReferenceImplementations
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////
   /// tensor x tensor -> scalar. AMC unreduced Z:
   ///   learn/amc_tts/comm_tts/input/comm{231,132,232}tts_unred.txt
-  /// 132: leftover 2b. Keep Ĵ0^{-2}; convention 2 λ̂^{-1}. Unreduced λ=0: comm132ss.
+  /// 132: leftover 2b. Keep Ĵ0^{-2}; convention 2 λ̂^{-1}.
   /// 232: leftover 2b. AMC omits 1/2 and (1-P); restored here. Keep Ĵ0^{-1}; convention 2 λ̂^{-1}.
   /// 231: leftover 1b. Convention 2 λ̂^{-1} (AMC). Restore 1/4.
   /// Raw AMC terms (two couplings); do not group the particle-order swap onto one 6j.
-  /// Unreduced λ=0: comm231ss.
+  /// Unreduced λ=0 Ω: MakeReduced then this leftover tts kernel (not *ss).
   /// 132: Z = Eq1 - Eq2.
   void comm231tts(const Operator &X, const Operator &Y, Operator &Z)
   {
@@ -24351,9 +24355,11 @@ namespace ReferenceImplementations
       return;
     if (X.GetJRank() != Y.GetJRank())
       return;
-    if (not X.IsReduced())
+    // X is Ω: λ=0 unreduced → reduced RMEs, then leftover tts (not comm231ss).
+    if (X.GetJRank() == 0 and not X.IsReduced())
     {
-      comm231ss(X, Y, Z);
+      ReducedRMEView Xr(X);
+      comm231tts(Xr.ref, Y, Z);
       return;
     }
 
@@ -24477,16 +24483,18 @@ namespace ReferenceImplementations
   } // comm231tts
 
   /// 132: leftover 2b. 3b×1b as ⟨ij J0 b|O|kl J0 a⟩ X_ab  (= ⟨ab Jab c|O|de Jde f⟩⟨f|G|c⟩).
-  /// AMC Ĵ0^{-2} λ̂^{-1} (leftover Ĵ like 222/ss). Code λ̂^{-2}. Z = Eq1 − Eq2. Unreduced λ=0: comm132ss.
+  /// AMC Ĵ0^{-2} λ̂^{-1} (leftover Ĵ like 222/ss). Code λ̂^{-2}. Z = Eq1 − Eq2.
   void comm132tts(const Operator &X, const Operator &Y, Operator &Z)
   {
     if (Z.GetJRank() != 0)
       return;
     if (X.GetJRank() != Y.GetJRank())
       return;
-    if (not X.IsReduced())
+    // X is Ω: λ=0 unreduced → reduced RMEs, then leftover tts (not comm132ss).
+    if (X.GetJRank() == 0 and not X.IsReduced())
     {
-      comm132ss(X, Y, Z);
+      ReducedRMEView Xr(X);
+      comm132tts(Xr.ref, Y, Z);
       return;
     }
 
@@ -24598,16 +24606,18 @@ namespace ReferenceImplementations
   } // comm132tts
 
   /// 232: leftover 2b. AMC Ĵ0^{-1} λ̂^{-1} (same leftover Ĵ as comm232ss). Code λ̂^{-2}.
-  /// Restore 1/2 and (1-P). Unreduced λ=0: comm232ss.
+  /// Restore 1/2 and (1-P).
   void comm232tts(const Operator &X, const Operator &Y, Operator &Z)
   {
     if (Z.GetJRank() != 0)
       return;
     if (X.GetJRank() != Y.GetJRank())
       return;
-    if (not X.IsReduced())
+    // X is Ω: λ=0 unreduced → reduced RMEs, then leftover tts (not comm232ss).
+    if (X.GetJRank() == 0 and not X.IsReduced())
     {
-      comm232ss(X, Y, Z);
+      ReducedRMEView Xr(X);
+      comm232tts(Xr.ref, Y, Z);
       return;
     }
 

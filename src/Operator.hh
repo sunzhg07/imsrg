@@ -33,6 +33,7 @@
 //#include <deque>
 #include <set>
 #include <map>
+#include <memory>
 
 /// The Operator class provides a generic operator up to three-body, scalar or tensor.
 /// The class contains lots of methods and overloaded operators so that the resulting
@@ -200,6 +201,15 @@ void Set_OneBody_antiHermitian();
   void PrintTwoBody(int ch_bra, int ch_ket) const {TwoBody.PrintMatrix(ch_bra,ch_ket);};
   void PrintThreeBody() const {ThreeBody.Print();};
 
+};
+
+/// Tensor leftover / TTS: λ=0 unreduced Ω is promoted to reduced RMEs.
+/// Does not mutate Op. No copy when λ>0 or already reduced.
+struct ReducedRMEView
+{
+  std::unique_ptr<Operator> copy;
+  const Operator &ref;
+  explicit ReducedRMEView(const Operator &Op);
 };
 
 /// Non member function, multiply by scalar from left side

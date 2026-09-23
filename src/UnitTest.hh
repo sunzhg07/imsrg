@@ -29,15 +29,6 @@ class UnitTest
   double GetMschemeMatrixElement_2b( const Operator& Op, int a, int ma, int b, int mb, int c, int mc, int d, int md );
   double GetMschemeMatrixElement_3b( const Operator& Op, int a, int ma, int b, int mb, int c, int mc, int d, int md, int e, int me, int f, int mf );
 
-  /// Gold A: unfactorized 3-operator m-scheme Γ^{IV_b}. No J-scheme χ.
-  /// W = Σ_abcd w(c,d,b) [Ω_dibc Γ_acdk Ω_jbla − Ω_dkbc Γ_acdi Ω_jalb],
-  /// w = n̄_c n_d n̄_b + n_c n̄_d n_b, then Z(m) = (1−P_ij)(1−P_kl) W.
-  /// Ω may be tensor (WE-reduced) or scalar; Γ unreduced scalar.
-  /// which_term: 0 both (W1−W2), 1 only W1, 2 only −W2. Then (1−P_ij)(1−P_kl).
-  double Mscheme_comm223_232_GIVb(const Operator &Eta, const Operator &Gamma,
-                                 int i, int mi, int j, int mj, int k, int mk, int l, int ml,
-                                 int which_term = 0);
-
   // Factorized m-scheme gold (Python run/test_chi_*_mscheme.py + eq:fact folds).
   // Ω×Ω → scalar χ uses CG(λ μ, λ −μ; 00) as in those scripts. Ω×Γ χ has no extra CG.
   double Mscheme_chi_alpha(const Operator &Eta, int i, int mi, int j, int mj);
@@ -63,10 +54,7 @@ class UnitTest
   double Mscheme_fact_GI(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_fact_GII(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_fact_GIIIa(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
-  /// G^{III_b} = IIb + IId as in comm223_232_BruteForce (distinct occ).
-  /// IIb: −Σ (n̄_b n_c n_d + n_b n̄_c n̄_d) Ω_dcbk Ω_biac Γ_jald
-  /// IId: −Σ (n̄_c n_b n_d + n_c n̄_b n̄_d) Ω_jcbd Ω_balc Γ_diak
-  /// then Z = (1−P_ij)(1−P_kl) W. Not the shared-occ χ^η fold.
+  /// G^{III_b}: unfact IIb+IId (eq:GIIIb-CC partner), then (1−Pij)(1−Pkl).
   double Mscheme_fact_GIIIb(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_fact_GIIIc(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);
   double Mscheme_fact_GIVa(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml);

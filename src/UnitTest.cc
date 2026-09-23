@@ -12303,89 +12303,6 @@ bool UnitTest::Mscheme_Test_comm333_pph_hhpst(const Operator &X, const Operator 
 }
 
 
-/// M-Scheme Formula (Γ^{IV_b} gold A — 3 operators, no χ):
-///
-///   w(c,d,b) = n̄_c n_d n̄_b + n_c n̄_d n_b
-///   W1 = Σ_abcd w Ω_dibc Γ_acdk Ω_jbla
-///   W2 = Σ_abcd w Ω_dkbc Γ_acdi Ω_jalb
-///   Z_ijkl(m) = (1−P_ij)(1−P_kl) (W1 − W2)
-///
-double UnitTest::Mscheme_comm223_232_GIVb(const Operator &Eta, const Operator &Gamma,
-                                         int i, int mi, int j, int mj, int k, int mk, int l, int ml,
-                                         int which_term)
-{
-  if (i == j and mi == mj)
-    return 0.0;
-  if (k == l and mk == ml)
-    return 0.0;
-  if ((mi + mj) != (mk + ml))
-    return 0.0;
-
-  auto W = [&](int ii, int mii, int jj, int mjj, int kk, int mkk, int ll, int mll) -> double {
-    if ((mii + mjj) != (mkk + mll))
-      return 0.0;
-    double sm = 0.0;
-    for (auto c : Eta.modelspace->all_orbits)
-    {
-      Orbit &oc = Eta.modelspace->GetOrbit(c);
-      double nc = oc.occ;
-      for (auto d : Eta.modelspace->all_orbits)
-      {
-        Orbit &od = Eta.modelspace->GetOrbit(d);
-        double nd = od.occ;
-        for (auto b : Eta.modelspace->all_orbits)
-        {
-          Orbit &ob = Eta.modelspace->GetOrbit(b);
-          double nb = ob.occ;
-          double wocc = (1 - nc) * nd * (1 - nb) + nc * (1 - nd) * nb;
-          if (std::abs(wocc) < 1e-8)
-            continue;
-          for (int mc = -oc.j2; mc <= oc.j2; mc += 2)
-          {
-            for (int md = -od.j2; md <= od.j2; md += 2)
-            {
-              for (int mb = -ob.j2; mb <= ob.j2; mb += 2)
-              {
-                double o1 = GetMschemeMatrixElement_2b(Eta, d, md, ii, mii, b, mb, c, mc);
-                double o1b = GetMschemeMatrixElement_2b(Eta, d, md, kk, mkk, b, mb, c, mc);
-                if (std::abs(o1) < 1e-16 and std::abs(o1b) < 1e-16)
-                  continue;
-                for (auto a : Eta.modelspace->all_orbits)
-                {
-                  Orbit &oa = Eta.modelspace->GetOrbit(a);
-                  for (int ma = -oa.j2; ma <= oa.j2; ma += 2)
-                  {
-                    if (which_term != 2 and std::abs(o1) > 1e-16)
-                    {
-                      double g1 = GetMschemeMatrixElement_2b(Gamma, a, ma, c, mc, d, md, kk, mkk);
-                      double o2 = GetMschemeMatrixElement_2b(Eta, jj, mjj, b, mb, ll, mll, a, ma);
-                      sm += wocc * o1 * g1 * o2;
-                    }
-                    if (which_term != 1 and std::abs(o1b) > 1e-16)
-                    {
-                      double g2 = GetMschemeMatrixElement_2b(Gamma, a, ma, c, mc, d, md, ii, mii);
-                      double o2b = GetMschemeMatrixElement_2b(Eta, jj, mjj, a, ma, ll, mll, b, mb);
-                      sm -= wocc * o1b * g2 * o2b;
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    return sm;
-  };
-
-  double zm = W(i, mi, j, mj, k, mk, l, ml);
-  zm -= W(j, mj, i, mi, k, mk, l, ml);
-  zm -= W(i, mi, j, mj, l, ml, k, mk);
-  zm += W(j, mj, i, mi, l, ml, k, mk);
-  return zm;
-}
-
-
 namespace {
 
 double m_occ(const Operator &Op, int a)
@@ -12396,6 +12313,12 @@ double m_occ(const Operator &Op, int a)
 double m_nbar(const Operator &Op, int a)
 {
   return 1.0 - m_occ(Op, a);
+}
+
+// h_Z = +1 Hermitian, −1 anti-Hermitian (NonHermitian treated as −1).
+int hz_of(const Operator &Op)
+{
+  return Op.IsHermitian() ? +1 : -1;
 }
 
 // CG(λ μ, λ −μ; 00) on two Ω legs. μ from 2m sums (Python chi_*_mscheme).
@@ -12414,6 +12337,11 @@ double fact_GIVc_which(UnitTest *self, const Operator &Eta, const Operator &Gamm
                       int i, int mi, int j, int mj, int k, int mk, int l, int ml,
                       int which_term)
 {
+  // eq:fact2b GIVc: 1/2 (1−Pij)(1−Pkl) Σ_ab χ^λ_ialb Ω_bjak
+  const int hz_omega = hz_of(Eta);
+  const int hz_gamma = hz_of(Gamma);
+  (void)hz_omega;
+  (void)hz_gamma;
   auto kernel = [&](int ii, int mii, int jj, int mjj, int kk, int mkk, int ll, int mll) -> double {
     double sm = 0.0;
     for (auto a : Eta.modelspace->all_orbits)
@@ -12897,9 +12825,11 @@ double UnitTest::Mscheme_fact_fII(const Operator &Eta, const Operator &Gamma, in
   //   f_a: χ_de Ω_eidj   (d out on χ, in on Ω)
   //   f_b: χ_de Ω_ejdi   (same χ; bra–ket swap of Ω_diej)
   // χ_de Ω_diej is not a 1b contraction (d outgoing on both). Scalar code used
-  // Ω_diej = h_Ω Ω_ejdi, which hides that. AMC: f = f_a + h_Γ f_b, leftover CG
-  // on both (cg_OmOm0 ≡ 1 for λ=0).
-  int hG = Gamma.IsHermitian() ? 1 : -1;
+  // Ω_diej = hz_omega Ω_ejdi, which hides that. AMC: f = f_a + hz_gamma f_b,
+  // leftover CG on both (cg_OmOm0 ≡ 1 for λ=0).
+  const int hz_omega = hz_of(Eta);
+  const int hz_gamma = hz_of(Gamma);
+  (void)hz_omega;
   double sm = 0.0;
   for (auto a : Eta.modelspace->all_orbits)
   {
@@ -12915,7 +12845,7 @@ double UnitTest::Mscheme_fact_fII(const Operator &Eta, const Operator &Gamma, in
             continue;
           double cg = cg_OmOm0(Eta, ma, mb);
           sm += cg * chi * GetMschemeMatrixElement_2b(Eta, b, mb, i, mi, a, ma, j, mj);
-          sm += hG * cg * chi * GetMschemeMatrixElement_2b(Eta, b, mb, j, mj, a, ma, i, mi);
+          sm += hz_gamma * cg * chi * GetMschemeMatrixElement_2b(Eta, b, mb, j, mj, a, ma, i, mi);
         }
       }
   }
@@ -12985,6 +12915,12 @@ double UnitTest::Mscheme_fact_fIIIb(const Operator &Eta, const Operator &Gamma, 
 
 double UnitTest::Mscheme_fact_GI(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
 {
+  // eq:fact2b GI: Σ_a { (1−Pij) χ^ε_ia Γ_ajkl + (1−Pkl) χ^ε_ak Γ_ijal }
+  // χ^ε = Ω×Ω; both braces use the same χ (hz_omega^2 = 1).
+  const int hz_omega = hz_of(Eta);
+  const int hz_gamma = hz_of(Gamma);
+  (void)hz_omega;
+  (void)hz_gamma;
   double sm = 0.0;
   for (auto a : Eta.modelspace->all_orbits)
   {
@@ -13006,12 +12942,15 @@ double UnitTest::Mscheme_fact_GI(const Operator &Eta, const Operator &Gamma, int
 
 double UnitTest::Mscheme_fact_GII(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
 {
-  // Unfact Γ^II = −1/2 Σ w {(1−P_ij) Ω_cjab Γ_abcd Ω_idkl
-  //                         + (1−P_kl) Γ_cdab Ω_abcl Ω_ijkd}.
-  // Bra is Ω×Γ×Ω: χ^{ΩΓ}_jd Ω_idkl with dummy a≡d in on χ, out on Ω.
-  //   → −(1−P_ij) χ^{ΩΓ}_ja Ω_iakl. χ^ζ=Γ×Ω equals this only at λ=0.
-  // Ket is Γ×Ω×Ω: already −(1−P_kl) χ^ζ_ak Ω_ijal.
-  // Leftover CG on both folds. cg_OmOm0 ≡ 1 for λ=0.
+  // Leftover gold: two χ (no GetMscheme slot swap).
+  // Bra Ω×Γ×Ω → −(1−Pij) χ^{ΩΓ}_ja Ω_iakl
+  // Ket Γ×Ω×Ω → −(1−Pkl) χ^ζ_ak Ω_ijal
+  // J-scheme one-χ partner is −h_Ω h_Γ χ^ζ^T (upstream −hEta hZ, hZ=h_Γ).
+  // That equals χ^{ΩΓ} only after a reduced transpose, not hz×GetMscheme.
+  const int hz_omega = hz_of(Eta);
+  const int hz_gamma = hz_of(Gamma);
+  (void)hz_omega;
+  (void)hz_gamma;
   double sm = 0.0;
   for (auto a : Eta.modelspace->all_orbits)
   {
@@ -13037,6 +12976,12 @@ double UnitTest::Mscheme_fact_GII(const Operator &Eta, const Operator &Gamma, in
 
 double UnitTest::Mscheme_fact_GIIIa(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
 {
+  // eq:GIIIa: −Σ_ab { (1−Pij) χ^η_ijab Γ_abkl + (1−Pkl) Γ_ijab χ^η_klab }
+  // Second brace is χ on ket legs, not hz * (χ_ijab)^T.
+  const int hz_omega = hz_of(Eta);
+  const int hz_gamma = hz_of(Gamma);
+  (void)hz_omega;
+  (void)hz_gamma;
   double sm = 0.0;
   for (auto a : Eta.modelspace->all_orbits)
   {
@@ -13063,11 +13008,12 @@ double UnitTest::Mscheme_fact_GIIIa(const Operator &Eta, const Operator &Gamma, 
 
 double UnitTest::Mscheme_fact_GIIIb(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
 {
-  // BruteForce IIb+IId (ReferenceImplementations::comm223_232_BruteForce).
-  // Distinct occupations; P stripped then Z = (1−P_ij)(1−P_kl) W.
-  // IIb: −Σ_abcd (n̄_b n_c n_d + n_b n̄_c n̄_d) Ω_dcbk Ω_biac Γ_jald
-  // IId: −Σ_abcd (n̄_c n_b n_d + n_c n̄_b n̄_d) Ω_jcbd Ω_balc Γ_diak
-  // AMC: learn/amc_tts/factored_GIIIb/input/{IIb,IId,G3b_IIb_IId}_mscheme.txt
+  // eq:unfact2b IIIb / eq:GIIIb-CC partner: IIb + IId, then Z = (1−Pij)(1−Pkl) W.
+  // Printed χ^η_bkai Γ_jbla is IIb; IId is the CC partner (not hz * χ^η^T).
+  const int hz_omega = hz_of(Eta);
+  const int hz_gamma = hz_of(Gamma);
+  (void)hz_omega;
+  (void)hz_gamma;
   auto W = [&](int ii, int mii, int jj, int mjj, int kk, int mkk, int ll, int mll) -> double {
     if ((mii + mjj) != (mkk + mll))
       return 0.0;
@@ -13153,6 +13099,11 @@ double UnitTest::Mscheme_fact_GIIIb(const Operator &Eta, const Operator &Gamma, 
 
 double UnitTest::Mscheme_fact_GIIIc(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
 {
+  // eq:fact2b GIIIc: −1/2 (1−Pij)(1−Pkl) Σ_ab χ^θ_iabl Γ_bjka
+  const int hz_omega = hz_of(Eta);
+  const int hz_gamma = hz_of(Gamma);
+  (void)hz_omega;
+  (void)hz_gamma;
   auto kernel = [&](int ii, int mii, int jj, int mjj, int kk, int mkk, int ll, int mll) -> double {
     double sm = 0.0;
     for (auto a : Eta.modelspace->all_orbits)
@@ -13175,9 +13126,13 @@ double UnitTest::Mscheme_fact_GIIIc(const Operator &Eta, const Operator &Gamma, 
 
 double UnitTest::Mscheme_fact_GIVa(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
 {
-  // run/test_G4a_pathB_mscheme.py — no Pandya, no P on χ.
-  // W_ijkl = −Σ_bd χ^κ_ijbd Ω_dbkl
-  // Z = (1−P_ij) W_ijkl + (1−P_kl) W_klij   (ket = same kernel, legs swapped)
+  // Leftover gold: W_ijkl = −Σ_bd χ^κ_ijbd Ω_dbkl
+  // Z = (1−Pij) W_ijkl + (1−Pkl) W_klij
+  // J-scheme χ^{κ'} = −h_Ω h_Γ (χ^κ)^T (upstream −hEta hZ). Not hz×GetMscheme.
+  const int hz_omega = hz_of(Eta);
+  const int hz_gamma = hz_of(Gamma);
+  (void)hz_omega;
+  (void)hz_gamma;
   auto W = [&](int ii, int mii, int jj, int mjj, int kk, int mkk, int ll, int mll) -> double {
     if ((mii + mjj) != (mkk + mll))
       return 0.0;
@@ -13201,18 +13156,14 @@ double UnitTest::Mscheme_fact_GIVa(const Operator &Eta, const Operator &Gamma, i
     }
     return sm;
   };
-  double wm = W(i, mi, j, mj, k, mk, l, ml);
-  double wp = W(j, mj, i, mi, k, mk, l, ml);
-  double wk = W(k, mk, l, ml, i, mi, j, mj);
-  double wkp = W(l, ml, k, mk, i, mi, j, mj);
-  return (wm - wp) + (wk - wkp);
+  return (W(i, mi, j, mj, k, mk, l, ml) - W(j, mj, i, mi, k, mk, l, ml))
+       + (W(k, mk, l, ml, i, mi, j, mj) - W(l, ml, k, mk, i, mi, j, mj));
 }
 
 double UnitTest::Mscheme_fact_GIVb_chi(const Operator &Eta, const Operator &Gamma, int i, int mi, int j, int mj, int k, int mk, int l, int ml)
 {
-  // W1: χ_aibk Ω_jbla (a,b in/out). W2 analyze χ_akbi Ω_jalb has a outgoing on
-  // both; bra–ket swap Ω_jalb = h_Ω Ω_lbja (λ=0 identity). Leftover CG on both.
-  int hO = Eta.IsHermitian() ? 1 : -1;
+  // analyze eq:GIVb leftover: W1 χ_aibk Ω_jbla + W2 χ_akbi Ω_lbja (no h_Ω).
+  // +h_Ω Ω_jalb is the scalar slot swap only. −h_Ω h_Γ Ω_lbja is AH-only.
   auto Wm = [&](int ii, int mii, int jj, int mjj, int kk, int mkk, int ll, int mll) -> double {
     if ((mii + mjj) != (mkk + mll))
       return 0.0;
@@ -13236,7 +13187,7 @@ double UnitTest::Mscheme_fact_GIVb_chi(const Operator &Eta, const Operator &Gamm
             if (std::abs(c2) > 1e-16)
             {
               double cg2 = cg_OmOm0(Eta, ma + mkk, mb + mii);
-              sm -= hO * cg2 * c2 * GetMschemeMatrixElement_2b(Eta, ll, mll, b, mb, jj, mjj, a, ma);
+              sm += cg2 * c2 * GetMschemeMatrixElement_2b(Eta, ll, mll, b, mb, jj, mjj, a, ma);
             }
           }
         }

@@ -1926,11 +1926,6 @@ PYBIND11_MODULE(pyIMSRG, m) {
            &UnitTest::GetMschemeMatrixElement_2b) // Op, a,ma, b,mb...
       .def("GetMschemeMatrixElement_3b",
            &UnitTest::GetMschemeMatrixElement_3b) // Op, a,ma, b,mb...
-      .def("Mscheme_comm223_232_GIVb", &UnitTest::Mscheme_comm223_232_GIVb,
-           py::arg("Eta"), py::arg("Gamma"),
-           py::arg("i"), py::arg("mi"), py::arg("j"), py::arg("mj"),
-           py::arg("k"), py::arg("mk"), py::arg("l"), py::arg("ml"),
-           py::arg("which_term") = 0)
       .def("Mscheme_chi_alpha", &UnitTest::Mscheme_chi_alpha)
       .def("Mscheme_chi_beta", &UnitTest::Mscheme_chi_beta)
       .def("Mscheme_chi_gamma", &UnitTest::Mscheme_chi_gamma)

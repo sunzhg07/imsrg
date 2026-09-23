@@ -1026,6 +1026,17 @@ void Operator::SetNumberLegs(int l)
 //  Given an operator expressed in terms of reduced matrix elements, we can make it not reduced
 // by dividing my sqrt(2J+1). To make it reduced, we multiply by sqrt(2J+1).
 //
+static const Operator &PickReducedRME(const Operator &Op, std::unique_ptr<Operator> &copy)
+{
+  if (Op.GetJRank() != 0 or Op.IsReduced())
+    return Op;
+  copy = std::make_unique<Operator>(Op);
+  copy->MakeReduced();
+  return *copy;
+}
+
+ReducedRMEView::ReducedRMEView(const Operator &Op) : ref(PickReducedRME(Op, copy)) {}
+
 void Operator::MakeReduced()
 {
   if (is_reduced)
