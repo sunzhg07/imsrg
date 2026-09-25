@@ -98,5 +98,5 @@ Hs=Hs.UndoNormalOrdering()
 #Hs.SetModelSpace(msfci)
 #
 #
-rw.WriteTokyo(Hs, "fci_heb_He8.snt", "")
+rw.WriteTokyo(Hs, "fci_heb_hf_n03_He8.snt", "")
 #

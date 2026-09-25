@@ -34,16 +34,17 @@ MAX_ITER=100 python3 he8_mr_eom.py JOB=t02
 python3 he8_mr_eom.py JOB=t20
 
 # VS Hs → packaging (no EOM); both writers share the same post-decouple Hs
+python3 he8_hs_fci.py                 # HF + VS (He8, p-shell) → UndoNO → KSHELL FCI .snt
 python3 he8_mr_eom.py JOB=pshell      # He4-core p-shell .snt (KSHELL)
-python3 he8_mr_eom.py JOB=fci         # vacuum FCI .snt
+python3 he8_mr_eom.py JOB=fci         # vacuum FCI .snt (same as he8_hs_fci.py)
 python3 he8_mr_eom.py JOB=snt         # both from one decouple
 
 python3 he8_spectrum.py
 
-# leftover benchmarks (emax=2 He8 / He4+p-shell). Grid via LAMBDAS, TS, PARITIES.
-python3 test_computenorm_tensor.py          # v^T N v vs ½[Q,Q⁻]
-python3 test_proj_preserves_norm_tensor.py  # ⟨χ|N|ψ⟩ = ⟨Pχ|N|Pψ⟩ (SVD P)
-python3 test_hab_hba_tensor.py              # H_ab²+H_ab³ = H_ba²+H_ba³
+# leftover / EOM benches (emax=2 He8 / He4+p-shell). Grid via LAMBDAS, TS, PARITIES.
+EMAX=2 LAMBDAS=0,1,2,3 TS=0,1,2 PARITIES=0,1 python3 test_computenorm_tensor.py
+EMAX=2 LAMBDAS=0,1,2,3 TS=0,1,2 PARITIES=0,1 python3 test_proj_preserves_norm_tensor.py
+EMAX=2 LAMBDAS=0,1,2,3 TS=0,1,2 PARITIES=0,1 python3 test_hab_hba_tensor.py
 python3 test_arnoldi_tensor.py              # ArnoldiSolveH2 Rayleigh = ⟨H⟩
 python3 test_fact_unfact_223_tts.py         # nested 223st→132+231+232 vs ethS
 LAMBDAS=3 TS=1 PARITIES=0,1 python3 test_computenorm_tensor.py

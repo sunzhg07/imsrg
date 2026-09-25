@@ -116,7 +116,7 @@ public:
   /// Call SetIncludeConfigs before ConstructConfigs / ladders.
   ///   qv   = 1b excluded←valence
   ///   ph   = 1b (v∪q)←core
-  ///   ppvv = 2b qqvv (bra qq∪qv, ket vv)   — aka qqvv
+  ///   ppvv = 2b qqvv (bra qq∪qv, ket vv); tensor itz≠0 also ⟨vv|vv⟩
   ///   pphv = 2b qqhv (bra qq∪qv∪vv, ket vc) — aka qqhv
   ///   pphh = 2b (bra qq∪qv∪vv, ket cc)
   bool include_qv   = true;
@@ -138,6 +138,10 @@ public:
   // Methods
   EOM(Operator &Hs, Operator &rdm, int J2, int parity, int itz);
   EOM(Operator &Hs, const std::string &tdm_file, int J2, int parity, int itz);
+  /// rdm_format = "osm" (default) or "kshell". For KSHELL, snt_file supplies
+  /// the orbit table if the transit dump does not contain `# idx n l 2j 2tz`.
+  EOM(Operator &Hs, const std::string &tdm_file, int J2, int parity, int itz,
+      const std::string &rdm_format, const std::string &snt_file = "");
   EOM(Operator &Hs, int J2, int parity, int itz);
   /// Single-reference EOM; sr_mode selects excitation / attach / remove.
   EOM(Operator &Hs, int J2, int parity, int itz, SREOMMode mode);
@@ -180,7 +184,20 @@ public:
   double GetReferenceEnergyShift() const { return use_reference_energy_shift ? reference_energy_shift : 0.0; }
 
   double GetVSEOM_Overlap_single(Operator &H1, Operator &H2);
-  double GetVSEOM_Overlap_multiref(Operator &H);
+  double GetVSEOM_Overlap_multiref(Operator &H, bool include_zerobody = true);
+  /// ⟨a|Q_a† Q_b|b⟩ via (H,A) packaging of the non-Hermitian Q's:
+  ///   H=Q+Q†, A=Q−Q†,  [Q_a†,Q_b] = ([H_a,H_b]+[H_a,A_b]−[A_a,H_b]−[A_a,A_b])/4
+  /// Each bracket is H or AH so Commutator() is legal. Contract leftover
+  /// with this->rdm (diagonal ρ or kshell TDM). include_zerobody is for
+  /// a=b only (⟨a|O_0|b⟩=O_0 ⟨a|b⟩ vanishes on a transition).
+  double CrossRefOverlap(Operator &Qa, Operator &Qb, bool include_zerobody = false);
+  double CrossRefOverlapHA(Operator &Ha, Operator &Aa, Operator &Hb, Operator &Ab,
+                           bool include_zerobody = false);
+  /// Replace this->rdm with a kshell transit block (state_l, state_r 1-based).
+  /// Transition (l≠r) is stored non-Hermitian so 3344 and 4433 stay independent.
+  void LoadKshellRdm(const std::string &kshell_file, const std::string &snt_file,
+                     int state_l, int state_r);
+  void SetRdm(Operator &rdm_in);
   Operator GetVSEOM_ladder_single(Operator &H, int herm);
   Operator GetVSEOM_ladder_multiref(Operator &H, int herm);
 
@@ -340,21 +357,36 @@ public:
   ArnoldiTraceDiffResult CompareArnoldiHallBuild(Operator &vi, int max_iter,
                                                  double tol = 1e-10);
 
-  /// Read a transition density matrix file and populate a scalar 2-body Operator.
-  /// File format (mirrors the Python read_tdm in run/lanczos.py):
-  ///   line 0 : J_total (float)
-  ///   line 1 : norb (int)
-  ///   lines 2..norb+1 : orbit table  "idx n l j2 tz2"
-  ///   next line : n_obtd
-  ///   n_obtd lines : "_ a b ... rd"  (1-body density matrix elements)
-  ///   next line : n_tbtd
-  ///   n_tbtd lines : "_ a b c d Jab Jcd ... rd"  (2-body density matrix elements;
-  ///                  any columns between Jcd and rd are ignored)
-  ///   next line : n_3btd
-  ///   n_3btd lines : "_ a b c d e f jab jef jtot ... rd"  (3-body density matrix elements)
+  /// OSM `.ref` (trans_rdme). Alias of ReadOsmRdm, kept for existing callers.
   Operator ReadTdm(const std::string &tdm_file);
 
-  /// Write the rdm operator to a file in the exact format ReadTdm reads,
+  /// OSM `trans_*.ref` written by trans_rdme / osm_proj.
+  ///   line 0 : J_file (float; OSM writes 0.5*jtot = M)
+  ///   line 1 : norb
+  ///   orbit table  "idx n l j2 tz2"
+  ///   n_obtd / OBTD, n_tbtd / TBTD, n_3btd / TRBTD
+  /// File values are KSHELL-like reduced TDM (×√(2J_file+1)); this reader
+  /// divides that factor back so in-memory ρ̄ matches
+  ///   ⟨O⟩ = Σ ĵ ρ̄ o + Σ Ĵ ρ̄ O.
+  Operator ReadOsmRdm(const std::string &tdm_file);
+
+  /// KSHELL `transit.exe` reduced OBTD / TBTD (stdout dump, or a file of
+  /// those lines). Same-state rank-0 is the scalar density used as the
+  /// MR reference. KSHELL stores ⟨J||ρ||J⟩, so this reader divides by
+  /// √(2J_ψ+1) and lands on the same in-memory ρ̄ as ReadOsmRdm.
+  ///
+  ///   w.f.  J1=<2J>/2(<state>)     J2=<2J>/2(<state>)
+  ///   OBTD:  a b : rank :  il ir :  value
+  ///   TBTD:  a b c d : Jij Jkl rank :  il ir :  value
+  ///
+  /// Orbit table from optional .snt (WriteTokyo / KSHELL numbering:
+  /// protons then neutrons), or from `# idx n l 2j 2tz` comments.
+  /// state_l, state_r are 1-based KSHELL wave-function indices (default 1,1).
+  Operator ReadKshellRdm(const std::string &kshell_file,
+                         const std::string &snt_file = "",
+                         int state_l = 1, int state_r = 1);
+
+  /// Write the rdm operator to a file in the OSM format ReadOsmRdm / ReadTdm reads,
   /// iterating over 3-body channels and kets in native memory order.
   void WriteTdm(const Operator &op, const std::string &filename) const;
 

@@ -21,10 +21,13 @@ Hs cache:
 Jobs (JOB=...):
   mr0gs    scalar  0+_gs → 0+     (he8.ref)
   mr0x     scalar  0+_1  → 0+     (he8/he8_exc0.ref)
+  t02      tensor  0+_gs → 2+     (he8.ref, J=2)
+  t02x     tensor  0+_1  → 2+     (he8/he8_exc0.ref, J=2)
   mr2gs    scalar  2+_gs → 2+     (he8/he8_2p_gs.ref)
   mr2x     scalar  2+_1  → 2+     (he8/he8_2p_exc.ref)
-  t02      tensor  0+_gs → 2+     (he8.ref, J=2)
   t20      tensor  2+_gs → 0+     (he8/he8_2p_gs.ref, J=2)
+  t20x     tensor  2+_1  → 0+     (he8/he8_2p_exc.ref, J=2)
+  all      run the eight EOM jobs above
   pshell   decouple → write_pshell_hamiltonian (no EOM)
   fci      decouple → write_fci_hamiltonian (no EOM)
   snt      decouple → both writers from the same Hs (no EOM)
@@ -75,7 +78,9 @@ ref = nucleus
 val = "p-shell"
 # Inert core used only when packaging the p-shell interaction / MR-EOM Hs.
 inert_core = "He4"
-Hs_file = hs_path(nucleus, hw, emax, val=val)
+Hs_file = os.environ.get("HS_FILE", hs_path(nucleus, hw, emax, val=val))
+if Hs_file and not os.path.isabs(Hs_file):
+    Hs_file = os.path.join(RUN2, Hs_file)
 
 f2b = "/Users/wolf/work/srg_io/input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz"
 f3b = "/Users/wolf/work/srg_io/input/NO2B_ThBME_EM1.8_2.0_3NFJmax15_IS_hw16_ms18_36_18.stream.bin"
@@ -111,13 +116,29 @@ JOBS = {
         "J2": 2,
         "ref": "he8.ref",
     },
+    "t02x": {
+        "lab": r"MR $0^+_1{\to}2^+$",
+        "kind": "t02x",
+        "J2": 2,
+        "ref": os.path.join("he8", "he8_exc0.ref"),
+    },
     "t20": {
         "lab": r"MR $2^+_{\mathrm{gs}}{\to}0^+$",
         "kind": "t20",
         "J2": 2,
         "ref": os.path.join("he8", "he8_2p_gs.ref"),
     },
+    "t20x": {
+        "lab": r"MR $2^+_1{\to}0^+$",
+        "kind": "t20x",
+        "J2": 2,
+        "ref": os.path.join("he8", "he8_2p_exc.ref"),
+    },
 }
+
+EOM_JOB_ORDER = (
+    "mr0gs", "mr0x", "t02", "t02x", "mr2gs", "mr2x", "t20", "t20x",
+)
 
 
 def make_vs_ms():
@@ -275,12 +296,19 @@ def requested_job():
     return job
 
 
+def resolve_ref(spec):
+    spec = dict(spec)
+    ref_file = spec["ref"]
+    if not os.path.isabs(ref_file):
+        ref_file = os.path.join(RUN2, ref_file)
+    spec["ref"] = ref_file
+    return spec
+
+
 def resolve_job():
     job = requested_job()
     if job and job in JOBS:
-        spec = dict(JOBS[job])
-        spec["ref"] = os.path.join(RUN2, spec["ref"])
-        return job, spec
+        return job, resolve_ref(JOBS[job])
     J2 = int(os.environ.get("JRANK", "0"))
     ref_file = os.environ.get("REF_FILE", os.path.join(RUN2, "he8.ref"))
     if not os.path.isabs(ref_file):
@@ -295,25 +323,7 @@ def resolve_job():
     return name, spec
 
 
-def run_snt_jobs(which: str):
-    """Decouple once; write p-shell and/or FCI .snt from that Hs (no EOM)."""
-    print(f"JOB={which}  (decouple + write interaction .snt, no EOM)", flush=True)
-    ms_vs, Hs, solver, HNO = decouple_hs()
-    if which in ("pshell", "snt"):
-        write_pshell_hamiltonian(Hs)
-    if which in ("fci", "snt"):
-        write_fci_hamiltonian(Hs)
-    del solver, HNO, ms_vs
-
-
-def main():
-    job = requested_job()
-    if job in ("pshell", "fci", "snt"):
-        run_snt_jobs(job)
-        return
-
-    name, spec = resolve_job()
-
+def run_eom_job(name, spec, Hs):
     max_iter = int(os.environ.get("MAX_ITER", "50"))
     state_want = int(os.environ.get("STATE_WANT", "5"))
     use_h3 = os.environ.get("USE_H3", "1") != "0"
@@ -324,7 +334,6 @@ def main():
     if not os.path.isfile(ref_file):
         raise FileNotFoundError(ref_file)
 
-    ms, Hs = build_hs()
     print(f"JOB={name}  RDM={ref_file}  JπTz={J2} 0 0  "
           f"use_h3={use_h3}  max_iter={max_iter}  state_want={state_want}",
           flush=True)
@@ -345,7 +354,49 @@ def main():
     for k, e in enumerate(result.energies):
         print(f"  E({k}): excitation={e:.6f}  absolute={e + eref:.6f} MeV",
               flush=True)
-    dump_result(name, spec, eref, run_result)
+    rec = dump_result(name, spec, eref, run_result)
+    del eom
+    return rec
+
+
+def run_snt_jobs(which: str):
+    """Decouple once; write p-shell and/or FCI .snt from that Hs (no EOM)."""
+    print(f"JOB={which}  (decouple + write interaction .snt, no EOM)", flush=True)
+    ms_vs, Hs, solver, HNO = decouple_hs()
+    if which in ("pshell", "snt"):
+        write_pshell_hamiltonian(Hs)
+    if which in ("fci", "snt"):
+        write_fci_hamiltonian(Hs)
+    del solver, HNO, ms_vs
+
+
+def main():
+    job = requested_job()
+    if job in ("pshell", "fci", "snt"):
+        run_snt_jobs(job)
+        return
+
+    ms, Hs = build_hs()
+
+    names = list(EOM_JOB_ORDER) if job in ("all", "") else None
+    if names is None:
+        name, spec = resolve_job()
+        run_eom_job(name, spec, Hs)
+        return
+
+    print(f"JOB=all  {len(names)} He8 MR-EOM channels", flush=True)
+    recs = []
+    for name in names:
+        spec = resolve_ref(JOBS[name])
+        recs.append(run_eom_job(name, spec, Hs))
+        print(flush=True)
+
+    print("=== He8 MR-EOM summary ===", flush=True)
+    for rec in recs:
+        e0 = rec["E_abs"][0] if rec["E_abs"] else float("nan")
+        print(f"  {rec['name']:<6}  E_ref={rec['eref']:10.4f}  "
+              f"E0={e0:10.4f}  steps={rec['steps']}  "
+              f"{rec['stop_reason']}", flush=True)
 
 
 if __name__ == "__main__":

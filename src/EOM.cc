@@ -9,6 +9,7 @@
 #include "UnitTest.hh"
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cmath>
 #include <chrono>
 #include <fstream>
@@ -45,7 +46,26 @@ EOM::EOM(Operator &Hs, const std::string &tdm_file, int J2,  int parity, int itz
   ppvv_dim = 0;
   pphv_dim = 0;
   pphh_dim = 0;
-  rdm = ReadTdm(tdm_file);
+  rdm = ReadOsmRdm(tdm_file);
+  BuildOrbMap();
+};
+
+EOM::EOM(Operator &Hs, const std::string &tdm_file, int J2, int parity, int itz,
+         const std::string &rdm_format, const std::string &snt_file)
+    : modelspace(Hs.modelspace), Hs(Hs), J2(J2), parity(parity),
+      itz(itz), is_multiref(true) {
+  eom_dims = 0;
+  qv_dim = 0;
+  ph_dim = 0;
+  ppvv_dim = 0;
+  pphv_dim = 0;
+  pphh_dim = 0;
+  std::string fmt = rdm_format;
+  for (char &c : fmt) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  if (fmt == "kshell")
+    rdm = ReadKshellRdm(tdm_file, snt_file);
+  else
+    rdm = ReadOsmRdm(tdm_file);
   BuildOrbMap();
 };
 
@@ -454,14 +474,21 @@ void EOM::ConstructConfigs_tensor() {
   auto kets_vc = [](TwoBodyChannel &tbc) { return tbc.GetKetIndex_vc(); };
   auto kets_cc = [](TwoBodyChannel &tbc) { return tbc.GetKetIndex_cc(); };
 
-  // ppvv: ⟨qq,qv|vv⟩
+  // ppvv: ⟨qq,qv|vv⟩. For ΔTz≠0 also ⟨vv|vv⟩ (valence pair transfer,
+  // e.g. nn→pp connecting He8 to Be8 in the p-shell).
   ppvv_start = eom_confs.size();
-  if (include_ppvv)
-    add_2b_block(bras_qq_qv, kets_vv, ppvv_dim);
+  if (include_ppvv) {
+    if (itz != 0)
+      add_2b_block(bras_pp, kets_vv, ppvv_dim);
+    else
+      add_2b_block(bras_qq_qv, kets_vv, ppvv_dim);
+  }
   if (ppvv_dim > 0)
     ppvv_end = ppvv_start + ppvv_dim - 1;
   std::cout << "dimension EOM ppvv: " << ppvv_start << " " << ppvv_end
-            << " (dim=" << ppvv_dim << ")" << std::endl;
+            << " (dim=" << ppvv_dim << ")"
+            << (itz != 0 ? "  [includes ⟨vv|vv⟩ pair transfer]" : "")
+            << std::endl;
 
   // pphv: ⟨qq,qv,vv|hv⟩
   pphv_start = eom_confs.size();
@@ -1086,6 +1113,10 @@ void EOM::ConstructNormMatrix_tensor() {
       return modelspace->GetOrbit(k.p).cvq == 1 &&
              modelspace->GetOrbit(k.q).cvq == 1;
     };
+    // Charge-changing ⟨vv|vv⟩ (nn→pp) uses the same leftover 2b×ρ as ⟨qq|vv⟩.
+    auto ket_pp_bra = [&](const Ket &k) {
+      return ket_qq_qv(k) || (itz != 0 && ket_vv(k));
+    };
     for (index_t i = ppvv_start; i <= ppvv_end; i++) {
       auto &cf_bra = eom_confs.at(i);
       TwoBodyChannel &tbX = modelspace->GetTwoBodyChannel(cf_bra[2]);
@@ -1105,7 +1136,7 @@ void EOM::ConstructNormMatrix_tensor() {
           Nkernel(i, i) +=
               ph(J0 + J1 + lam) * lamhatinv2 * we2(J0, J1) * wocc;
       }
-      if (!(ket_qq_qv(k0) && ket_vv(k1)))
+      if (!(ket_pp_bra(k0) && ket_vv(k1)))
         continue;
       Ket &kvvX = k1;
       for (index_t j = ppvv_start; j <= ppvv_end; j++) {
@@ -1117,7 +1148,7 @@ void EOM::ConstructNormMatrix_tensor() {
           continue;
         Ket &k0Y = modelspace->GetTwoBodyChannel(cf_ket[2]).GetKet(cf_ket[0]);
         Ket &k1Y = tkY.GetKet(cf_ket[1]);
-        if (!(ket_qq_qv(k0Y) && ket_vv(k1Y)))
+        if (!(ket_pp_bra(k0Y) && ket_vv(k1Y)))
           continue;
         Ket &kvvY = k1Y;
         double val = RdmTB_J(J1, kvvX.p, kvvX.q, kvvY.p, kvvY.q);
@@ -3034,6 +3065,12 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
                VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_qv())) {
             Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
           }
+          // ΔTz≠0: valence pair transfer ⟨vv|vv⟩ (nn→pp) is an excitation.
+          if (itz != 0) {
+            for (auto &ibra : tbc_bra.GetKetIndex_vv())
+              Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket,
+                                    H2(ibra, iket));
+          }
         }
       }
     }
@@ -3042,13 +3079,14 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
   return Hod;
 }
 
-double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
+double EOM::GetVSEOM_Overlap_multiref(Operator &H, bool include_zerobody) {
   double ovlp  = 0;
   double ovlp1 = 0;
   double ovlp2 = 0;
   double ovlp3 = 0;
 
-  ovlp += H.ZeroBody;
+  if (include_zerobody)
+    ovlp += H.ZeroBody;
   
   for (auto &i : H.modelspace->valence) {
     Orbit &oi = H.modelspace->GetOrbit(i);
@@ -3124,6 +3162,50 @@ double EOM::GetVSEOM_Overlap_multiref(Operator &H) {
   //  std::cout << "three-body contribution to norm: " << ovlp3 << std::endl;
 
   return (ovlp + ovlp1 + ovlp2 + ovlp3);
+}
+
+void EOM::SetRdm(Operator &rdm_in)
+{
+  rdm = rdm_in;
+  rdm_ms = rdm.modelspace;
+  is_multiref = true;
+  BuildOrbMap();
+}
+
+void EOM::LoadKshellRdm(const std::string &kshell_file,
+                        const std::string &snt_file,
+                        int state_l, int state_r)
+{
+  // Drop the old rdm first: ReadKshellRdm replaces rdm_modelspace, and the
+  // previous Operator still points at it.
+  rdm = Operator();
+  rdm_ms = modelspace;
+  rdm = ReadKshellRdm(kshell_file, snt_file, state_l, state_r);
+  rdm_ms = &rdm_modelspace;
+  is_multiref = true;
+  BuildOrbMap();
+}
+
+double EOM::CrossRefOverlapHA(Operator &Ha, Operator &Aa, Operator &Hb,
+                              Operator &Ab, bool include_zerobody)
+{
+  Operator C_HH = Commutator::Commutator(Ha, Hb);
+  Operator C_HA = Commutator::Commutator(Ha, Ab);
+  Operator C_AH = Commutator::Commutator(Aa, Hb);
+  Operator C_AA = Commutator::Commutator(Aa, Ab);
+  return 0.25 * (GetVSEOM_Overlap_multiref(C_HH, include_zerobody)
+                 + GetVSEOM_Overlap_multiref(C_HA, include_zerobody)
+                 - GetVSEOM_Overlap_multiref(C_AH, include_zerobody)
+                 - GetVSEOM_Overlap_multiref(C_AA, include_zerobody));
+}
+
+double EOM::CrossRefOverlap(Operator &Qa, Operator &Qb, bool include_zerobody)
+{
+  Operator Ha = GetVSEOM_ladder_multiref(Qa, +1);
+  Operator Aa = GetVSEOM_ladder_multiref(Qa, -1);
+  Operator Hb = GetVSEOM_ladder_multiref(Qb, +1);
+  Operator Ab = GetVSEOM_ladder_multiref(Qb, -1);
+  return CrossRefOverlapHA(Ha, Aa, Hb, Ab, include_zerobody);
 }
 
 // ============================================================
@@ -4819,16 +4901,166 @@ EOM::CompareArnoldiHallBuild(Operator &vi, int max_iter, double tol)
 }
 
 // ============================================================
-//  ReadTdm
-//  Translated from read_tdm() in run/lanczos.py
+//  RDM readers
+//  OSM .ref (trans_rdme) and KSHELL transit.exe OBTD/TBTD.
+//  Both land on the same in-memory ρ̄ used by GetVSEOM_Overlap_multiref:
+//    ⟨O⟩ = Σ ĵ ρ̄ o + Σ Ĵ ρ̄ O
 // ============================================================
 
-/// Read a transition density matrix file and populate a scalar 2-body Operator.
+namespace {
+
+struct RdmRawOrb { int n, l, j2, tz2; };
+struct RdmOrbEntry { int idx, l, tz2; };
+
+std::vector<std::string> SplitTokens(const std::string &line)
+{
+  std::vector<std::string> tok;
+  std::istringstream sl(line);
+  std::string w;
+  while (sl >> w) tok.push_back(w);
+  return tok;
+}
+
+std::string ReplaceColons(std::string s)
+{
+  for (char &c : s)
+    if (c == ':') c = ' ';
+  return s;
+}
+
+bool ParseWfLine(const std::string &line, int &twoJ_l, int &il, int &twoJ_r, int &ir)
+{
+  auto p1 = line.find("J1=");
+  auto p2 = line.find("J2=");
+  if (p1 == std::string::npos || p2 == std::string::npos) return false;
+  // "J1=  0/2(    1)"  → twoJ, '/', 2, '(', state
+  int two_dummy = 0;
+  char slash = 0, paren = 0;
+  std::istringstream s1(line.substr(p1 + 3));
+  if (!(s1 >> twoJ_l >> slash >> two_dummy >> paren >> il)) return false;
+  std::istringstream s2(line.substr(p2 + 3));
+  if (!(s2 >> twoJ_r >> slash >> two_dummy >> paren >> ir)) return false;
+  return true;
+}
+
+bool ParseSntOrbits(const std::string &snt_file, std::vector<RdmRawOrb> &orbs)
+{
+  std::ifstream in(snt_file);
+  if (!in) return false;
+  std::string line;
+  bool in_ms = false;
+  int n_expect = -1;
+  while (std::getline(in, line))
+  {
+    // Tokyo .snt marks the table with "! model space"; strip comments after.
+    if (line.find("model space") != std::string::npos)
+      in_ms = true;
+    if (line.find("interaction") != std::string::npos && n_expect >= 0)
+      break;
+    std::string t = line;
+    auto hash = t.find('!');
+    if (hash != std::string::npos) t = t.substr(0, hash);
+    auto tok = SplitTokens(t);
+    if (tok.empty()) continue;
+    // Fallback: first 4-int header after comments is n_p n_n n_core_p n_core_n
+    if (!in_ms && n_expect < 0 && tok.size() >= 2)
+    {
+      try
+      {
+        int np = std::stoi(tok[0]);
+        int nn = std::stoi(tok[1]);
+        if (np >= 0 && nn >= 0 && np + nn > 0 && np + nn < 200)
+          in_ms = true;
+        else
+          continue;
+      }
+      catch (...)
+      {
+        continue;
+      }
+    }
+    if (!in_ms) continue;
+    if (n_expect < 0)
+    {
+      if (tok.size() < 2) continue;
+      n_expect = std::stoi(tok[0]) + std::stoi(tok[1]);
+      orbs.clear();
+      continue;
+    }
+    if (tok.size() < 5) continue;
+    // idx n l j2 tz2
+    orbs.push_back({std::stoi(tok[1]), std::stoi(tok[2]),
+                    std::stoi(tok[3]), std::stoi(tok[4])});
+    if ((int)orbs.size() >= n_expect) break;
+  }
+  return !orbs.empty();
+}
+
+bool ParseKshellOrbitComments(const std::vector<std::string> &lines,
+                              std::vector<RdmRawOrb> &orbs)
+{
+  orbs.clear();
+  for (const auto &line : lines)
+  {
+    auto tok = SplitTokens(line);
+    if (tok.size() < 6) continue;
+    if (tok[0] != "#" && tok[0] != "#idx") continue;
+    // "# idx n l 2j 2tz"
+    try
+    {
+      int idx = std::stoi(tok[1]);
+      int n = std::stoi(tok[2]);
+      int l = std::stoi(tok[3]);
+      int j2 = std::stoi(tok[4]);
+      int tz2 = std::stoi(tok[5]);
+      (void)idx;
+      orbs.push_back({n, l, j2, tz2});
+    }
+    catch (...)
+    {
+      continue;
+    }
+  }
+  return !orbs.empty();
+}
+
+Operator MakeRdmOperator(EOM &self, const std::vector<RdmRawOrb> &raw_orbits)
+{
+  int emax = 0;
+  for (auto &o : raw_orbits)
+    emax = std::max(emax, 2 * o.n + o.l);
+
+  self.rdm_modelspace = ModelSpace();
+  self.rdm_modelspace.SetEmax(emax);
+  self.rdm_modelspace.SetEmax3Body(emax);
+  self.rdm_modelspace.SetE3max(3 * emax);
+
+  for (auto &o : raw_orbits)
+    self.rdm_modelspace.AddOrbit(o.n, o.l, o.j2, o.tz2, 0.0, 1);
+  self.rdm_modelspace.FindEFermi();
+  self.rdm_modelspace.SetupKets();
+  self.rdm_modelspace.Setup3bKets();
+  self.rdm_ms = &self.rdm_modelspace;
+
+  Operator ops(*self.rdm_ms, 0, 0, 0, 3);
+  ops.ThreeBody.SetMode("pn");
+  ops *= 0.0;
+  return ops;
+}
+
+} // namespace
+
 Operator EOM::ReadTdm(const std::string &tdm_file)
+{
+  return ReadOsmRdm(tdm_file);
+}
+
+/// OSM trans_rdme `.ref` (formerly ReadTdm). Translated from run/lanczos.py.
+Operator EOM::ReadOsmRdm(const std::string &tdm_file)
 {
   std::ifstream infile(tdm_file);
   if (!infile)
-    throw std::runtime_error("ReadTdm: cannot open file " + tdm_file);
+    throw std::runtime_error("ReadOsmRdm: cannot open file " + tdm_file);
 
   std::vector<std::string> lines;
   {
@@ -4932,7 +5164,7 @@ Operator EOM::ReadTdm(const std::string &tdm_file)
           while (sl2 >> w) tok.push_back(w);
 
           if (tok.size() < 8)
-            throw std::runtime_error("ReadTdm: malformed TBTD line in " + tdm_file);
+            throw std::runtime_error("ReadOsmRdm: malformed TBTD line in " + tdm_file);
 
           int ia = std::stoi(tok[1]) - 1;
           int ib = std::stoi(tok[2]) - 1;
@@ -5033,6 +5265,158 @@ Operator EOM::ReadTdm(const std::string &tdm_file)
     } // norb scope
   } // jtotal / factor scope
   return Operator(); // unreachable
+}
+
+Operator EOM::ReadKshellRdm(const std::string &kshell_file,
+                            const std::string &snt_file,
+                            int state_l, int state_r)
+{
+  std::ifstream infile(kshell_file);
+  if (!infile)
+    throw std::runtime_error("ReadKshellRdm: cannot open file " + kshell_file);
+
+  std::vector<std::string> lines;
+  {
+    std::string buf;
+    while (std::getline(infile, buf))
+      lines.push_back(buf);
+  }
+  infile.close();
+
+  std::vector<RdmRawOrb> raw_orbits;
+  if (!snt_file.empty())
+  {
+    if (!ParseSntOrbits(snt_file, raw_orbits))
+      throw std::runtime_error("ReadKshellRdm: could not parse orbits from " + snt_file);
+  }
+  else if (!ParseKshellOrbitComments(lines, raw_orbits))
+  {
+    throw std::runtime_error(
+        "ReadKshellRdm: no orbit table in " + kshell_file +
+        "; pass the KSHELL .snt as snt_file");
+  }
+
+  Operator ops = MakeRdmOperator(*this, raw_orbits);
+  // Transition densities are not Hermitian (⟨a|a†b|b⟩ ≠ ⟨b|a†b|a⟩ in general).
+  if (state_l != state_r)
+    ops.SetNonHermitian();
+  const int norb = (int)raw_orbits.size();
+  std::vector<RdmOrbEntry> ob_idx(norb);
+  for (int i = 0; i < norb; ++i)
+    ob_idx[i] = {i, raw_orbits[i].l, raw_orbits[i].tz2};
+
+  // KSHELL reduced TDM: ⟨J||ρ||J⟩ = √(2J+1) ρ̄. Default factor 1 until
+  // a w.f. line is seen (J=0 dump, or M=0 OSM-style mimic).
+  int cur_il = -1, cur_ir = -1, cur_twoJ = 0;
+  double factor = 1.0;
+  int n_ob = 0, n_tb = 0;
+
+  auto want_state = [&]() {
+    return cur_il == state_l && cur_ir == state_r;
+  };
+
+  for (const auto &raw : lines)
+  {
+    int twoJ_l = 0, twoJ_r = 0, il = 0, ir = 0;
+    if (ParseWfLine(raw, twoJ_l, il, twoJ_r, ir))
+    {
+      cur_il = il;
+      cur_ir = ir;
+      cur_twoJ = twoJ_l;
+      factor = std::sqrt(double(cur_twoJ) + 1.0);
+      continue;
+    }
+
+    std::string stripped = raw;
+    auto hash = stripped.find('#');
+    if (hash != std::string::npos && stripped.find("OBTD") == std::string::npos
+        && stripped.find("TBTD") == std::string::npos)
+      continue;
+
+    auto tok = SplitTokens(ReplaceColons(stripped));
+    if (tok.empty()) continue;
+
+    if (tok[0] == "OBTD" || tok[0] == "OBTD:")
+    {
+      // transit: a b rank il ir value   (colons already spaces)
+      // also accept a b value  (OSM-like / OBTD_*.dat last column)
+      if (tok.size() < 4) continue;
+      int a = std::stoi(tok[1]);
+      int b = std::stoi(tok[2]);
+      int rank = 0;
+      double val = 0.0;
+      if (tok.size() >= 7)
+      {
+        rank = std::stoi(tok[3]);
+        val = std::stod(tok.back());
+        if (tok.size() >= 6)
+        {
+          try
+          {
+            int wl = std::stoi(tok[4]);
+            int wr = std::stoi(tok[5]);
+            if (cur_il < 0) { cur_il = wl; cur_ir = wr; }
+          }
+          catch (...) {}
+        }
+      }
+      else
+      {
+        val = std::stod(tok.back());
+      }
+      if (rank != 0) continue;
+      if (cur_il >= 0 && !want_state()) continue;
+      if (a < 1 || b < 1 || a > norb || b > norb)
+        throw std::runtime_error("ReadKshellRdm: OBTD orbit out of range");
+      ops.SetOneBody(ob_idx[a - 1].idx, ob_idx[b - 1].idx, val / factor);
+      ++n_ob;
+      continue;
+    }
+
+    if (tok[0] == "TBTD" || tok[0] == "TBTD:")
+    {
+      // transit: a b c d Jij Jkl rank il ir value
+      // timing summaries also start with "TBTD" — skip short lines
+      if (tok.size() < 8)
+        continue;
+      int ia = std::stoi(tok[1]);
+      int ib = std::stoi(tok[2]);
+      int ic = std::stoi(tok[3]);
+      int id = std::stoi(tok[4]);
+      int jij = std::stoi(tok[5]);
+      int jkl = std::stoi(tok[6]);
+      int rank = 0;
+      // transit.exe: a b c d Jij Jkl rank il ir value  (10 tokens)
+      // OSM-like:    a b c d Jij Jkl value             (8 tokens)
+      if (tok.size() >= 10)
+        rank = std::stoi(tok[7]);
+      double val = std::stod(tok.back());
+      if (rank != 0) continue;
+      if (cur_il >= 0 && !want_state()) continue;
+      if (ia < 1 || ib < 1 || ic < 1 || id < 1 ||
+          ia > norb || ib > norb || ic > norb || id > norb)
+        throw std::runtime_error("ReadKshellRdm: TBTD orbit out of range");
+
+      int aa = ob_idx[ia - 1].idx;
+      int bb = ob_idx[ib - 1].idx;
+      int cc = ob_idx[ic - 1].idx;
+      int dd = ob_idx[id - 1].idx;
+      int pij = (ob_idx[ia - 1].l + ob_idx[ib - 1].l) % 2;
+      int tij = (ob_idx[ia - 1].tz2 + ob_idx[ib - 1].tz2) / 2;
+      int pkl = (ob_idx[ic - 1].l + ob_idx[id - 1].l) % 2;
+      int tkl = (ob_idx[ic - 1].tz2 + ob_idx[id - 1].tz2) / 2;
+      ops.SetTwoBody(jij, pij, tij, jkl, pkl, tkl, aa, bb, cc, dd, val / factor);
+      ++n_tb;
+    }
+  }
+
+  if (n_ob == 0 && n_tb == 0)
+    throw std::runtime_error(
+        "ReadKshellRdm: no rank-0 OBTD/TBTD for states (" +
+        std::to_string(state_l) + "," + std::to_string(state_r) + ") in " +
+        kshell_file);
+
+  return ops;
 }
 
 // ============================================================

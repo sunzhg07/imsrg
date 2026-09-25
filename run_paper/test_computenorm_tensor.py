@@ -31,8 +31,14 @@ HS_FILE = os.environ.get("HS_FILE", os.path.join(RUN2, "Hs_back"))
 REF_FILE = os.environ.get("REF_FILE", os.path.join(RUN2, "he8.ref"))
 
 
+HUSH = os.environ.get("HUSH", "1") != "0"
+
+
 @contextmanager
 def hush():
+    if not HUSH:
+        yield
+        return
     devnull = os.open(os.devnull, os.O_WRONLY)
     old_out, old_err = os.dup(1), os.dup(2)
     try:

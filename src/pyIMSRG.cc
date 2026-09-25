@@ -1507,6 +1507,11 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("Hs"), py::arg("rdm"), py::arg("J2"), py::arg("parity"), py::arg("itz"))
       .def(py::init<Operator &, const std::string &, int, int, int>(),
            py::arg("Hs"), py::arg("tdm_file"), py::arg("J2"), py::arg("parity"), py::arg("itz"))
+      .def(py::init<Operator &, const std::string &, int, int, int,
+                    const std::string &, const std::string &>(),
+           py::arg("Hs"), py::arg("tdm_file"), py::arg("J2"), py::arg("parity"),
+           py::arg("itz"), py::arg("rdm_format"), py::arg("snt_file") = "",
+           "MR EOM from a density file. rdm_format='osm' (default .ref) or 'kshell'")
       .def(py::init<Operator &, int, int, int>(),
            py::arg("Hs"), py::arg("J2"), py::arg("parity"), py::arg("itz"))
       .def(py::init<Operator &, int, int, int, EOM::SREOMMode>(),
@@ -1596,7 +1601,17 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("GetVSEOM_Overlap_single",   &EOM::GetVSEOM_Overlap_single,
            py::arg("H1"), py::arg("H2"))
       .def("GetVSEOM_Overlap_multiref", &EOM::GetVSEOM_Overlap_multiref,
-           py::arg("H"))
+           py::arg("H"), py::arg("include_zerobody") = true)
+      .def("CrossRefOverlap", &EOM::CrossRefOverlap,
+           py::arg("Qa"), py::arg("Qb"), py::arg("include_zerobody") = false,
+           "⟨a|Q_a† Q_b|b⟩ from four H/AH commutators; rdm is ρ or TDM")
+      .def("CrossRefOverlapHA", &EOM::CrossRefOverlapHA,
+           py::arg("Ha"), py::arg("Aa"), py::arg("Hb"), py::arg("Ab"),
+           py::arg("include_zerobody") = false)
+      .def("LoadKshellRdm", &EOM::LoadKshellRdm,
+           py::arg("kshell_file"), py::arg("snt_file") = "",
+           py::arg("state_l") = 1, py::arg("state_r") = 1)
+      .def("SetRdm", &EOM::SetRdm, py::arg("rdm"))
       .def("NormMultiref",             &EOM::NormMultiref,
            py::arg("T1"), py::arg("T2"))
       .def("NormMultiref_tensor",     &EOM::NormMultiref_tensor,
@@ -1640,7 +1655,15 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("GetVSEOM_ladder_multiref",  &EOM::GetVSEOM_ladder_multiref,
            py::arg("H"), py::arg("herm"))
       .def("ReadTdm", &EOM::ReadTdm,
-           py::arg("tdm_file"))
+           py::arg("tdm_file"),
+           "OSM .ref reader (alias of ReadOsmRdm)")
+      .def("ReadOsmRdm", &EOM::ReadOsmRdm,
+           py::arg("tdm_file"),
+           "Read OSM trans_rdme .ref (reduced TDM ×√(2M+1))")
+      .def("ReadKshellRdm", &EOM::ReadKshellRdm,
+           py::arg("kshell_file"), py::arg("snt_file") = "",
+           py::arg("state_l") = 1, py::arg("state_r") = 1,
+           "Read KSHELL transit.exe rank-0 OBTD/TBTD; divide by √(2J+1)")
       .def("WriteTdm", &EOM::WriteTdm,
            py::arg("op"), py::arg("filename"))
       .def_readonly("qv_start",   &EOM::qv_start)
