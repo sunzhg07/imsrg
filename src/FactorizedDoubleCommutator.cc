@@ -4,6 +4,9 @@
 #include "ReferenceImplementations.hh"
 #include "PhysicalConstants.hh"
 
+#include <array>
+#include <deque>
+
 namespace Commutator {
 
 namespace FactorizedDoubleCommutator {
@@ -3109,6 +3112,98 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
   return;
 } //  comm223_232_chi2b
 
+// 132 ladder helpers (ethS 2n layout, unreduced same-J). Z = Γ M Ω − Ω M Γ
+// with M[(c,b),(c,a)] = W_ba, no 6j (scalar leftover).
+namespace {
+std::array<int, 2> PqTB132(TwoBodyChannel &tbc, int idx, int nK) {
+  Ket &ket = tbc.GetKet(idx % nK);
+  if (idx < nK)
+    return {(int)ket.p, (int)ket.q};
+  if (ket.p == ket.q)
+    return {-1, -1};
+  return {(int)ket.q, (int)ket.p};
+}
+
+int Index2n132(TwoBodyChannel &tbc, int p, int q) {
+  const int nK = tbc.GetNumberKets();
+  const int loc = tbc.GetLocalIndex(std::min(p, q), std::max(p, q));
+  if (loc < 0 or loc >= nK)
+    return -1;
+  return (p > q) ? loc + nK : loc;
+}
+
+arma::mat Op2n132(const Operator &Op, ModelSpace *ms, int ch) {
+  TwoBodyChannel &tbc = ms->GetTwoBodyChannel(ch);
+  const int n = tbc.GetNumberKets();
+  arma::mat X(2 * n, 2 * n, arma::fill::zeros);
+  if (n < 1)
+    return X;
+  auto it = Op.TwoBody.MatEl.find({(size_t)ch, (size_t)ch});
+  if (it == Op.TwoBody.MatEl.end())
+    return X;
+  const arma::mat &M = it->second;
+  if ((int)M.n_rows != n or (int)M.n_cols != n)
+    return X;
+  arma::vec flo(n), fhi(n);
+  for (int i = 0; i < n; ++i) {
+    Ket &k = tbc.GetKet(i);
+    flo(i) = (k.p == k.q) ? PhysConst::SQRT2 : 1.0;
+    fhi(i) = (k.p == k.q) ? 0.0 : k.Phase(tbc.J);
+  }
+  const arma::mat Mlo = M * arma::diagmat(flo);
+  const arma::mat Mhi = M * arma::diagmat(fhi);
+  X.submat(0, 0, n - 1, n - 1) = arma::diagmat(flo) * Mlo;
+  X.submat(0, n, n - 1, 2 * n - 1) = arma::diagmat(flo) * Mhi;
+  X.submat(n, 0, 2 * n - 1, n - 1) = arma::diagmat(fhi) * Mlo;
+  X.submat(n, n, 2 * n - 1, 2 * n - 1) = arma::diagmat(fhi) * Mhi;
+  return X;
+}
+
+// GetTBME_J(J,a,d,b,c) from a precomputed 2n ordinary-channel block.
+double ME2n132(const std::deque<arma::mat> &X, ModelSpace *ms, int J, int a,
+               int d, int b, int c) {
+  Orbit &oa = ms->GetOrbit(a);
+  Orbit &od = ms->GetOrbit(d);
+  const int ch =
+      (int)ms->GetTwoBodyChannelIndex(J, (oa.l + od.l) % 2,
+                                      (oa.tz2 + od.tz2) / 2);
+  if (ch < 0 or ch >= (int)X.size() or X[ch].n_rows < 1)
+    return 0.0;
+  TwoBodyChannel &tbc = ms->GetTwoBodyChannel(ch);
+  const int bra = Index2n132(tbc, a, d);
+  const int ket = Index2n132(tbc, b, c);
+  if (bra < 0 or ket < 0)
+    return 0.0;
+  return X[ch](bra, ket);
+}
+
+// X[(i,j),(a,b)] = δ_{jb} χ(i,a) + δ_{ia} χ(j,b)  (2n, unreduced).
+arma::mat ChiEmbed132(const arma::mat &CHI, TwoBodyChannel &tbc,
+                      ModelSpace *ms) {
+  const int n = tbc.GetNumberKets();
+  arma::mat X(2 * n, 2 * n, arma::fill::zeros);
+  for (int r = 0; r < 2 * n; ++r) {
+    auto ij = PqTB132(tbc, r, n);
+    if (ij[0] < 0)
+      continue;
+    const int i = ij[0], j = ij[1];
+    Orbit &oi = ms->GetOrbit(i);
+    Orbit &oj = ms->GetOrbit(j);
+    for (auto a : ms->OneBodyChannels.at({oi.l, oi.j2, oi.tz2})) {
+      const int col = Index2n132(tbc, (int)a, j);
+      if (col >= 0)
+        X(r, col) += CHI((int)i, (int)a);
+    }
+    for (auto b : ms->OneBodyChannels.at({oj.l, oj.j2, oj.tz2})) {
+      const int col = Index2n132(tbc, i, (int)b);
+      if (col >= 0)
+        X(r, col) += CHI((int)j, (int)b);
+    }
+  }
+  return X;
+}
+} // namespace
+
 void comm223_132(const Operator &Eta, const Operator &Gamma, Operator &Z) {
 
   double t_internal = omp_get_wtime(); // timer
@@ -3122,221 +3217,171 @@ void comm223_132(const Operator &Eta, const Operator &Gamma, Operator &Z) {
     ch_ket_list.push_back(iter.first[1]);
   }
 
-  // determine symmetry
-  int hEta = Eta.IsHermitian() ? 1 : -1;
-  int hGamma = Gamma.IsHermitian() ? 1 : -1;
-  // int hZ = Z.IsHermitian() ? 1 : -1;
-  int hZ = hGamma;
-  int nch = Gamma.modelspace->GetNumberTwoBodyChannels();
-  {
-// full matrix
-    for (int ich = 0; ich < nch; ich++)
-    {
-      size_t ch_bra = ch_bra_list[ich];
-      size_t ch_ket = ch_ket_list[ich];
-      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
-      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
-      int J = tbc_bra.J;
-      int nbras = tbc_bra.GetNumberKets();
-      int nkets = tbc_ket.GetNumberKets();
-      for (int ibra = 0; ibra < nbras; ibra++)
-      {
-        Ket &bra = tbc_bra.GetKet(ibra);
-        size_t i = bra.p;
-        size_t j = bra.q;
+  int nch = (int)ch_bra_list.size();
+  ModelSpace *ms = Z.modelspace;
+  const int nch_ord = ms->GetNumberTwoBodyChannels();
 
-        int ketmin = 0;
-        if (ch_bra == ch_ket)
-          ketmin = ibra;
-        for (int iket = ketmin; iket < nkets; iket++)
-        {
-          Ket &ket = tbc_ket.GetKet(iket);
-          size_t k = ket.p;
-          size_t l = ket.q;
-
-          double zijkl = 0;
-
-          for(int iket2 = 0; iket2 < nkets*2; iket2++)  // cution for tensor here, only work for scaler
-         {
-          size_t c = 0;
-          size_t a = 0;
-          if(iket2 <  nkets){
-             Ket &ket2 =tbc_ket.GetKet(iket2);
-           c = ket2.p;
-           a = ket2.q;}
-          else{
-             Ket &ket2 =tbc_ket.GetKet(iket2-nkets);
-           c = ket2.q;
-           a = ket2.p;
-            if(a==c)continue;
-          }
-          Orbit& oa = Z.modelspace->GetOrbit(a);
-          double na=oa.occ;
-    for (auto &b : Z.GetOneBodyChannel(oa.l, oa.j2, oa.tz2)) // delta_jd je
-          {
-            Orbit& ob = Z.modelspace->GetOrbit(b);
-            double nb=ob.occ;
-
-            double xijcb = Gamma.TwoBody.GetTBME_J(J, J, i,j,c,b);
-            double yijcb = Eta.TwoBody.GetTBME_J(J, J, i,j,c,b);
-            double xcakl = Gamma.TwoBody.GetTBME_J(J, J, c,a,k,l);
-            double ycakl = Eta.TwoBody.GetTBME_J(J, J, c,a,k,l);
-
-            zijkl += xijcb*ycakl*Eta.OneBody(b,a)*((1.-na)*nb-na*(1.-nb));
-            zijkl -= yijcb*xcakl*Eta.OneBody(b,a)*((1.-na)*nb-na*(1.-nb));
-
-          } // b
-          }
-          //if(std::abs(zijkl)>0.000001)std::cout<< zijkl<< " here"<<std::endl;
-          // Need to normalize here, because AddToTBME expects a normalized TBME.
-          if (i == j)
-            zijkl /= PhysConst::SQRT2;
-          if (k == l)
-            zijkl /= PhysConst::SQRT2;
-
-   Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zijkl);
-
-        } // iket
-      } // ibra
-    } // ch
+  // W_ba = ((1-n_a)n_b - n_a(1-n_b)) Ω_ba  (ladder M and onebody χ)
+  int n_alloc = 0;
+  for (auto o : ms->all_orbits)
+    n_alloc = std::max(n_alloc, (int)o + 1);
+  arma::mat W_ba(n_alloc, n_alloc, arma::fill::zeros);
+  std::vector<std::vector<int>> a_of_b(n_alloc), b_of_a(n_alloc);
+  for (auto a : ms->all_orbits) {
+    Orbit &oa = ms->GetOrbit(a);
+    const double na = oa.occ;
+    for (auto b : Z.GetOneBodyChannel(oa.l, oa.j2, oa.tz2)) {
+      Orbit &ob = ms->GetOrbit(b);
+      const double occ = (1.0 - na) * ob.occ - na * (1.0 - ob.occ);
+      if (std::abs(occ) < 1e-12)
+        continue;
+      const double eba = Eta.OneBody(b, a);
+      if (std::abs(eba) < 1e-14)
+        continue;
+      W_ba((int)a, (int)b) = occ * eba;
+      a_of_b[(int)b].push_back((int)a);
+      b_of_a[(int)a].push_back((int)b);
+    }
   }
 
+  std::deque<arma::mat> Eta2n(nch_ord), Gam2n(nch_ord);
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int ch = 0; ch < nch_ord; ++ch) {
+    Eta2n[ch] = Op2n132(Eta, ms, ch);
+    Gam2n[ch] = Op2n132(Gamma, ms, ch);
+  }
+
+  {
+    // Ladder (unreduced): Z += Γ M Ω − Ω M Γ
+    //   M[(c,b),(c,a)] = W_ba   (2n ordered pairs, GetTBME_J units)
+#pragma omp parallel for schedule(dynamic, 1)
+    for (int ich = 0; ich < nch; ich++) {
+      const size_t ch = ch_bra_list[ich];
+      if (ch_ket_list[ich] != ch)
+        continue;
+      TwoBodyChannel &tbc = ms->GetTwoBodyChannel(ch);
+      const int n = tbc.GetNumberKets();
+      if (n < 1)
+        continue;
+
+      const arma::mat &Gam = Gam2n[(int)ch];
+      const arma::mat &Om = Eta2n[(int)ch];
+      arma::mat M(2 * n, 2 * n, arma::fill::zeros);
+      for (int r = 0; r < 2 * n; ++r) {
+        auto cb = PqTB132(tbc, r, n);
+        if (cb[0] < 0)
+          continue;
+        const int c = cb[0], b = cb[1];
+        for (int a : a_of_b[b]) {
+          const double w = W_ba(a, b);
+          const int col = Index2n132(tbc, c, a);
+          if (col < 0)
+            continue;
+          M(r, col) = w;
+        }
+      }
+      const arma::mat Zacc = Gam * M * Om - Om * M * Gam;
+
+      for (int ibra = 0; ibra < n; ++ibra) {
+        Ket &bra = tbc.GetKet(ibra);
+        for (int iket = ibra; iket < n; ++iket) {
+          Ket &ket = tbc.GetKet(iket);
+          double zijkl = Zacc(ibra, iket);
+          if (bra.p == bra.q)
+            zijkl /= PhysConst::SQRT2;
+          if (ket.p == ket.q)
+            zijkl /= PhysConst::SQRT2;
+          Z2.AddToTBME(ch, ch, ibra, iket, zijkl);
+        }
+      }
+    }
+  }
 
   comm223_132_cross(Eta, Gamma, Z);
 
-
   {
-  // now we take care of eta contract to either eta or gamma.
-
- arma::mat CHI_I = Gamma.OneBody * 0;
-  arma::mat CHI_II = Gamma.OneBody * 0;
-
-   std::vector<index_t> p_list, q_list;
-  for (auto p : Z.modelspace->all_orbits) {
-    Orbit &op = Z.modelspace->GetOrbit(p);
-    for (auto q : Z.OneBodyChannels.at({op.l, op.j2, op.tz2})) {
-      p_list.push_back(p);
-      q_list.push_back(q);
-    }
-  }
-  size_t ipq_max = p_list.size();
-/// Build the intermediate one-body operators
-  for (size_t ipq = 0; ipq < ipq_max; ipq++) {
-    index_t p = p_list[ipq];
-    index_t q = q_list[ipq];
-    Orbit &op = Z.modelspace->GetOrbit(p);
-    Orbit &oq = Z.modelspace->GetOrbit(q);
-
-    double chi_pq = 0;
-    double chiY_pq = 0;
-
-
-      for (auto i : Z.modelspace->all_orbits) {
-        Orbit &oi = Z.modelspace->GetOrbit(i);
-        double n_i = oi.occ;
-
-        for (auto j : Z.OneBodyChannels.at({oi.l, oi.j2, oi.tz2})){
-
-            Orbit &oj = Z.modelspace->GetOrbit(j);
-
-          double n_j = oj.occ;
-
-          double occfactor = (1.-n_i)*n_j-n_i*(1.0 - n_j);
-          if (abs(occfactor) < 1.e-7) continue;
-
-          int J2min =
-              std::max(std::abs(oi.j2 - op.j2), std::abs(oj.j2 - oq.j2)) / 2;
-          int J2max = std::min(oi.j2 + op.j2, oj.j2 + oq.j2) / 2;
-
-          for (int J2 = J2min; J2 <= J2max; J2++) {
-            double xpiqj = Eta.TwoBody.GetTBME_J(J2,  p, i, q, j);
-            double ypiqj = Gamma.TwoBody.GetTBME_J(J2,  p, i, q, j);
-            chi_pq +=
-               occfactor * (2 * J2 + 1) / (oq.j2 + 1) * xpiqj*Eta.OneBody(j, i);
-            chiY_pq +=
-               occfactor * (2 * J2 + 1) / (oq.j2 + 1) * ypiqj*Eta.OneBody(j, i);
-         //   std::cout << p<<" "<<i<< " "<<q<<" "<<j<<" "<< xpiqj<<" "<<Eta.OneBody(j, i)<<occfactor<<std::endl;
-            //if(std::abs(xpiqj*Eta.OneBody(j, i))>0.000001)std::cout << Eta.TwoBody.GetTBME_J(J2,  p, i, q, j)<<" "<<Eta.OneBody(j, i)<<" "<<std::endl;
-            //if(std::abs(xpiqj*Eta.OneBody(j, i))>0.000001)std::cout << Eta.TwoBody.GetTBME_J(J2,  q, j, p, i)<<" "<<Eta.OneBody(i, j)<<std::endl;
-          } // for j2
-        } // for j
-     } // for i
-    //
-      //std::cout<<"pq="<< p<<" " <<q<<" " << chi_pq<<std::endl;
-     CHI_I(p, q) = chi_pq;
-    CHI_II(p, q) = chiY_pq;
-    } // for pq
-
-
-
-
-
-
-    for (int ich = 0; ich < nch; ich++)
+    // Onebody (unreduced): χ_I(p,q) = Σ_{ij J} W_ba(i,j) (2J+1)/ĵ_q² Ω^J(pi;qj)
+    //                       χ_II from Γ, then Z += [χ_I⊗1, Γ] − [χ_II⊗1, Ω]
+    arma::mat CHI_I = Gamma.OneBody * 0;
+    arma::mat CHI_II = Gamma.OneBody * 0;
+#pragma omp parallel
     {
-      size_t ch_bra = ch_bra_list[ich];
-      size_t ch_ket = ch_ket_list[ich];
-      TwoBodyChannel &tbc_bra = Z.modelspace->GetTwoBodyChannel(ch_bra);
-      TwoBodyChannel &tbc_ket = Z.modelspace->GetTwoBodyChannel(ch_ket);
-      int J = tbc_bra.J;
-      int nbras = tbc_bra.GetNumberKets();
-      int nkets = tbc_ket.GetNumberKets();
-      for (int ibra = 0; ibra < nbras; ibra++)
+      arma::mat chiI_loc = CHI_I * 0;
+      arma::mat chiII_loc = CHI_II * 0;
+#pragma omp for schedule(dynamic, 1)
+      for (int ch = 0; ch < nch_ord; ++ch) {
+        TwoBodyChannel &tbc = ms->GetTwoBodyChannel(ch);
+        const int n = tbc.GetNumberKets();
+        if (n < 1)
+          continue;
+        const arma::mat &Om = Eta2n[ch];
+        const arma::mat &Gam = Gam2n[ch];
+        const double hat2J = 2.0 * tbc.J + 1.0;
+        for (int r = 0; r < 2 * n; ++r) {
+          auto pi = PqTB132(tbc, r, n);
+          if (pi[0] < 0)
+            continue;
+          const int p = pi[0], i = pi[1];
+          Orbit &op = ms->GetOrbit(p);
+          for (int j : b_of_a[i]) {
+            const double w = W_ba(i, j);
+            if (std::abs(w) < 1e-16)
+              continue;
+            for (auto q : ms->OneBodyChannels.at({op.l, op.j2, op.tz2})) {
+              const int col = Index2n132(tbc, (int)q, j);
+              if (col < 0)
+                continue;
+              Orbit &oq = ms->GetOrbit(q);
+              const double pref = w * hat2J / (oq.j2 + 1.0);
+              chiI_loc((int)p, (int)q) += pref * Om(r, col);
+              chiII_loc((int)p, (int)q) += pref * Gam(r, col);
+            }
+          }
+        }
+      }
+#pragma omp critical
       {
-        Ket &bra = tbc_bra.GetKet(ibra);
-        size_t i = bra.p;
-        size_t j = bra.q;
+        CHI_I += chiI_loc;
+        CHI_II += chiII_loc;
+      }
+    }
 
-        int ketmin = 0;
-        if (ch_bra == ch_ket)
-          ketmin = ibra;
-        for (int iket = ketmin; iket < nkets; iket++)
-        {
-          Ket &ket = tbc_ket.GetKet(iket);
-          size_t k = ket.p;
-          size_t l = ket.q;
+#pragma omp parallel for schedule(dynamic, 1)
+    for (int ich = 0; ich < nch; ich++) {
+      const size_t ch = ch_bra_list[ich];
+      if (ch_ket_list[ich] != ch)
+        continue;
+      TwoBodyChannel &tbc = ms->GetTwoBodyChannel(ch);
+      const int n = tbc.GetNumberKets();
+      if (n < 1)
+        continue;
+      const arma::mat XI = ChiEmbed132(CHI_I, tbc, ms);
+      const arma::mat XII = ChiEmbed132(CHI_II, tbc, ms);
+      const arma::mat &Gam = Gam2n[(int)ch];
+      const arma::mat &Om = Eta2n[(int)ch];
+      const arma::mat Zacc =
+          XI * Gam - Gam * XI - (XII * Om - Om * XII);
 
-          double zijkl = 0;
-          for (size_t a : Z.modelspace->all_orbits)
-          {
-            //           Orbit& oa = Z.modelspace->GetOrbit(a);
-            double xajkl = Gamma.TwoBody.GetTBME_J(J, J, a, j, k, l);
-            double xiakl = Gamma.TwoBody.GetTBME_J(J, J, i, a, k, l);
-            double xijal = Gamma.TwoBody.GetTBME_J(J, J, i, j, a, l);
-            double xijka = Gamma.TwoBody.GetTBME_J(J, J, i, j, k, a);
-
-            double yajkl =   Eta.TwoBody.GetTBME_J(J, J, a, j, k, l);
-            double yiakl =   Eta.TwoBody.GetTBME_J(J, J, i, a, k, l);
-            double yijal =   Eta.TwoBody.GetTBME_J(J, J, i, j, a, l);
-            double yijka =   Eta.TwoBody.GetTBME_J(J, J, i, j, k, a);
-
-            zijkl += CHI_I(i, a) * xajkl + CHI_I(j, a) * xiakl - xijal * CHI_I(a, k) - xijka * CHI_I(a, l);
-            zijkl -= CHI_II(i, a) * yajkl + CHI_II(j, a) * yiakl - yijal * CHI_II(a, k) - yijka * CHI_II(a, l);
-          } // a
-          // Need to normalize here, because AddToTBME expects a normalized TBME.
-          if (i == j)
+      for (int ibra = 0; ibra < n; ++ibra) {
+        Ket &bra = tbc.GetKet(ibra);
+        for (int iket = ibra; iket < n; ++iket) {
+          Ket &ket = tbc.GetKet(iket);
+          double zijkl = Zacc(ibra, iket);
+          if (bra.p == bra.q)
             zijkl /= PhysConst::SQRT2;
-          if (k == l)
+          if (ket.p == ket.q)
             zijkl /= PhysConst::SQRT2;
-          //if(abs(zijkl)>0.000001)std::cout<< i<< " "<<j<<" "<<k<<" "<<l<<" "<<zijkl<<std::endl;
+          Z2.AddToTBME(ch, ch, ibra, iket, zijkl);
+        }
+      }
+    }
 
-          Z2.AddToTBME(ch_bra, ch_ket, ibra, iket, zijkl);
-
-        } // iket
-      } // ibra
-    } // ch
-
-
-
-  if (Commutator::verbose) {
-    Z.profiler
-        .timer["_" + std::string(__func__) + "_" + std::to_string(__LINE__)] +=
-        omp_get_wtime() - t_internal;
-    t_internal = omp_get_wtime();
-  }
-
-  CHI_I.clear();
-  CHI_II.clear();
+    if (Commutator::verbose) {
+      Z.profiler
+          .timer["_" + std::string(__func__) + "_" + std::to_string(__LINE__)] +=
+          omp_get_wtime() - t_internal;
+      t_internal = omp_get_wtime();
+    }
   }
 
   if (Commutator::verbose) {
@@ -3350,6 +3395,7 @@ void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z) 
 
   Z.modelspace->PreCalculateSixJ();
   auto &Z2 = Z.TwoBody;
+  ModelSpace *ms = Z.modelspace;
 
   std::vector<size_t> ch_bra_list, ch_ket_list;
   for (auto &iter : Z2.MatEl) {
@@ -3357,21 +3403,31 @@ void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z) 
     ch_ket_list.push_back(iter.first[1]);
   }
 
-  int nch = Gamma.modelspace->GetNumberTwoBodyChannels();
-  int n_nonzero = Z.modelspace->GetNumberTwoBodyChannels_CC();
+  int nch = (int)ch_bra_list.size();
+  int nch_ord = ms->GetNumberTwoBodyChannels();
+  int n_nonzero = ms->GetNumberTwoBodyChannels_CC();
+
+  // Ordinary 2n blocks once (GetTBME_J units). Pandya then reads these
+  // instead of GetTBME_J per CC pair.
+  std::deque<arma::mat> Eta2n(nch_ord), Gam2n(nch_ord);
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int ch = 0; ch < nch_ord; ++ch) {
+    Eta2n[ch] = Op2n132(Eta, ms, ch);
+    Gam2n[ch] = Op2n132(Gamma, ms, ch);
+  }
 
   std::deque<arma::mat> IntermediateTwobody(n_nonzero);
+#pragma omp parallel for schedule(dynamic, 1)
   for (int ch_cc = 0; ch_cc < n_nonzero; ++ch_cc) {
-    TwoBodyChannel_CC &tbc_cc = Z.modelspace->GetTwoBodyChannel_CC(ch_cc);
+    TwoBodyChannel_CC &tbc_cc = ms->GetTwoBodyChannel_CC(ch_cc);
     int nKets_cc = tbc_cc.GetNumberKets();
     int J_cc = tbc_cc.J;
+    if (nKets_cc < 1)
+      continue;
 
-    arma::mat Eta_bar =
-        arma::mat(nKets_cc * 2, nKets_cc * 2, arma::fill::zeros);
-    arma::mat Eta_bar_nnnn =
-        arma::mat(nKets_cc * 2, nKets_cc * 2, arma::fill::zeros);
-    arma::mat Gamma_bar =
-        arma::mat(nKets_cc * 2, nKets_cc * 2, arma::fill::zeros);
+    arma::mat Eta_bar(nKets_cc * 2, nKets_cc * 2, arma::fill::zeros);
+    arma::mat Eta_bar_nnnn(nKets_cc * 2, nKets_cc * 2, arma::fill::zeros);
+    arma::mat Gamma_bar(nKets_cc * 2, nKets_cc * 2, arma::fill::zeros);
 
     for (int ibra_cc = 0; ibra_cc < nKets_cc * 2; ++ibra_cc) {
       int a = 0;
@@ -3388,9 +3444,9 @@ void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z) 
           continue;
       }
 
-      Orbit &oa = Z.modelspace->GetOrbit(a);
+      Orbit &oa = ms->GetOrbit(a);
       double ja = oa.j2 * 0.5;
-      Orbit &ob = Z.modelspace->GetOrbit(b);
+      Orbit &ob = ms->GetOrbit(b);
       double jb = ob.j2 * 0.5;
 
       for (int iket_cc = 0; iket_cc < nKets_cc * 2; ++iket_cc) {
@@ -3408,9 +3464,9 @@ void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z) 
             continue;
         }
 
-        Orbit &oc = Z.modelspace->GetOrbit(c);
+        Orbit &oc = ms->GetOrbit(c);
         double jc = oc.j2 * 0.5;
-        Orbit &od = Z.modelspace->GetOrbit(d);
+        Orbit &od = ms->GetOrbit(d);
         double jd = od.j2 * 0.5;
 
         int jmin =
@@ -3426,13 +3482,13 @@ void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z) 
           jmin += jmin % 2;
         }
         for (int J_std = jmin; J_std <= jmax; J_std += dJ_std) {
-          double sixj1 = Z.modelspace->GetSixJ(ja, jb, J_cc, jc, jd, J_std);
+          double sixj1 = ms->GetSixJ(ja, jb, J_cc, jc, jd, J_std);
           if (std::abs(sixj1) > 1e-8) {
-            int phase = Z.modelspace->phase((ob.j2 + oc.j2) / 2 + J_std);
-            Xbar += (2 * J_std + 1) * sixj1 *
-                    Eta.TwoBody.GetTBME_J(J_std, a, d, b, c) * phase;
-            Ybar += (2 * J_std + 1) * sixj1 *
-                    Gamma.TwoBody.GetTBME_J(J_std, a, d, b, c) * phase;
+            int phase = ms->phase((ob.j2 + oc.j2) / 2 + J_std);
+            const double xme = ME2n132(Eta2n, ms, J_std, a, d, b, c);
+            const double yme = ME2n132(Gam2n, ms, J_std, a, d, b, c);
+            Xbar += (2 * J_std + 1) * sixj1 * xme * phase;
+            Ybar += (2 * J_std + 1) * sixj1 * yme * phase;
           }
         }
 
@@ -3456,10 +3512,10 @@ void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z) 
           continue;
       }
 
-      Orbit &oa = Z.modelspace->GetOrbit(a);
+      Orbit &oa = ms->GetOrbit(a);
       double n_a = oa.occ;
       double nbar_a = 1 - n_a;
-      Orbit &ob = Z.modelspace->GetOrbit(b);
+      Orbit &ob = ms->GetOrbit(b);
       double n_b = ob.occ;
       double nbar_b = 1 - n_b;
 
@@ -3478,10 +3534,10 @@ void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z) 
             continue;
         }
 
-        Orbit &oc = Z.modelspace->GetOrbit(c);
+        Orbit &oc = ms->GetOrbit(c);
         double n_c = oc.occ;
         double nbar_c = 1 - n_c;
-        Orbit &od = Z.modelspace->GetOrbit(d);
+        Orbit &od = ms->GetOrbit(d);
         double n_d = od.occ;
         double nbar_d = 1 - n_d;
 
@@ -3499,6 +3555,7 @@ void comm223_132_cross(const Operator &Eta, const Operator &Gamma, Operator &Z) 
     IntermediateTwobody[ch_cc] = Eta_bar * Eta_bar_nnnn * Gamma_bar;
   }
 
+#pragma omp parallel for schedule(dynamic, 1)
   for (int ch = 0; ch < nch; ++ch) {
     int ch_bra = ch_bra_list[ch];
     int ch_ket = ch_ket_list[ch];

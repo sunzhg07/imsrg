@@ -1199,6 +1199,79 @@ W^{(1)\,J_0}_{ijkl}
 \end{equation}
 $W^{(2)}$ is the same packaging with slots $\chi_{akbi}\,\Omega_{lbja}$.
 
+\subsubsection{Leftover-Pandya (DGEMM) form actually implemented}
+\label{sec:js-GIVb-pandya}
+
+Equation \eqref{eq:js-GIVb-W1} is a five-6j skeleton whose dummy
+$j_0$ is \emph{shared} between $\chi^\iota$ and $\Omega$, so the
+$j_0$-sum cannot be folded into a single outer product: a direct
+evaluation costs one rank-1 update per $j_0$ and makes GIVb the
+slowest tensor leftover by almost an order of magnitude. The 8
+distinct labels inside the $j_0$-sum admit no single 9j either --
+unless a $J_{ab}$ pair basis is introduced. That is exactly what a
+leftover Pandya on the \emph{ordinary} (not already cross-coupled)
+$\chi^\iota_{aibk}$ and $\Omega_{jbla}$ provides. AMC:
+\codename{factored\_GIV/input/G4b\_leftover\_pandya.txt}.
+
+Recouple both factors onto CC rows $(ik)$ / $(jl)$ with a common
+column $(ab)$ at $J_{ab}$:
+\begin{equation}\label{eq:js-GIVb-bars}
+\begin{aligned}
+\bar\chi^{\,J_{ik}J_{ab}}_{(ik)(ab)}
+&=
+(-1)^{J_{ik}+J_{ab}+\lambda}\,\hat J_{ik}\hat J_{ab}
+\sum_{J_{ai}J_{bk}}\hat J_{ai}\hat J_{bk}\,
+\ninej{\lambda}{J_{ik}}{J_{ab}}{J_{bk}}{j_k}{j_b}{J_{ai}}{j_i}{j_a}\,
+\chi^{\iota\,J_{ai}J_{bk}\lambda}_{aibk},
+\\
+\bar\Omega^{\,J_{jl}J_{ab}}_{(jl)(ab)}
+&=
+-(-1)^{J_{jl}+j_j+j_l+\lambda}\,\hat J_{jl}\hat J_{ab}
+\sum_{J_{jb}J_{la}}(-1)^{J_{jb}+J_{la}}\hat J_{jb}\hat J_{la}\,
+\ninej{\lambda}{J_{jl}}{J_{ab}}{J_{la}}{j_l}{j_a}{J_{jb}}{j_j}{j_b}\,
+\Omega^{J_{jb}J_{la}\lambda}_{jbla}.
+\end{aligned}
+\end{equation}
+Each is a \emph{single} 9j (AMC prints three 6j and a dummy $j_0$;
+the collection identity supplies the 9j together with an overall
+$(-1)^{2j_0}=-1$, since $j_0$ is half-integer here -- see the
+\codename{--collect-ninejs} caveat in
+\codename{learn/amc\_tts/factored\_GIV/input/G4b\_leftover\_pandya.txt}).
+The contraction is then a plain matrix product, one per
+$(J_{ik},J_{ab})$ channel pair, with no residual 6j:
+\begin{equation}\label{eq:js-GIVb-gemm}
+\overline W^{\,J}_{(ik)(jl)}
+=
+\hat\lambda^{-1}\hat J^{-1}
+\sum_{J_{ab}}\hat J_{ab}^{-1}
+\sum_{ab}
+\bar\chi^{\,J J_{ab}}_{(ik)(ab)}\,
+\bar\Omega^{\,J J_{ab}}_{(jl)(ab)},
+\end{equation}
+followed by an ordinary \emph{scalar} inverse Pandya
+\begin{equation}\label{eq:js-GIVb-inv}
+W^{(1)\,J_0}_{ijkl}
+=
+(-1)^{J_0+j_j+j_k}
+\sum_{J}(-1)^{J}\hat J\,
+\sixj{j_k}{j_l}{J_0}{j_j}{j_i}{J}\,
+\overline W^{\,J}_{(ik)(jl)},
+\end{equation}
+and the same expression with $(-1)^{J_0+j_i+j_l}$ on the $W^{(2)}$
+matrix. Both slots share the 9j weights and differ only by the
+transposed CC row, so they ride along in the same GEMM
+(\codename{CHI\_V\_final\_1/2}). The $2n$ ordered-pair layout is
+required throughout because tensor $\chi^\iota$ is neither Hermitian
+nor antisymmetric.
+
+Locked against \eqref{eq:js-GIVb-W1} at $\lambda=0\ldots4$ by
+\codename{run/test\_G4b\_leftover\_pandya\_amc.py}, and against the
+full leftover identity by
+\codename{run\_paper/test\_fact\_unfact\_223\_tts.py}. At
+$e_{\max}=6$, $\lambda=2$ this takes GIVb from $58.6$\,s to
+$7.5$\,s, putting it in line with GIVa ($3.3$\,s) and GIVc
+($2.7$\,s).
+
 \subsection{$\Gamma^{\mathrm{IV}_c}$ / $\chi^\lambda$
 (\codename{comm223\_232\_GIVc})}
 \label{sec:js-GIVc}
