@@ -1258,19 +1258,31 @@ W^{(1)\,J_0}_{ijkl}
 \overline W^{\,J}_{(ik)(jl)},
 \end{equation}
 and the same expression with $(-1)^{J_0+j_i+j_l}$ on the $W^{(2)}$
-matrix. Both slots share the 9j weights and differ only by the
-transposed CC row, so they ride along in the same GEMM
-(\codename{CHI\_V\_final\_1/2}). The $2n$ ordered-pair layout is
-required throughout because tensor $\chi^\iota$ is neither Hermitian
-nor antisymmetric.
+matrix. The $2n$ ordered-pair layout is required throughout because
+tensor $\chi^\iota$ is neither Hermitian nor antisymmetric.
+
+Only the $W^{(1)}$ bars are built. $W^{(2)}$ scatters the
+\emph{identical} weight to the pair-swapped CC row, so
+$\bar\chi^{(2)}(r,c)=\bar\chi^{(1)}(Sr,c)$ and likewise for
+$\bar\Omega$, where $S:(p,q)\mapsto(q,p)$ acts on the $2n$ index.
+Hence
+\begin{equation}\label{eq:js-GIVb-sym}
+\overline W^{(2)}(r,r')=\overline W^{(1)}(Sr,Sr')
+\end{equation}
+with no phase, and \eqref{eq:js-GIVb-inv} reads the swapped indices
+instead of a second matrix -- halving the scatter writes, the GEMM and
+the memory. $S$ is an involution on the \emph{used} index set:
+\codename{GetLocalIndex(p,q)} adds $n_K$ only on the $p>q$ branch,
+which $p=q$ never takes, so diagonal kets are fixed points and the
+slots $\mathrm{loc}+n_K$ belonging to them are never written.
 
 Locked against \eqref{eq:js-GIVb-W1} at $\lambda=0\ldots4$ by
 \codename{run/test\_G4b\_leftover\_pandya\_amc.py}, and against the
 full leftover identity by
 \codename{run\_paper/test\_fact\_unfact\_223\_tts.py}. At
 $e_{\max}=6$, $\lambda=2$ this takes GIVb from $58.6$\,s to
-$7.5$\,s, putting it in line with GIVa ($3.3$\,s) and GIVc
-($2.7$\,s).
+$5.7$\,s, putting it in line with GIVa ($3.3$\,s) and GIVc
+($2.5$\,s).
 
 \subsection{$\Gamma^{\mathrm{IV}_c}$ / $\chi^\lambda$
 (\codename{comm223\_232\_GIVc})}

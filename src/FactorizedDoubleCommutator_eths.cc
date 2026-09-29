@@ -3409,6 +3409,55 @@ void comm223_232_GIVb(const Operator &Eta_in, const Operator &Gamma,
 }
 
 namespace {
+
+// Direct-mapped memo for the leftover-Pandya 9j. ModelSpace::GetNineJ
+// canonicalises its nine arguments and probes a global hash map, which
+// profiling showed costing more than the scatter arithmetic it feeds: every
+// orbit sharing a j-quadruple re-requests the same symbol. Keyed on the raw
+// argument order (so the same symbol may be stored under several keys, which
+// is harmless) and on lambda, hence valid across channels and across calls.
+// The value depends only on the angular momenta, so a persistent
+// thread_local table is safe even if the model space changes.
+struct NineJMemo {
+  static constexpr int kBits = 18;
+  static constexpr size_t kSize = size_t(1) << kBits;
+  std::vector<uint64_t> key;
+  std::vector<double> val;
+  NineJMemo() : key(kSize, 0), val(kSize, 0.0) {}
+
+  // Nine fields of 7 bits; bit 63 marks an occupied slot. Safe while every
+  // 2*j and every J stays below 128, i.e. well past any usable emax.
+  static uint64_t Pack(int a, int b, int c, int d, int e, int f, int g, int h,
+                       int i) {
+    return (uint64_t)a | ((uint64_t)b << 7) | ((uint64_t)c << 14) |
+           ((uint64_t)d << 21) | ((uint64_t)e << 28) | ((uint64_t)f << 35) |
+           ((uint64_t)g << 42) | ((uint64_t)h << 49) | ((uint64_t)i << 56);
+  }
+
+  // Arguments follow GetNineJ, but the four orbit entries are passed as 2*j
+  // so the key stays integral.
+  double Get(ModelSpace *ms, int lam, int J1, int J2, int J3, int j2a, int j2b,
+             int J4, int j2c, int j2d) {
+    const uint64_t k =
+        (1ull << 63) | Pack(lam, J1, J2, J3, j2a, j2b, J4, j2c, j2d);
+    uint64_t h = k * 0x9E3779B97F4A7C15ull;
+    h ^= h >> 29;
+    const size_t slot = (size_t)(h >> (64 - kBits));
+    if (key[slot] == k)
+      return val[slot];
+    const double v = ms->GetNineJ(lam, J1, J2, J3, 0.5 * j2a, 0.5 * j2b, J4,
+                                  0.5 * j2c, 0.5 * j2d);
+    key[slot] = k;
+    val[slot] = v;
+    return v;
+  }
+};
+
+NineJMemo &Memo9() {
+  static thread_local NineJMemo m;
+  return m;
+}
+
 ////////////////////////////////////////////////////////////////////////////
 /// Gamma^IV_b / chi^iota.  FDC.cc ~1906 (bar_CHI_V → recouple → DGEMM with
 /// bar_Eta → inverse Pandya), tensor Ω:
@@ -3487,16 +3536,18 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
   }
   const int np = (int)cc_pairs.size();
   std::vector<int> pair_of((size_t)n_cc * n_cc, -1);
-  std::vector<arma::mat> barX1((size_t)np), barX2((size_t)np), barY1((size_t)np),
-      barY2((size_t)np);
+  // Only the W1 bars are built. W2 scatters the identical weight to the
+  // pair-swapped row, so barX2(r,c) = barX1(Sr,c) and barY2(r,c) = barY1(Sr,c)
+  // with S the (p,q)→(q,p) involution on the 2n index; hence
+  // CHI_V_final_2(r,r') = CHI_V_final_1(Sr,Sr') with no phase, and the inverse
+  // below simply reads the swapped indices.
+  std::vector<arma::mat> barX1((size_t)np), barY1((size_t)np);
   for (int ip = 0; ip < np; ++ip) {
     TwoBodyChannel_CC &tb = ms->GetTwoBodyChannel_CC(cc_pairs[ip][0]);
     TwoBodyChannel_CC &tk = ms->GetTwoBodyChannel_CC(cc_pairs[ip][1]);
     const int nb = 2 * tb.GetNumberKets(), nk = 2 * tk.GetNumberKets();
     barX1[ip].zeros(nb, nk);
-    barX2[ip].zeros(nb, nk);
     barY1[ip].zeros(nb, nk);
-    barY2[ip].zeros(nb, nk);
     pair_of[(size_t)cc_pairs[ip][0] * n_cc + cc_pairs[ip][1]] = ip;
   }
 
@@ -3510,6 +3561,7 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
   const double t_pack = omp_get_wtime();
 #pragma omp parallel for schedule(dynamic, 1)
   for (int ic = 0; ic < n_chi; ++ic) {
+    NineJMemo &m9 = Memo9();
     const int ch2 = chi_keys[ic][0], ch3 = chi_keys[ic][1];
     const int Jai = ms->GetTwoBodyChannel(ch2).J;
     const int Jbk = ms->GetTwoBodyChannel(ch3).J;
@@ -3548,8 +3600,7 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
             continue;
           TwoBodyChannel_CC &tcc_ik = ms->GetTwoBodyChannel_CC(ch_ik);
           const int row1 = IndexCC(tcc_ik, i, k);
-          const int row2 = IndexCC(tcc_ik, k, i);
-          if (row1 < 0 and row2 < 0)
+          if (row1 < 0)
             continue;
           const int Jabmin =
               std::max(std::abs(oa.j2 - ob.j2) / 2, std::abs(Jik - lambda));
@@ -3567,24 +3618,16 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
               continue;
             // AMC prints −Σ ĵ0² 3×6j; the collected 9j is itself −Σ ĵ0² 3×6j
             // (half-integer j0), so the two minuses cancel here.
-            const double ninej = ms->GetNineJ(lambda, Jik, Jab, Jbk, jk, jb,
-                                              Jai, ji, ja);
+            const double ninej = m9.Get(ms, lambda, Jik, Jab, Jbk, ok.j2,
+                                        ob.j2, Jai, oi.j2, oa.j2);
             if (std::abs(ninej) < 1e-14)
               continue;
             const double pref =
                 ms->phase(Jik + Jab + lambda) *
                 std::sqrt(2.0 * Jik + 1.0) * std::sqrt(2.0 * Jab + 1.0);
-            const double add = pref * hats * ninej * chi;
-            if (row1 >= 0) {
-              double *d1 = &barX1[ip](row1, col);
+            double *d1 = &barX1[ip](row1, col);
 #pragma omp atomic
-              *d1 += add;
-            }
-            if (row2 >= 0) {
-              double *d2 = &barX2[ip](row2, col);
-#pragma omp atomic
-              *d2 += add;
-            }
+            *d1 += pref * hats * ninej * chi;
           }
         }
       }
@@ -3597,6 +3640,7 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
     Om2n[ip] = Omega2n(Eta, ms, (int)ch_bra_list[ip], (int)ch_ket_list[ip]);
 #pragma omp parallel for schedule(dynamic, 1)
   for (int iom = 0; iom < nch_pairs; ++iom) {
+    NineJMemo &m9 = Memo9();
     TwoBodyChannel &tbc4 = ms->GetTwoBodyChannel((int)ch_bra_list[iom]);
     TwoBodyChannel &tbc5 = ms->GetTwoBodyChannel((int)ch_ket_list[iom]);
     const int Jjb = tbc4.J, Jla = tbc5.J;
@@ -3636,8 +3680,7 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
             continue;
           TwoBodyChannel_CC &tcc_jl = ms->GetTwoBodyChannel_CC(ch_jl);
           const int row1 = IndexCC(tcc_jl, j, l);
-          const int row2 = IndexCC(tcc_jl, l, j);
-          if (row1 < 0 and row2 < 0)
+          if (row1 < 0)
             continue;
           const int Jabmin =
               std::max(std::abs(oa.j2 - ob.j2) / 2, std::abs(Jjl - lambda));
@@ -3654,24 +3697,16 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
             if (col < 0)
               continue;
             // AMC prints +Σ ĵ0² 3×6j here, so the collected 9j carries the minus.
-            const double ninej = ms->GetNineJ(lambda, Jjl, Jab, Jla, jl, ja,
-                                              Jjb, jj, jb);
+            const double ninej = m9.Get(ms, lambda, Jjl, Jab, Jla, ol.j2,
+                                        oa.j2, Jjb, oj.j2, ob.j2);
             if (std::abs(ninej) < 1e-14)
               continue;
             const double pref =
                 -ms->phase(Jjl + (oj.j2 + ol.j2) / 2 + lambda) *
                 std::sqrt(2.0 * Jjl + 1.0) * std::sqrt(2.0 * Jab + 1.0);
-            const double add = pref * phJ * hats * ninej * om;
-            if (row1 >= 0) {
-              double *d1 = &barY1[ip](row1, col);
+            double *d1 = &barY1[ip](row1, col);
 #pragma omp atomic
-              *d1 += add;
-            }
-            if (row2 >= 0) {
-              double *d2 = &barY2[ip](row2, col);
-#pragma omp atomic
-              *d2 += add;
-            }
+            *d1 += pref * phJ * hats * ninej * om;
           }
         }
       }
@@ -3680,13 +3715,12 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
   Om2n.clear();
   Z.profiler.timer["_GIVb_pack"] += omp_get_wtime() - t_pack;
 
-  std::deque<arma::mat> CHI_V_final_1(n_cc), CHI_V_final_2(n_cc);
+  std::deque<arma::mat> CHI_V_final_1(n_cc);
   for (int ch = 0; ch < n_cc; ++ch) {
     const int nk = ms->GetTwoBodyChannel_CC(ch).GetNumberKets();
     if (nk < 1)
       continue;
     CHI_V_final_1[ch].zeros(2 * nk, 2 * nk);
-    CHI_V_final_2[ch].zeros(2 * nk, 2 * nk);
   }
 #pragma omp parallel for schedule(dynamic, 1)
   for (int ch_ik = 0; ch_ik < n_cc; ++ch_ik) {
@@ -3704,7 +3738,6 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
         continue;
       const double sc = hat_lam_inv / std::sqrt(2.0 * tik.J + 1.0);
       CHI_V_final_1[ch_ik] += sc * (barX1[ip] * barY1[ip].t());
-      CHI_V_final_2[ch_ik] += sc * (barX2[ip] * barY2[ip].t());
     }
   }
   Z.profiler.timer["_GIVb_cc_dgemm"] += omp_get_wtime() - t_internal;
@@ -3763,10 +3796,13 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
           TwoBodyChannel_CC &tbc_cc = ms->GetTwoBodyChannel_CC(ch_cc);
           const int indx_ik = (int)tbc_cc.GetLocalIndex(i, k);
           const int indx_jl = (int)tbc_cc.GetLocalIndex(j, l);
+          const int indx_ki = (int)tbc_cc.GetLocalIndex(k, i);
+          const int indx_lj = (int)tbc_cc.GetLocalIndex(l, j);
           const double pref =
               ms->phase(J6) * std::sqrt(2.0 * J6 + 1.0) * six5;
-          const double w1 = ph1 * pref * CHI_V_final_1[ch_cc](indx_ik, indx_jl);
-          const double w2 = ph2 * pref * CHI_V_final_2[ch_cc](indx_ik, indx_jl);
+          const arma::mat &C = CHI_V_final_1[ch_cc];
+          const double w1 = ph1 * pref * C(indx_ik, indx_jl);
+          const double w2 = ph2 * pref * C(indx_ki, indx_lj);
           w += w1 + w2;
         }
         W2n(ibra, iket) = w;
