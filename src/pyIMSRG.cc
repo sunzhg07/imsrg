@@ -1532,7 +1532,19 @@ PYBIND11_MODULE(pyIMSRG, m) {
            "SR only: Excitation (default), ParticleAttached, ParticleRemoved")
       .def("GetSREOMMode", &EOM::GetSREOMMode)
       // MR setup — must be called before operator-level methods in MR mode
-      .def("ComputeNorm", &EOM::ComputeNorm, py::arg("Op1"), py::arg("Op2"))
+      .def("ComputeNorm", &EOM::ComputeNorm, py::arg("Op1"), py::arg("Op2"),
+           "v_aᵀ N[ρ] v_b  (same-ref density kernel)")
+      .def("ConstructOverlapMatrix", &EOM::ConstructOverlapMatrix,
+           py::arg("include_fermi_identity") = true,
+           "⟨Q_a† Q_b⟩ kernel on current rdm, including A1/A2. Does not replace N[ρ].")
+      .def("ConstructOverlapKernel", &EOM::ConstructOverlapKernel,
+           py::arg("tdm"),
+           "Build N[tdm] for ⟨a|Q_a† Q_b|b⟩; does not replace N[ρ]")
+      .def("OverlapAB", &EOM::OverlapAB, py::arg("Qa"), py::arg("Qb"),
+           "v_aᵀ N_overlap v_b; call ConstructOverlapMatrix or ConstructOverlapKernel first")
+      .def("ComputeNormAB", &EOM::ComputeNormAB,
+           py::arg("Qa"), py::arg("Qb"), py::arg("tdm"),
+           "⟨a|Q_a† Q_b|b⟩ from N diagrams × TDM (rebuilds overlap kernel)")
       .def("FlattenOperator", [](const EOM &self, Operator &Op) {
             arma::vec v = self.FlattenOperator(Op);
             return py::array_t<double>({(py::ssize_t)v.n_elem}, v.memptr());
@@ -1550,8 +1562,11 @@ PYBIND11_MODULE(pyIMSRG, m) {
           }, py::arg("Op"), py::arg("v"))
       .def("ConstructConfigs",       &EOM::ConstructConfigs)
       .def("ConstructConfigs_tensor", &EOM::ConstructConfigs_tensor)
-      .def("ConstructNormMatrix",    &EOM::ConstructNormMatrix)
-      .def("ConstructNormMatrix_tensor", &EOM::ConstructNormMatrix_tensor)
+      .def("ConstructNormMatrix",    &EOM::ConstructNormMatrix,
+           py::arg("include_fermi_identity") = true,
+           "Wick N of ⟨Q_a† Q_b⟩_ρ. Drop Fermi A1/A2 identities for a TDM.")
+      .def("ConstructNormMatrix_tensor", &EOM::ConstructNormMatrix_tensor,
+           py::arg("include_fermi_identity") = true)
       .def("ConstructProjectMatrix", &EOM::ConstructProjectMatrix)
       .def("SetArnoldiUseProjection", &EOM::SetArnoldiUseProjection,
            py::arg("use_projection"))
@@ -1604,7 +1619,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
            py::arg("H"), py::arg("include_zerobody") = true)
       .def("CrossRefOverlap", &EOM::CrossRefOverlap,
            py::arg("Qa"), py::arg("Qb"), py::arg("include_zerobody") = false,
-           "⟨a|Q_a† Q_b|b⟩ from four H/AH commutators; rdm is ρ or TDM")
+           "leftover ⟨a|[Q_a†,Q_b]|b⟩; use ComputeNormAB for the product")
       .def("CrossRefOverlapHA", &EOM::CrossRefOverlapHA,
            py::arg("Ha"), py::arg("Aa"), py::arg("Hb"), py::arg("Ab"),
            py::arg("include_zerobody") = false)
@@ -1702,8 +1717,13 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def_readonly("rdm", &EOM::rdm)
       .def("PrintConfigs", &EOM::PrintConfigs)
       .def_property_readonly("Nkernel", [](const EOM &self) {
-          // Convert arma::sp_mat to dense numpy array
           arma::mat dense = arma::mat(self.Nkernel);
+          return py::array_t<double>(
+              {(py::ssize_t)dense.n_rows, (py::ssize_t)dense.n_cols},
+              dense.memptr());
+      })
+      .def_property_readonly("Nkernel_overlap", [](const EOM &self) {
+          arma::mat dense = arma::mat(self.Nkernel_overlap);
           return py::array_t<double>(
               {(py::ssize_t)dense.n_rows, (py::ssize_t)dense.n_cols},
               dense.memptr());

@@ -531,7 +531,7 @@ void EOM::ShowModel() {
   }
 }
 
-void EOM::ConstructNormMatrix() {
+void EOM::ConstructNormMatrix(bool include_fermi_identity) {
   if (eom_tensor_configs)
     throw std::runtime_error(
         "ConstructNormMatrix: scalar-only; use ConstructNormMatrix_tensor");
@@ -562,7 +562,7 @@ void EOM::ConstructNormMatrix() {
       for (index_t j = ph_start; j <= ph_end; j++) {
         std::array<index_t, 4> &cf_ket = eom_confs.at(j);
 
-        if (i == j) {
+        if (include_fermi_identity && i == j) {
           Nkernel(i, j) += 1. * (obra.j2 + 1.);
         }
         if (cf_bra[1] != cf_ket[1])
@@ -710,11 +710,13 @@ void EOM::ConstructNormMatrix() {
   }
   // A2 C3 benchmarked
   if (pphh_dim != 0) {
-    // first We compute A2
-    for (index_t i = pphh_start; i <= pphh_end; i++) {
-      std::array<index_t, 4> &cf_bra = eom_confs.at(i);
-      TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
-      Nkernel(i, i) += (2 * tbc_bra.J + 1.);
+    // first We compute A2 (Fermi identity; off for a TDM with ⟨a|b⟩=0)
+    if (include_fermi_identity) {
+      for (index_t i = pphh_start; i <= pphh_end; i++) {
+        std::array<index_t, 4> &cf_bra = eom_confs.at(i);
+        TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
+        Nkernel(i, i) += (2 * tbc_bra.J + 1.);
+      }
     }
 
     // C3
@@ -848,16 +850,15 @@ void EOM::ConstructNormMatrix() {
           continue;
 
         if (c1 == b) {
-          Nkernel(i, j) += norm_fact * dbra1.Phase(j1) * RdmOB(a, d) *
-                           (2 * j1 + 1.) / sqrt(oa.j2 + 1.);
-          Nkernel(j, i) += norm_fact * dbra1.Phase(j1) * RdmOB(a, d) *
-                           (2 * j1 + 1.) / sqrt(oa.j2 + 1.);
+          const double fac = norm_fact * dbra1.Phase(j1) * (2 * j1 + 1.) /
+                             sqrt(oa.j2 + 1.);
+          Nkernel(i, j) += fac * RdmOB(a, d);
+          Nkernel(j, i) += fac * RdmOB(d, a);
         }
         if (c1 == a && a != b) {
-          Nkernel(i, j) +=
-              norm_fact * RdmOB(b, d) * (2 * j1 + 1.) / sqrt(ob.j2 + 1.);
-          Nkernel(j, i) +=
-              norm_fact * RdmOB(b, d) * (2 * j1 + 1.) / sqrt(ob.j2 + 1.);
+          const double fac = norm_fact * (2 * j1 + 1.) / sqrt(ob.j2 + 1.);
+          Nkernel(i, j) += fac * RdmOB(b, d);
+          Nkernel(j, i) += fac * RdmOB(d, b);
         }
       }
     }
@@ -893,11 +894,11 @@ void EOM::ConstructNormMatrix() {
           double norm_fact = 1.;
           if (c1 == d)
             norm_fact = sqrt(2.);
-          double val2 =
-              RdmTB_J(tbc_bra.J, a, b, c1, d) *
-              sqrt(j1 * 2. + 1.);
-          Nkernel(i, j) -= val2 * norm_fact;
-          Nkernel(j, i) -= val2 * norm_fact;
+          const double hatJ = sqrt(j1 * 2. + 1.);
+          Nkernel(i, j) -=
+              RdmTB_J(tbc_bra.J, a, b, c1, d) * hatJ * norm_fact;
+          Nkernel(j, i) -=
+              RdmTB_J(tbc_bra.J, c1, d, a, b) * hatJ * norm_fact;
         }
       }
     }
@@ -974,11 +975,11 @@ void EOM::ConstructNormMatrix() {
           double norm_fact = 1.;
           if (a == b1)
             norm_fact = sqrt(2);
-          double val2 =
-              RdmTB_J(tbc_bra.J, a, b1, c, d) *
-              sqrt(2 * j1 + 1.);
-          Nkernel(i, j) += val2 * norm_fact;
-          Nkernel(j, i) += val2 * norm_fact;
+          const double hatJ = sqrt(2 * j1 + 1.);
+          Nkernel(i, j) +=
+              RdmTB_J(tbc_bra.J, a, b1, c, d) * hatJ * norm_fact;
+          Nkernel(j, i) +=
+              RdmTB_J(tbc_bra.J, c, d, a, b1) * hatJ * norm_fact;
         }
       }
     }
@@ -990,7 +991,7 @@ void EOM::ConstructNormMatrix() {
 
 
 
-void EOM::ConstructNormMatrix_tensor() {
+void EOM::ConstructNormMatrix_tensor(bool include_fermi_identity) {
   // Tensor N-kernel: same Wick strings as ConstructNormMatrix, AMC with
   // X,Y rank λ (Y index-reversed so λ×λ→0). Formulas:
   //   learn/amc_tts/eom_norm/output/*_tensor.tex
@@ -1059,7 +1060,7 @@ void EOM::ConstructNormMatrix_tensor() {
       Orbit &oi = modelspace->GetOrbit(cf_bra[1]);
       const double phase = ph((oa.j2 + oi.j2) / 2 + lam);
       const double wocc = oi.occ * (1.0 - oa.occ);
-      if (std::abs(wocc) > 1e-8)
+      if (include_fermi_identity && std::abs(wocc) > 1e-8)
         Nkernel(i, i) += -phase * lamhatinv2 * we1(oa, oi) * wocc;
       for (index_t j = qv_start; j <= qv_end; j++) {
         auto &cf_ket = eom_confs.at(j);
@@ -1087,7 +1088,7 @@ void EOM::ConstructNormMatrix_tensor() {
         if (cf_bra[1] != cf_ket[1])
           continue;
         Orbit &ob = modelspace->GetOrbit(cf_ket[0]);
-        if (i == j)
+        if (include_fermi_identity && i == j)
           Nkernel(i, j) += -phase * lamhatinv2 * we1(oa, oi);
         if (ob.j2 != oa.j2)
           continue;
@@ -1132,7 +1133,7 @@ void EOM::ConstructNormMatrix_tensor() {
         Orbit &ov2 = modelspace->GetOrbit(k1.q);
         const double wocc =
             ov1.occ * ov2.occ * (1.0 - oq1.occ) * (1.0 - oq2.occ);
-        if (std::abs(wocc) > 1e-8)
+        if (include_fermi_identity && std::abs(wocc) > 1e-8)
           Nkernel(i, i) +=
               ph(J0 + J1 + lam) * lamhatinv2 * we2(J0, J1) * wocc;
       }
@@ -1231,7 +1232,7 @@ void EOM::ConstructNormMatrix_tensor() {
         Orbit &ov = modelspace->GetOrbit(kvcX.q);
         const double wocc =
             oh.occ * ov.occ * (1.0 - oa.occ) * (1.0 - ob.occ);
-        if (std::abs(wocc) > 1e-8)
+        if (include_fermi_identity && std::abs(wocc) > 1e-8)
           Nkernel(i, i) += ph(tbX.J + tkX.J + lam) * lamhatinv2 *
                            we2(tbX.J, tkX.J) * wocc;
       }
@@ -1399,7 +1400,7 @@ void EOM::ConstructNormMatrix_tensor() {
       Orbit &oh1 = modelspace->GetOrbit(h1);
       Orbit &oh2 = modelspace->GetOrbit(h2);
       const double wocc = oh1.occ * oh2.occ * (1.0 - oa.occ) * (1.0 - ob.occ);
-      if (std::abs(wocc) < 1e-8)
+      if (!include_fermi_identity || std::abs(wocc) < 1e-8)
         continue;
       Nkernel(i, i) +=
           ph(Jst0 + Jst1 + lam) * lamhatinv2 * we2(Jst0, Jst1) * wocc;
@@ -1529,18 +1530,17 @@ void EOM::ConstructNormMatrix_tensor() {
         if (c1 == a && od.j2 == ob.j2) {
           double six =
               AngMom::SixJ((double)lam, (double)Jab, (double)Jhv, jb, jc, ja);
-          double val = ph_dag * ph_amc * hats / jhat(ob) * six * norm_fact *
-                       RdmOB(b, d);
-          Nkernel(i, j) += val;
-          Nkernel(j, i) += val;
+          double rec = ph_dag * ph_amc * hats / jhat(ob) * six * norm_fact;
+          Nkernel(i, j) += rec * RdmOB(b, d);
+          Nkernel(j, i) += rec * RdmOB(d, b);
         }
         if (c1 == b && a != b && od.j2 == oa.j2) {
           double six =
               AngMom::SixJ((double)lam, (double)Jab, (double)Jhv, ja, jc, jb);
-          double val = ph_dag * ph_amc * hats / jhat(oa) * six * norm_fact *
-                       kpp.Phase(Jab) * RdmOB(a, d);
-          Nkernel(i, j) += val;
-          Nkernel(j, i) += val;
+          double rec = ph_dag * ph_amc * hats / jhat(oa) * six * norm_fact *
+                       kpp.Phase(Jab);
+          Nkernel(i, j) += rec * RdmOB(a, d);
+          Nkernel(j, i) += rec * RdmOB(d, a);
         }
       }
     }
@@ -1581,10 +1581,10 @@ void EOM::ConstructNormMatrix_tensor() {
         double six = AngMom::SixJ((double)Jhv, (double)Jab, (double)lam,
                                    oe.j2 * 0.5, oc.j2 * 0.5, od.j2 * 0.5);
         double nf = (e == d) ? std::sqrt(2.) : 1.;
-        double val = -ph_dag * ph(Jab + (od.j2 + oe.j2) / 2) * hat(Jhv) *
-                     lamhatinv * six * RdmTB_J(Jab, a, b, e, d) * nf;
-        Nkernel(i, j) += val;
-        Nkernel(j, i) += val;
+        double rec = -ph_dag * ph(Jab + (od.j2 + oe.j2) / 2) * hat(Jhv) *
+                     lamhatinv * six * nf;
+        Nkernel(i, j) += rec * RdmTB_J(Jab, a, b, e, d);
+        Nkernel(j, i) += rec * RdmTB_J(Jab, e, d, a, b);
       }
     }
   }
@@ -1621,10 +1621,10 @@ void EOM::ConstructNormMatrix_tensor() {
         double six = AngMom::SixJ((double)J0, (double)J1, (double)lam,
                                    ok.j2 * 0.5, ob.j2 * 0.5, oa.j2 * 0.5);
         double nf = (a == k) ? std::sqrt(2.) : 1.;
-        double val = ph(J0 + (oa.j2 + ob.j2) / 2) * hat(J0) * lamhatinv *
-                     six * we1(ob, ok) * RdmTB_J(J1, a, k, cv, dv) * nf;
-        Nkernel(i, j) += val;
-        Nkernel(j, i) += val;
+        double rec = ph(J0 + (oa.j2 + ob.j2) / 2) * hat(J0) * lamhatinv *
+                     six * we1(ob, ok) * nf;
+        Nkernel(i, j) += rec * RdmTB_J(J1, a, k, cv, dv);
+        Nkernel(j, i) += rec * RdmTB_J(J1, cv, dv, a, k);
       }
     }
   }
@@ -2294,6 +2294,62 @@ double EOM::ComputeNorm(Operator &Op1, Operator &Op2) {
   double norm = arma::dot(v1, temp);
 
   return norm;
+}
+
+void EOM::ConstructOverlapMatrix(bool include_fermi_identity) {
+  // Same Wick diagrams as ConstructNormMatrix, including A1/A2 and both
+  // N_ij and N_ji. For a TDM, N[ρ]ᵀ = N[ρᵀ] so the two kshell transitions
+  // are adjoints. Does not replace Nkernel (ComputeNorm).
+  if (eom_dims == 0) {
+    if (IsTensorEOM())
+      ConstructConfigs_tensor();
+    else
+      ConstructConfigs();
+  }
+  arma::sp_mat N_save = Nkernel;
+  if (eom_tensor_configs)
+    ConstructNormMatrix_tensor(include_fermi_identity);
+  else
+    ConstructNormMatrix(include_fermi_identity);
+  Nkernel_overlap = Nkernel;
+  have_Nkernel_overlap = true;
+  Nkernel = std::move(N_save);
+}
+
+void EOM::ConstructOverlapKernel(Operator &tdm) {
+  if (eom_dims == 0) {
+    if (IsTensorEOM())
+      ConstructConfigs_tensor();
+    else
+      ConstructConfigs();
+  }
+  Operator rdm_save = rdm;
+  ModelSpace *rdm_ms_save = rdm_ms;
+  std::vector<int> map_save = hs_to_rdm_orb;
+  const bool mr_save = is_multiref;
+
+  SetRdm(tdm);
+  ConstructOverlapMatrix(true);
+
+  rdm = std::move(rdm_save);
+  rdm_ms = rdm_ms_save;
+  hs_to_rdm_orb = std::move(map_save);
+  is_multiref = mr_save;
+}
+
+double EOM::OverlapAB(Operator &Qa, Operator &Qb) {
+  if (!have_Nkernel_overlap)
+    throw std::runtime_error(
+        "OverlapAB: call ConstructOverlapKernel(tdm) first");
+  arma::vec v1 = FlattenOperator(Qa);
+  arma::vec v2 = FlattenOperator(Qb);
+  arma::vec temp = Nkernel_overlap * v2;
+  return arma::dot(v1, temp);
+}
+
+double EOM::ComputeNormAB(Operator &Qa, Operator &Qb, Operator &tdm) {
+  ConstructOverlapKernel(tdm);
+  return OverlapAB(Qa, Qb);
 }
 
 void EOM::ProjectOprator(Operator &Qin) {

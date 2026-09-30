@@ -814,6 +814,14 @@ not the IVb leftover sign.
 ethS leftover is two AMC strings \eqref{eq:GIVb}:
 $W=W^{(1)}+W^{(2)}_{\Omega_{lbja}}$ (no extra $h_\Omega$).
 
+\textbf{Do not reuse this RC for the tensor ethS bars.} It assumes a
+\emph{scalar}-Pandya $\bar\chi^\iota$, whereas the ethS
+\codename{bar\_CHI\_V} is tensor-Pandya even at $\lambda=0$; feeding it
+through the RC above fails the leftover identity at the tens-of-percent
+level (rel $0.38$ at $\lambda=0$, $0.32$ at $\lambda=2$ on $232$) --
+large enough that it is clearly a packaging error, not an angular
+subtlety. The tensor path is Sec.~\ref{sec:js-GIVb-pandya}.
+
 \subsection{$\Gamma^{\MyRomanNum{3}_c}$, $\Gamma^{\MyRomanNum{4}_c}$}
 \label{sec:code-rest}
 
@@ -1276,13 +1284,25 @@ the memory. $S$ is an involution on the \emph{used} index set:
 which $p=q$ never takes, so diagonal kets are fixed points and the
 slots $\mathrm{loc}+n_K$ belonging to them are never written.
 
+One further implementation note: the two scatters memoise their 9j in
+a small direct-mapped per-thread table rather than calling
+\codename{ModelSpace::GetNineJ} directly. \codename{GetNineJ}
+canonicalises its nine arguments and probes a global hash map, and
+every orbit sharing a $j$-quadruple re-requests the same symbol, so
+that lookup cost more than the scatter arithmetic it feeds. The memo
+is keyed on the raw argument order (the same symbol may therefore be
+stored under several keys, which is harmless) and on $\lambda$, so it
+stays valid across channels and across calls; the value depends only
+on the angular momenta, so a persistent \codename{thread\_local} table
+is safe even if the model space changes.
+
 Locked against \eqref{eq:js-GIVb-W1} at $\lambda=0\ldots4$ by
 \codename{run/test\_G4b\_leftover\_pandya\_amc.py}, and against the
 full leftover identity by
-\codename{run\_paper/test\_fact\_unfact\_223\_tts.py}. At
-$e_{\max}=6$, $\lambda=2$ this takes GIVb from $58.6$\,s to
-$5.7$\,s, putting it in line with GIVa ($3.3$\,s) and GIVc
-($2.5$\,s).
+\codename{run\_paper/test\_fact\_unfact\_223\_tts.py}
+(Sec.~\ref{sec:cost}). At $e_{\max}=6$, $\lambda=2$ this takes GIVb
+from $58.6$\,s to $5.7$\,s, putting it in line with GIVa ($3.3$\,s)
+and GIVc ($2.5$\,s).
 
 \subsection{$\Gamma^{\mathrm{IV}_c}$ / $\chi^\lambda$
 (\codename{comm223\_232\_GIVc})}
@@ -1331,6 +1351,76 @@ $\hat J^{\pm1}$ or $1/\sqrt{2J+1}$ are packaging, not a wrong 6j.
 He8 emax=2 leftover grid ($\lambda=0\ldots5$, $T=0,1,2$, both $\pi$,
 $h_\Omega=\pm1$): nested ${\tt st}+{\tt tts}$ $\equiv$ ethS at
 $\sim10^{-15}$.
+
+% =============================================================================
+\section{Validation and cost}
+\label{sec:cost}
+% =============================================================================
+
+\subsection{J-scheme unfactorized $\equiv$ J-scheme factorized}
+
+\codename{run\_paper/test\_fact\_unfact\_223\_tts.py} evaluates the same
+leftover double commutator twice from one random scalar $H$ and one
+random antihermitian tensor $\Omega$, and compares the results as
+operator norms. The unfactorized side builds the three-body
+intermediate explicitly,
+\[
+  W_3=-\,\codename{comm223st}(H,\Omega),\qquad
+  Z=\codename{comm231tts}+\codename{comm232tts}+\codename{comm132tts},
+\]
+while the factorized side stores no three-body object,
+\[
+  Z=\codename{comm223\_231\_st}+\codename{comm223\_232}
+   +\codename{comm223\_132\_tts}.
+\]
+The test is $\lVert Z_{\mathrm{un}}-Z_{\mathrm{fa}}\rVert\le
+\mathrm{tol}\cdot\max(1,\lVert Z_{\mathrm{un}}\rVert,
+\lVert Z_{\mathrm{fa}}\rVert)$. Crucially it \emph{also} re-runs $231$,
+$232$ and $132$ separately and compares them one by one, so a passing
+total cannot hide a cancellation between two wrong terms. $\Omega$ is
+reseeded per cell as $\mathtt{SEED}+17\lambda+5T+3P$, so every cell is
+an independent draw; at $\lambda=0$ the factorized side is handed the
+rank-3 \codename{MakeReduced} copy, since the scalar case needs the
+reduced packaging.
+
+With the leftover-Pandya GIVb (Sec.~\ref{sec:js-GIVb-pandya}) in place,
+$e_{\max}=2$ gives $30/30$ PASS over
+$\lambda=0\ldots4\times T=0,1,2\times$ both parities, relative
+deviations $8\times10^{-16}$ to $2.9\times10^{-15}$, with $231$, $232$,
+$132$ each OK individually. A single $e_{\max}=3$ cell
+($\lambda=2$, $T=0$, even), where the intermediate is much larger at
+$\lVert W_3\rVert=4.6\times10^{8}$, agrees to $4.0\times10^{-15}$ --
+and took $478$\,s unfactorized against $0.16$\,s factorized.
+
+\subsection{Cost of the factorized leftover}
+
+Full factorized leftover, $\lambda=2$, $T=0$, even parity,
+He4 core $+$ p-shell, 8 threads (seconds):
+
+\begin{center}
+\begin{tabular}{@{}lrrr@{}}
+\hline
+ & $e_{\max}=4$ & $e_{\max}=6$ & $e_{\max}=8$ \\
+\hline
+orbits / CC channels & 30 / 60 & 56 / 84 & 90 / 108 \\
+\codename{comm223\_231\_st}   &  0.23 &  4.11 &  33.46 \\
+\codename{comm223\_232}       &  0.65 & 18.21 & 183.90 \\
+\codename{comm223\_132\_tts}  &  0.28 &  3.20 &  45.07 \\
+\hline
+total                         &  1.16 & 25.51 & 262.42 \\
+\hline
+\end{tabular}
+\end{center}
+
+The growth is $22\times$ from $e_{\max}=4$ to $6$ and $10.3\times$ from
+$6$ to $8$, i.e.\ roughly $N^{5}$ in the orbit count, as expected for
+these contractions. The $232$ block is the dominant term throughout
+($\sim70\%$); within it at $e_{\max}=6$, GIVa is $3.3$\,s, GIVb
+$5.7$\,s and GIVc $2.5$\,s. Before Sec.~\ref{sec:js-GIVb-pandya}, GIVb
+alone was $58.6$\,s, which would have made the whole leftover
+$\sim78$\,s instead of $25.5$\,s. Note that $132$ scales worst
+($14\times$ from $6$ to $8$, against $8\times$ for $231$ and $10\times$
+for $232$) and has overtaken $231$ at $e_{\max}=8$.
 
 % =============================================================================
 \section{Hermiticity assumptions and known gaps}
@@ -1418,6 +1508,11 @@ $\Gamma^{\mathrm{IV}_a}$ & $\Omega\chi^{\kappa'}$ at same $m$ &
   $W_{ijkl}+W_{klij}$ \eqref{eq:GIVa} \\
 $\Gamma^{\mathrm{IV}_b}$ & $-h_\Omega h_\Gamma$ or $+h_\Omega\Omega_{jalb}$ &
   $+\chi_{akbi}\Omega_{lbja}$ \eqref{eq:GIVb} \\
+$\Gamma^{\mathrm{IV}_b}$ tensor & five 6j with a shared dummy $j_0$
+  \eqref{eq:js-GIVb-W1} &
+  leftover Pandya, one 9j each, then GEMM
+  \eqref{eq:js-GIVb-bars}--\eqref{eq:js-GIVb-inv};
+  $W^{(2)}$ by pair swap \eqref{eq:js-GIVb-sym} \\
 $\lambda=0$ $\Omega$ & fall back to $ss$ & \codename{ReducedRMEView} then leftover TTS \\
 \hline
 \end{tabular}
