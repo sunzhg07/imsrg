@@ -29,6 +29,8 @@ EMAX = int(os.environ.get("EMAX", "2"))
 LAMBDAS = [int(x) for x in os.environ.get("LAMBDAS", "0,1,2,3,4").split(",")]
 TS = [int(x) for x in os.environ.get("TS", "0,1,2").split(",")]
 PARITIES = [int(x) for x in os.environ.get("PARITIES", "0,1").split(",")]
+# h_Ω: -1 anti-Hermitian (IMSRG generator), +1 Hermitian.
+HERMS = [int(x) for x in os.environ.get("HERMS", "-1,1").split(",")]
 TOL = float(os.environ.get("FACT_TOL", "1e-6"))
 SEED = int(os.environ.get("SEED", "17"))
 HUSH = os.environ.get("HUSH", "1") != "0"
@@ -63,9 +65,13 @@ def make_Z(ms):
     return Z
 
 
-def make_W3(ms, lam, tz, parity):
+def make_W3(ms, lam, tz, parity, h_omega):
+    # W = −[H, Ω] with H Hermitian has h_W = −h_Ω.
     W = Operator(ms, lam, tz, parity, 3)
-    W.SetHermitian()
+    if h_omega < 0:
+        W.SetHermitian()
+    else:
+        W.SetAntiHermitian()
     W.ThreeBody.SetMode("pn")
     W *= 0.0
     return W
@@ -100,8 +106,8 @@ def leftover_eths(ms, omega, H):
     return Z
 
 
-def leftover_nested(ms, omega3, H, lam, tz, parity):
-    W = make_W3(ms, lam, tz, parity)
+def leftover_nested(ms, omega3, H, lam, tz, parity, h_omega):
+    W = make_W3(ms, lam, tz, parity, h_omega)
     cm.comm223st(H, omega3, W)
     W *= -1.0
     Z231 = make_Z(ms)
@@ -121,14 +127,17 @@ def omega_for_fact(omega, omega3, lam):
     return omega3 if lam == 0 else omega
 
 
-def run_cell(ms, H, lam, tz, parity):
+def run_cell(ms, H, lam, tz, parity, h_omega=-1):
     unt = UnitTest(ms)
-    unt.SetRandomSeed(SEED + 17 * lam + 5 * tz + 3 * parity)
-    omega = unt.RandomOp(ms, lam, tz, parity, 2, -1)
+    # Offset Hermitian draws: at λ=T=P=0 the plain seed equals H's seed, and a
+    # Hermitian scalar Ω would then be H itself ([H, Ω] = 0, a trivial cell).
+    unt.SetRandomSeed(SEED + 17 * lam + 5 * tz + 3 * parity
+                      + (101 if h_omega > 0 else 0))
+    omega = unt.RandomOp(ms, lam, tz, parity, 2, h_omega)
     omega3 = copy_omega_rank3(ms, omega, lam, tz, parity)
     of = omega_for_fact(omega, omega3, lam)
     t0 = time.perf_counter()
-    Z_un, W, pieces_un = leftover_nested(ms, omega3, H, lam, tz, parity)
+    Z_un, W, pieces_un = leftover_nested(ms, omega3, H, lam, tz, parity, h_omega)
     t_un = time.perf_counter() - t0
     t0 = time.perf_counter()
     Z_fa = leftover_eths(ms, of, H)
@@ -172,7 +181,7 @@ def main():
     )
     print("unfact:  W=−comm223st(H,Ω) ; Z=231tts+232tts+132tts")
     print("fact:    comm223_231_st + comm223_232 + comm223_132_tts")
-    print("H, Ω random (H scalar Hermitian 2b; Ω antiherm 2b, same λTP as W3)")
+    print(f"H, Ω random (H scalar Hermitian 2b; Ω 2b with h_Ω in {HERMS}, same λTP as W3)")
 
     ms = ModelSpace(EMAX, "He4", "p-shell")
     ms.SetHbarOmega(16)
@@ -184,21 +193,21 @@ def main():
     print(f"  ||H1||={H.OneBodyNorm():.4g}  ||H2||={H.TwoBodyNorm():.4g}")
 
     print(
-        f"\n{'λ':>3} {'T':>3} {'P':>3}  {'||Z_un||':>12} {'||Z_fa||':>12} "
+        f"\n{'h':>3} {'λ':>3} {'T':>3} {'P':>3}  {'||Z_un||':>12} {'||Z_fa||':>12} "
         f"{'||ΔZ||':>10} {'rel':>10}  "
         f"{'231':>5} {'232':>5} {'132':>5}  "
         f"{'t_un':>6} {'t_fa':>6}  status"
     )
     rows = []
-    for lam in LAMBDAS:
-        for tz in TS:
-            for parity in PARITIES:
+    cells = [(h, lam, tz, parity) for h in HERMS for lam in LAMBDAS
+             for tz in TS for parity in PARITIES]
+    for h_omega, lam, tz, parity in cells:
                 try:
                     with hush():
-                        rec = run_cell(ms, H, lam, tz, parity)
+                        rec = run_cell(ms, H, lam, tz, parity, h_omega)
                 except Exception as exc:
                     print(
-                        f"{lam:3d} {tz:3d} {parity:3d}  "
+                        f"{h_omega:+3d} {lam:3d} {tz:3d} {parity:3d}  "
                         f"{'':>12} {'':>12} {'':>10} {'':>10}  "
                         f"{'':>5} {'':>5} {'':>5}  "
                         f"{'':>6} {'':>6}  ERR  {exc}",
@@ -210,7 +219,7 @@ def main():
                 rows.append((lam, tz, parity, rec))
                 sp = rec["split"]
                 print(
-                    f"{lam:3d} {tz:3d} {parity:3d}  "
+                    f"{h_omega:+3d} {lam:3d} {tz:3d} {parity:3d}  "
                     f"{rec['n_un']:12.5e} {rec['n_fa']:12.5e} "
                     f"{rec['dZ']:10.3e} {rec['rel']:10.3e}  "
                     f"{'OK' if sp['231'][3] else 'FAIL':>5} "

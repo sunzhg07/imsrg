@@ -19,9 +19,58 @@ namespace Commutator {
 
 namespace FactorizedDoubleCommutator_eths {
 
-// Ω is a reduced RME for every λ, including λ=0 (ReducedRMEView).
-// IMSRG scalar convention is unreduced; convert on entry so the tensor
-// leftover path matches comm223st + 231tts+232tts+132tts.
+////////////////////////////////////////////////////////////////////////////
+/// Factorized leftover double commutator for a tensor generator (ethS).
+///
+/// Reference: learn/factorized_code_analyze.tex
+///   Sec. unfact  (eq:unfact1b, eq:unfact2b)  m-scheme 3-op definition
+///   Sec. jscheme (eq:js-*)                   J-scheme AMC equations coded here
+///   Sec. opt                                 dispatch and contraction paths
+///   Sec. cost                                validation and timings
+/// Equation labels quoted below (eq:...) refer to that file.
+///
+/// What is computed. Z += [Ω, [Ω, Γ]_3b]_{1b,2b} without storing the 3b
+/// intermediate. It equals the nested evaluation
+///   W = −comm223st(Γ, Ω),   Z = comm231tts(Ω,W) + comm232tts(Ω,W)
+///                              + comm132tts(Ω,W),
+/// and run_paper/test_fact_unfact_223_tts.py checks that identity term by
+/// term (231, 232, 132) to ~1e-15 for h_Ω = ±1, λ = 0…4, T = 0,1,2, both
+/// parities.
+///
+/// Packaging (Sec. js-pack).
+///   Ω    reduced RME of rank λ. λ = 0 unreduced input is converted on every
+///        entry by ReducedRMEView, so there is no separate λ = 0 branch.
+///   Γ, Z scalar, unreduced (IsReduced() == false).
+///   Every [Ω × Ω]^(0) intermediate and every fold that multiplies a second
+///   Ω carries the leftover CG ⟨λμ λ−μ|00⟩ = (−1)^{λ−μ}/λ̂  (eq:cg-leftover),
+///   which appears in the J-scheme as λ̂^{-1}.
+///
+/// Dispatch (all flags default on).
+///   comm223_231_st  → comm223_231_chi1b_tensor  f^I (χ^α), f^II (χ^β)
+///                   → comm223_231_chi2b_tensor  f^III_b (χ^δ), f^III_a (χ^γ)
+///   comm223_232     → comm223_232_chi1b_tensor  Γ^I (χ^ε), Γ^II (χ^ΩΓ, χ^ζ)
+///                   → comm223_232_chi2b         FillPandyaBars232 once, then
+///                       Γ^III_a, Γ^IV_a, Γ^IV_b, Γ^III_c, Γ^III_b, Γ^IV_c
+///   comm223_132_tts → _ladder + _onebody + _cross
+///
+/// Product ranks: T×T → S, T×S → T, S×S → S (never T×T → T). Once a χ is
+/// scalar, the scalar Factorized ladder / Pandya / RC machinery is reused.
+///
+/// Implementation rules (Sec. opt).
+///   - Every contraction is a GEMM: 6j/9j, hats and phases are scattered
+///     into the operands first. A residual angular factor that couples the
+///     two operands through a shared dummy means: change basis (Pandya).
+///   - Tensor and occupation-weighted χ are neither Hermitian nor AS: store
+///     them on ordered pairs (2n layout: Omega2n, ChiOp2n). Never raw-
+///     transpose a tensor block. Use ChiOp2n when χ(pp;..) ≠ 0 at odd J.
+///   - Occupations are diagonal weights (OccWeights2n, FillOmegaOccOmega2n).
+///   - Shared work: FillPandyaBars232 (Γ^IV_a, Γ^IV_b), CachedBarGammaScalarCC
+///     (Γ^III_b, Γ^III_c, Γ^IV bars, 132 cross), BuildChiEtaPathB
+///     (Γ^III_a, Γ^III_b).
+///   - 6j/9j tables are precomputed before parallel regions; OpenMP
+///     schedule(dynamic,1) over channels, per-thread accumulators or
+///     AddToMatAtomic.
+////////////////////////////////////////////////////////////////////////////
 
 void comm223_231_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
                               Operator &Z);
@@ -30,18 +79,19 @@ void comm223_231_chi2b_tensor(const Operator &Eta, const Operator &Gamma,
 
 bool use_1b_intermediates = true;
 bool use_2b_intermediates = true;
-bool use_TypeI_1b = true;
-bool use_TypeII_1b = true;
-bool use_TypeIII_1b = true;
-bool use_TypeIIIa_1b = true; // Pandya+DGEMM f^III_a (paper B4c/B5c)
-bool use_TypeGI_2b = true;  // Gamma^I / chi^epsilon
-bool use_TypeGII_2b = true; // Gamma^II / chi^zeta (universal AMC Path B)
-bool use_TypeGIIIa_2b = true; // Gamma^III_a Path B χ^η (2n×2n) → Chi_AS×Γ
-bool use_TypeGIIIb_2b = true; // Gamma^III_b Path B Fac Pandya χ → RC → DGEMM
-bool use_TypeGIIIc_2b = true; // Gamma^III_c Factorized IIe/IIf (λ=0)
-bool use_TypeGIVa_2b = true; // Gamma^IV_a / chi^kappa Factorized DGEMM (λ=0)
-bool use_TypeGIVb_2b = true;  // Gamma^IV_b / chi^iota Factorized DGEMM (λ=0)
-bool use_TypeGIVc_2b = true;  // Gamma^IV_c / chi^lambda (enable diagram)
+bool use_TypeI_1b = true;     // f^I    / χ^α   eq:js-fI
+bool use_TypeII_1b = true;    // f^II   / χ^β   eq:js-fII
+bool use_TypeIII_1b = true;   // f^III_b / χ^δ  eq:js-fIIIb
+bool use_TypeIIIa_1b = true;  // f^III_a / χ^γ   eq:js-fIIIa
+bool use_TypeGI_2b = true;    // Γ^I    / χ^ε   eq:js-chie
+bool use_TypeGII_2b = true;   // Γ^II   / χ^ΩΓ, χ^ζ  eq:js-GII
+bool use_TypeGIIIa_2b = true; // Γ^III_a / χ^η  eq:js-GIIIa
+bool use_TypeGIIIb_2b = true; // Γ^III_b / χ^η RC  eq:js-GIIIb
+bool use_TypeGIIIc_2b = true; // Γ^III_c / χ^θ  eq:js-GIIIc
+bool use_TypeGIVa_2b = true;  // Γ^IV_a / χ^κ   Sec. js-GIVa
+bool use_TypeGIVb_2b = true;  // Γ^IV_b / χ^ι   eq:js-GIVb-bars…inv
+bool use_TypeGIVc_2b = true;  // Γ^IV_c / χ^λ   Sec. js-GIVc
+// All diagrams run at every λ (λ = 0 via ReducedRMEView).
 int givc_chi_which = 0;       // 0 both, 1 T1 ΓΩ, 2 T2 ΩΓ
 bool givc_fold_as = true;     // false: recouple K only (no ½(1−P)²)
 void SetUse_1b_Intermediates(bool tf) { use_1b_intermediates = tf; }
@@ -74,7 +124,7 @@ void SetUse_TypeGIVc_2b(bool tf) { use_TypeGIVc_2b = tf; }
 void SetGIVcChiWhich(int which) { givc_chi_which = which; }
 void SetGIVcFoldAS(bool tf) { givc_fold_as = tf; }
 
-// FDC.cc comm223_232_chi2b ~1227–1393, tensor Ω version with the same operator
+// Tensor-Ω version of the FDC.cc comm223_232_chi2b Pandya fill, same operator
 // names: one Pandya of Ω (bar_Eta; rank-λ → rectangular CC pair, 9j) and of the
 // scalar Γ (bar_Gamma; 6j, cached), occupancy nnnbar_Eta / nnnbar_Eta_d (not a
 // second transform), then χ̄ by DGEMM inside the same CC block.
@@ -140,8 +190,7 @@ void comm223_231_st(const Operator &Eta_in, const Operator &Gamma,
 /// ethS one-body intermediates:
 ///   chi^alpha (scalar) -> f^I   [use_TypeI_1b]
 ///   chi^beta  (tensor) -> f^II  [use_TypeII_1b]
-/// M-scheme: factorized_code_analyze.tex
-/// AMC factorized: learn/amc_tts/factored_fII/output/
+/// χ^α: eq:js-chia, f^I: eq:js-fI.  χ^β: eq:js-chib, f^II: eq:js-fII.
 ////////////////////////////////////////////////////////////////////////////
 void comm223_231_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
                               Operator &Z) {
@@ -264,8 +313,8 @@ void comm223_231_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
 
   // ==================================================================
   // f^II via tensor chi^beta  (Omega*Gamma -> chi^beta; chi^beta*Omega -> f)
-  // AMC: learn/amc_tts/factored_fII/output/chi_beta.tex, f2a_from_chi.tex,
-  //      f2b_from_chi.tex. Assemble f = f2a + hGamma * f2b.
+  // eq:js-chib, eq:js-fII. Assemble f = f2a + hGamma * f2b (f2b uses
+  // Ω_ejdi: the Ω_diej orientation is not available).
   // Overall 1/2 lives in chi (do not repeat in the contraction).
   //
   // Convention: Ω tensor reduced; Γ scalar unreduced (st driver); χ^β
@@ -414,11 +463,10 @@ void comm223_231_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
 ////////////////////////////////////////////////////////////////////////////
 /// ethS two-body intermediates for one-body final:
 ///   chi^delta (scalar 2b from tensor×tensor Omega*Omega) -> f^III_b
-///   chi^gamma (scalar 2b, Pandya topology; AMC — not Neithan) -> f^III_a
-///
-/// χ^γ gold: m ≡ AMC direct ≡ AMC Path B (corrected inv). Do NOT use
-/// neithan.tex TT→0 here — it disagrees with m/AMC by ~λ̂.
-/// Docs: learn/amc_tts/factored_fIIIa/OMEGA_TT_TO_SCALAR.md
+///   chi^gamma (scalar 2b, Pandya topology) -> f^III_a
+/// χ^δ: eq:js-chid, f^III_b: eq:js-fIIIb.  f^III_a: eq:js-fIIIa.
+/// χ^γ is the AMC [Ω×Ω]^(0) with λ̂^{-1}; the older TT→0 print without it
+/// is off by λ̂ and must not be used.
 ///
 /// Both chi^delta and chi^gamma are NON-HERMITIAN (occ-weighted). Store full
 /// chi(ch,ch) squares only — no hermiticity fill / no ch_bra>ch_ket conjugate.
@@ -591,8 +639,7 @@ void comm223_231_chi2b_tensor(const Operator &Eta, const Operator &Gamma,
 
   // ==================================================================
   // f^III_a via χ^γ (scalar, NON-HERMITIAN)  (use_TypeIIIa_1b)
-  // Leftover χ^γ × Γ is AMC Path B / leftover_dgemm for any λ
-  // (reduced Ω; hats and Triangle(J,J′,λ) already cover λ=0).
+  // eq:js-fIIIa, any λ (reduced Ω; λ=0 is the J=J' limit).
   // ==================================================================
   if (use_TypeIIIa_1b) {
     comm223_231_fIIIa_leftover_dgemm(Eta, Gamma, Z);
@@ -616,8 +663,7 @@ void comm223_232(const Operator &Eta_in, const Operator &Gamma, Operator &Z) {
                              Z); // topology with 1-body intermediate (fast)
   }
   if (use_2b_intermediates) {
-    comm223_232_chi2b(Eta, Gamma,
-                      Z); // topology with 2-body intermediate (slow)
+    comm223_232_chi2b(Eta, Gamma, Z); // topology with 2-body intermediate
   }
 }
 
@@ -627,7 +673,7 @@ void comm223_232(const Operator &Eta_in, const Operator &Gamma, Operator &Z) {
 /// Gamma^I  : chi^epsilon (Omega x Omega -> scalar 1b) x Gamma  -- any lambda
 /// Gamma^II : bra χ^{ΩΓ} (Ω×Γ → tensor 1b) × Ω, ket χ^ζ (Γ×Ω) × Ω
 ///            Unfact bra is ΩΓΩ; χ^ζ on the bra matches only at λ=0.
-///            Docs: learn/amc_tts/factored_GII/NOTES.md
+/// χ^ε: eq:js-chie.  Γ^II: eq:js-GII (from m-scheme eq:chizeta, eq:chiOG).
 ////////////////////////////////////////////////////////////////////////////
 void comm223_232_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
                               Operator &Z) {
@@ -1080,16 +1126,14 @@ void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma,
                        Operator &Z) {
   const double t_start = omp_get_wtime();
 
-  // FDC.cc comm223_232_chi2b block order (tensor Ω / scalar Γ,Z):
-  //   ~1227 allocate bar_Eta, bar_Gamma
-  //   ~1243 combined Pandya + nnnbar_Eta / nnnbar_Eta_d occupancy
-  //   ~1385 DGEMM bar_CHI_V, bar_CHI_VI_II  (η is AMC Path B; θ,λ diagram-local)
-  //   ~1413 GIIIa  χ^η ladder
-  //   ~1528 GIVa   χ^κ   inverse Pandya on ch_bra×ch_ket, ladder DGEMM
-  //   ~1906 GIVb   χ^ι   inverse Pandya, CC-channel cross DGEMM leftover
-  //   ~2393 GIIIc  χ^θ
-  //   ~2739 GIIIb  (ethS gold is leftover IIb/IId, not FDC recouple of χ^η)
-  //   ~2916 GIVc   χ^λ  (Pandya of χ^λ and Ω together, same 9j)
+  // Same block order as the scalar FDC.cc comm223_232_chi2b:
+  //   FillPandyaBars232  Ω̄, Γ̄ (cached), occupancy, DGEMM χ̄^ι, χ̄^κ (shared)
+  //   GIIIa  χ^η  → inverse Pandya → ladder                eq:js-GIIIa
+  //   GIVa   χ^κ  → inverse Pandya (9j) → ladder           Sec. js-GIVa
+  //   GIVb   χ^ι  → leftover Pandya (9j) → GEMM → inverse  eq:js-GIVb-bars…inv
+  //   GIIIc  χ^θ  → Pandya → χ̄·Γ̄ → inverse Pandya         eq:js-GIIIc
+  //   GIIIb  χ̄^η → RC → Γ̄·RC → inverse Pandya (1−P)²      eq:js-GIIIb
+  //   GIVc   χ^λ  → Pandya (9j) → mid-J DGEMM → inverse    Sec. js-GIVc
   PandyaBars232 bars;
   if (use_TypeGIVa_2b or use_TypeGIVb_2b)
     FillPandyaBars232(Eta, Gamma, Z, bars);
@@ -1613,13 +1657,13 @@ struct ChiOp2n {
   }
 };
 
-// FDC.cc ~1556–1710 (Chi_VI_Op: inverse Pandya over ch_bra×ch_ket), tensor:
+// Tensor version of FDC.cc Chi_VI_Op (inverse Pandya over ch_bra×ch_ket):
 //   χ^{J0 J1}(ij;kl) = (−1)^{J0+ji+jk+λ} Ĵ0 Ĵ1 Σ_{J2 J3} (−1)^{J2} Ĵ2 Ĵ3
 //                      { λ  J0 J1 }
 //                      { J3 jj jk }  χ̄^{J2 J3}(il;kj)
 //                      { J2 ji jl }
-// (AMC Path B inverse without the printed leading minus; gold
-// test_chi_eta_mscheme / GIVa+GIVb benches). No (1−P): χ is stored non-AS.
+// (AMC Path B inverse without the printed leading minus.)
+// No (1−P): χ is stored non-AS.
 // bar_CHI blocks are keyed {ch_il_cc, ch_kj_cc}.
 void InvPandyaTensor2n(const CcMatMap &bar_CHI, const Operator &Eta,
                        ChiOp2n &Chi_Op) {
@@ -1709,9 +1753,9 @@ void InvPandyaTensor2n(const CcMatMap &bar_CHI, const Operator &Eta,
 
 // (ia)(lb) → (il)(ab): χ̄_{il,ab} from occupancy-AS χ_{ialb}.
 // AMC scheme=((1,-3),(2,-4)) on labels (i,a,l,b) — lands on (il)|(ab) so the
-// gold product Σ χ_ialb Ω_bjak is the same DGEMM mid as tts_ring.
-// Locked: ≡ IMSRG adcb Pandya when T1 χ is AS (even π); ≡ m-gold on odd π T1
-// (run/tmp givc_gold_dgemm_lock + learn/.../G4c_gold_il_ab_pandya.txt).
+// m-scheme product Σ χ_ialb Ω_bjak is the same DGEMM mid as tts_ring.
+// Equals the IMSRG adcb Pandya only when T1 χ is AS (even π); this form is
+// correct for both parities (Sec. js-GIVc).
 // Chi(i,a,l,b,J,J') is any χ^λ table in GetTBME_J units (ChiOp2n).
 template <class ChiT>
 double PandyaChiIalb(const ChiT &Chi, ModelSpace *ms, int lambda, int i,
@@ -1788,7 +1832,7 @@ double PandyaOmegaBjak(const Operator &Eta, int a, int b, int k, int j, int Jab,
   return -ms->phase(lambda) * std::sqrt(2.0 * Jab + 1.0) * std::sqrt(2.0 * Jkj + 1.0) * sm;
 }
 
-// Reduced tensor CC flip (LESSONS.md Γ^{IV_a} / comm222_phst):
+// Reduced tensor CC flip (same as comm222_phst):
 //   Ω̄^{J1 J0}(cd;ab) = hΩ (−1)^{J1−J0} Ω̄^{J0 J1}(ab;cd)
 // Occupancy-weighted χ does not obey this — only Ω̄.
 arma::mat TensorBarOmegaPartner(const arma::mat &Om_J0J1, int J0, int J1,
@@ -1796,7 +1840,7 @@ arma::mat TensorBarOmegaPartner(const arma::mat &Om_J0J1, int J0, int J1,
   return (hOmega * ms->phase(J0 - J1)) * Om_J0J1.t();
 }
 
-/// AMC inv: χ_red = Ĵ_0 Σ_J' Ĵ' 6j χ̄_CC. No (1−P). Gold: test_chi_eta_mscheme.py.
+/// AMC inv: χ_red = Ĵ_0 Σ_J' Ĵ' 6j χ̄_CC. No (1−P). Sec. js-GIIIa.
 double InvChiEtaRed(Operator &Z, const std::deque<arma::mat> &barCHI, int i,
                     int j, int k, int l, int J0) {
   const int n_cc = (int)barCHI.size();
@@ -1860,7 +1904,7 @@ void BuildChiPandyaPathB(const Operator &Eta, Operator &Z, bool use_eta_weight,
   double t_start = omp_get_wtime();
 
   // 9j Pandya of Ω̄ only for ch_b ≤ ch_k. Partner block is reduced transpose
-  // hΩ (−1)^{J0−J1} Ω̄^T (LESSONS.md). Occ χ̄ is applied after, on that layout.
+  // hΩ (−1)^{J0−J1} Ω̄^T (TensorBarOmegaPartner). Occ χ̄ is applied after, on that layout.
   //
   //   Ω̄^{Jb Jk}(i,l; k,j) = −(−1)^{Jb+(ji+jk)/2+λ} Ĵb Ĵk
   //                         Σ_{J2 J3} (−1)^{J2} Ĵ2 Ĵ3
@@ -2134,7 +2178,7 @@ void BuildChiPandyaPathB(const Operator &Eta, Operator &Z, bool use_eta_weight,
   }
 }
 
-/// χ^η (GIIIa / GIIIb). Gold: test_chi_eta_mscheme.py.
+/// χ^η (GIIIa / GIIIb): eq:js-pandya-tensor, eq:js-chieta.
 void BuildChiEtaPathB(const Operator &Eta, Operator &Z,
                       std::deque<arma::mat> &Chi_III,
                       std::deque<arma::mat> *barCHI_out, bool fill_chi2) {
@@ -2146,7 +2190,7 @@ void BuildChiEtaPathB(const Operator &Eta, Operator &Z,
 /// contribute to f^{III_a} through Γ(ab;qp) when q ≠ p shares (j,l,tz) with p
 /// (first at emax=2: 0s1/2–1s1/2). The Pauli-filtered ordinary 2n layout has
 /// no slot for (p,p) at odd J0, so ChiOp2n is required here.
-/// Gold: run/test_chi_gamma_pathB_amc.py (m ≡ AMC direct ≡ Path B).
+/// Sec. js-fIIIa.
 void BuildChiGammaPathB(const Operator &Eta, Operator &Z, ChiOp2n &Chi_222_a) {
   ModelSpace *ms = Z.modelspace;
   std::deque<arma::mat> Chi_III_unused;
@@ -2193,7 +2237,7 @@ void BuildChiGammaPathB(const Operator &Eta, Operator &Z, ChiOp2n &Chi_222_a) {
 /// Γ and χ on ordered pairs in the no-Pauli ChiOp2n layout (GetTBME_J units):
 /// χ^γ is not AS, so the two products are kept apart and the (c,c) slot at
 /// odd J0 is kept (Γ(cc;ab)^{odd}=0 but χ(cc;ab)^{odd}≠0 feeds Γ(ab;qc)).
-/// Gold: run/test_chi_gamma_pathB_amc.py; bench TERMS=fIIIa vs Mscheme_fact_fIIIa.
+/// eq:js-fIIIa.
 static void comm223_231_fIIIa_leftover_dgemm(const Operator &Eta,
                                             const Operator &Gamma,
                                             Operator &Z) {
@@ -2280,7 +2324,7 @@ void comm223_232_GIIIa(const Operator &Eta_in, const Operator &Gamma,
                        Operator &Z) {
   // Γ^{III_a}: AMC Path B χ^η (same-label Pandya → occ DGEMM → inv)
   // then ordinary-channel Chi_AS×Γ ladder. χ is scalar and not AS.
-  // Gold: test_chi_eta_mscheme.py + test_GIIIa_ladder_mscheme.py
+  // eq:js-chieta, eq:js-GIIIa.
   const ReducedRMEView E(Eta_in);
   const Operator &Eta = E.ref;
   double t_start = omp_get_wtime();
@@ -2352,12 +2396,11 @@ void comm223_232_GIIIa(const Operator &Eta_in, const Operator &Gamma,
 /// χ^η = [Ω⊗Ω]^0 is scalar for every λ, so after χ̄^η the chain is the scalar
 /// FDC.cc one with the same names:
 ///   barCHI_III     χ̄^η(il;kj)           CC 2n×2n   (BuildChiEtaPathB / Ĵ_cc)
-///   barCHI_III_RC  RC[χ̄(bc;ad)+χ̄(ad;bc)]            FDC.cc ~1799
-///   CHI_III_final  bar_Gamma · barCHI_III_RC          FDC.cc ~2752
-///   Z              (1−Pij)(1−Pkl) inverse Pandya from (j l̄; i k̄)  FDC.cc ~2773
-/// Gold chain (learn/amc_tts/factored_GIIIb/NOTES.md): Path B pack → RC → Γ̄·RC
-/// → Inv → (1−P)² ≡ fold ≡ 4-index m, λ=0…4 (run/test_G3b_pathB_pack_mscheme.py);
-/// bench run/bench_eths_pathB_vs_mscheme.py TERMS=GIIIb vs Mscheme_fact_GIIIb.
+///   barCHI_III_RC  RC[χ̄(bc;ad)+χ̄(ad;bc)]                       eq:RC
+///   CHI_III_final  bar_Gamma · barCHI_III_RC
+///   Z              (1−Pij)(1−Pkl) inverse Pandya from (j l̄; i k̄)
+/// Equations: eq:js-GIIIb; m-scheme eq:WIIb. The RC is a J-scheme primitive;
+/// the full Z is what is checked against m-scheme and the nested identity.
 ////////////////////////////////////////////////////////////////////////////
 void comm223_232_GIIIb(const Operator &Eta_in, const Operator &Gamma,
                        Operator &Z) {
@@ -2385,7 +2428,7 @@ void comm223_232_GIIIb(const Operator &Eta_in, const Operator &Gamma,
   double t_internal = omp_get_wtime();
   Z.profiler.timer["_GIIIb_chi"] += t_internal - t_start;
 
-  // Recoupling, Pandya → Pandya (FDC.cc ~1799):
+  // Recoupling, Pandya → Pandya (eq:RC, as in FDC.cc barCHI_III_RC):
   //  \dbar{χ}^J_{ab,cd} = −Σ_J' (2J'+1) (−)^{jb+jc+J'} { ja jb J  }
   //                        (χ̄^J'_{bc,ad} + χ̄^J'_{ad,bc})  { jc jd J' }
   std::deque<arma::mat> barCHI_III_RC(n_nonzero);
@@ -2461,7 +2504,7 @@ void comm223_232_GIIIb(const Operator &Eta_in, const Operator &Gamma,
   Z.profiler.timer["_GIIIb_RC"] += omp_get_wtime() - t_internal;
   t_internal = omp_get_wtime();
 
-  // CHI_III_final = bar_Gamma · barCHI_III_RC (FDC.cc ~2752)
+  // CHI_III_final = bar_Gamma · barCHI_III_RC
   const std::deque<arma::mat> &bar_Gamma =
       CachedBarGammaScalarCC(Gamma, Z, hGamma);
   std::deque<arma::mat> CHI_III_final(n_nonzero);
@@ -2475,7 +2518,7 @@ void comm223_232_GIIIb(const Operator &Eta_in, const Operator &Gamma,
   Z.profiler.timer["_GIIIb_dgemm"] += omp_get_wtime() - t_internal;
   t_internal = omp_get_wtime();
 
-  // Inverse Pandya (FDC.cc ~2773):
+  // Inverse Pandya with (1−Pij)(1−Pkl) (eq:pandya-inv-2P):
   //  Z^J_ijkl = (1−Pij)(1−Pkl) (−)^{J+ji+jj} Σ_J' −(2J'+1) (−)^{J'+ji+jk}
   //             { j i J  }  \bar{X}^J'_{j l̄, i k̄}
   //             { k l J' }
@@ -2674,7 +2717,7 @@ void comm223_232_GIIIc(const Operator &Eta_in, const Operator &Gamma,
   if (Commutator::verbose)
     Z.profiler.timer["_GIIIc_chi"] += omp_get_wtime() - t_start;
 
-  // FDC ~1235 / ~2411: reuse scalar Γ̄; Pandya χ^θ in the same CC layout.
+  // Reuse the cached scalar Γ̄; Pandya χ^θ in the same CC layout (eq:js-GIIIc).
   const std::deque<arma::mat> &bar_Gamma =
       CachedBarGammaScalarCC(Gamma, Z, hGamma);
   std::deque<arma::mat> bar_CHI_IV(n_nonzero);
@@ -2890,15 +2933,14 @@ void comm223_232_GIIIc(const Operator &Eta_in, const Operator &Gamma,
 ////////////////////////////////////////////////////////////////////////////
 /// Gamma^IV_a / chi^kappa — Path B any λ (Pandya / DGEMM / inv)
 ///
-/// T×S → tensor χ^κ. Gold: m ≡ AMC analyze ≡ this extract
-///   (test_chi_kappa_pathB_vs_direct.py, test_G4a_pathB_mscheme.py).
+/// T×S → tensor χ^κ. Sec. js-GIVa (eq:js-chik-T); m-scheme eq:GIVa, eq:WIVa.
 ///
 /// 1. Scalar Pandya Γ (6j) + tensor Pandya Ω (9j, IMSRG adcb, no extra scale)
 /// 2. VI_II DGEMM: χ̄^{J0 J1} = hΩ (−1)^{J0+J1} (occ⊙Ω̄^{J1 J0})^T Γ̄^{J1}
 /// 3. InvPlus (AMC Eq4 without printed leading minus)
 /// 4. W = −χΩ pair-channel DGEMM; (1−P) on W only; Hermitian W + W_klij
 ///      (no extra hΩ on W_klij). Store Z_unred = Z_red / Ĵ (+√2 i=j / k=l).
-/// Ω is WE-reduced at every λ (λ=0 is the equal-J limit, not a Factorized fork).
+/// Ω is WE-reduced at every λ (λ=0 is the equal-J limit, not a separate path).
 ////////////////////////////////////////////////////////////////////////////
 namespace {
 // Scalar Pandya of Γ (H). Identical 2×nKets CC layout in GIVa/GIVb.
@@ -2995,10 +3037,10 @@ const std::deque<arma::mat> &CachedBarGammaScalarCC(const Operator &Gamma,
   return g_bar_gamma_cc.bar;
 }
 
-// FDC.cc ~1243–1393 for a tensor Ω. One ket loop writes bar_Eta (Ω̄, 9j
+// FDC.cc comm223_232_chi2b Pandya fill for a tensor Ω. One ket loop writes bar_Eta (Ω̄, 9j
 // DoTensorPandya adcb) and the occupancy copies nnnbar_Eta / nnnbar_Eta_d
 // (not a second Pandya); bar_Gamma is the scalar 6j Pandya of Γ (cached).
-// Then χ̄ by DGEMM in the same CC block, exactly as FDC.cc ~1385.
+// Then χ̄ by DGEMM in the same CC block, exactly as in FDC.cc.
 //
 //   Ω̄^{Jb Jk}(ab;cd) = −Σ_{J1 J2} Ĵ1 Ĵ2 Ĵb Ĵk (−1)^{jb+jd+Jk+J2}
 //                        { ja jd J1 }
@@ -3206,7 +3248,7 @@ void FillPandyaBars232(const Operator &Eta, const Operator &Gamma, Operator &Z,
   Z.profiler.timer["_232_bar_Eta_occ"] += omp_get_wtime() - t_bars;
   t_bars = omp_get_wtime();
 
-  // FDC.cc ~1385: χ̄ in the Pandya representation, DGEMM per CC block.
+  // χ̄ in the Pandya representation, DGEMM per CC block (as FDC.cc).
   //   bar_CHI_V[{ch_il,ch_kj}]     = bar_Gamma[ch_il] · nnnbar_Eta[{ch_il,ch_kj}]
   //                                  (χ^ι: Σ_ab occ_AbarBC(a,b,k) Γ̄(il;ab) Ω̄(ab;kj))
   //   bar_CHI_VI_II[{ch_il,ch_kj}] = hΩ (−1)^{J_il+J_kj}
@@ -3254,7 +3296,7 @@ void comm223_232_GIVa(const Operator &Eta_in, const Operator &Gamma,
 
 namespace {
 ////////////////////////////////////////////////////////////////////////////
-/// Gamma^IV_a / chi^kappa.  FDC.cc ~1528–1760 (bar_CHI_VI_II → Chi_VI_II_Op
+/// Gamma^IV_a / chi^kappa.  Tensor FDC.cc chain (bar_CHI_VI_II → Chi_VI_II_Op
 /// → −Chi_VI_II_Op·Eta and its Hermitian twin), tensor Ω:
 ///   1. bar_CHI_VI_II from the shared Pandya block (DGEMM, FillPandyaBars232)
 ///   2. inverse Pandya on ch_bra×ch_ket (9j) → Chi_VI_II_Op (2n, non-AS)
@@ -3287,7 +3329,7 @@ void comm223_232_GIVa_from_bars(const Operator &Eta, const Operator &Gamma,
   const double hat_lam_inv = 1.0 / std::sqrt(2.0 * lambda + 1.0);
   auto &Z2 = Z.TwoBody;
 
-  // FDC.cc ~1553: Chi_VI_II_Op by inverse Pandya over ch_bra×ch_ket.
+  // Chi_VI_II_Op by inverse Pandya over ch_bra×ch_ket.
   double t_internal = omp_get_wtime();
   std::vector<size_t> ch_bra_list, ch_ket_list;
   TensorChannelPairs(Eta, ms, ch_bra_list, ch_ket_list);
@@ -3298,7 +3340,7 @@ void comm223_232_GIVa_from_bars(const Operator &Eta, const Operator &Gamma,
   Z.profiler.timer["_GIVa_chi_inv"] += omp_get_wtime() - t_internal;
   t_internal = omp_get_wtime();
 
-  // FDC.cc ~1752: Z2 += −Chi_VI_II_Op · Eta (+ twin), per Z channel.
+  // Z2 += −Chi_VI_II_Op · Eta (+ twin), per Z channel.
   const int nch_tb = (int)ms->GetNumberTwoBodyChannels();
   std::vector<std::vector<int>> ket_channels(nch_tb);
   for (size_t ich = 0; ich < ch_bra_list.size(); ++ich)
@@ -3459,13 +3501,16 @@ NineJMemo &Memo9() {
 }
 
 ////////////////////////////////////////////////////////////////////////////
-/// Gamma^IV_b / chi^iota.  FDC.cc ~1906 (bar_CHI_V → recouple → DGEMM with
-/// bar_Eta → inverse Pandya), tensor Ω:
+/// Gamma^IV_b / chi^iota.  Sec. js-GIVb-pandya, tensor Ω:
 ///   1. bar_CHI_V from the shared Pandya block (DGEMM, FillPandyaBars232)
 ///   2. inverse Pandya on ch_bra×ch_ket (9j) → Chi_V_Op (2n, non-AS)
-///   3. leftover: per CC channel (J6) Pandya-shaped DGEMM over (a,b) for
-///      each half-integer j0, then the 6j inverse on Z's ch_bra×ch_ket.
-/// AMC G4b_W{1,2}_leftover.tex (unreduced leftover), Z = (1−Pij)(1−Pkl)(W1+W2):
+///   3. leftover Pandya of the ordinary χ^ι_aibk and Ω_jbla onto CC rows
+///      (ik) / (jl) with a common column (ab) at J_ab: one 9j per factor
+///      (eq:js-GIVb-bars, thread_local 9j memo), GEMM per (J_ik, J_ab)
+///      (eq:js-GIVb-gemm), scalar inverse Pandya (eq:js-GIVb-inv).
+///      Only the W1 bars are built; W2 reads the pair-swapped rows
+///      (eq:js-GIVb-sym).
+/// m-scheme / AMC (eq:js-GIVb, eq:js-GIVb-W1), Z = (1−Pij)(1−Pkl)(W1+W2):
 ///   W1 = Σ CG χ_aibk Ω_jbla,   W2 = Σ CG χ_akbi Ω_lbja  (no extra h_Ω).
 /// Do not dagger χ; do not pack χ_adbc − hZ χ_bcad with one Ω̄ (that identity
 /// Ω_jalb ≡ hΩ Ω_lbja holds only at λ = 0).
@@ -3507,7 +3552,7 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
   Z.profiler.timer["_GIVb_chi_inv"] += omp_get_wtime() - t_internal;
   t_internal = omp_get_wtime();
 
-  // Leftover Path B (AMC G4b_leftover_pandya 6j gold; 9j = −Σ ĵ0² 3×6j).
+  // Leftover Pandya (eq:js-GIVb-bars; 9j = −Σ ĵ0² 3×6j of the AMC print).
   //   χ(ai;bk) scheme=((2,-4),(1,-3)) → χ̄(ik;ab)
   //   Ω(jbla)  scheme=((1,-3),(4,-2)) → Ω̄(jl;ab)
   //   CHI_V_final[ch_ik] += λ̂⁻¹ χ̄[{ch_ik,ch_ab}] Ω̄[{ch_ik,ch_ab}]ᵀ
@@ -3844,10 +3889,10 @@ void comm223_232_GIVb_from_bars(const Operator &Eta, const Operator &Gamma,
 /// Gamma^IV_c / chi^lambda — χ DGEMM then leftover of χ_{ialb} Ω_{bjak}.
 /// Rank: T×S / S×T → tensor χ^λ. Fold T×T→S.
 ///
-/// χ^λ is occupancy-AS (no h_χ). Leftover is gold Path B for all π:
+/// χ^λ is occupancy-AS (no h_χ). Leftover for all π (Sec. js-GIVc):
 /// scatter χ/Ω 2n blocks with the PandyaChiIalb / PandyaOmegaBjak 9j
 /// → mid-J DGEMM → inv 6j, then W2n (1−P)².
-/// (Ring adcb ≡ gold only when T1 χ is accidentally AS — even π.)
+/// (The ring adcb form is correct only when T1 χ is AS — even π.)
 ////////////////////////////////////////////////////////////////////////////
 static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
                                    Operator &Z) {
@@ -3945,16 +3990,15 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
   Z.profiler.timer["_GIVc_chi"] += omp_get_wtime() - t_start;
 
   // ------------------------------------------------------------------
-  // Leftover: gold Path B Pandya → DGEMM → inv (all π).
+  // Leftover: Pandya → DGEMM → inv (all π).
   //
-  // m-gold is Σ χ_ialb Ω_bjak. Ring adcb implements χ_ibal Ω_ajkb, which
-  // equals gold only when T1 χ is accidentally AS (even π). Odd-π T1 fails.
+  // m-scheme is Σ χ_ialb Ω_bjak. Ring adcb implements χ_ibal Ω_ajkb, which
+  // equals it only when T1 χ is AS (even π). Odd-π T1 fails.
   //
-  // Gold fills (AMC scheme (il)|(ab) / (ab)|(kj)):
+  // Fills (AMC scheme (il)|(ab) / (ab)|(kj)):
   //   PandyaChiIalb  — scheme=((1,-3),(2,-4)) on χ_ialb
   //   PandyaOmegaBjak — scheme=((3,-1),(4,-2)) on Ω_bjak
   // Same ring mid w = (−1)^{Jp}/Ĵp · λ̂^{-1}(−1)^{Jab+λ} and corrected inv.
-  // Locked: even ≡ adcb; odd T1 ≡ CG/m (givc_gold_dgemm_lock).
   //
   // T1-only leftover is not Hermitian (T1† ≡ T2); store NonHerm when
   // givc_chi_which != 0 so each fold(p,g,q,h) is kept.
@@ -3965,8 +4009,8 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
   // Packaging: χ/Ω WE-reduced; CHI_VII_final/Z reduce=true; store
   // Z_unred = Z_red/Ĵ. 2n unnormalized (GetTBME_J); ÷√2 only on AddToTBME.
   //
-  // FDC.cc ~2394 names: bar_CHI_VII_CC (Pandya of χ^λ), bar_Eta_CC (Pandya of
-  // Ω in the gold bjak scheme), CHI_VII_final (their CC product).
+  // FDC.cc names: bar_CHI_VII_CC (Pandya of χ^λ), bar_Eta_CC (Pandya of
+  // Ω in the bjak scheme), CHI_VII_final (their CC product).
   const int n_cc = Z.modelspace->GetNumberTwoBodyChannels_CC();
   const int parity_eta = Eta.GetParity();
   const int rank_T = Eta.GetTRank();
@@ -4280,7 +4324,7 @@ static void comm223_232_GIVc_pathB(const Operator &Eta, const Operator &Gamma,
 ////////////////////////////////////////////////////////////////////////////
 void comm223_232_GIVc(const Operator &Eta_in, const Operator &Gamma,
                       Operator &Z) {
-  // Γ^{IV_c}: gold Pandya (ialb/bjak) → DGEMM → inv (all π).
+  // Γ^{IV_c}: Pandya (ialb/bjak) → DGEMM → inv (all π). Sec. js-GIVc.
   const ReducedRMEView E(Eta_in);
   comm223_232_GIVc_pathB(E.ref, Gamma, Z);
 }
@@ -4297,7 +4341,8 @@ void comm223_232_GIVc(const Operator &Eta_in, const Operator &Gamma,
 ///            Z ∋ −Ω·N_B(θ) + N_B2(θ)·Ω  with (1−P_kl), (1−P_ij)
 ///   cross  : X̂ = Ω·M_X1 + M_X2·Ω (scalar non-AS 2b, ChiOp2n) → Pandya X̄ →
 ///            X̄·Γ̄ per CC channel (cached Γ̄) → inverse Pandya, (1−P)(1−P)
-/// AMC seeds: learn/amc_tts/comm_tts/output/comm223_132tts_*_seed.tex.
+/// Sec. js-132 (eq:js-132-lad). AMC inputs:
+/// learn/amc_tts/comm_tts/input/comm223_132tts_*_seed.txt.
 /// The 9j of the cross seed is the Pandya chain: {ji jc J2; jj J4 jb; J0 jl jk}
 ///   = Σ_x (2x+1) {ji jk x; jb jc J2}{jb jc x; jl jj J4}{ji jk x; jl jj J0}.
 /// Leftover packaging: unreduced Z, convention-2 λ̂^{-1}.

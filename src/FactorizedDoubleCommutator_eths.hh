@@ -29,18 +29,20 @@ namespace FactorizedDoubleCommutator_eths {
 extern bool use_1b_intermediates;
 extern bool use_2b_intermediates;
 
-extern bool use_TypeI_1b;
-extern bool use_TypeII_1b;
-extern bool use_TypeIII_1b;
-extern bool use_TypeIIIa_1b;
-extern bool use_TypeGI_2b;  // Gamma^I via chi^epsilon (scalar 1b)
-extern bool use_TypeGII_2b; // Gamma^II via chi^zeta (λ_Ω=0 / scalar path)
-extern bool use_TypeGIIIa_2b; // Gamma^III_a Path B (Pandya/inv χ^η → Chi_AS×Γ)
-extern bool use_TypeGIIIb_2b; // Gamma^III_b Path B: χ^η → Fac Pandya → RC → Γ̄
-extern bool use_TypeGIIIc_2b; // Gamma^III_c Factorized IIe/IIf (λ=0)
-extern bool use_TypeGIVa_2b;  // Gamma^IV_a Path B χ^κ (any λ; Pandya/DGEMM/inv)
-extern bool use_TypeGIVb_2b;  // Gamma^IV_b via chi^iota
-extern bool use_TypeGIVc_2b;  // Gamma^IV_c via chi^lambda
+// Per-diagram switches (default on, every λ). Equations and contraction
+// paths: learn/factorized_code_analyze.tex, Sec. jscheme and Sec. opt.
+extern bool use_TypeI_1b;     // f^I     / χ^α  (scalar 1b)
+extern bool use_TypeII_1b;    // f^II    / χ^β  (tensor 1b)
+extern bool use_TypeIII_1b;   // f^III_b / χ^δ  (scalar 2b)
+extern bool use_TypeIIIa_1b;  // f^III_a / χ^γ  (scalar 2b, Pandya)
+extern bool use_TypeGI_2b;    // Γ^I     / χ^ε  (scalar 1b)
+extern bool use_TypeGII_2b;   // Γ^II    / χ^ΩΓ (bra), χ^ζ (ket), tensor 1b
+extern bool use_TypeGIIIa_2b; // Γ^III_a / χ^η  ladder
+extern bool use_TypeGIIIb_2b; // Γ^III_b / χ^η  Pandya → RC → Γ̄·RC → inverse
+extern bool use_TypeGIIIc_2b; // Γ^III_c / χ^θ  Pandya → χ̄·Γ̄ → inverse
+extern bool use_TypeGIVa_2b;  // Γ^IV_a  / χ^κ  (tensor 2b) ladder
+extern bool use_TypeGIVb_2b;  // Γ^IV_b  / χ^ι  (tensor 2b) leftover Pandya GEMM
+extern bool use_TypeGIVc_2b;  // Γ^IV_c  / χ^λ  (tensor 2b) Pandya → DGEMM
 /// Isolated-test helper: 0=both χ^λ terms, 1=T1 (ΓΩ, occ on l), 2=T2 (ΩΓ, occ on j).
 extern int givc_chi_which;
 extern bool givc_fold_as;
@@ -63,7 +65,9 @@ void ForceScalarMakeNotReduced(Operator &Z);
 void SetUse_TypeGIVa_2b(bool tf);
 void SetUse_TypeGIVb_2b(bool tf);
 void SetUse_TypeGIVc_2b(bool tf);
-// factorize double commutator [Eta, [Eta, Gamma]]
+// Leftover [Ω,[Ω,Γ]_3b] for tensor Ω (reduced; λ=0 converted on entry),
+// scalar unreduced Γ and Z. Together with comm223_132_tts this equals
+// comm231tts + comm232tts + comm132tts applied to W = −comm223st(Γ, Ω).
 void comm223_231_st(const Operator &Eta, const Operator &Gamma, Operator &Z);
 void comm223_232(const Operator &Eta, const Operator &Gamma, Operator &Z);
 
@@ -74,7 +78,7 @@ void comm223_231_chi2b_tensor(const Operator &Eta, const Operator &Gamma,
 void comm223_232_chi1b_tensor(const Operator &Eta, const Operator &Gamma,
 							  Operator &Z);
 void comm223_232_chi2b(const Operator &Eta, const Operator &Gamma, Operator &Z);
-// Piece isolators: χ^η (AMC normal → scalar) then ladder / Pandya→RC
+// Single-diagram entry points (used by tests); each applies ReducedRMEView.
 void comm223_232_GIIIa(const Operator &Eta, const Operator &Gamma, Operator &Z);
 void comm223_232_GIIIb(const Operator &Eta, const Operator &Gamma, Operator &Z);
 void comm223_232_GIIIc(const Operator &Eta, const Operator &Gamma, Operator &Z);

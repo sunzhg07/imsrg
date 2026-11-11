@@ -7,7 +7,7 @@
 
 \newcommand{\codename}[1]{\texttt{#1}}
 \definecolor{codeblue}{rgb}{0.10,0.35,0.60}
-\newcommand{\coderef}[1]{\textcolor{codeblue}{\texttt{[L.\,#1]}}}
+\newcommand{\coderef}[1]{\textcolor{codeblue}{\texttt{[#1]}}}
 \newcommand{\MyRomanNum}[1]{%
   \ifcase#1\or I\or II\or III\or IV\or V\or VI\or VII\or VIII\or IX\or X\else #1\fi}
 \newcommand{\sixj}[6]{\begingroup\setlength{\arraycolsep}{0.2em}%
@@ -42,6 +42,12 @@ Section~\ref{sec:jscheme} writes the J-scheme AMC formulas that
 Section~\ref{sec:code} is the scalar packed path in
 \codename{FactorizedDoubleCommutator.cc} (default $h_\Omega=-1$);
 it is not leftover gold.
+Section~\ref{sec:opt} is the optimization strategy (dispatch, per-diagram
+contraction path, shared intermediates), and Sec.~\ref{sec:cost} the
+validation of the full identity and the cost.
+This file is the single reference for the factorized double commutator;
+code comments that point to \codename{learn/amc\_tts/*.md} notes are
+superseded by it.
 Unreduced scalar $\Omega$ is \codename{MakeReduced} on entry
 (\codename{ReducedRMEView}) in \codename{comm223st}, leftover
 \codename{*tts}, and ethS, then takes the same tensor leftover path.
@@ -491,7 +497,7 @@ partner.
 % =============================================================================
 
 Forward Pandya (normal $\to$ Pandya), as implemented
-(\coderef{1289--1296}):
+(\coderef{comm223\_232\_chi2b: bar\_Eta / bar\_Gamma fill}):
 \begin{equation}\label{eq:pandya-fwd}
 \bar O^{J}_{a\bar b\,c\bar d}
   =-\sum_{J'}(2J'+1)\,
@@ -499,7 +505,7 @@ Forward Pandya (normal $\to$ Pandya), as implemented
    O^{J'}_{a\,d\,c\,b}.
 \end{equation}
 Inverse Pandya for a single $(1-\hat P_{ij})$ (used for $\chi^\eta\to$ normal,
-\coderef{1380--1470}):
+\coderef{comm223\_232\_chi2b: Chi\_III\_Op}):
 \begin{equation}\label{eq:pandya-inv-1P}
 O^{J}_{ijkl}
   =-(1-\hat P_{ij})\sum_{J'}(2J'+1)\,
@@ -507,7 +513,7 @@ O^{J}_{ijkl}
    \bar O^{J'}_{i\bar l\,k\bar j}.
 \end{equation}
 Inverse Pandya with full $(1-\hat P_{ij})(1-\hat P_{kl})$ (used for
-$\Gamma^{\MyRomanNum{3}_b}$, \coderef{2719--2849}), schematically
+$\Gamma^{\MyRomanNum{3}_b}$, \coderef{comm223\_232\_chi2b: CHI\_III\_final inverse}), schematically
 \begin{equation}\label{eq:pandya-inv-2P}
 O^{J}_{ijkl}
   =-(1-\hat P_{ij})(1-\hat P_{kl})\,(-1)^{J+j_i+j_j}
@@ -519,7 +525,7 @@ with all four exchange channels $(jl,ki)$, $(ki,jl)$, $(il,jk)$, $(jk,il)$
 accumulated explicitly in the code.
 
 Pandya$\to$CC recoupling for $\chi^\eta$
-(\codename{barCHI\_III\_RC}, \coderef{1749--1841}):
+(\codename{barCHI\_III\_RC}, \coderef{comm223\_232\_chi2b}):
 \begin{equation}\label{eq:RC}
 \begin{aligned}
 \overline{\overline\chi}{}^{\eta\,J}_{a\bar b\,c\bar d}
@@ -549,7 +555,7 @@ Functions: \codename{comm223\_231\_*} (one-body),
 \subsection{$f^{\MyRomanNum{1}}$ and $\chi^\alpha$}
 \label{sec:code-fI}
 
-\coderef{99--254}.
+\coderef{comm223\_231\_chi1b: $\chi^\alpha$ block}.
 Ordinary-channel product $\Omega\,(\mathrm{occ})\,\Omega$, then trace to
 one body; contraction
 $\sum_{ab}\chi^\alpha_{ab}(\Gamma_{biaj}+\Gamma_{aibj})$.
@@ -558,12 +564,12 @@ Matches \eqref{eq:chi1b}--\eqref{eq:fact1b}.
 \subsection{$f^{\MyRomanNum{2}}$ and $\chi^\beta$ (hermiticity-aware)}
 \label{sec:code-fII}
 
-\coderef{255--376} (scalar
+\coderef{comm223\_231\_chi1b: $\chi^\beta$ block} (scalar
 \codename{FactorizedDoubleCommutator.cc}).
 \begin{itemize}
   \item Build $\chi^\beta_{de}$ from $\Omega\Gamma$ with the same occ kernel as
-    $\chi^\alpha$ (\coderef{255--334}).
-  \item Contract (\coderef{335--369}):
+    $\chi^\alpha$ (\coderef{comm223\_231\_chi1b}).
+  \item Contract (\coderef{comm223\_231\_chi1b}):
   \begin{equation}
     z_{pq}\propto\sum_{de J}
     \bigl[\chi^\beta_{de}\,\Omega^{J}_{epdq}
@@ -647,7 +653,7 @@ $\mathrm{m}\equiv\mathrm{DIRECT}\equiv\mathrm{Path\,B}$
 \subsection{$f^{\MyRomanNum{3}_b}$ and $\chi^\delta$}
 \label{sec:code-fIIIb}
 
-\coderef{395--544}.
+\coderef{comm223\_231\_chi2b: $\chi^\delta$ block}.
 $\chi=(\Omega)\,(\mathrm{occ}\cdot\Omega)$ (occ on second factor), then
 $\chi\Gamma-\Gamma\chi$ (or $A+A^{T}$ when $h_\Omega=-1$).
 Matches $f^{\MyRomanNum{3}_b}$ in \eqref{eq:unfact1b}.
@@ -655,7 +661,7 @@ Matches $f^{\MyRomanNum{3}_b}$ in \eqref{eq:unfact1b}.
 \subsection{$f^{\MyRomanNum{3}_a}$ and $\chi^\gamma$ (Pandya)}
 \label{sec:code-fIIIa}
 
-\coderef{545--799}.
+\coderef{comm223\_231\_chi2b: Pandya $\chi^\gamma$ block}.
 \begin{enumerate}
   \item Forward Pandya of $\Omega$ and $\Gamma$ via \eqref{eq:pandya-fwd}.
   \item Occupancy-weighted product in Pandya space
@@ -672,7 +678,7 @@ The corrected M-scheme statement is \eqref{eq:fIIIa}.
 $\chi^\epsilon$, $\chi^\zeta$}
 \label{sec:code-GI-II}
 
-\coderef{882--1140}.
+\coderef{comm223\_232\_chi1b}.
 \begin{itemize}
   \item $\chi^\epsilon=\mathrm{CHI\_I}$: both loops build
     $\Omega\Omega$ with weight
@@ -682,7 +688,7 @@ $\chi^\epsilon$, $\chi^\zeta$}
     $\tfrac12\bar n_a n_i n_j\,\Gamma_{apij}\Omega_{ijaq}$ and
     $\tfrac12\bar n_a\bar n_b n_i\,\Gamma_{ipab}\Omega_{abiq}$,
     i.e.\ $\Gamma_{ciab}\Omega_{abcj}$ as in \eqref{eq:chizeta}.
-  \item Insertions (\coderef{1053--1121}):
+  \item Insertions (\coderef{comm223\_232\_chi1b: CHI\_I / CHI\_II fold}):
     $\chi^\epsilon\Gamma$ with $(1-\hat P)$ on bra/ket legs, and
     $h_Z\,\chi^\zeta\Omega$ with a relative minus on the ket side,
     matching $\Gamma^{\MyRomanNum{1}}$ and $\Gamma^{\MyRomanNum{2}}$ in
@@ -692,7 +698,7 @@ $\chi^\epsilon$, $\chi^\zeta$}
 \subsection{Pandya build of $\chi^\eta$, $\chi^\iota$, $\chi^\kappa$}
 \label{sec:code-pandya-chi}
 
-\coderef{1191--1357}.
+\coderef{comm223\_232\_chi2b: Pandya fill}.
 After filling $\bar\Omega$, $\bar\Gamma$ by \eqref{eq:pandya-fwd},
 \begin{align}
   \mathtt{nnnbar\_Eta}
@@ -725,14 +731,14 @@ $\Omega\Gamma$ ordering (\codename{Chi\_VI\_II}), justifying \eqref{eq:chikappa}
 
 \begin{enumerate}
   \item Inverse Pandya \eqref{eq:pandya-inv-1P} of $\bar\chi^\eta$
-    $\to$ \codename{Chi\_III\_Op} (\coderef{1377--1483}), including
+    $\to$ \codename{Chi\_III\_Op} (\coderef{comm223\_232\_chi2b: Chi\_III\_Op}), including
     bra $(1-\hat P_{ij})$ and an overall minus:
     \[
       X^{J}_{ijkl}=-(1-\hat P_{ij})\sum_{J'}(2J'+1)\,
       \sixj{j_i}{j_j}{J}{j_k}{j_l}{J'}\,
       \bar X^{J'}_{i\bar l\,k\bar j}.
     \]
-  \item Ladder (\coderef{1706--1709}):
+  \item Ladder (\coderef{comm223\_232\_chi2b: ladder}):
   \begin{equation}
     Z\;{+}{=}\;
     \chi\,\Gamma
@@ -750,8 +756,8 @@ $\Gamma_{ijab}\chi_{klab}$, not $\chi_{abkl}$.
     ($\Gamma\cdot\mathrm{occ}\cdot\Omega$) and
     $\bar\chi^{\kappa,\mathrm{II}}=\mathtt{bar\_CHI\_VI\_II}$
     ($h_\Omega\,(\mathrm{occ}\cdot\Omega)^{T}\cdot\Gamma$)
-    (\coderef{1519--1674}).
-  \item Ladder (\coderef{1711--1714}):
+    (\coderef{comm223\_232\_chi2b: BUILD CHI\_VI}).
+  \item Ladder (\coderef{comm223\_232\_chi2b: ladder}):
   \begin{equation}
     Z\;{+}{=}\;
     -\Omega\,\chi_{\mathrm{VI}}
@@ -770,7 +776,7 @@ round trip, so no extra overall $-1$ remains.
 \subsection{$\Gamma^{\MyRomanNum{3}_b}$: CC path from $\chi^\eta$}
 \label{sec:code-GIIIb}
 
-Exact RC used in the code (\coderef{1828--1831}):
+Exact RC used in the code (\coderef{comm223\_232\_chi2b: barCHI\_III\_RC}):
 \begin{equation}
 \begin{aligned}
 \overline{\overline\chi}{}^{\eta\,J}_{a\bar b\,c\bar d}
@@ -784,11 +790,11 @@ Exact RC used in the code (\coderef{1828--1831}):
 \end{equation}
 Then:
 \begin{enumerate}
-  \item GEMM (\coderef{2703}):
+  \item GEMM (\coderef{comm223\_232\_chi2b: CHI\_III\_final}):
     $\mathrm{CHI\_III\_final}=\bar\Gamma\cdot\overline{\overline\chi}{}^\eta$.
   \item Inverse Pandya with full $(1-\hat P_{ij})(1-\hat P_{kl})$ and all
     exchange channels $(jl,ki)$, $(ki,jl)$, $(il,jk)$, $(jk,il)$
-    (\coderef{2719--2849}).
+    (\coderef{comm223\_232\_chi2b: CHI\_III\_final inverse}).
 \end{enumerate}
 This is \eqref{eq:GIIIb-CC}; it does not form two independent M-scheme
 $\chi\Gamma$ products.
@@ -796,7 +802,7 @@ $\chi\Gamma$ products.
 \subsection{$\Gamma^{\MyRomanNum{4}_b}$ via $\chi^\iota$}
 \label{sec:code-GIVb}
 
-RC for $\chi^\iota$ (\coderef{1833--1836}):
+RC for $\chi^\iota$ (\coderef{comm223\_232\_chi2b: bar\_CHI\_V\_RC}):
 \begin{equation}
 \begin{aligned}
 \overline{\overline\chi}{}^{\iota\,J}_{a\bar b\,c\bar d}
@@ -809,7 +815,7 @@ RC for $\chi^\iota$ (\coderef{1833--1836}):
 \end{aligned}
 \end{equation}
 Accumulated in Pandya as \codename{CHI\_V\_final}, then inverse Pandya
-(\coderef{1866--2024}). The $h_Z$ in the RC is a Pandya triangle fill,
+(\coderef{comm223\_232\_chi2b: CHI\_V\_final inverse}). The $h_Z$ in the RC is a Pandya triangle fill,
 not the IVb leftover sign.
 ethS leftover is two AMC strings \eqref{eq:GIVb}:
 $W=W^{(1)}+W^{(2)}_{\Omega_{lbja}}$ (no extra $h_\Omega$).
@@ -828,16 +834,16 @@ subtlety. The tensor path is Sec.~\ref{sec:js-GIVb-pandya}.
 \begin{itemize}
   \item $\chi^\theta$: normal product
     $\Omega\cdot\Omega$ with occ on $k$ and on $j$
-    (\coderef{2031--2170}); forward Pandya; Pandya ladder
+    (\coderef{comm223\_232\_chi2b: CHI\_IV}); forward Pandya; Pandya ladder
     \[
       \bar\Gamma^{(\mathrm{III}_c)}
       =-\tfrac12\sum_{ab}
         \bar\chi^{\theta}_{iabl}\,\bar\Gamma_{bjka};
     \]
-    inverse Pandya (\coderef{2505--}).
+    inverse Pandya (\coderef{comm223\_232\_chi2b: bar\_CHI\_gamma inverse}).
   \item $\chi^\lambda$: normal
     $\Gamma\Omega+h_\Omega\,\Omega^{T}\Gamma$ with occ on $l$ and $j$
-    (\coderef{2173--2346}); forward CC; CC ladder
+    (\coderef{comm223\_232\_chi2b: CHI\_VII}); forward CC; CC ladder
     \[
       \overline{\overline\Gamma}^{(\mathrm{IV}_c)}
       =\tfrac12(-1)^{j_i+j_j+j_k+j_l}
@@ -845,7 +851,7 @@ subtlety. The tensor path is Sec.~\ref{sec:js-GIVb-pandya}.
         \overline{\overline\chi}{}^{\lambda}_{ialb}\,
         \overline{\overline\Omega}_{bjak};
     \]
-    inverse CC (\coderef{2867--3049}).
+    inverse CC (\coderef{comm223\_232\_chi2b: bar\_CHI\_VII\_CC inverse}).
 \end{itemize}
 
 % =============================================================================
@@ -861,8 +867,11 @@ Hats: $\hat x=\sqrt{2x+1}$, $\hat\jmath_i^{-2}=1/(j_{i,2}+1)$.
 Two-body tensor access is \codename{GetTBME\_J}$(J_{\mathrm{bra}},J_{\mathrm{ket}},\ldots)$;
 scalar is same-$J$ only. Channel matrices are \emph{normalized};
 physical ME $=\sqrt{(1+\delta_{ab})(1+\delta_{cd})}$ times the entry.
-AMC inputs live under \codename{learn/amc\_tts/factored\_*};
-the implemented map is \codename{learn/amc\_tts/FACTORIZED\_TTS\_IMPLEMENTED.md}.
+AMC inputs live under \codename{learn/amc\_tts/factored\_*/input} and
+\codename{learn/amc\_tts/comm\_tts/input}; the \codename{.tex} prints quoted
+below are regenerated from them. Packaging rules are in
+Sec.~\ref{sec:js-pack}; the code path for each diagram is in
+Sec.~\ref{sec:opt}.
 
 Nested leftover gold (no 3b store on the factored side):
 \[
@@ -1120,9 +1129,10 @@ Z
 \quad\text{channels }(jl,ki),\ (ki,jl),\ (il,jk),\ (jk,il).
 \end{aligned}
 \end{equation}
-This is the coded Path~B; the AMC Pandya$\to$CC print is \emph{not}
-required to match this RC (documented open). M-scheme gold remains
-\eqref{eq:WIIb}.
+This is the coded Path~B. The RC is a J-scheme primitive; an AMC
+Pandya$\to$CC print of it is not needed, because the full $Z$ is locked
+against M-scheme \eqref{eq:WIIb} and against the nested leftover identity
+(Sec.~\ref{sec:cost}).
 
 \subsection{$\Gamma^{\mathrm{III}_c}$ / $\chi^\theta$
 (\codename{comm223\_232\_GIIIc})}
@@ -1344,13 +1354,181 @@ One-body and cross: AMC
 \subsection{Packaging}
 \label{sec:js-pack}
 
-Reduced vs unreduced must be named on both sides
-(\codename{learn/amc\_tts/REDUCED\_UNREDUCED.md}).
-GetMscheme is always physical. Ratios clustering at
+Reduced vs unreduced must be named on both sides of every comparison.
+\begin{center}
+\small
+\begin{tabular}{@{}p{0.30\textwidth}p{0.38\textwidth}p{0.26\textwidth}@{}}
+\hline
+Object & AMC declaration & IMSRG storage \\
+\hline
+tensor $\Omega$, $W$ (1b/2b/3b) & \texttt{scalar=false} (always reduced) &
+  WE-reduced RME \\
+scalar $\Gamma$ & \texttt{scalar=true, reduce=false} &
+  \codename{IsReduced()=false} \\
+scalar output $Z$ & \texttt{scalar=true, reduce=false} (must be explicit) &
+  unreduced \\
+reduced reference & \texttt{scalar=true, reduce=true} &
+  $Z_{\mathrm{red}}=\hat J\,Z_{\mathrm{unred}}$ \\
+\hline
+\end{tabular}
+\end{center}
+AMC's default is \texttt{reduce = reduce or not scalar}, so an undeclared
+scalar $Z$ comes out reduced; always set \texttt{reduce=false} on $Z$ for
+a C++ comparison. Use \texttt{--wet-convention wigner} (matches
+\codename{GetMscheme}). One-body outputs then carry
+$\hat\jmath_i^{-2}$ (unreduced) rather than $\hat\jmath_i^{-1}$ (reduced).
+AMC strips $\hat P$ and the overall $\tfrac14$ / $\tfrac12$ Pauli factors;
+they are restored by hand in C++.
+\codename{GetMscheme} is always physical. Ratios clustering at
 $\hat J^{\pm1}$ or $1/\sqrt{2J+1}$ are packaging, not a wrong 6j.
-He8 emax=2 leftover grid ($\lambda=0\ldots5$, $T=0,1,2$, both $\pi$,
-$h_\Omega=\pm1$): nested ${\tt st}+{\tt tts}$ $\equiv$ ethS at
-$\sim10^{-15}$.
+Unreduced scalar $\Omega$ ($\lambda=0$) is passed through
+\codename{ReducedRMEView} on every ethS entry, so there is no separate
+$\lambda=0$ branch.
+
+% =============================================================================
+\section{Optimization strategy (ethS as coded)}
+\label{sec:opt}
+% =============================================================================
+\sloppy
+
+\subsection{Dispatch}
+
+The leftover $[\Omega,[\Omega,\Gamma]_3]_{1b+2b}$ is the sum of three entry
+points, each taking reduced tensor $\Omega$, scalar $\Gamma$ and
+accumulating into scalar unreduced $Z$:
+\begin{center}
+\small
+\begin{tabular}{@{}p{0.22\textwidth}p{0.44\textwidth}p{0.30\textwidth}@{}}
+\hline
+Entry & Sub-calls (in order) & Flags (\codename{use\_*}) \\
+\hline
+\codename{comm223\_231\_st} &
+  \codename{comm223\_231\_chi1b\_tensor}: $f^{\mathrm{I}}$, $f^{\mathrm{II}}$ &
+  \codename{TypeI\_1b}, \codename{TypeII\_1b} \\
+ & \codename{comm223\_231\_chi2b\_tensor}: $f^{\mathrm{III}_b}$, $f^{\mathrm{III}_a}$ &
+  \codename{TypeIII\_1b}, \codename{TypeIIIa\_1b} \\
+\codename{comm223\_232} &
+  \codename{comm223\_232\_chi1b\_tensor}: $\Gamma^{\mathrm{I}}$, $\Gamma^{\mathrm{II}}$ &
+  \codename{TypeGI\_2b}, \codename{TypeGII\_2b} \\
+ & \codename{comm223\_232\_chi2b}: \codename{FillPandyaBars232} once, then
+   GIIIa, GIVa, GIVb, GIIIc, GIIIb, GIVc &
+  \codename{TypeGIII\{a,b,c\}\_2b}, \codename{TypeGIV\{a,b,c\}\_2b} \\
+\codename{comm223\_132\_tts} &
+  \codename{\_ladder} $+$ \codename{\_onebody} $+$ \codename{\_cross} & --- \\
+\hline
+\end{tabular}
+\end{center}
+\codename{use\_1b\_intermediates} / \codename{use\_2b\_intermediates}
+switch the chi1b / chi2b topologies as a whole. All flags default to on;
+there is no slow or Path~A fallback in the production file.
+
+\subsection{Rules that every diagram follows}
+
+\begin{enumerate}
+  \item \textbf{Product ranks.} $T\times T\to S$, $T\times S\to T$,
+    $S\times S\to S$; never $T\times T\to T$. A $[\Omega\times\Omega]^{(0)}$
+    intermediate is scalar, after which the scalar Factorized ladder /
+    Pandya / RC machinery is reused unchanged.
+  \item \textbf{Intermediate first, then fold.} No three-body object is
+    stored; each diagram is (build $\chi$) $\to$ (contract with the third
+    operator). Cost is $O(N^5)$-type channel GEMMs instead of the
+    $O(N^7)$-type 3b sum.
+  \item \textbf{Every contraction is a GEMM.} Angular factors (6j/9j,
+    hats, phases) are scattered into the operands \emph{before} the
+    product so that the inner sum is a plain matrix product per channel or
+    channel pair. A residual 6j/9j that couples the two factors
+    through a shared dummy (GIVb before Sec.~\ref{sec:js-GIVb-pandya})
+    is the signal to change basis (Pandya) until it factorizes.
+  \item \textbf{2n ordered-pair layout.} Tensor and occupation-weighted
+    intermediates are neither Hermitian nor antisymmetric, so they are
+    stored on ordered pairs $(p,q)$ and $(q,p)$
+    (\codename{Omega2n}, \codename{ChiOp2n}); never raw-transpose a tensor
+    block (the channel pair flips). Where $\chi$ has a nonzero $(p,p)$
+    slot at odd $J$ ($\chi^\gamma$, 132 cross $\hat X$) the no-Pauli
+    \codename{ChiOp2n} layout is required.
+  \item \textbf{Occupation as a diagonal weight.} $n$/$\bar n$ factors
+    are applied as \codename{OccWeights2n} vectors (or
+    \codename{FillOmegaOccOmega2n}) on one operand, not inside loops.
+  \item \textbf{Angular caches.} \codename{PreCalculateSixJ},
+    \codename{PreCalculateNineJ}, \codename{PreCalculateNineJTensorPandya}
+    before the parallel regions; GIVb additionally uses a
+    \codename{thread\_local} direct-mapped 9j memo.
+  \item \textbf{Reuse across diagrams.} \codename{FillPandyaBars232}
+    builds the Pandya $\bar\Gamma$, $\bar\Omega$ and occupation-weighted
+    $\bar\Omega$ once for GIVa and GIVb; the scalar $\bar\Gamma$ in CC
+    channels is cached (\codename{CachedBarGammaScalarCC}) and shared by
+    GIIIb, GIIIc, the GIV bars and the 132 cross term; $\bar\chi^\eta$
+    (\codename{BuildChiEtaPathB}) is the same object for GIIIa and GIIIb.
+  \item \textbf{Threading.} OpenMP \texttt{schedule(dynamic,1)} over
+    channels (or channel pairs) with per-thread accumulators merged in a
+    critical section, or atomic scatter (\codename{AddToMatAtomic}) into
+    CC blocks.
+\end{enumerate}
+
+\subsection{Per-diagram path}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lllp{0.47\textwidth}@{}}
+\hline
+Diagram & $\chi$ & rank & Implemented path (function) \\
+\hline
+$f^{\mathrm{I}}$ & $\chi^\alpha$ & S, 1b &
+  $T=\Omega W\Omega$ channel DGEMM (\codename{FillOmegaOccOmega2n}),
+  trace $c$; fold with $\Gamma$ on ordered pairs of each $\Gamma$ block \\
+$f^{\mathrm{II}}$ & $\chi^\beta$ & T, 1b &
+  rectangular ladder DGEMM $\Gamma^{J_0}W\Omega^{J_0J_1}$ on
+  \codename{TensorChannelPairs}, 6j $+$ trace; fold \eqref{eq:js-fII} \\
+$f^{\mathrm{III}_b}$ & $\chi^\delta$ & S, 2b &
+  same-channel DGEMM $\chi\Gamma$, then $M+M^T$ / $M-\Gamma\chi$
+  \eqref{eq:js-fIIIb} \\
+$f^{\mathrm{III}_a}$ & $\chi^\gamma$ & S, 2b &
+  \codename{BuildChiGammaPathB}: tensor Pandya (9j) $\to$ occ $\odot\bar\Omega$
+  $\to$ CC DGEMM $\to$ inverse Pandya; ladder trace
+  (\codename{comm223\_231\_fIIIa\_leftover\_dgemm}) \\
+$\Gamma^{\mathrm{I}}$ & $\chi^\varepsilon$ & S, 1b &
+  ordinary-channel DGEMM \eqref{eq:js-chie}, then $\chi\Gamma$ insertions \\
+$\Gamma^{\mathrm{II}}$ & $\chi^{\Omega\Gamma},\chi^\zeta$ & T, 1b &
+  two rectangular DGEMM 1b intermediates, fold \eqref{eq:js-GII} \\
+$\Gamma^{\mathrm{III}_a}$ & $\chi^\eta$ & S, 2b &
+  \codename{BuildChiEtaPathB} $\to$ \codename{InvChiEtaRed} $\to$
+  ladder DGEMM $-\chi\Gamma-h_Z\Gamma\chi^T$ \\
+$\Gamma^{\mathrm{III}_b}$ & $\chi^\eta$ & S, 2b &
+  same $\bar\chi^\eta$ ($\div\hat J$) $\to$ RC scatter (parallel over source
+  CC block) $\to$ $\bar\Gamma\cdot$RC $\to$ inverse Pandya, four exchange
+  channels \\
+$\Gamma^{\mathrm{III}_c}$ & $\chi^\theta$ & S, 2b &
+  \codename{FillChiThetaG3c\_DGEMM} (ordinary channels) $\to$ Pandya
+  $\to$ $\bar\chi^\theta\cdot\bar\Gamma$ (cached) $\to$ inverse Pandya \\
+$\Gamma^{\mathrm{IV}_a}$ & $\chi^\kappa$ & T, 2b &
+  shared bars $\to$ $\bar\chi^\kappa$ DGEMM $\to$ inverse Pandya (9j) $\to$
+  ladder DGEMM, $(1-\hat P_{ij})$ and $(kl;ij)$ twin \\
+$\Gamma^{\mathrm{IV}_b}$ & $\chi^\iota$ & T, 2b &
+  shared bars $\to$ $\chi^\iota$ (2n) $\to$ leftover Pandya
+  (one 9j per factor, memo) $\to$ GEMM per $(J_{ik},J_{ab})$ $\to$
+  scalar inverse Pandya; $W^{(2)}$ by pair swap
+  (Sec.~\ref{sec:js-GIVb-pandya}) \\
+$\Gamma^{\mathrm{IV}_c}$ & $\chi^\lambda$ & T, 2b &
+  $\chi^\lambda$ DGEMM $\to$ \codename{PandyaChiIalb} /
+  \codename{PandyaOmegaBjak} (9j) scatter $\to$ mid-$J$ DGEMM $\to$
+  inverse 6j, $(1-\hat P)^2$ \\
+132 ladder & --- & --- &
+  $Z(ch_0)\mathrel{+}=\Gamma M_1\Omega-\Omega M_2\Gamma$, $M$ = 6j-dressed
+  $W_{ba}\otimes1$ \eqref{eq:js-132-lad} \\
+132 onebody & $\chi$, $\theta$ & S / T, 1b &
+  $[\chi\otimes1,\Gamma]$; $-\Omega N_B(\theta)+N_{B2}(\theta)\Omega$ with
+  one-sided $(1-\hat P)$ \\
+132 cross & $\hat X$ & S, 2b &
+  $\hat X=\Omega M_{X1}+M_{X2}\Omega$ (\codename{ChiOp2n}) $\to$ Pandya
+  $\to$ $\bar X\cdot\bar\Gamma$ (cached) $\to$ inverse Pandya,
+  $(1-\hat P)^2$ \\
+\hline
+\end{tabular}
+\end{center}
+
+The header comment of \codename{comm223\_232\_GIVb\_from\_bars} still
+describes the older per-$j_0$ DGEMM; the code and this section use the
+leftover-Pandya form.
 
 % =============================================================================
 \section{Validation and cost}
@@ -1361,7 +1539,9 @@ $\sim10^{-15}$.
 
 \codename{run\_paper/test\_fact\_unfact\_223\_tts.py} evaluates the same
 leftover double commutator twice from one random scalar $H$ and one
-random antihermitian tensor $\Omega$, and compares the results as
+random tensor $\Omega$ of either hermiticity ($h_\Omega=\mp1$, env
+\texttt{HERMS}; $W_3$ then has $h_W=-h_\Omega$ and $Z$ is Hermitian), and
+compares the results as
 operator norms. The unfactorized side builds the three-body
 intermediate explicitly,
 \[
@@ -1378,15 +1558,17 @@ The test is $\lVert Z_{\mathrm{un}}-Z_{\mathrm{fa}}\rVert\le
 \lVert Z_{\mathrm{fa}}\rVert)$. Crucially it \emph{also} re-runs $231$,
 $232$ and $132$ separately and compares them one by one, so a passing
 total cannot hide a cancellation between two wrong terms. $\Omega$ is
-reseeded per cell as $\mathtt{SEED}+17\lambda+5T+3P$, so every cell is
-an independent draw; at $\lambda=0$ the factorized side is handed the
+reseeded per cell as $\mathtt{SEED}+17\lambda+5T+3P$ ($+101$ for
+$h_\Omega=+1$, otherwise the Hermitian scalar draw at $\lambda=T=P=0$
+reproduces $H$ and the cell is trivially zero), so every cell is an
+independent draw; at $\lambda=0$ the factorized side is handed the
 rank-3 \codename{MakeReduced} copy, since the scalar case needs the
 reduced packaging.
 
 With the leftover-Pandya GIVb (Sec.~\ref{sec:js-GIVb-pandya}) in place,
-$e_{\max}=2$ gives $30/30$ PASS over
-$\lambda=0\ldots4\times T=0,1,2\times$ both parities, relative
-deviations $8\times10^{-16}$ to $2.9\times10^{-15}$, with $231$, $232$,
+$e_{\max}=2$ gives $60/60$ PASS over
+$h_\Omega=\pm1\times\lambda=0\ldots4\times T=0,1,2\times$ both
+parities, relative deviations below $3\times10^{-15}$, with $231$, $232$,
 $132$ each OK individually. A single $e_{\max}=3$ cell
 ($\lambda=2$, $T=0$, even), where the intermediate is much larger at
 $\lVert W_3\rVert=4.6\times10^{8}$, agrees to $4.0\times10^{-15}$ --
@@ -1448,7 +1630,7 @@ Sec.~\ref{sec:unfact} and the present implementation.
 \begin{enumerate}
   \item \textbf{$f^{\MyRomanNum{2}}$.}
     Must keep $h_\Omega h_\Gamma$ on the second $\Omega$ string
-    \eqref{eq:fact1b}. The code path \coderef{361--362} uses
+    \eqref{eq:fact1b}. The code path \coderef{comm223\_231\_chi1b: $f^{\mathrm{II}}$ fold} uses
     $\chi_{de}\Omega-\,h_Z\chi_{ed}\Omega$ with $h_Z=h_\Gamma$; this is
     equivalent for $h_\Omega=-1$ but should be checked if both signs flip.
   \item \textbf{$\Gamma^{\MyRomanNum{2}}$.}
@@ -1468,10 +1650,10 @@ Sec.~\ref{sec:unfact} and the present implementation.
     \(h_\Omega=-1\) only.
   \item \textbf{$\chi^\lambda$ / $\chi^{\kappa,\mathrm{II}}$.}
     Transposes are converted with $h_\Omega$
-    (\codename{hEta} in \coderef{1354}, \coderef{2335}).
+    (\codename{hEta} in \coderef{comm223\_232\_chi2b: bar\_CHI\_VI\_II, CHI\_VII}).
     Wrong $h_\Omega$ flips the $\Omega\Gamma$ vs $\Gamma\Omega$ partner.
   \item \textbf{Pandya hermiticity fills.}
-    $\bar O_{cd,ab}=h_O\bar O_{ab,cd}$ (\coderef{1308--1313}).
+    $\bar O_{cd,ab}=h_O\bar O_{ab,cd}$ (\coderef{comm223\_232\_chi2b: Pandya fill}).
     Nonstandard $h_O$ changes every occupied product that uses the upper
     triangle fill.
 \end{enumerate}
