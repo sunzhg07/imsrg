@@ -71,6 +71,17 @@ core term scales as −1/λ̂² — one of them is off by λ̂ (invisible for λ
 Next: m-scheme check of the tensor norm for single ph / qv configurations against the same density,
 to find which term carries the extra λ̂, before changing `EOM.cc`.
 
+**Resolved (riker, 2026-11-12).** `comm110tts`/`comm220tts` normalized the 0-body as the uncoupled
+m-trace Σ_μ X_μY_{−μ} (λ̂⁻²), while every leftover (`comm111tts` … `comm222tts`, contracted with ρ)
+is the coupled scalar [X×Y]^(0)_0 (λ̂⁻¹); in a scalar state ⟨[X×Y]^0⟩ = λ̂ Σ_μ⟨X_μY_{−μ}⟩. Check:
+moving filled orbits into the reference must shift Z0 by Σ(2j+1)Z_aa — before, ratio = λ̂ exactly
+(λ = 1, 3); after, 1.000000. Fix: 0-body → λ̂⁻¹ (both implementations + m-scheme tests, now
+⟨λμλ−μ|00⟩-weighted), and the five occupation-identity terms in `ConstructNormMatrix_tensor`.
+`TEST=1` now: N = −0.29332, −0.45796, −0.28403, −0.11939 → implied n(0d₅/₂) = 0.492,
+n(1s₁/₂) = 0.207 = KSHELL. Code N, T = −(1/λ̂) × physical, so **B(E1) = −λ̂ T²/N**
+(`mg24_e1_eom.py` updated). Riker absolute energies are ~0.2 MeV below §1/§2 (proj-shared
+half-precision 3N file); spectra and operator norms agree.
+
 Status of the E1 run: started from a random projected vector (as `EOM::RunMR`), MAX_ITER = 60,
 STATE_WANT = 30 — **cancelled locally after setup (no results); rerun on riker**; results go to
 `eom_result/Mg24_EM1.8_2.0_hw16_emax4_e1_1m.json`. B(E1) values are provisional until the metric

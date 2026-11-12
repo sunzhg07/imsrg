@@ -24,7 +24,7 @@ import shutil
 import subprocess
 import sys
 
-from he8_io import BUILD, PAPER, RUN2, hs_path
+from he8_io import BUILD, PAPER, RUN2, hs_path, kshell_path
 
 if BUILD not in sys.path:
     sys.path.insert(0, BUILD)
@@ -43,8 +43,8 @@ snt_src = Hs_file[: -len(".dat")] + ".snt"
 WORK = os.path.join(PAPER, "kshell_mg24", f"e{emax}")
 SNT_NAME = "mg24.snt"
 PTN_NAME = "mg24_sd.ptn"
-KSHELL_EXE = os.environ.get("KSHELL_EXE", os.path.join(PAPER, "kshell_he8", "kshell.exe"))
-TRANSIT_EXE = os.environ.get("TRANSIT_EXE", os.path.join(PAPER, "kshell_he8", "transit.exe"))
+KSHELL_EXE = kshell_path("kshell.exe")
+TRANSIT_EXE = kshell_path("transit.exe")
 
 H_LINE = re.compile(
     r"^\s*(\d+)\s+<H>:\s+([-+0-9.eE]+)\s+<JJ>:\s+[-+0-9.eE]+\s+J:\s+(\d+)/2"

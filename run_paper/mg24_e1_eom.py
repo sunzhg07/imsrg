@@ -13,8 +13,9 @@ the states that carry E1 strength converge first.
 Transition amplitude (scalar-coupled, ethS leftover-CG convention):
   T_nu = NormMultiref_tensor(E1, chi_nu) = <[E1, chi_nu - chi_nu^dag]>_rho / 2
   N_nu = ComputeNorm(chi_nu, chi_nu)
-  B(E1; 0+ -> 1-_nu) = -lambda_hat^2 * T_nu^2 / N_nu     [e^2 fm^2]
-  (code N, T carry -1/lambda_hat^2; TEST=1 pins this.)
+  B(E1; 0+ -> 1-_nu) = -lambda_hat * T_nu^2 / N_nu     [e^2 fm^2]
+  (code N, T carry -1/lambda_hat; TEST=1 pins this: core->a gives
+   N = -(1-n_a)/lambda_hat with n_a the KSHELL occupation.)
 TEST=1 checks this formula on a pure particle-hole chi against the exact
 |<a||E1||i>|^2 with the bare E1.
 
@@ -79,9 +80,9 @@ def setup():
 def strength(eom, E1, chi):
     N = eom.ComputeNorm(chi, chi)
     T = eom.NormMultiref_tensor(E1, chi)
-    # Code N, T = -(1/lambda_hat^2) x physical reduced quantities (checked with
-    # TEST=1: unit core->q particle-hole gives N=-1/3), so B = -lambda_hat^2 T^2/N.
-    return N, T, (-HAT * HAT * T * T / N if N != 0 else float("nan"))
+    # Code N, T = -(1/lambda_hat) x physical reduced quantities (TEST=1: core->a
+    # particle-hole gives N = -(1-n_a)/lambda_hat), so B = -lambda_hat T^2/N.
+    return N, T, (-HAT * T * T / N if N != 0 else float("nan"))
 
 
 def run_test(ms, eom):
@@ -125,7 +126,7 @@ def main():
     e1seed = eom.GetVSEOM_ladder_multiref(E1, 1)
     eom.ProjectOprator(e1seed)
     N0, T0, B0 = strength(eom, E1, e1seed)
-    print(f"E1 excitation part (projected):  N={N0:.6e}  -lam^2 T^2/N={B0:.6e}", flush=True)
+    print(f"E1 excitation part (projected):  N={N0:.6e}  -lam T^2/N={B0:.6e}", flush=True)
     if os.environ.get("SEED", "random") == "e1":
         seed = e1seed
     else:

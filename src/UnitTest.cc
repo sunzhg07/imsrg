@@ -2614,6 +2614,10 @@ bool UnitTest::Mscheme_Test_comm110ss(const Operator &X, const Operator &Y)
 }
 
 /// M-scheme: Z0 = sum_{ia} n_i nbar_a (X_ia Y_ai - Y_ia X_ai), i hole, a particle.
+static double cg_tts_J0(int lam, int twoM_left, int twoM_right);
+
+/// M-scheme: Z0 = sum_{ia,m} n_i nbar_a <λ μ λ -μ|00> (X_ia Y_ai - Y_ia X_ai), μ = (m_i-m_a)/2:
+/// the 0-body of the same coupled scalar [X×Y]^(0)_0 the 1b/2b tts tests use.
 bool UnitTest::Mscheme_Test_comm110tts(const Operator &X, const Operator &Y)
 {
   if (X.GetJRank() != Y.GetJRank())
@@ -2655,7 +2659,7 @@ bool UnitTest::Mscheme_Test_comm110tts(const Operator &X, const Operator &Y)
           double Xai = GetMschemeMatrixElement_1b(X, a, ma, i, mi);
           double Yia = GetMschemeMatrixElement_1b(Y, i, mi, a, ma);
           double Yai = GetMschemeMatrixElement_1b(Y, a, ma, i, mi);
-          Z0_m += occ * (Xia * Yai - Yia * Xai);
+          Z0_m += occ * cg_tts_J0(X.GetJRank(), mi, ma) * (Xia * Yai - Yia * Xai);
         }
       }
     }
@@ -2669,7 +2673,7 @@ bool UnitTest::Mscheme_Test_comm110tts(const Operator &X, const Operator &Y)
   return passed;
 }
 
-/// M-scheme: Z0 = 1/4 sum_{ijab, m} n_i n_j nbar_a nbar_b (X_ijab Y_abij - X_abij Y_ijab).
+/// M-scheme: Z0 = 1/4 sum_{ijab, m} n_i n_j nbar_a nbar_b <λ μ λ -μ|00> (X_ijab Y_abij - X_abij Y_ijab).
 /// The 1/4 is the unrestricted-sum factor (same as comm220ss); all four m are free.
 bool UnitTest::Mscheme_Test_comm220tts(const Operator &X, const Operator &Y)
 {
@@ -2724,7 +2728,8 @@ bool UnitTest::Mscheme_Test_comm220tts(const Operator &X, const Operator &Y)
                   double Yabij = GetMschemeMatrixElement_2b(Y, a, ma, b, mb, i, mi, j, mj);
                   double Xabij = GetMschemeMatrixElement_2b(X, a, ma, b, mb, i, mi, j, mj);
                   double Yijab = GetMschemeMatrixElement_2b(Y, i, mi, j, mj, a, ma, b, mb);
-                  Z0_m += 0.25 * occ * (Xijab * Yabij - Xabij * Yijab);
+                  Z0_m += 0.25 * occ * cg_tts_J0(X.GetJRank(), mi + mj, ma + mb) *
+                          (Xijab * Yabij - Xabij * Yijab);
                 }
               }
             }

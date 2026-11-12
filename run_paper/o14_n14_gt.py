@@ -26,7 +26,7 @@ import subprocess
 import sys
 import time
 
-from he8_io import BUILD, PAPER, hs_path
+from he8_io import BUILD, read_em18_hw16, kshell_path, PAPER, hs_path
 
 if BUILD not in sys.path:
     sys.path.insert(0, BUILD)
@@ -45,17 +45,14 @@ hw = 16
 ref = "N14"
 val = "p-shell"
 inert_core = "He4"
-f2b = "/Users/wolf/work/srg_io/input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz"
-f3b = "/Users/wolf/work/srg_io/input/NO2B_ThBME_EM1.8_2.0_3NFJmax15_IS_hw16_ms18_36_18.stream.bin"
 
 Hs_file = hs_path(ref, hw, emax, val=val)
 snt_src = Hs_file[: -len(".dat")] + ".snt"
 GT_file = os.path.join(os.path.dirname(Hs_file), "GT" + os.path.basename(Hs_file)[len("Hs"):])
 
 WORK = os.path.join(PAPER, "kshell_o14n14", f"e{emax}")
-KSHELL_BIN = "/Users/wolf/work/imsrg/kshell-20230714-ver4/bin"
-KSHELL_EXE = os.path.join(PAPER, "kshell_he8", "kshell.exe")
-TRANSIT_EXE = os.path.join(PAPER, "kshell_he8", "transit.exe")
+KSHELL_EXE = kshell_path("kshell.exe")
+TRANSIT_EXE = kshell_path("transit.exe")
 SNT = "pshell.snt"
 NUCLEI = {  # name: (valence Z, valence N, 2M, n_eigen)
     "O14": (6, 4, 0, 3),   # Z=8,N=6 minus He4 core (2p,2n)
@@ -70,9 +67,7 @@ def run_imsrg():
     ms = ModelSpace(emax, ref, val)
     ms.SetHbarOmega(hw)
     H = Operator(ms, 0, 0, 0, 3)
-    rw.ReadBareTBME_Darmstadt(f2b, H, 14, 28, 14)
-    H.ThreeBody.SetMode("no2b")
-    H.ThreeBody.ReadFile([f3b], [18, 36, 18])
+    read_em18_hw16(H, rw)
     H += OperatorFromString(ms, "Trel")
     hf = HartreeFock(H)
     hf.Solve()
@@ -135,7 +130,7 @@ def run_kshell():
             with open(os.path.join(WORK, "gen.in"), "w") as f:
                 f.write("\n")
             with open(os.path.join(WORK, "gen.in")) as f:
-                run([sys.executable, os.path.join(KSHELL_BIN, "gen_partition.py"),
+                run([sys.executable, kshell_path("gen_partition.py"),
                      SNT, ptn, str(zv), str(nv), "+"], os.path.join(WORK, f"gen_{nuc}.log"), stdin=f)
         wav = f"{nuc.lower()}.wav"
         inp = f"{nuc.lower()}.input"

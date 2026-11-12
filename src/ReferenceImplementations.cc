@@ -57,8 +57,11 @@ namespace ReferenceImplementations
     double t_start = omp_get_wtime();
     const int lambda0 = X.GetJRank();
     const bool reduced = X.IsReduced();
-    // 0-body special: ZeroBody is the trace over all m of two WE-unpacked tensors (sum_m X(m)Y(m)), not leftover 1b/2b. WE orthogonality on RMEs supplies one extra 1/λ̂ beyond AMC's coupled-product λ̂^{-1}, so λ̂^{-2}=1/(2λ+1). Do not change this to λ̂^{-1}.
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    // 0-body of the same scalar Z = [X×Y]^{(0)}_0 whose 1b/2b leftovers comm111tts..comm222tts
+    // build (Convention 2, AMC λ̂^{-1}). In a scalar reference <[X×Y]^0> = λ̂ Σ_μ <X_μ Y_{-μ}>,
+    // so the 0-body is λ̂^{-1} × RMEs, not the uncoupled m-trace λ̂^{-2}. With λ̂^{-2} the core
+    // (0b) and ρ-contracted (1b/2b) parts of the tensor EOM metric differed by λ̂.
+    const double hat_lambda_inv0b = 1.0 / std::sqrt(2.0 * lambda0 + 1.0);
     double z0 = 0.0;
 
     for (auto i : Z.modelspace->all_orbits)
@@ -83,7 +86,7 @@ namespace ReferenceImplementations
         if (reduced)
         {
           const int phasek = (oi.j2 + oa.j2 + 2 * lambda0) / 2;
-          const double pref = occ * AngMom::phase(phasek) * hat_lambda_inv2;
+          const double pref = occ * AngMom::phase(phasek) * hat_lambda_inv0b;
           z0 += pref * (Y.OneBody(i, a) * X.OneBody(a, i) - X.OneBody(i, a) * Y.OneBody(a, i));
         }
         else
@@ -113,8 +116,11 @@ namespace ReferenceImplementations
     double t_start = omp_get_wtime();
     const int lambda0 = X.GetJRank();
     const bool reduced = X.IsReduced();
-    // 0-body special: ZeroBody is the trace over all m of two WE-unpacked tensors (sum_m X(m)Y(m)), not leftover 1b/2b. WE orthogonality on RMEs supplies one extra 1/λ̂ beyond AMC's coupled-product λ̂^{-1}, so λ̂^{-2}=1/(2λ+1). Do not change this to λ̂^{-1}.
-    const double hat_lambda_inv2 = 1.0 / (2.0 * lambda0 + 1.0);
+    // 0-body of the same scalar Z = [X×Y]^{(0)}_0 whose 1b/2b leftovers comm111tts..comm222tts
+    // build (Convention 2, AMC λ̂^{-1}). In a scalar reference <[X×Y]^0> = λ̂ Σ_μ <X_μ Y_{-μ}>,
+    // so the 0-body is λ̂^{-1} × RMEs, not the uncoupled m-trace λ̂^{-2}. With λ̂^{-2} the core
+    // (0b) and ρ-contracted (1b/2b) parts of the tensor EOM metric differed by λ̂.
+    const double hat_lambda_inv0b = 1.0 / std::sqrt(2.0 * lambda0 + 1.0);
     auto &X2 = X.TwoBody;
     auto &Y2 = Y.TwoBody;
     double z0 = 0.0;
@@ -153,7 +159,7 @@ namespace ReferenceImplementations
                     continue;
 
                   const int phasek = J0 + J1 + lambda0;
-                  const double pref = 0.25 * occ * AngMom::phase(phasek) * hat_lambda_inv2;
+                  const double pref = 0.25 * occ * AngMom::phase(phasek) * hat_lambda_inv0b;
                   const double xijab = X2.GetTBME_J(J0, J1, i, j, a, b);
                   const double yabij = Y2.GetTBME_J(J1, J0, a, b, i, j);
                   // X_abij / Y_ijab: bra is ab (J1), ket is ij (J0) — not (J0,J1).

@@ -997,7 +997,9 @@ void EOM::ConstructNormMatrix_tensor(bool include_fermi_identity) {
   //   learn/amc_tts/eom_norm/output/*_tensor.tex
   // ρ is always scalar 0+.
   // Empirical hats vs ½[Q⁺,Q⁻] (He4-core, TTS leftover × GetVSEOM_Overlap):
-  //   110/220 (A1, A2): λ̂^{-2}  (AMC had λ̂^{-1}; 0-body m-trace is λ̂^{-2})
+  //   110/220 (A1, A2, Fermi identities): λ̂^{-1}, the AMC value. The 0-body is part of
+  //     the same coupled [X×Y]^0 as the leftovers below; the earlier λ̂^{-2} (uncoupled
+  //     m-trace) made the core term λ̂ smaller than the ρ terms (Mg24 E1: n_eff = λ̂ n).
   //   leftover 2b×ρ C1 (comm222 × ρ·Ĵ): Ĵ_vv^{-1} λ̂^{-1}
   //     (not λ̂^{-2}; that only matches when J_vv=λ)
   //   leftover 2b×ρ C3 (comm222 × ρ·Ĵ): Ĵ_pp^{-1} λ̂^{-1}
@@ -1021,7 +1023,6 @@ void EOM::ConstructNormMatrix_tensor(bool include_fermi_identity) {
   const int lam = J2;
   const double lamhat = std::sqrt(2.0 * lam + 1.0);
   const double lamhatinv = 1.0 / lamhat;
-  const double lamhatinv2 = lamhatinv * lamhatinv;
   auto hat = [](int J) { return std::sqrt(2.0 * J + 1.0); };
   auto jhat = [](const Orbit &o) { return std::sqrt(o.j2 + 1.0); };
   auto ph = [](int n) { return (double)AngMom::phase(n); };
@@ -1061,7 +1062,7 @@ void EOM::ConstructNormMatrix_tensor(bool include_fermi_identity) {
       const double phase = ph((oa.j2 + oi.j2) / 2 + lam);
       const double wocc = oi.occ * (1.0 - oa.occ);
       if (include_fermi_identity && std::abs(wocc) > 1e-8)
-        Nkernel(i, i) += -phase * lamhatinv2 * we1(oa, oi) * wocc;
+        Nkernel(i, i) += -phase * lamhatinv * we1(oa, oi) * wocc;
       for (index_t j = qv_start; j <= qv_end; j++) {
         auto &cf_ket = eom_confs.at(j);
         if (cf_bra[0] != cf_ket[0])
@@ -1076,7 +1077,7 @@ void EOM::ConstructNormMatrix_tensor(bool include_fermi_identity) {
     }
   }
 
-  // A1 (110): λ̂^{-2}. B5 leftover 1b×ρ: λ̂^{-1} / ĵ_a
+  // A1 (110): λ̂^{-1}. B5 leftover 1b×ρ: λ̂^{-1} / ĵ_a
   if (ph_dim != 0) {
     for (index_t i = ph_start; i <= ph_end; i++) {
       auto &cf_bra = eom_confs.at(i);
@@ -1089,7 +1090,7 @@ void EOM::ConstructNormMatrix_tensor(bool include_fermi_identity) {
           continue;
         Orbit &ob = modelspace->GetOrbit(cf_ket[0]);
         if (include_fermi_identity && i == j)
-          Nkernel(i, j) += -phase * lamhatinv2 * we1(oa, oi);
+          Nkernel(i, j) += -phase * lamhatinv * we1(oa, oi);
         if (ob.j2 != oa.j2)
           continue;
         Nkernel(i, j) +=
@@ -1135,7 +1136,7 @@ void EOM::ConstructNormMatrix_tensor(bool include_fermi_identity) {
             ov1.occ * ov2.occ * (1.0 - oq1.occ) * (1.0 - oq2.occ);
         if (include_fermi_identity && std::abs(wocc) > 1e-8)
           Nkernel(i, i) +=
-              ph(J0 + J1 + lam) * lamhatinv2 * we2(J0, J1) * wocc;
+              ph(J0 + J1 + lam) * lamhatinv * we2(J0, J1) * wocc;
       }
       if (!(ket_pp_bra(k0) && ket_vv(k1)))
         continue;
@@ -1233,7 +1234,7 @@ void EOM::ConstructNormMatrix_tensor(bool include_fermi_identity) {
         const double wocc =
             oh.occ * ov.occ * (1.0 - oa.occ) * (1.0 - ob.occ);
         if (include_fermi_identity && std::abs(wocc) > 1e-8)
-          Nkernel(i, i) += ph(tbX.J + tkX.J + lam) * lamhatinv2 *
+          Nkernel(i, i) += ph(tbX.J + tkX.J + lam) * lamhatinv *
                            we2(tbX.J, tkX.J) * wocc;
       }
       size_t e1 = kvcX.p;
@@ -1403,7 +1404,7 @@ void EOM::ConstructNormMatrix_tensor(bool include_fermi_identity) {
       if (!include_fermi_identity || std::abs(wocc) < 1e-8)
         continue;
       Nkernel(i, i) +=
-          ph(Jst0 + Jst1 + lam) * lamhatinv2 * we2(Jst0, Jst1) * wocc;
+          ph(Jst0 + Jst1 + lam) * lamhatinv * we2(Jst0, Jst1) * wocc;
     }
   }
 

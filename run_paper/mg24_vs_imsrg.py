@@ -18,7 +18,7 @@ import os
 import sys
 import time
 
-from he8_io import BUILD, hs_path
+from he8_io import BUILD, hs_path, read_em18_hw16
 
 if BUILD not in sys.path:
     sys.path.insert(0, BUILD)
@@ -40,8 +40,6 @@ ref = nucleus          # IMSRG reference (ensemble NO for open-shell Mg24)
 val = "sd-shell"       # valence space decoupled by shell-model-atan
 inert_core = "O16"     # core for the packaged Hs / KSHELL interaction
 
-f2b = "/Users/wolf/work/srg_io/input/TwBME-HO_NN-only_N3LO_EM500_srg1.8_hw16_emax14_e2max28.me2j.gz"
-f3b = "/Users/wolf/work/srg_io/input/NO2B_ThBME_EM1.8_2.0_3NFJmax15_IS_hw16_ms18_36_18.stream.bin"
 
 Hs_file = hs_path(nucleus, hw, emax, val=val)
 snt_file = Hs_file[: -len(".dat")] + ".snt"
@@ -92,9 +90,7 @@ def main():
     ms.SetHbarOmega(hw)
 
     H = Operator(ms, 0, 0, 0, 3)
-    rw.ReadBareTBME_Darmstadt(f2b, H, 14, 28, 14)
-    H.ThreeBody.SetMode("no2b")
-    H.ThreeBody.ReadFile([f3b], [18, 36, 18])
+    read_em18_hw16(H, rw)
     H += OperatorFromString(ms, "Trel")
     print(f"read interaction  ({time.time() - t0:.0f} s)", flush=True)
 
