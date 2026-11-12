@@ -1,0 +1,25 @@
+# Γ^{IV_b} leftover W1, P stripped. Restore (1-P_ij)(1-P_kl) in C++.
+# Current leftover m (UnitTest::Mscheme_fact_GIVb_chi):
+#   W1 = Σ_ab CG(λμ,λ-μ;00) χ^ι_aibk Ω_jbla
+# χ^ι tensor reduce=true (same as chi_iota_analyze). Ω WE-reduced tensor.
+# W leftover scalar unreduced → GetMscheme 2-CG gold.
+#
+# Do not use Ω_jalb (λ=0 identity). Dummy in/out; leftover CG is T×T→S.
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\iota}",
+    scalar=false,
+    reduce=true
+}
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare W {
+    mode=4,
+    latex="W^{(1)}",
+    scalar=true
+}
+W_ijkl = sum_ab(Chi_aibk * Omega_jbla);

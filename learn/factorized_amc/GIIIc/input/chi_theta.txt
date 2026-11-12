@@ -1,0 +1,31 @@
+# χ^θ = T×T→S ladder (scalar 2b). Strips χ_k + χ_j in one string.
+# Packaging: default unreduced χ (reduce=false). Ω always tensor/reduced in IMSRG.
+# m: χ(m) = Σ_ab [f(a,b,k)+f(a,b,j)] CG(λμ;λ−μ;00) Ω_ijab(m) Ω_abkl(m)
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\theta}",
+    scalar=true
+}
+
+Chi_ijkl = sum_ab((n_a*n_b*nbar_k + nbar_a*nbar_b*n_k
+                 + n_a*n_b*nbar_j + nbar_a*nbar_b*n_j)
+    * Omega_ijab * Omega_abkl);

@@ -1,0 +1,27 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+# Scalar two-body intermediate (tensor*tensor -> scalar)
+declare chi {
+    mode=4,
+    latex="\\chi^{\\delta}",
+    scalar=true
+}
+
+# factorized_code_analyze.tex chi^delta (occ on second Omega)
+chi_ijkl = 1/4 * sum_ab((n_a*n_b*nbar_k*nbar_l - nbar_a*nbar_b*n_k*n_l) * (Omega_ijab*Omega_abkl));

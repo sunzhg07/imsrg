@@ -1,0 +1,42 @@
+# χ^ι — η-analog T×S (Factorized bar_CHI_V twin). Gold normal product:
+#   χ^ι_ijkl = Σ_ab (n̄_a n_b n̄_k + n_a n̄_b n_k) Ω_bjka Γ_iabl
+#
+# DO NOT use arxiv / older analyze print Ω_bika Γ_iabl — free j is a spectator
+# (Yutsis fails). That print only coincides on fold patterns χ_aibk / χ_akbi.
+# Factorized bar_CHI_V = Γ̄ · (occ⊙Ω̄) is the Pandya twin of χ^η with first
+# Ω → Γ, so legs follow χ^η: Ω_iabl→Γ_iabl, second factor Ω_bjka.
+#
+# Product order Ω·Γ (not Γ·Ω) gives the κ-like AMC print (mid j0, 5×6j).
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\iota}",
+    scalar=false,
+    reduce=true
+}
+
+Chi_ijkl = sum_ab(
+    (nbar_a*n_b*nbar_k + n_a*nbar_b*n_k) * Omega_bjka * Gamma_iabl);

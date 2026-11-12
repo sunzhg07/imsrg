@@ -1,0 +1,61 @@
+# Path B: Γ^{IV_c} via Pandya of χ^λ (tensor) × Ω (tensor) → scalar Z.
+# Topology: Z = 1/2 (1-Pij)(1-Pkl) Σ χ_ialb Ω_bjak
+#
+# Packaging (locked):
+#   Chi, Omega: tensors → always WE-reduced
+#   barG4c / G4c: scalar reduce=true → Z_red = S/Ĵ
+#   Unreduced: G4c_chi_omega_pandya_unred.txt
+#
+# Locked composition (run/test_tts_GIVc_pathB_amc.py):
+#   Path B ≡ Path A (from_chi_reduced) ≡ m
+#   Inv: G4c = barG4c  (drop AMC-sample overall minus — tts_ring rule)
+#   Fwd Pandya: evaluate printed O_ijkl with **same-label** ME (not adcb).
+#   IMSRG DoTensorPandya(adcb) needs an explicit index map when wiring ethS.
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\lambda}",
+    scalar=false
+}
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+# Forward Pandya (AMC scheme (iℓ)(kj))
+declare barChi {
+    mode=4,
+    latex="\\bar{\\chi}^{\\lambda}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+barChi_ijkl = - Chi_ijkl;
+
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-4),(3,-2))
+}
+barO_ijkl = - Omega_ijkl;
+
+# Product in Pandya space
+declare barG4c {
+    mode=4,
+    latex="\\bar{\\Gamma}^{(IV_c)}",
+    scalar=true,
+    reduce=true,
+    scheme=((1,-4),(3,-2))
+}
+barG4c_ijkl = 1/2 * sum_ab(P(i/j) * P(k/l) * barChi_ialb * barO_bjak);
+
+# Inverse Pandya → ordinary reduced scalar (corrected: no overall minus)
+declare G4c {
+    mode=4,
+    latex="\\Gamma^{(IV_c)}",
+    scalar=true,
+    reduce=true
+}
+G4c_ijkl = barG4c_ijkl;

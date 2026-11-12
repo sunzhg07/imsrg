@@ -1,0 +1,23 @@
+# Path B G^II bra with χ^{ΩΓ}, P stripped.
+# W_ijkl = Σ_a χ^{ΩΓ}_ja Ω_iakl
+# Restore (1-P_ij) by hand. Overall minus vs ket lives in assemble: Z = -W - V.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare W {
+    mode=4,
+    scalar=true,
+    latex="W"
+}
+
+declare chiOG {
+    mode=2,
+    scalar=false,
+    latex="\\chi^{\\Omega\\Gamma}"
+}
+
+W_ijkl = sum_a(chiOG_ja * Omega_iakl);

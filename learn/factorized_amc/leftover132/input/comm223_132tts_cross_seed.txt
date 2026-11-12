@@ -1,0 +1,45 @@
+# 223_132 tts cross seed (no i↔j / k↔l expansion).
+#   Z = (η_icka η_ab Γ_bjcl − η_ibkc η_ab Γ_cjal)(n̄_a n_b − n_a n̄_b)
+# Restore (1-P_ij)(1-P_kl) after AMC.
+
+declare Eta1 {
+    mode=2,
+    latex="\\eta",
+    scalar=false
+}
+
+declare Eta2 {
+    mode=4,
+    latex="\\eta",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare Z {
+    mode=4,
+    latex="Z^{\\mathrm{cross}}",
+    scalar=true,
+    reduce=false
+}
+
+Z_ijkl = sum_abc((nbar_a*n_b - n_a*nbar_b) * Eta1_ab * (
+      Eta2_icka * Gamma_bjcl
+    - Eta2_ibkc * Gamma_cjal
+));

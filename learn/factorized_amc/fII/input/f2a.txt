@@ -1,0 +1,28 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare f2a { mode=2, latex="f^{(II)}_a", scalar=true }
+
+# First string of f^II (analyze). Full f^II = f2a + h_Omega h_Gamma * f2b
+f2a_ij = 1/2 * sum_abcde((n_a*n_b*nbar_c*nbar_e - nbar_a*nbar_b*n_c*n_e) * (Gamma_cdab*Omega_abce*Omega_eidj));

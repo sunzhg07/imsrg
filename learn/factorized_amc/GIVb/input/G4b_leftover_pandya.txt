@@ -1,0 +1,63 @@
+# Γ^{IV_b} leftover W1 as a CC GEMM (replaces the five-6j + dummy j0 print
+# of G4b_W1_leftover.txt). P stripped; restore (1-P_ij)(1-P_kl) in C++.
+#
+# Slots: W1 = Σ_ab χ^ι_aibk Ω_jbla.
+#   χ_aibk labels (a,i,b,k)=(1,2,3,4) → barChi rows (i,-k) cols (a,-b)
+#     scheme=((2,-4),(1,-3))
+#   Ω_jbla labels (j,b,l,a)=(1,2,3,4) → barO   rows (j,-l) cols (a,-b)
+#     scheme=((1,-3),(4,-2))
+#   barW   rows (i,-k) cols (j,-l)    scheme=((1,-3),(2,-4))
+# With these three the product equation has NO 6j: it is
+#   barW^{J0} = Ĵ0^{-1} λ̂^{-1} Σ_{J_ab} barChi^{J0 J_ab} · (barO^{J0 J_ab})^T
+# i.e. one DGEMM per (CC channel J0, mid J_ab).
+#
+# Run PLAIN (no --collect-ninejs): AMC stores the (-1)^{2x} of the
+# 3x6j -> 9j identity in YutsisGraph.sign and never emits it, so the
+# collected print is an overall minus whenever the dummy x is half-integer
+# (it is here: x = j0 couples j_a to lambda). Locked numerically:
+#   sum_j0 (2j0+1) 6j 6j 6j = - NineJ(...)
+# so C++ may use the 9j provided that minus is put back by hand.
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\iota}",
+    scalar=false,
+    reduce=true
+}
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare barChi {
+    mode=4,
+    latex="\\bar{\\chi}^{\\iota}",
+    scalar=false,
+    scheme=((2,-4),(1,-3))
+}
+barChi_ijkl = Chi_ijkl;
+
+declare barO {
+    mode=4,
+    latex="\\bar{\\Omega}",
+    scalar=false,
+    scheme=((1,-3),(4,-2))
+}
+barO_ijkl = Omega_ijkl;
+
+declare barW {
+    mode=4,
+    latex="\\bar{W}^{(1)}",
+    scalar=true,
+    scheme=((1,-3),(2,-4))
+}
+barW_ijkl = sum_ab(barChi_aibk * barO_jbla);
+
+declare W {
+    mode=4,
+    latex="W^{(1)}",
+    scalar=true
+}
+W_ijkl = barW_ijkl;

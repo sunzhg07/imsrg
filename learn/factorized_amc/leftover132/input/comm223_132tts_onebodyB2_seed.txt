@@ -1,0 +1,42 @@
+# 223_132 tts onebody-B2 seed (χ^Γ inserted on bra of η). No (1-P).
+#   Z = Γ_jacb η_ba η_ickl (n̄_a n_b − n_a n̄_b)
+# Full onebody-B: (1-P_kl) * 1bB − (1-P_ij) * 1bB2
+
+declare Eta1 {
+    mode=2,
+    latex="\\eta",
+    scalar=false
+}
+
+declare Eta2 {
+    mode=4,
+    latex="\\eta",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare Z {
+    mode=4,
+    latex="Z^{\\mathrm{1bB2}}",
+    scalar=true,
+    reduce=false
+}
+
+Z_ijkl = sum_abc((nbar_a*n_b - n_a*nbar_b) * Eta1_ba * Gamma_jacb * Eta2_ickl);

@@ -1,0 +1,42 @@
+# 223_132 tts onebody-A seed (χ^η × Γ). No (1-P).
+#   Z = η_iacb η_ba Γ_cjkl (n̄_a n_b − n_a n̄_b)
+# Restore (1-P_ij) on the bra and −(1-P_kl) on the ket after AMC.
+
+declare Eta1 {
+    mode=2,
+    latex="\\eta",
+    scalar=false
+}
+
+declare Eta2 {
+    mode=4,
+    latex="\\eta",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare Z {
+    mode=4,
+    latex="Z^{\\mathrm{1bA}}",
+    scalar=true,
+    reduce=false
+}
+
+Z_ijkl = sum_abc((nbar_a*n_b - n_a*nbar_b) * Eta1_ba * Eta2_iacb * Gamma_cjkl);

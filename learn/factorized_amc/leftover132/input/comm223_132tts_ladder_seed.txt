@@ -1,0 +1,47 @@
+# 223_132 tts ladder seed (no extra 2b permutations).
+# Tensor ω (1b+2b), scalar H. Leftover Z unreduced scalar 2b.
+# Restore (1-P) only if AMC is used as a seed; this string is already
+# the internal-line insertion of the scalar notes:
+#   Z = (η_cakl Γ_ijcb − η_ijcb Γ_cakl) η_ba (n̄_a n_b − n_a n̄_b)
+
+declare Eta1 {
+    mode=2,
+    latex="\\eta",
+    scalar=false
+}
+
+declare Eta2 {
+    mode=4,
+    latex="\\eta",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare Z {
+    mode=4,
+    latex="Z^{\\mathrm{ladder}}",
+    scalar=true,
+    reduce=false
+}
+
+Z_ijkl = sum_abc((nbar_a*n_b - n_a*nbar_b) * Eta1_ba * (
+      Eta2_cakl * Gamma_ijcb
+    - Eta2_ijcb * Gamma_cakl
+));

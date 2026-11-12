@@ -1,0 +1,23 @@
+# Γ^{III_a} from χ^η ladder (analyze eq GIIIa)
+# Γ^{III_a} = -Σ_ab { (1-Pij) χ_ijab Γ_abkl + (1-Pkl) Γ_ijab χ_klab }
+#
+# Packaging: χ^η scalar reduce=true; Γ scalar unreduced (IMSRG default).
+# AMC: with reduce=true on G3a for Z_red = S/Ĵ; see G3a_from_chi_unred.txt for unred.
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\eta}",
+    scalar=true,
+    reduce=true
+}
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+declare G3a {
+    mode=4,
+    latex="\\Gamma^{(III_a)}",
+    scalar=true,
+    reduce=true
+}
+G3a_ijkl = -1 * sum_ab(P(i/j) * Chi_ijab * Gamma_abkl + P(k/l) * Gamma_ijab * Chi_klab);

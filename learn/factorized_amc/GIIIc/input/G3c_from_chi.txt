@@ -1,0 +1,22 @@
+# Path B fold: Z = -1/2 (1-Pij)(1-Pkl) Σ_ab χ_iabl Γ_bjka
+# Unreduced χ, Γ, Z (matches G3c_chi_theta_ninej.tex hats Ĵ2² Ĵ3²).
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\theta}",
+    scalar=true
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare G3c {
+    mode=4,
+    latex="\\Gamma^{(III_c)}",
+    scalar=true
+}
+
+G3c_ijkl = -1/2 * sum_ab(P(i/j) * P(k/l) * Chi_iabl * Gamma_bjka);

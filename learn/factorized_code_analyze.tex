@@ -47,7 +47,9 @@ contraction path, shared intermediates), and Sec.~\ref{sec:cost} the
 validation of the full identity and the cost.
 This file is the single reference for the factorized double commutator;
 code comments that point to \codename{learn/amc\_tts/*.md} notes are
-superseded by it.
+superseded by it. The AMC inputs and generated equations behind
+Sec.~\ref{sec:jscheme} are in \codename{learn/factorized\_amc/}, one
+directory per diagram; AMC paths below are relative to it.
 Unreduced scalar $\Omega$ is \codename{MakeReduced} on entry
 (\codename{ReducedRMEView}) in \codename{comm223st}, leftover
 \codename{*tts}, and ethS, then takes the same tensor leftover path.
@@ -590,7 +592,7 @@ the standard IMSRG case $h_\Omega=-1$, $h_\Gamma=+1$.
 \label{sec:code-fII-tts}
 When $\Omega$ has tensor rank $\lambda$, $\chi^\beta$ is a reduced rank-$\lambda$
 one-body intermediate and the final $f^{\MyRomanNum{2}}$ is scalar.
-AMC (\codename{factored\_fII/output/f2a\_from\_chi.tex}) gives the RME fold
+AMC (\codename{fII/output/f2a\_from\_chi.tex}) gives the RME fold
 \begin{equation}
 \label{eq:fII-amc-fold}
 \begin{aligned}
@@ -867,9 +869,10 @@ Hats: $\hat x=\sqrt{2x+1}$, $\hat\jmath_i^{-2}=1/(j_{i,2}+1)$.
 Two-body tensor access is \codename{GetTBME\_J}$(J_{\mathrm{bra}},J_{\mathrm{ket}},\ldots)$;
 scalar is same-$J$ only. Channel matrices are \emph{normalized};
 physical ME $=\sqrt{(1+\delta_{ab})(1+\delta_{cd})}$ times the entry.
-AMC inputs live under \codename{learn/amc\_tts/factored\_*/input} and
-\codename{learn/amc\_tts/comm\_tts/input}; the \codename{.tex} prints quoted
-below are regenerated from them. Packaging rules are in
+AMC inputs and outputs live in \codename{learn/factorized\_amc/<diagram>/\{input,output\}}
+(paths below are relative to it); \codename{regenerate.sh --check} reproduces
+every stored output, and its \codename{README.md} lists the AMC conventions
+(\codename{--wet-convention wigner}, \codename{reduce=false} on scalar $Z$). Packaging rules are in
 Sec.~\ref{sec:js-pack}; the code path for each diagram is in
 Sec.~\ref{sec:opt}.
 
@@ -886,7 +889,7 @@ $W$ is Hermitian iff $\Omega$ is anti-Hermitian ($H$ Hermitian).
 (\codename{use\_TypeI\_1b})}
 \label{sec:js-fI}
 
-AMC: unfactored \codename{output/f1.tex}; $\chi$ is scalar 1b
+AMC: unfactored \codename{fI/output/f1.tex}; $\chi$ is scalar 1b
 ($j_d=j_e$). Overall $\tfrac12$ is on the write, not inside $\chi$ in ethS.
 \begin{equation}\label{eq:js-chia}
 \begin{aligned}
@@ -919,7 +922,7 @@ $J_{\min}/J_{\max}$.
 (\codename{use\_TypeII\_1b})}
 \label{sec:js-fII}
 
-AMC: \codename{factored\_fII/output/chi\_beta.tex},
+AMC: \codename{fII/output/chi\_beta.tex},
 \codename{f2a\_from\_chi.tex}. $\chi^\beta$ is reduced rank-$\lambda$ 1b
 (triangle $j_d,j_e,\lambda$; no $\hat\jmath_d^{-2}$).
 \begin{equation}\label{eq:js-chib}
@@ -961,7 +964,7 @@ No extra outer $(-1)^{(j_{2p}+1)/2}$.
 (\codename{use\_TypeIII\_1b})}
 \label{sec:js-fIIIb}
 
-AMC: \codename{factored\_fIIIb/output/chi\_delta.tex}.
+AMC: \codename{fIIIb/output/chi\_delta.tex}, \codename{fIIIb\_from\_chi.tex}.
 $\chi^\delta$ is scalar 2b, \emph{non-Hermitian} (occ on the second
 $\Omega$); store full $(ibra,iket)$ same-channel squares.
 Physical ladder before normalization:
@@ -997,7 +1000,7 @@ Z_{pq}
 (\codename{use\_TypeIIIa\_1b})}
 \label{sec:js-fIIIa}
 
-AMC direct: \codename{factored\_fIIIa/output/chi\_gamma.tex},
+AMC: \codename{fIIIa/output/chi\_gamma.tex},
 \codename{fIIIa\_from\_chi.tex}. $\chi^\gamma$ is always scalar
 (rank $0$), non-AS. Production Path~B (any $\lambda$): tensor Pandya of
 $\Omega$ $\to$ occ$\odot\bar\Omega$ $\to$ CC DGEMM $\to$ inverse Pandya
@@ -1047,7 +1050,7 @@ $N=\sqrt{1+\delta}$. Insertions are \eqref{eq:fact2b} GI
 \label{sec:js-GII}
 
 Leftover uses \emph{two} tensor 1b intermediates. AMC
-\codename{factored\_GII/output/chi\_omega\_gamma.tex} /
+\codename{GII/output/chi\_omega\_gamma.tex} /
 \codename{chi\_zeta.tex} and the four-term fold
 \codename{G2\_from\_chi\_analyze\_alt.tex}
 (one-$\chi^\zeta$ print; bra at $\lambda\neq0$ must use $\chi^{\Omega\Gamma}$).
@@ -1139,7 +1142,7 @@ against M-scheme \eqref{eq:WIIb} and against the nested leftover identity
 \label{sec:js-GIIIc}
 
 $\chi^\theta$ is $[\Omega\times\Omega]^{(0)}$ (scalar 2b). DIRECT Case-2
-9j in \codename{factored\_GIIIc}; Path~B is Pandya of $\chi^\theta$ then
+9j in \codename{GIIIc/output/G3c\_direct.tex}; Path~B is Pandya of $\chi^\theta$ then
 \begin{equation}\label{eq:js-GIIIc}
 \bar\Gamma^{(\mathrm{III}_c)}
 =-\tfrac12\sum_{ab}
@@ -1164,14 +1167,14 @@ reduced-tensor transpose partner
 inverse Pandya, then leftover
 $Z=(1-\hat P_{ij})W_{ijkl}+(1-\hat P_{kl})W_{klij}$ with
 $W=-\chi^\kappa\Omega$ \eqref{eq:WIVa}.
-AMC: \codename{factored\_GIV/} $\chi^\kappa$, \codename{G4a\_Wklij}.
+AMC: \codename{GIVa/output/chi\_kappa\_via\_pandya.tex}, \codename{G4a\_Wbra\_noperm.tex}, \codename{G4a\_Wklij\_noperm.tex}.
 
 \subsection{$\Gamma^{\mathrm{IV}_b}$ / $\chi^\iota$
 (\codename{comm223\_232\_GIVb})}
 \label{sec:js-GIVb}
 
 AMC leftover (P stripped; restore $(1-\hat P)^2$ in C++):
-\codename{factored\_GIV/input/G4b\_W1\_leftover.txt},
+\codename{GIVb/input/G4b\_W1\_leftover.txt},
 \codename{G4b\_W2\_leftover.txt}.
 \begin{equation}\label{eq:js-GIVb}
 \begin{aligned}
@@ -1229,7 +1232,7 @@ distinct labels inside the $j_0$-sum admit no single 9j either --
 unless a $J_{ab}$ pair basis is introduced. That is exactly what a
 leftover Pandya on the \emph{ordinary} (not already cross-coupled)
 $\chi^\iota_{aibk}$ and $\Omega_{jbla}$ provides. AMC:
-\codename{factored\_GIV/input/G4b\_leftover\_pandya.txt}.
+\codename{GIVb/input/G4b\_leftover\_pandya.txt}.
 
 Recouple both factors onto CC rows $(ik)$ / $(jl)$ with a common
 column $(ab)$ at $J_{ab}$:
@@ -1254,7 +1257,7 @@ Each is a \emph{single} 9j (AMC prints three 6j and a dummy $j_0$;
 the collection identity supplies the 9j together with an overall
 $(-1)^{2j_0}=-1$, since $j_0$ is half-integer here -- see the
 \codename{--collect-ninejs} caveat in
-\codename{learn/amc\_tts/factored\_GIV/input/G4b\_leftover\_pandya.txt}).
+\codename{GIVb/input/G4b\_leftover\_pandya.txt}).
 The contraction is then a plain matrix product, one per
 $(J_{ik},J_{ab})$ channel pair, with no residual 6j:
 \begin{equation}\label{eq:js-GIVb-gemm}
@@ -1318,7 +1321,7 @@ and GIVc ($2.5$\,s).
 (\codename{comm223\_232\_GIVc})}
 \label{sec:js-GIVc}
 
-AMC: \codename{factored\_GIV/input/chi\_lambda\_T1.txt},
+AMC: \codename{GIVc/input/chi\_lambda\_T1.txt},
 \codename{chi\_lambda\_T2.txt}.
 $\chi^\lambda=\chi^{T_1}(\Gamma\Omega)+\chi^{T_2}(\Omega\Gamma)$
 \eqref{eq:chi2b}. Path~B: Pandya $\to$ DGEMM $\to$ inverse.
@@ -1330,7 +1333,7 @@ Fold \eqref{eq:fact2b} GIVc with leftover $\hat\lambda^{-1}$.
 
 Three AMC seeds, then sum
 (\codename{comm223\_132\_tts\_ladder}+\codename{\_onebody}+\codename{\_cross}).
-Ladder (channel DGEMM, \codename{comm223\_132tts\_ladder\_seed.tex}):
+Ladder (channel DGEMM, \codename{leftover132/output/comm223\_132tts\_ladder\_seed.tex}):
 \begin{equation}\label{eq:js-132-lad}
 \begin{aligned}
 T_1&:

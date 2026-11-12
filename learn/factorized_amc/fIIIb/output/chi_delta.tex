@@ -1,0 +1,40 @@
+
+\documentclass{scrartcl}
+
+\usepackage{expl3}
+\usepackage{xparse}
+\usepackage{amsmath}
+\usepackage{breqn}
+
+\newcommand{\threej}[3]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \end{Bmatrix}\endgroup}
+\newcommand{\sixj}[6]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \end{Bmatrix}\endgroup}
+\newcommand{\ninej}[9]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \\ #7 & #8 & #9 \end{Bmatrix}\endgroup}
+
+\ExplSyntaxOn
+\tl_new:N \l__hatfact_tl
+
+\NewDocumentCommand{\hatfact} {m} { \__hatfact_parse:n #1 }
+
+\cs_new:Nn \__hatfact_parse:n { \tl_set:Nn \l__hatfact_main_tl {#1} \__hatfact_hat: }
+
+\cs_generate_variant:Nn \str_set:Nn {Nx}
+\cs_new:Nn \__hatfact_hat:
+  {
+    \str_set:Nx \l_tmpa_str {\l__hatfact_main_tl}
+    \str_set:Nn \l_tmpb_str {j}
+    \str_if_eq:NNTF \l_tmpa_str \l_tmpb_str {
+      \hat{\jmath}
+    } {
+      \hat \l__hatfact_main_tl
+    }
+  }
+\ExplSyntaxOff
+
+\begin{document}
+
+\section{Equation 1}
+\begin{dmath*}
+\chi^{\delta}_{i j k l}^{{J}_{0} {J}_{1} 0} = \frac{1}{4} \* \delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}} \* \hatfact{{J}_{0}^{-2}} \* \sum_{a b {J}_{2} {{\lambda}}_{0}} \* (n_{a} \* n_{b} \* \bar{n}_{k} \* \bar{n}_{l} -\bar{n}_{a} \* \bar{n}_{b} \* n_{k} \* n_{l}) \* (-1)^{{J}_{2}+{{\lambda}}_{0}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \Omega_{i j a b}^{{J}_{0} {J}_{2} {{\lambda}}_{0}} \* \Omega_{a b k l}^{{J}_{2} {J}_{0} {{\lambda}}_{0}}
+\end{dmath*}
+
+\end{document}

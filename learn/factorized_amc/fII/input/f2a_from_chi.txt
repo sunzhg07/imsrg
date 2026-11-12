@@ -1,0 +1,20 @@
+declare chi {
+    mode=2,
+    latex="\\chi^{\\beta}",
+    scalar=false
+}
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare f2a {
+    mode=2,
+    latex="f^{(II)}_a",
+    scalar=true
+}
+
+# First analyze string: chi_de * Omega_eidj  (i=p, j=q externally as ij)
+f2a_ij = sum_de(chi_de*Omega_eidj);

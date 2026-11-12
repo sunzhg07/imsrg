@@ -1,0 +1,63 @@
+# comm132tts: tensor 1b × tensor 3b → scalar 2b  [Z UNREDUCED]
+# Packaging:
+#   X: scalar=false (rank-λ tensor 1b, WE-reduced)
+#   Y: scalar=false (tensor 3b)
+#   Z: scalar=true, reduce=false (unreduced scalar 2b TBME)
+# Occ: (n_a - n_b).  Apply δ_{J0,J1} and (-1)^{J0}/Ĵ_0^2 from AMC print in code.
+# Ref: learn/threebody_commutator equations.tex §comm132tts (tensor X,Y)
+
+declare X {
+    mode=2,
+    latex="X",
+    scalar=false
+}
+
+declare Y {
+    mode=6,
+    latex="Y",
+    scalar=false
+}
+
+declare Z {
+    mode=4,
+    latex="Z",
+    scalar=true,
+    reduce=false
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+# Eq 1: X(1b tensor) × Y(3b)  — Term (+)
+Z_ijkl = sum_ab((n_a-n_b)*X_ab*Y_ijbkla);
+
+declare X {
+    mode=6,
+    latex="X",
+    scalar=false
+}
+
+declare Y {
+    mode=2,
+    latex="Y",
+    scalar=false
+}
+
+declare Z {
+    mode=4,
+    latex="Z",
+    scalar=true,
+    reduce=false
+}
+
+# Eq 2: Y(1b tensor) × X(3b)  — Term (−) in full formula
+Z_ijkl = sum_ab((n_a-n_b)*Y_ab*X_ijbkla);

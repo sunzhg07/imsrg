@@ -23,6 +23,7 @@ namespace FactorizedDoubleCommutator_eths {
 /// Factorized leftover double commutator for a tensor generator (ethS).
 ///
 /// Reference: learn/factorized_code_analyze.tex
+///   AMC inputs/outputs: learn/factorized_amc/<diagram>/{input,output}
 ///   Sec. unfact  (eq:unfact1b, eq:unfact2b)  m-scheme 3-op definition
 ///   Sec. jscheme (eq:js-*)                   J-scheme AMC equations coded here
 ///   Sec. opt                                 dispatch and contraction paths
@@ -4342,7 +4343,7 @@ void comm223_232_GIVc(const Operator &Eta_in, const Operator &Gamma,
 ///   cross  : X̂ = Ω·M_X1 + M_X2·Ω (scalar non-AS 2b, ChiOp2n) → Pandya X̄ →
 ///            X̄·Γ̄ per CC channel (cached Γ̄) → inverse Pandya, (1−P)(1−P)
 /// Sec. js-132 (eq:js-132-lad). AMC inputs:
-/// learn/amc_tts/comm_tts/input/comm223_132tts_*_seed.txt.
+/// learn/factorized_amc/leftover132/input/comm223_132tts_*_seed.txt.
 /// The 9j of the cross seed is the Pandya chain: {ji jc J2; jj J4 jb; J0 jl jk}
 ///   = Σ_x (2x+1) {ji jk x; jb jc J2}{jb jc x; jl jj J4}{ji jk x; jl jj J0}.
 /// Leftover packaging: unreduced Z, convention-2 λ̂^{-1}.

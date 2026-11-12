@@ -1,0 +1,24 @@
+# Path B ket topology, P stripped.
+# V_ijkl = Σ_a χ_ak Ω_ijal
+# Restore (1-P_kl) by hand after AMC. Assemble Γ^II = W - V.
+# See NOTES.md §3.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare V {
+    mode=4,
+    scalar=true,
+    latex="V"
+}
+
+declare chizeta {
+    mode=2,
+    scalar=false,
+    latex="\\chi^{\\zeta}"
+}
+
+V_ijkl = sum_a(chizeta_ak * Omega_ijal);

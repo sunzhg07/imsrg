@@ -1,0 +1,27 @@
+# BruteForce IIb leftover, P stripped. Restore (1-P_ij)(1-P_kl) in C++.
+# Mscheme_fact_GIIIb IIb:
+#   −Σ_abcd (n̄_b n_c n_d + n_b n̄_c n̄_d) CG Ω_dcbk Ω_biac Γ_jald
+# Leftover CG is T×T→S on the two Ω's. Γ scalar H. Z leftover unreduced.
+# Occupations match UnitTest (n̄_b n_c n_d + n_b n̄_c n̄_d).
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+declare n { mode=2, diagonal=true, latex="n" }
+declare nbar { mode=2, diagonal=true, latex="\\bar{n}" }
+declare IIb {
+    mode=4,
+    latex="Z^{\\mathrm{IIb}}",
+    scalar=true
+}
+IIb_ijkl = -1 * sum_abcd(
+    (nbar_b*n_c*n_d + n_b*nbar_c*nbar_d)
+    * Omega_dcbk * Omega_biac * Gamma_jald
+);

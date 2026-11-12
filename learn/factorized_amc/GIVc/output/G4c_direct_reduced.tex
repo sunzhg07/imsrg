@@ -1,0 +1,72 @@
+
+\documentclass{scrartcl}
+
+\usepackage{expl3}
+\usepackage{xparse}
+\usepackage{amsmath}
+\usepackage{breqn}
+
+\newcommand{\threej}[3]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \end{Bmatrix}\endgroup}
+\newcommand{\sixj}[6]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \end{Bmatrix}\endgroup}
+\newcommand{\ninej}[9]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \\ #7 & #8 & #9 \end{Bmatrix}\endgroup}
+
+\ExplSyntaxOn
+\tl_new:N \l__hatfact_tl
+
+\NewDocumentCommand{\hatfact} {m} { \__hatfact_parse:n #1 }
+
+\cs_new:Nn \__hatfact_parse:n { \tl_set:Nn \l__hatfact_main_tl {#1} \__hatfact_hat: }
+
+\cs_generate_variant:Nn \str_set:Nn {Nx}
+\cs_new:Nn \__hatfact_hat:
+  {
+    \str_set:Nx \l_tmpa_str {\l__hatfact_main_tl}
+    \str_set:Nn \l_tmpb_str {j}
+    \str_if_eq:NNTF \l_tmpa_str \l_tmpb_str {
+      \hat{\jmath}
+    } {
+      \hat \l__hatfact_main_tl
+    }
+  }
+\ExplSyntaxOff
+
+\begin{document}
+
+\section{Equation 1}
+\begin{dmath*}
+\Gamma^{(IV_c)}_{i j k l}^{{J}_{0} {J}_{1} 0} = 
+\end{dmath*}
+\subsection{Term 1}
+\begin{dmath*}
+-\frac{1}{2} \* \delta_{{J}_{0},{J}_{1}} \* (-1)^{{J}_{1}+{j}_{i}+{j}_{l}} \* \hatfact{{J}_{1}} \* \sum_{a b c d {J}_{2} {J}_{3} {J}_{4} {J}_{5} {J}_{6} {j}_{0} {{\lambda}}_{0}} \* (\bar{n}_{a} \* \bar{n}_{b} \* n_{d} + n_{a} \* n_{b} \* \bar{n}_{d}) \* (-1)^{{J}_{2}+{J}_{5}+{j}_{d}+{j}_{0}+{{\lambda}}_{0}} \* \hatfact{{J}_{3}} \* \hatfact{{J}_{4}} \* \hatfact{{J}_{5}} \* \hatfact{{J}_{6}^{2}} \* \hatfact{{j}_{0}^{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{2}}{{{\lambda}}_{0}}{{J}_{3}}{{j}_{d}}{{j}_{l}}{{j}_{0}} \* \sixj{{J}_{5}}{{{\lambda}}_{0}}{{J}_{4}}{{j}_{d}}{{j}_{j}}{{j}_{0}} \* \sixj{{J}_{2}}{{J}_{5}}{{J}_{6}}{{j}_{j}}{{j}_{l}}{{j}_{0}} \* \sixj{{J}_{2}}{{J}_{5}}{{J}_{6}}{{j}_{k}}{{j}_{i}}{{j}_{c}} \* \sixj{{j}_{k}}{{j}_{l}}{{J}_{1}}{{j}_{j}}{{j}_{i}}{{J}_{6}} \* \Omega_{a b l d}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* \Omega_{d j c k}^{{J}_{4} {J}_{5} {{\lambda}}_{0}} \* \Gamma_{i c a b}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+\subsection{Term 2}
+\begin{dmath*}
+-\frac{1}{2} \* \delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}+{j}_{j}+{j}_{k}} \* \hatfact{{J}_{0}} \* \sum_{a b c d {J}_{2} {J}_{3} {J}_{4} {J}_{5} {J}_{6} {j}_{0} {{\lambda}}_{0}} \* (\bar{n}_{a} \* \bar{n}_{b} \* n_{d} + n_{a} \* n_{b} \* \bar{n}_{d}) \* (-1)^{{J}_{2}+{J}_{5}+{j}_{d}+{j}_{0}+{{\lambda}}_{0}} \* \hatfact{{J}_{2}} \* \hatfact{{J}_{4}} \* \hatfact{{J}_{5}} \* \hatfact{{J}_{6}^{2}} \* \hatfact{{j}_{0}^{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{3}}{{{\lambda}}_{0}}{{J}_{2}}{{j}_{d}}{{j}_{i}}{{j}_{0}} \* \sixj{{J}_{4}}{{{\lambda}}_{0}}{{J}_{5}}{{j}_{d}}{{j}_{k}}{{j}_{0}} \* \sixj{{J}_{3}}{{J}_{4}}{{J}_{6}}{{j}_{k}}{{j}_{i}}{{j}_{0}} \* \sixj{{J}_{3}}{{J}_{4}}{{J}_{6}}{{j}_{j}}{{j}_{l}}{{j}_{c}} \* \sixj{{j}_{l}}{{j}_{k}}{{J}_{0}}{{j}_{i}}{{j}_{j}}{{J}_{6}} \* \Omega_{i d a b}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* \Omega_{c j d k}^{{J}_{4} {J}_{5} {{\lambda}}_{0}} \* \Gamma_{a b l c}^{{J}_{3} {J}_{3} 0}
+\end{dmath*}
+\subsection{Term 3}
+\begin{dmath*}
+-\frac{1}{2} \* \delta_{{J}_{1},{J}_{0}} \* (-1)^{{j}_{i}+{j}_{l}} \* \hatfact{{J}_{0}} \* \sum_{a b c d {J}_{2} {J}_{3} {J}_{4} {J}_{5} {J}_{6} {j}_{0} {{\lambda}}_{0}} \* (\bar{n}_{a} \* \bar{n}_{b} \* n_{d} + n_{a} \* n_{b} \* \bar{n}_{d}) \* (-1)^{{J}_{2}+{J}_{5}+{j}_{d}+{j}_{0}+{{\lambda}}_{0}} \* \hatfact{{J}_{3}} \* \hatfact{{J}_{4}} \* \hatfact{{J}_{5}} \* \hatfact{{J}_{6}^{2}} \* \hatfact{{j}_{0}^{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{2}}{{{\lambda}}_{0}}{{J}_{3}}{{j}_{d}}{{j}_{k}}{{j}_{0}} \* \sixj{{J}_{5}}{{{\lambda}}_{0}}{{J}_{4}}{{j}_{d}}{{j}_{j}}{{j}_{0}} \* \sixj{{J}_{2}}{{J}_{5}}{{J}_{6}}{{j}_{j}}{{j}_{k}}{{j}_{0}} \* \sixj{{J}_{2}}{{J}_{5}}{{J}_{6}}{{j}_{l}}{{j}_{i}}{{j}_{c}} \* \sixj{{j}_{l}}{{j}_{k}}{{J}_{0}}{{j}_{j}}{{j}_{i}}{{J}_{6}} \* \Omega_{a b k d}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* \Omega_{d j c l}^{{J}_{4} {J}_{5} {{\lambda}}_{0}} \* \Gamma_{i c a b}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+\subsection{Term 4}
+\begin{dmath*}
+-\frac{1}{2} \* \delta_{{J}_{1},{J}_{0}} \* (-1)^{{j}_{j}+{j}_{k}} \* \hatfact{{J}_{0}} \* \sum_{a b c d {J}_{2} {J}_{3} {J}_{4} {J}_{5} {J}_{6} {j}_{0} {{\lambda}}_{0}} \* (\bar{n}_{a} \* \bar{n}_{b} \* n_{d} + n_{a} \* n_{b} \* \bar{n}_{d}) \* (-1)^{{J}_{2}+{J}_{5}+{j}_{d}+{j}_{0}+{{\lambda}}_{0}} \* \hatfact{{J}_{2}} \* \hatfact{{J}_{4}} \* \hatfact{{J}_{5}} \* \hatfact{{J}_{6}^{2}} \* \hatfact{{j}_{0}^{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{3}}{{{\lambda}}_{0}}{{J}_{2}}{{j}_{d}}{{j}_{i}}{{j}_{0}} \* \sixj{{J}_{4}}{{{\lambda}}_{0}}{{J}_{5}}{{j}_{d}}{{j}_{l}}{{j}_{0}} \* \sixj{{J}_{3}}{{J}_{4}}{{J}_{6}}{{j}_{l}}{{j}_{i}}{{j}_{0}} \* \sixj{{J}_{3}}{{J}_{4}}{{J}_{6}}{{j}_{j}}{{j}_{k}}{{j}_{c}} \* \sixj{{j}_{k}}{{j}_{l}}{{J}_{0}}{{j}_{i}}{{j}_{j}}{{J}_{6}} \* \Omega_{i d a b}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* \Omega_{c j d l}^{{J}_{4} {J}_{5} {{\lambda}}_{0}} \* \Gamma_{a b k c}^{{J}_{3} {J}_{3} 0}
+\end{dmath*}
+\subsection{Term 5}
+\begin{dmath*}
+-\frac{1}{2} \* \delta_{{J}_{1},{J}_{0}} \* (-1)^{{j}_{i}+{j}_{l}} \* \hatfact{{J}_{0}} \* \sum_{a b c d {J}_{2} {J}_{3} {J}_{4} {J}_{5} {J}_{6} {j}_{0} {{\lambda}}_{0}} \* (\bar{n}_{a} \* \bar{n}_{b} \* n_{d} + n_{a} \* n_{b} \* \bar{n}_{d}) \* (-1)^{{J}_{2}+{J}_{5}+{j}_{d}+{j}_{0}+{{\lambda}}_{0}} \* \hatfact{{J}_{3}} \* \hatfact{{J}_{4}} \* \hatfact{{J}_{5}} \* \hatfact{{J}_{6}^{2}} \* \hatfact{{j}_{0}^{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{2}}{{{\lambda}}_{0}}{{J}_{3}}{{j}_{d}}{{j}_{l}}{{j}_{0}} \* \sixj{{J}_{5}}{{{\lambda}}_{0}}{{J}_{4}}{{j}_{d}}{{j}_{i}}{{j}_{0}} \* \sixj{{J}_{2}}{{J}_{5}}{{J}_{6}}{{j}_{i}}{{j}_{l}}{{j}_{0}} \* \sixj{{J}_{2}}{{J}_{5}}{{J}_{6}}{{j}_{k}}{{j}_{j}}{{j}_{c}} \* \sixj{{j}_{k}}{{j}_{l}}{{J}_{0}}{{j}_{i}}{{j}_{j}}{{J}_{6}} \* \Omega_{a b l d}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* \Omega_{d i c k}^{{J}_{4} {J}_{5} {{\lambda}}_{0}} \* \Gamma_{j c a b}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+\subsection{Term 6}
+\begin{dmath*}
+-\frac{1}{2} \* \delta_{{J}_{1},{J}_{0}} \* (-1)^{{j}_{j}+{j}_{k}} \* \hatfact{{J}_{0}} \* \sum_{a b c d {J}_{2} {J}_{3} {J}_{4} {J}_{5} {J}_{6} {j}_{0} {{\lambda}}_{0}} \* (\bar{n}_{a} \* \bar{n}_{b} \* n_{d} + n_{a} \* n_{b} \* \bar{n}_{d}) \* (-1)^{{J}_{2}+{J}_{5}+{j}_{d}+{j}_{0}+{{\lambda}}_{0}} \* \hatfact{{J}_{2}} \* \hatfact{{J}_{4}} \* \hatfact{{J}_{5}} \* \hatfact{{J}_{6}^{2}} \* \hatfact{{j}_{0}^{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{3}}{{{\lambda}}_{0}}{{J}_{2}}{{j}_{d}}{{j}_{j}}{{j}_{0}} \* \sixj{{J}_{4}}{{{\lambda}}_{0}}{{J}_{5}}{{j}_{d}}{{j}_{k}}{{j}_{0}} \* \sixj{{J}_{3}}{{J}_{4}}{{J}_{6}}{{j}_{k}}{{j}_{j}}{{j}_{0}} \* \sixj{{J}_{3}}{{J}_{4}}{{J}_{6}}{{j}_{i}}{{j}_{l}}{{j}_{c}} \* \sixj{{j}_{l}}{{j}_{k}}{{J}_{0}}{{j}_{j}}{{j}_{i}}{{J}_{6}} \* \Omega_{j d a b}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* \Omega_{c i d k}^{{J}_{4} {J}_{5} {{\lambda}}_{0}} \* \Gamma_{a b l c}^{{J}_{3} {J}_{3} 0}
+\end{dmath*}
+\subsection{Term 7}
+\begin{dmath*}
+-\frac{1}{2} \* \delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}+{j}_{i}+{j}_{l}} \* \hatfact{{J}_{0}} \* \sum_{a b c d {J}_{2} {J}_{3} {J}_{4} {J}_{5} {J}_{6} {j}_{0} {{\lambda}}_{0}} \* (\bar{n}_{a} \* \bar{n}_{b} \* n_{d} + n_{a} \* n_{b} \* \bar{n}_{d}) \* (-1)^{{J}_{2}+{J}_{5}+{j}_{d}+{j}_{0}+{{\lambda}}_{0}} \* \hatfact{{J}_{3}} \* \hatfact{{J}_{4}} \* \hatfact{{J}_{5}} \* \hatfact{{J}_{6}^{2}} \* \hatfact{{j}_{0}^{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{2}}{{{\lambda}}_{0}}{{J}_{3}}{{j}_{d}}{{j}_{k}}{{j}_{0}} \* \sixj{{J}_{5}}{{{\lambda}}_{0}}{{J}_{4}}{{j}_{d}}{{j}_{i}}{{j}_{0}} \* \sixj{{J}_{2}}{{J}_{5}}{{J}_{6}}{{j}_{i}}{{j}_{k}}{{j}_{0}} \* \sixj{{J}_{2}}{{J}_{5}}{{J}_{6}}{{j}_{l}}{{j}_{j}}{{j}_{c}} \* \sixj{{j}_{l}}{{j}_{k}}{{J}_{0}}{{j}_{i}}{{j}_{j}}{{J}_{6}} \* \Omega_{a b k d}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* \Omega_{d i c l}^{{J}_{4} {J}_{5} {{\lambda}}_{0}} \* \Gamma_{j c a b}^{{J}_{2} {J}_{2} 0}
+\end{dmath*}
+\subsection{Term 8}
+\begin{dmath*}
+-\frac{1}{2} \* \delta_{{J}_{1},{J}_{0}} \* (-1)^{{J}_{0}+{j}_{j}+{j}_{k}} \* \hatfact{{J}_{0}} \* \sum_{a b c d {J}_{2} {J}_{3} {J}_{4} {J}_{5} {J}_{6} {j}_{0} {{\lambda}}_{0}} \* (\bar{n}_{a} \* \bar{n}_{b} \* n_{d} + n_{a} \* n_{b} \* \bar{n}_{d}) \* (-1)^{{J}_{2}+{J}_{5}+{j}_{d}+{j}_{0}+{{\lambda}}_{0}} \* \hatfact{{J}_{2}} \* \hatfact{{J}_{4}} \* \hatfact{{J}_{5}} \* \hatfact{{J}_{6}^{2}} \* \hatfact{{j}_{0}^{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{3}}{{{\lambda}}_{0}}{{J}_{2}}{{j}_{d}}{{j}_{j}}{{j}_{0}} \* \sixj{{J}_{4}}{{{\lambda}}_{0}}{{J}_{5}}{{j}_{d}}{{j}_{l}}{{j}_{0}} \* \sixj{{J}_{3}}{{J}_{4}}{{J}_{6}}{{j}_{l}}{{j}_{j}}{{j}_{0}} \* \sixj{{J}_{3}}{{J}_{4}}{{J}_{6}}{{j}_{i}}{{j}_{k}}{{j}_{c}} \* \sixj{{j}_{k}}{{j}_{l}}{{J}_{0}}{{j}_{j}}{{j}_{i}}{{J}_{6}} \* \Omega_{j d a b}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* \Omega_{c i d l}^{{J}_{4} {J}_{5} {{\lambda}}_{0}} \* \Gamma_{a b k c}^{{J}_{3} {J}_{3} 0}
+\end{dmath*}
+
+\end{document}

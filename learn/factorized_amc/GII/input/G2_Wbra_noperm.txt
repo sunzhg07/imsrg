@@ -1,0 +1,25 @@
+# Path B bra topology, P stripped.
+# W_ijkl = Σ_a χ_ja Ω_iakl
+# Restore (1-P_ij) by hand after AMC. See NOTES.md §3.
+#
+# χ_ja (not χ_aj): AMC-orientable; analyze χ_aj is the same after swap.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare W {
+    mode=4,
+    scalar=true,
+    latex="W"
+}
+
+declare chizeta {
+    mode=2,
+    scalar=false,
+    latex="\\chi^{\\zeta}"
+}
+
+W_ijkl = sum_a(chizeta_ja * Omega_iakl);

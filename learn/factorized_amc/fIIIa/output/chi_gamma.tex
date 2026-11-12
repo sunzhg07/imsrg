@@ -1,0 +1,40 @@
+
+\documentclass{scrartcl}
+
+\usepackage{expl3}
+\usepackage{xparse}
+\usepackage{amsmath}
+\usepackage{breqn}
+
+\newcommand{\threej}[3]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \end{Bmatrix}\endgroup}
+\newcommand{\sixj}[6]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \end{Bmatrix}\endgroup}
+\newcommand{\ninej}[9]{\begingroup\setlength{\arraycolsep}{0.2em}\begin{Bmatrix} #1 & #2 & #3 \\ #4 & #5 & #6 \\ #7 & #8 & #9 \end{Bmatrix}\endgroup}
+
+\ExplSyntaxOn
+\tl_new:N \l__hatfact_tl
+
+\NewDocumentCommand{\hatfact} {m} { \__hatfact_parse:n #1 }
+
+\cs_new:Nn \__hatfact_parse:n { \tl_set:Nn \l__hatfact_main_tl {#1} \__hatfact_hat: }
+
+\cs_generate_variant:Nn \str_set:Nn {Nx}
+\cs_new:Nn \__hatfact_hat:
+  {
+    \str_set:Nx \l_tmpa_str {\l__hatfact_main_tl}
+    \str_set:Nn \l_tmpb_str {j}
+    \str_if_eq:NNTF \l_tmpa_str \l_tmpb_str {
+      \hat{\jmath}
+    } {
+      \hat \l__hatfact_main_tl
+    }
+  }
+\ExplSyntaxOff
+
+\begin{document}
+
+\section{Equation 1}
+\begin{dmath*}
+\chi^{\gamma}_{i j k l}^{{J}_{0} {J}_{1} 0} = -\delta_{{J}_{1},{J}_{0}} \* (-1)^{{j}_{j}+{j}_{l}} \* \sum_{a b {J}_{2} {J}_{3} {J}_{4} {J}_{5} {J}_{6} {j}_{0} {{\lambda}}_{0}} \* (n_{a} \* \bar{n}_{b} \* n_{j} \* \bar{n}_{k} -\bar{n}_{a} \* n_{b} \* \bar{n}_{j} \* n_{k}) \* (-1)^{{J}_{3}+{J}_{5}+{{\lambda}}_{0}} \* \hatfact{{J}_{2}} \* \hatfact{{J}_{3}} \* \hatfact{{J}_{4}} \* \hatfact{{J}_{5}} \* \hatfact{{J}_{6}^{2}} \* \hatfact{{j}_{0}^{2}} \* \hatfact{{{\lambda}}_{0}^{-1}} \* \sixj{{J}_{3}}{{{\lambda}}_{0}}{{J}_{2}}{{j}_{a}}{{j}_{j}}{{j}_{0}} \* \sixj{{J}_{4}}{{{\lambda}}_{0}}{{J}_{5}}{{j}_{a}}{{j}_{l}}{{j}_{0}} \* \sixj{{j}_{j}}{{j}_{k}}{{J}_{6}}{{j}_{b}}{{j}_{0}}{{J}_{3}} \* \sixj{{j}_{l}}{{j}_{i}}{{J}_{6}}{{j}_{b}}{{j}_{0}}{{J}_{4}} \* \sixj{{j}_{k}}{{j}_{l}}{{J}_{0}}{{j}_{i}}{{j}_{j}}{{J}_{6}} \* \Omega_{a j k b}^{{J}_{2} {J}_{3} {{\lambda}}_{0}} \* \Omega_{i b a l}^{{J}_{4} {J}_{5} {{\lambda}}_{0}}
+\end{dmath*}
+
+\end{document}

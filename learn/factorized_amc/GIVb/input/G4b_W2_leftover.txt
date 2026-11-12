@@ -1,0 +1,23 @@
+# Γ^{IV_b} leftover W2 slots, P stripped. Restore (1-P)^2 in C++.
+# Leftover m / analyze eq:GIVb:
+#   W2 = Σ_ab CG χ^ι_akbi Ω_lbja
+# No extra h_Ω (that was AH-only and cancelled S1 for Hermitian Ω).
+# Same packaging as G4b_W1_leftover.txt.
+
+declare Chi {
+    mode=4,
+    latex="\\chi^{\\iota}",
+    scalar=false,
+    reduce=true
+}
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare W {
+    mode=4,
+    latex="W^{(2)}",
+    scalar=true
+}
+W_ijkl = sum_ab(Chi_akbi * Omega_lbja);

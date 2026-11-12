@@ -1,0 +1,34 @@
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+# Tensor intermediate chi^beta_de (rank = rank of Omega)
+declare chi {
+    mode=2,
+    latex="\\chi^{\\beta}",
+    scalar=false
+}
+
+# From unfactored f^II string Gamma_cdab Omega_abce (occ on free e).
+# Overall 1/2 kept here; f^II contraction should NOT repeat it.
+chi_de = 1/2 * sum_abc((n_a*n_b*nbar_c*nbar_e - nbar_a*nbar_b*n_c*n_e) * (Gamma_cdab*Omega_abce));

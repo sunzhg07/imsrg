@@ -1,0 +1,36 @@
+# Unfactored Γ^{IV_c} with (1-P)(1-P). Unreduced Γ/Z.
+# Matches analyze / factorized_code_analyze.tex.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare n {
+    mode=2,
+    diagonal=true,
+    latex="n"
+}
+
+declare nbar {
+    mode=2,
+    diagonal=true,
+    latex="\\bar{n}"
+}
+
+declare G4c {
+    mode=4,
+    latex="\\Gamma^{(IV_c)}",
+    scalar=true
+}
+
+G4c_ijkl = 1/2 * sum_abcd((nbar_a*nbar_b*n_d + n_a*n_b*nbar_d)
+    * P(i/j) * P(k/l)
+    * (Omega_abld*Omega_djck*Gamma_icab + Omega_idab*Omega_cjdk*Gamma_ablc));

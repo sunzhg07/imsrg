@@ -1,0 +1,28 @@
+# comm223tts: tensor 2b × tensor 2b → scalar 3b  [Z UNREDUCED]
+# Wick = comm223ss: Z_ijklmn = (1-P_ik-P_jk)(1-P_lm-P_ln) sum_a (X_ijla Y_akmn - Y_ijla X_akmn)
+# AMC: primitive product only; restore 9 permutations in code like comm223ss.
+#   X, Y: scalar=false (WE-reduced rank-λ tensor 2b)
+#   Z: scalar=true, reduce=false (unreduced scalar 3b)
+# No occupancy on contracted a.
+
+declare X {
+    mode=4,
+    latex="X",
+    scalar=false
+}
+
+declare Y {
+    mode=4,
+    latex="Y",
+    scalar=false
+}
+
+declare Z {
+    mode=6,
+    latex="Z",
+    scalar=true,
+    reduce=false
+}
+
+Z_ijklmn = sum_a(X_ijla*Y_akmn);
+Z_ijklmn = sum_a(Y_ijla*X_akmn);

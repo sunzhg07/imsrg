@@ -1,0 +1,20 @@
+declare chi {
+    mode=4,
+    latex="\\chi^{\\gamma}",
+    scalar=true
+}
+
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+
+declare fIIIa {
+    mode=2,
+    latex="f^{(III_a)}",
+    scalar=true
+}
+
+# analyze factorized f^IIIa
+fIIIa_ij = sum_abc(Gamma_ciab*chi_abcj - chi_icab*Gamma_abjc);

@@ -1,0 +1,26 @@
+# BruteForce IId leftover, P stripped. Restore (1-P_ij)(1-P_kl) in C++.
+# Mscheme_fact_GIIIb IId:
+#   −Σ_abcd (n̄_c n_b n_d + n_c n̄_b n̄_d) CG Ω_jcbd Ω_balc Γ_diak
+# Leftover CG on the two Ω's. Γ scalar H. Z leftover unreduced.
+
+declare Omega {
+    mode=4,
+    latex="\\Omega",
+    scalar=false
+}
+declare Gamma {
+    mode=4,
+    latex="\\Gamma",
+    scalar=true
+}
+declare n { mode=2, diagonal=true, latex="n" }
+declare nbar { mode=2, diagonal=true, latex="\\bar{n}" }
+declare IId {
+    mode=4,
+    latex="Z^{\\mathrm{IId}}",
+    scalar=true
+}
+IId_ijkl = -1 * sum_abcd(
+    (nbar_c*n_b*n_d + n_c*nbar_b*nbar_d)
+    * Omega_jcbd * Omega_balc * Gamma_diak
+);
