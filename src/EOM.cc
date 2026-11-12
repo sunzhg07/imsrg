@@ -5547,7 +5547,9 @@ void EOM::WriteTdm(const Operator &op, const std::string &filename) const
   out << tb_lines.size() << "\n";
   for (auto &t : tb_lines)
     out << "TBTD " << (std::get<0>(t)+1) << " " << (std::get<1>(t)+1) << " " << (std::get<2>(t)+1) << " " << (std::get<3>(t)+1)
-        << " " << (std::get<4>(t)*2) << " " << (std::get<4>(t)*2)
+        // OSM TBTD convention: Jab Jcd undoubled (ReadOsmRdm reads them as J).
+        // The 3-body block below uses doubled J, as its reader expects.
+        << " " << std::get<4>(t) << " " << std::get<4>(t)
         << " " << std::setprecision(10) << std::get<5>(t) * factor << "\n";
 
   // --- 3-body: iterate in native memory order ---

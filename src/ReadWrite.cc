@@ -4377,10 +4377,15 @@ void ReadWrite::ReadOperator(Operator &op, std::string filename)
       std::stringstream ss(tmpstr);
       ss >> i >> j >> v;
       op.OneBody(i,j) = v;
+      // The writer stores only j >= i for (anti-)Hermitian operators.
+      // The lower triangle carries the tensor phase (-1)^(ji-jj), which is +1
+      // for scalars (ji = jj inside a one-body channel).
+      double tensor_phase = op.GetModelSpace()->phase(
+          (op.GetModelSpace()->GetOrbit(i).j2 - op.GetModelSpace()->GetOrbit(j).j2) / 2);
       if ( op.IsHermitian() )
-         op.OneBody(j,i) = v;
+         op.OneBody(j,i) = tensor_phase * v;
       else if ( op.IsAntiHermitian() )
-         op.OneBody(j,i) = -v;
+         op.OneBody(j,i) = -tensor_phase * v;
       getline(opfile, tmpstr);
    }
 
@@ -4441,10 +4446,15 @@ void ReadWrite::ReadOperatorHuman(Operator &op, std::string filename)
       std::stringstream ss(tmpstr);
       ss >> i >> j >> v;
       op.OneBody(i,j) = v;
+      // The writer stores only j >= i for (anti-)Hermitian operators.
+      // The lower triangle carries the tensor phase (-1)^(ji-jj), which is +1
+      // for scalars (ji = jj inside a one-body channel).
+      double tensor_phase = op.GetModelSpace()->phase(
+          (op.GetModelSpace()->GetOrbit(i).j2 - op.GetModelSpace()->GetOrbit(j).j2) / 2);
       if ( op.IsHermitian() )
-         op.OneBody(j,i) = v;
+         op.OneBody(j,i) = tensor_phase * v;
       else if ( op.IsAntiHermitian() )
-         op.OneBody(j,i) = -v;
+         op.OneBody(j,i) = -tensor_phase * v;
       getline(opfile, tmpstr);
    }
 
