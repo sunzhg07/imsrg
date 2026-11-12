@@ -1,1 +1,0 @@
-../../../../../../run/test_chi_iota_rc.py

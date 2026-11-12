@@ -1,1 +1,0 @@
-../../../../../../run/test_chi_kappa_pathB_vs_direct.py

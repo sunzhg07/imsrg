@@ -1,1 +1,0 @@
-../../../../../../run/test_tts_GIIIc_new_direct.py

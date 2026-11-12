@@ -1,1 +1,0 @@
-../../../../../../run/test_chi_lambda_mscheme.py

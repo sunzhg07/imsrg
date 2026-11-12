@@ -1,1 +1,0 @@
-../../../../factored_fIIIb/input/chi_delta.txt

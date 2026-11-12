@@ -1,1 +1,0 @@
-../../../../../../run/test_tts_GIVc.py

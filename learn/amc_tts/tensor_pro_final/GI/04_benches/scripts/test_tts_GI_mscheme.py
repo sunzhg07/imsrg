@@ -1,1 +1,0 @@
-../../../../../../run/test_tts_GI_mscheme.py
