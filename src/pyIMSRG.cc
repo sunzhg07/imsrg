@@ -1568,6 +1568,7 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("ConstructNormMatrix_tensor", &EOM::ConstructNormMatrix_tensor,
            py::arg("include_fermi_identity") = true)
       .def("ConstructProjectMatrix", &EOM::ConstructProjectMatrix)
+      .def("SetProjectorFullSVD", &EOM::SetProjectorFullSVD, py::arg("full_svd"))
       .def("SetArnoldiUseProjection", &EOM::SetArnoldiUseProjection,
            py::arg("use_projection"))
       .def("SetArnoldiCheckExpectation", &EOM::SetArnoldiCheckExpectation,

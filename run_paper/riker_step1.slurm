@@ -1,9 +1,10 @@
 #!/bin/bash
 #SBATCH -A nph123
-#SBATCH -p batch
+#SBATCH -p gpu
+#SBATCH --gpus=1
 #SBATCH -N 1
-#SBATCH -c 64
-#SBATCH --mem=400G
+#SBATCH --cpus-per-gpu=32
+#SBATCH --mem-per-gpu=380G
 #SBATCH -t 06:00:00
 #SBATCH -J step1_inputs
 #SBATCH -o step1_inputs.%j.out

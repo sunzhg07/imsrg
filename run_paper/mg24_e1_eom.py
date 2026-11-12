@@ -13,9 +13,9 @@ the states that carry E1 strength converge first.
 Transition amplitude (scalar-coupled, ethS leftover-CG convention):
   T_nu = NormMultiref_tensor(E1, chi_nu) = <[E1, chi_nu - chi_nu^dag]>_rho / 2
   N_nu = ComputeNorm(chi_nu, chi_nu)
-  B(E1; 0+ -> 1-_nu) = -lambda_hat * T_nu^2 / N_nu     [e^2 fm^2]
-  (code N, T carry -1/lambda_hat; TEST=1 pins this: core->a gives
-   N = -(1-n_a)/lambda_hat with n_a the KSHELL occupation.)
+  B(E1; 0+ -> 1-_nu) = T_nu^2 / N_nu     [e^2 fm^2]
+  (N, T are physical: the tensor metric carries (-1)^lambda lambda_hat in
+   EOM.cc. TEST=1 pins this: core->a gives N = 1 - n_a, T = <a||E1||i> N.)
 TEST=1 checks this formula on a pure particle-hole chi against the exact
 |<a||E1||i>|^2 with the bare E1.
 
@@ -80,16 +80,15 @@ def setup():
 def strength(eom, E1, chi):
     N = eom.ComputeNorm(chi, chi)
     T = eom.NormMultiref_tensor(E1, chi)
-    # Code N, T = -(1/lambda_hat) x physical reduced quantities (TEST=1: core->a
-    # particle-hole gives N = -(1-n_a)/lambda_hat), so B = -lambda_hat T^2/N.
-    return N, T, (-HAT * T * T / N if N != 0 else float("nan"))
+    # N, T physical (TEST=1: core->a particle-hole gives N = 1 - n_a), so B = T^2/N.
+    return N, T, (T * T / N if N != 0 else float("nan"))
 
 
 def run_test(ms, eom):
     """Single particle-hole chi = (a^dag i)^1 with the bare proton E1.
 
     Prints raw N = ComputeNorm(chi,chi), T = NormMultiref_tensor(E1,chi),
-    lambda_hat*T^2/N and |<a||E1||i>|^2 for E1-allowed pairs (Delta N = 1),
+    T^2/N and |<a||E1||i>|^2 (1-n_a or n_i) for E1-allowed pairs (Delta N = 1),
     to pin the tensor normalization convention.
     """
     E1bare = ElectricMultipoleOp(ms, 1)
@@ -106,10 +105,10 @@ def run_test(ms, eom):
         N = eom.ComputeNorm(chi, chi)
         T = eom.NormMultiref_tensor(E1bare, chi)
         e1 = E1bare.GetOneBody(a, i)
-        B = HAT * T * T / N if N != 0 else float("nan")
+        B = T * T / N if N != 0 else float("nan")
         print(f"TEST {lab}: occ_i={ms.GetOrbit(i).occ:.4f} occ_a={ms.GetOrbit(a).occ:.4f}  "
               f"N={N:+.6e}  T={T:+.6e}  <a||E1||i>={e1:+.6e}  "
-              f"lam_hat*T^2/N={B:+.6e}  |<a||E1||i>|^2={e1 * e1:.6e}  "
+              f"T^2/N={B:+.6e}  |<a||E1||i>|^2={e1 * e1:.6e}  "
               f"T/<a||E1||i>={T / e1 if e1 else float('nan'):+.6f}", flush=True)
     return True
 
@@ -126,7 +125,7 @@ def main():
     e1seed = eom.GetVSEOM_ladder_multiref(E1, 1)
     eom.ProjectOprator(e1seed)
     N0, T0, B0 = strength(eom, E1, e1seed)
-    print(f"E1 excitation part (projected):  N={N0:.6e}  -lam T^2/N={B0:.6e}", flush=True)
+    print(f"E1 excitation part (projected):  N={N0:.6e}  T^2/N={B0:.6e}", flush=True)
     if os.environ.get("SEED", "random") == "e1":
         seed = e1seed
     else:

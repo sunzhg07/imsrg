@@ -8,6 +8,8 @@
 #include "ReadWrite.hh"
 #include "UnitTest.hh"
 #include <algorithm>
+#include <numeric>
+#include <omp.h>
 #include <array>
 #include <cctype>
 #include <cmath>
@@ -1630,7 +1632,12 @@ void EOM::ConstructNormMatrix_tensor(bool include_fermi_identity) {
     }
   }
 
+  // Physical metric: (−1)^λ λ̂ × the coupled [X×Y]^0 leftover (TEST=1 on Mg24:
+  // core→a ph gives N = 1 − n_a at λ=1 and λ=2).
+  Nkernel *= TensorMetricFactor(lam);
+
   std::cout << "ConstructNormMatrix_tensor: λ=" << lam
+            << " metric factor (−1)^λ λ̂=" << TensorMetricFactor(lam)
             << " eom_dims=" << eom_dims
             << " pphv_B1=" << (include_norm_B1 ? 1 : 0)
             << " pphv_C4=" << (include_norm_C4 ? 1 : 0) << std::endl;
@@ -1971,12 +1978,19 @@ void EOM::PrintConfigs() {
 void EOM::ConstructProjectMatrix() {
   Prj_kernel.set_size(eom_dims, eom_dims);
   Prj_kernel.zeros();
+  prj_blocks.clear();
+  use_prj_blocks = false;
   if (eom_dims == 0)
     return;
 
   // Tensor configs couple different 2b channels (ch_bra ≠ ch_ket). The scalar
-  // per-channel blocking is wrong; use one positive-N projector on the full kernel.
+  // per-channel blocking is wrong; project on the range of the full kernel,
+  // computed block by block over the connected components of N (exact).
   if (eom_tensor_configs) {
+    if (!prj_full_svd) {
+      ConstructProjectMatrix_blocks();
+      return;
+    }
     std::vector<int> all_idx;
     all_idx.reserve(eom_dims);
     for (index_t i = 0; i < eom_dims; ++i)
@@ -2197,6 +2211,141 @@ void EOM::ConstructProjectMatrix() {
 }
 
 // True orthogonal projector P = U_r * U_r^T  (idempotent: P*P = P)
+// Range projector of the full tensor kernel without one dense n×n SVD.
+// After a permutation N is block diagonal over the connected components of
+// its nonzero pattern, so its singular values are the union of the blocks'
+// and the range projector is the direct sum of the block projectors. The
+// threshold s >= 1e-6 s_max uses the global s_max, as SqrtMat on all of N
+// did, so the kept subspace is identical. Per block: eig_sym when the block
+// is symmetric (s = |λ|), else U-only SVD. P is never formed: each block
+// keeps the smaller of the range basis U_r (P = U_r U_rᵀ) and the null basis
+// U_0 (P = 1 − U_0 U_0ᵀ).
+void EOM::ConstructProjectMatrix_blocks() {
+  const double t0 = omp_get_wtime();
+  const arma::uword n = eom_dims;
+
+  // Connected components of the (symmetrized) nonzero pattern of N.
+  std::vector<arma::uword> parent(n);
+  std::iota(parent.begin(), parent.end(), 0);
+  auto find = [&](arma::uword x) {
+    while (parent[x] != x) {
+      parent[x] = parent[parent[x]];
+      x = parent[x];
+    }
+    return x;
+  };
+  for (auto it = Nkernel.begin(); it != Nkernel.end(); ++it) {
+    if (*it == 0.0)
+      continue;
+    arma::uword a = find(it.row()), b = find(it.col());
+    if (a != b)
+      parent[std::max(a, b)] = std::min(a, b);
+  }
+  std::vector<long> root_gid(n, -1);
+  std::vector<arma::uword> gid(n), pos(n);
+  std::vector<std::vector<arma::uword>> groups;
+  for (arma::uword i = 0; i < n; ++i) {
+    arma::uword r = find(i);
+    if (root_gid[r] < 0) {
+      root_gid[r] = (long)groups.size();
+      groups.emplace_back();
+    }
+    gid[i] = (arma::uword)root_gid[r];
+    pos[i] = groups[gid[i]].size();
+    groups[gid[i]].push_back(i);
+  }
+  const size_t ng = groups.size();
+
+  // Dense blocks straight from the nonzeros of N.
+  std::vector<arma::mat> A(ng);
+  for (size_t g = 0; g < ng; ++g)
+    A[g].zeros(groups[g].size(), groups[g].size());
+  for (auto it = Nkernel.begin(); it != Nkernel.end(); ++it)
+    A[gid[it.row()]](pos[it.row()], pos[it.col()]) = *it;
+  const double t1 = omp_get_wtime();
+
+  // Decompose: big blocks one at a time (threaded LAPACK), small ones in parallel.
+  std::vector<arma::vec> sv(ng);
+  std::vector<arma::mat> vecs(ng);
+  std::vector<char> is_sym(ng, 1);
+  auto decompose = [&](size_t g) {
+    arma::mat &M = A[g];
+    const double scale = M.n_elem ? arma::abs(M).max() : 0.0;
+    const double asym = M.n_elem ? arma::abs(M - M.t()).max() : 0.0;
+    if (asym <= 1e-12 * std::max(scale, 1e-300)) {
+      arma::vec lam;
+      arma::mat sym = 0.5 * (M + M.t());
+      if (!arma::eig_sym(lam, vecs[g], sym, "dc"))
+        arma::eig_sym(lam, vecs[g], sym, "std");
+      sv[g] = arma::abs(lam);
+    } else {
+      is_sym[g] = 0;
+      arma::mat V;
+      if (!arma::svd_econ(vecs[g], sv[g], V, M, "left", "dc"))
+        arma::svd_econ(vecs[g], sv[g], V, M, "left", "std");
+    }
+    M.reset();
+  };
+  const arma::uword small = 256;
+  std::vector<size_t> big_ids, small_ids;
+  for (size_t g = 0; g < ng; ++g)
+    (groups[g].size() > small ? big_ids : small_ids).push_back(g);
+  for (size_t g : big_ids)
+    decompose(g);
+#pragma omp parallel for schedule(dynamic)
+  for (size_t k = 0; k < small_ids.size(); ++k)
+    decompose(small_ids[k]);
+  const double t2 = omp_get_wtime();
+
+  double s_max = 0.0;
+  for (size_t g = 0; g < ng; ++g)
+    if (sv[g].n_elem)
+      s_max = std::max(s_max, sv[g].max());
+  const double thr = 1e-6 * s_max;
+
+  prj_blocks.resize(ng);
+  arma::uword rank = 0, stored = 0, n_nonsym = 0;
+  for (size_t g = 0; g < ng; ++g) {
+    PrjBlock &B = prj_blocks[g];
+    B.idx = arma::conv_to<arma::uvec>::from(groups[g]);
+    const arma::uword b = B.idx.n_elem;
+    arma::uvec keep = (s_max < 1e-6) ? arma::uvec() : arma::find(sv[g] >= thr);
+    const arma::uword r = keep.n_elem;
+    rank += r;
+    n_nonsym += is_sym[g] ? 0 : 1;
+    if (r <= b - r) {
+      B.complement = false;
+      B.basis = vecs[g].cols(keep);
+    } else {
+      B.complement = true;
+      B.basis = vecs[g].cols(arma::find(sv[g] < thr));
+    }
+    stored += B.basis.n_elem;
+    vecs[g].reset();
+  }
+  use_prj_blocks = true;
+  const double t3 = omp_get_wtime();
+
+  std::vector<arma::uword> sizes(ng);
+  double cost = 0.0;
+  for (size_t g = 0; g < ng; ++g) {
+    sizes[g] = groups[g].size();
+    cost += std::pow((double)sizes[g], 3);
+  }
+  std::sort(sizes.rbegin(), sizes.rend());
+  std::cout << "ConstructProjectMatrix (tensor, blocks): dim=" << n
+            << "  nnz(N)=" << Nkernel.n_nonzero << "  blocks=" << ng
+            << "  largest:";
+  for (size_t k = 0; k < std::min<size_t>(5, ng); ++k)
+    std::cout << " " << sizes[k];
+  std::cout << "  sum b^3/n^3=" << cost / std::pow((double)n, 3)
+            << "  rank=" << rank << "  nonsym_blocks=" << n_nonsym
+            << "  stored=" << stored << " (" << stored * 8e-9 << " GB)"
+            << "  s_max=" << s_max << std::endl;
+  std::cout << "  timing: blocks " << t1 - t0 << " s, decompose " << t2 - t1
+            << " s, bases " << t3 - t2 << " s" << std::endl;
+}
+
 // Projects onto the range of the norm matrix, removing the null space.
 void EOM::SqrtMat(arma::mat& Amat, size_t n)
 {
@@ -2377,7 +2526,22 @@ void EOM::ProjectOprator(Operator &Qin) {
 
   Qin *= 0.;
 
-  arma::vec Qout = Prj_kernel * Qflat;
+  arma::vec Qout;
+  if (use_prj_blocks) {
+    Qout.zeros(Qflat.n_elem);
+    for (const PrjBlock &B : prj_blocks) {
+      if (B.basis.n_cols == 0) {
+        if (B.complement)
+          Qout.elem(B.idx) = Qflat.elem(B.idx);
+        continue;
+      }
+      arma::vec x = Qflat.elem(B.idx);
+      arma::vec y = B.basis * (B.basis.t() * x);
+      Qout.elem(B.idx) = B.complement ? arma::vec(x - y) : y;
+    }
+  } else {
+    Qout = Prj_kernel * Qflat;
+  }
 
   auto put1 = [&](index_t i) {
     Qin.SetOneBody(eom_confs.at(i)[0], eom_confs.at(i)[1], Qout(i));
@@ -3333,7 +3497,7 @@ double EOM::NormMultiref_tensor(Operator &T1, Operator &T2)
   Commutator::comm222_pp_hhtts(T1, T2d, nop);
   Commutator::comm222_phtts(T1, T2d, nop);
 
-  return GetVSEOM_Overlap_multiref(nop) / 2.0;
+  return TensorMetricFactor(T1.GetJRank()) * GetVSEOM_Overlap_multiref(nop) / 2.0;
 }
 
 /// 3-body contribution to <t1|t2>:
@@ -3428,7 +3592,8 @@ double EOM::DcomMultiref(Operator &haml, Operator &chi_in)
       dcom_time_overlap += elapsed(timer);
       ++dcom_profile_calls;
     }
-    return rst / 2.0;
+    // Same metric factor as Nkernel / NormMultiref_tensor (Hall = Htc + Dcom).
+    return TensorMetricFactor(chi.GetJRank()) * rst / 2.0;
   }
 
   Operator opa = chi_in * 0.0;

@@ -67,6 +67,16 @@ public:
   arma::sp_mat Nkernel_overlap;
   bool have_Nkernel_overlap = false;
   arma::sp_mat Prj_kernel;
+  /// Tensor projector, one entry per connected block of Nkernel (exact; see
+  /// ConstructProjectMatrix_blocks). P_block = U Uᵀ, or 1 − U Uᵀ if complement.
+  struct PrjBlock {
+    arma::uvec idx;
+    arma::mat basis;
+    bool complement = false;
+  };
+  std::vector<PrjBlock> prj_blocks;
+  bool use_prj_blocks = false;
+  bool prj_full_svd = false; ///< tensor: old single dense SVD (for checks)
   /// Canonical transform X = U s^{-1/2} (N x M) from BuildCanonicalTransform.
   arma::mat X_canon;
   bool have_X_canon = false;
@@ -225,8 +235,20 @@ public:
   /// (Y index-reversed so λ×λ→0). See learn/amc_tts/eom_norm/.
   void ConstructNormMatrix_tensor(bool include_fermi_identity = true);
   void ConstructProjectMatrix();
+  /// Tensor projector from the connected blocks of Nkernel (default).
+  void ConstructProjectMatrix_blocks();
+  /// true: tensor projector from one dense SVD of all of N (old path, slow).
+  void SetProjectorFullSVD(bool b) { prj_full_svd = b; }
   /// Nonzero J2 / parity / Tz: tensor EOM (2+ from 0+, etc.).
   bool IsTensorEOM() const { return J2 != 0 or parity != 0 or itz != 0; }
+  /// (−1)^λ λ̂. The tensor metric pieces (Nkernel, NormMultiref_tensor, tensor
+  /// DcomMultiref) are ⟨[X×Y]^(0)_0⟩_ρ / 2 = (−1)^λ / λ̂ × the physical
+  /// Σ_μ-independent ⟨[Q, Q†]⟩; they are multiplied by this so the code
+  /// metric is the physical one (positive for physical states at any λ).
+  static double TensorMetricFactor(int lam)
+  {
+    return ((lam % 2) ? -1.0 : 1.0) * std::sqrt(2.0 * lam + 1.0);
+  }
   /// Empty Hermitian amplitude with this EOM's (J2, Tz, parity).
   Operator ZeroAmplitude() const;
   /// Canonical orthogonalization of Nkernel (Szabo–Ostlund):

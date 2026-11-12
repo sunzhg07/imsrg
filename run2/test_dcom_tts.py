@@ -127,9 +127,11 @@ ok1 = dZ <= tol * max(1.0, n_nested)
 print(f"  leftover match: {'OK' if ok1 else 'FAIL'}")
 
 print("\n=== 2. DcomMultiref vs ⟨Z⟩_ρ / 2 ===")
-gold = eom.GetVSEOM_Overlap_multiref(Z_nested) / 2.0
+# EOM.cc tensor metric factor (-1)^lambda lambda_hat (physical metric).
+metric_f = (-1) ** rank_j * np.sqrt(2 * rank_j + 1)
+gold = metric_f * eom.GetVSEOM_Overlap_multiref(Z_nested) / 2.0
 code = eom.DcomMultiref(Hs, chi)
-eths_ov = eom.GetVSEOM_Overlap_multiref(Z_eths) / 2.0
+eths_ov = metric_f * eom.GetVSEOM_Overlap_multiref(Z_eths) / 2.0
 print(f"  nested ⟨Z⟩/2     = {gold:.8e}")
 print(f"  ethS  ⟨Z⟩/2      = {eths_ov:.8e}")
 print(f"  DcomMultiref     = {code:.8e}")
