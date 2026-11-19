@@ -1,0 +1,10 @@
+# ppvv vv<-vv rho3 norm term, hole-line contraction (tensor), charge-changing EOM.
+# comm223: <Z3> ~ A_ijlq B_qkmn rho_ijklmn - B_ijlq A_qkmn rho_ijklmn, A = X (daggered bra), B = Y (ket).
+# Particle-line term = rho3_ppvv_tensor (with q valence). This is the hole-line one:
+#   N2 = - Y_ijlq * X_qkmn * rho_ijklmn,
+# Y stored ket <ij||Y||lq>, X daggered bra (stored <mn||X||qk>), q shared lower (valence) orbit.
+declare N { mode=0, latex="N" }
+declare X { mode=4, latex="X", scalar=false }
+declare Y { mode=4, latex="Y", scalar=false }
+declare rho { mode=6, latex="\\rho" }
+N = - sum_ijklmnq(Y_ijlq * X_qkmn * rho_ijklmn);

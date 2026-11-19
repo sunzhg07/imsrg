@@ -1,0 +1,13 @@
+&input
+  fn_int = "ne20.snt"
+  fn_ptn = "ne20.ptn"
+  fn_save_wave = "ne20.wav"
+  mtot = 0
+  n_eigen = 12
+  n_restart_vec = 20
+  max_lanc_vec = 200
+  maxiter = 300
+  tol = 1.d-10
+  is_double_j = .false.
+  mass = 20
+/

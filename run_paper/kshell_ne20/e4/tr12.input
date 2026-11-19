@@ -1,0 +1,11 @@
+&input
+  fn_int = "ne20.snt"
+  fn_ptn_l = "ne20.ptn"
+  fn_ptn_r = "ne20.ptn"
+  fn_load_wave_l = "ne20.wav"
+  fn_load_wave_r = "ne20.wav"
+  is_tbtd = .true.
+  is_obtd = .true.
+  n_eig_lr_pair = 1, 1
+  mass = 20
+/

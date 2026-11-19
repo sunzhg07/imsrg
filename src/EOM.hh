@@ -50,6 +50,11 @@ public:
 
   SREOMMode sr_mode = SREOMMode::Excitation;
   void SetSREOMMode(SREOMMode mode) { sr_mode = mode; }
+  void SetSRDeltaTz(int dtz) { sr_dtz = dtz; }
+  /// Signed ΔTz of the nucleus for MR charge-changing EOM (same convention as
+  /// sr_dtz: -1 = n->p). Required when itz != 0.
+  void SetDeltaTz(int dtz) { sr_dtz = dtz; }
+  int GetSRDeltaTz() const { return sr_dtz; }
   SREOMMode GetSREOMMode() const { return sr_mode; }
 
   /// true when an rdm / tdm_file was supplied at construction (MR mode).
@@ -138,6 +143,11 @@ public:
   bool include_ppvv = true;
   bool include_pphv = true;
   bool include_pphh = true;
+  /// SR ladder isospin direction: 0 keeps every excitation allowed by the
+  /// operator's rank_T; +-1 keeps only excitations that change the nucleus
+  /// Tz = (N-Z)/2 by sr_dtz (e.g. -1: neutron hole -> proton particle,
+  /// O16 -> F16). Lanczos stays in that sector since H conserves Tz.
+  int sr_dtz = 0;
   /// pphv–pphv N diagrams (default both). B1 = 220 identity + leftover 1b×ρ;
   /// C4 = leftover 2b×ρ (Pandya / comm222_phtts). Independent of configs.
   bool include_norm_B1 = true;
@@ -224,6 +234,25 @@ public:
   bool TensorOneBodyAllowed(const Orbit &oa, const Orbit &oi) const;
   bool TensorTwoBodyAllowed(const TwoBodyChannel &bra,
                             const TwoBodyChannel &ket) const;
+  /// MR ΔTz≠0: excitation creator-pair Tz minus annihilator-pair Tz must
+  /// equal the signed direction sr_dtz (itz==0: always true).
+  bool DeltaTzOK(int Tz_cre, int Tz_ann) const {
+    return itz == 0 || Tz_cre - Tz_ann == sr_dtz;
+  }
+  /// Two-body ket classes used by the ladder / configs.
+  /// particle-type creator pair of a 2b excitation (qq, qv; vv for pphh,
+  /// pphv, and for ppvv only as ΔTz≠0 valence pair transfer).
+  /// Returns +1 if the stored element (ch_bra<=ch_ket, ibra, iket) is an EOM
+  /// excitation with the creator pair in the stored bra (main), -1 if the
+  /// creator pair is the stored ket (swapped: canonical amplitude
+  /// (-1)^{J_ket-J_bra} x stored, the TwoBodyME conjugation phase), 0 if not
+  /// an excitation of the configured blocks / direction.
+  int StoredExcitationOrientation(size_t ch_bra, size_t ch_ket, size_t ibra,
+                                  size_t iket) const;
+  /// ΔTz≠0 valence pair transfer ⟨vv|vv⟩ is only a valid commutator-metric
+  /// excitation if its adjoint kills the reference (no valence particles of
+  /// the creator species). ConstructConfigs_tensor switches it off otherwise.
+  bool include_vv_transfer = true;
   void PrintConfigs();
   void ShowModel();
   /// Wick kernel of ⟨Q_a† Q_b⟩_ρ. include_fermi_identity is the A1/A2
@@ -336,6 +365,11 @@ public:
   // SR Lanczos (mirrors sr_eom.py lanczos_proc with htc_single/norm_single)
   std::pair<arma::vec, std::vector<Operator>>
   LanczosSolve(Operator &vi, int max_iter, int state_want);
+  // Filled by LanczosSolve: tridiagonal eigvecs, residual estimates, T matrix.
+  arma::mat last_lanczos_eigvecs;
+  arma::vec last_lanczos_residuals;
+  arma::mat last_lanczos_hall;
+  bool      last_lanczos_converged = false;
 
   struct ArnoldiResult {
     arma::vec   energies;

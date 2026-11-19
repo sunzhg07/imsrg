@@ -1,0 +1,5 @@
+J2 P Tz = 0 0 0 : max relative diff of rho3 piece: 2.55e-10  -> PASS
+J2 P Tz = 2 0 0 : max relative diff of rho3 piece: 1.08e-10  -> PASS
+J2 P Tz = 1 1 0 : max relative diff of rho3 piece: 2.38e-11  -> PASS
+J2 P Tz = 3 1 0 : max relative diff of rho3 piece: 1.20e-10  -> PASS
+J2 P Tz = 4 0 0 : max relative diff of rho3 piece: 5.01e-11  -> PASS

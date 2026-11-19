@@ -1,0 +1,157 @@
+host riker-gpu1.olcf.ornl.gov start Thu Nov 19 09:28:27 AM EST 2026
+
+===== Ne20 0+ MR-EOM  emax=4  use_rdm3=False =====
+/autofs/nccs-svm1_home1/wolf/codes/imsrg_sunzhg07/src/ModelSpace.cc line 1415 Changing emax from 0 to 2  and updating six_j_cache_2b_ ... 
+DONE ALLOCATING PN 3-body, size of MatEl is 5428  ->  4.04418e-05 GB
+  E_ref (<H>_RDM) = -147.469   ZeroBody = -116.72 MeV
+  Arnoldi on full H (no EraseValence / E_val·N shift)
+Constructing EOM configurations for J2=0 parity=0 itz=0
+EOM include configs: qv=1 ph=1 ppvv=1 pphv=1 pphh=1
+dimension EOM qv: 0 5 (dim=6)
+dimension EOM ph: 6 13 (dim=8)
+dimension EOM ppvv: 14 1891 (dim=1878)
+dimension EOM pphv: 1892 4741 (dim=2850)
+dimension EOM pphh: 4742 5953 (dim=1212)
+Total dimension of EOM: 5954
+skip three body norm (SetUseRdm3 false)
+In  RandomOp  norm of 1b : 34.4685   norm of 2b 2426.23
+Initial vector N-norm after projection: 13740.8
+Precalculating SixJ's
+done calculating sixJs (173579 of them)  now there are 173579 entries 
+Hash table has 351061 buckets and a load factor 0.494441  estimated storage ~ 0.00781775 GB
+ArnoldiSolveH2: Krylov=Htc(2b), Hall=(Htc_ab+Htc_ba)/2 + Dcom(H3) [= ExpectationValue kernel]  (no E_val shift)
+arnoldiH2: Gram offdiag max @ step 5 = 6.93889e-17
+arnoldiH2: Gram offdiag max @ step 10 = 1.14925e-16
+arnoldiH2: Gram offdiag max @ step 15 = 1.14925e-16
+arnoldiH2 @ step 15: E0=8.70834 (r=0.825245) E1=30.0228 (r=0.583025) E2=36.0448 (r=10.0723) E3=47.007 (r=8.57955) E4=57.6369 (r=11.602) E5=70.4813 (r=13.545) E6=84.866 (r=11.8223) E7=96.1993 (r=11.7006) E8=109.672 (r=13.9927) E9=123.674 (r=12.4799)  dE_win=17.2222  max_ortho=1.14925e-16
+arnoldiH2: Gram offdiag max @ step 20 = 2.60452e-16
+arnoldiH2 @ step 20: E0=8.6594 (r=0.0710365) E1=24.879 (r=7.52189) E2=30.8375 (r=1.79958) E3=36.9387 (r=9.09867) E4=44.8908 (r=5.95266) E5=52.0588 (r=9.90419) E6=61.4388 (r=10.3598) E7=71.64 (r=12.1671) E8=82.8395 (r=10.5957) E9=92.1943 (r=10.6568)  dE_win=10.1682  max_ortho=2.60452e-16
+arnoldiH2: Gram offdiag max @ step 25 = 6.07438e-16
+arnoldiH2 @ step 25: E0=8.56197 (r=1.23843) E1=16.0831 (r=7.72754) E2=27.6927 (r=5.92662) E3=32.0771 (r=1.06891) E4=36.3297 (r=7.80556) E5=44.4235 (r=5.19883) E6=48.2097 (r=9.46964) E7=56.2398 (r=9.89829) E8=63.715 (r=9.79399) E9=72.2108 (r=11.5723)  dE_win=8.30872  max_ortho=6.07438e-16
+arnoldiH2: Gram offdiag max @ step 30 = 6.07438e-16
+arnoldiH2 @ step 30: E0=8.41837 (r=0.0968925) E1=12.5655 (r=1.67364) E2=26.3262 (r=1.33972) E3=29.3746 (r=7.10129) E4=32.8253 (r=2.96517) E5=35.7166 (r=6.29163) E6=44.4095 (r=4.57901) E7=45.8337 (r=7.31247) E8=52.2958 (r=7.74316) E9=59.1967 (r=7.64695)  dE_win=4.48558  max_ortho=6.07438e-16
+arnoldiH2: Gram offdiag max @ step 35 = 6.07438e-16
+arnoldiH2 @ step 35: E0=8.4072 (r=0.0947531) E1=12.3441 (r=1.42595) E2=17.0853 (r=8.98898) E3=26.4638 (r=0.370932) E4=30.2534 (r=4.95162) E5=33.8955 (r=0.181696) E6=35.967 (r=7.20335) E7=43.8081 (r=8.29274) E8=44.7465 (r=1.71028) E9=49.5195 (r=8.00251)  dE_win=5.78572  max_ortho=6.07438e-16
+arnoldiH2: Gram offdiag max @ step 40 = 6.07438e-16
+arnoldiH2 @ step 40: E0=8.38327 (r=0.384508) E1=11.8277 (r=1.39455) E2=12.8799 (r=1.84903) E3=25.2102 (r=5.77459) E4=26.9602 (r=3.33826) E5=30.8195 (r=5.72757) E6=33.9912 (r=1.96671) E7=36.279 (r=5.60422) E8=43.5517 (r=6.48552) E9=44.7803 (r=1.12602)  dE_win=2.48039  max_ortho=6.07438e-16
+arnoldiH2: Gram offdiag max @ step 45 = 6.07438e-16
+arnoldiH2 @ step 45: E0=8.37662 (r=0.0461313) E1=11.4742 (r=1.47962) E2=12.4722 (r=1.55907) E3=16.0789 (r=5.73368) E4=25.075 (r=3.89484) E5=27.5348 (r=2.35525) E6=31.1336 (r=4.22132) E7=35.2686 (r=0.381646) E8=35.7455 (r=5.2988) E9=42.6337 (r=4.50639)  dE_win=3.58681  max_ortho=6.07438e-16
+arnoldiH2: Gram offdiag max @ step 50 = 6.07438e-16
+arnoldiH2 @ step 50: E0=8.27053 (r=1.2007) E1=11.3679 (r=1.05916) E2=12.068 (r=2.03009) E3=13.4864 (r=2.50705) E4=20.8673 (r=5.51819) E5=27.1479 (r=0.997903) E6=29.7598 (r=4.46647) E7=31.2991 (r=6.15663) E8=35.2659 (r=0.0257409) E9=35.8801 (r=4.98028)  dE_win=2.7931  max_ortho=6.07438e-16
+arnoldiH2: Gram offdiag max @ step 55 = 6.07438e-16
+arnoldiH2 @ step 55: E0=8.08515 (r=0.414408) E1=11.2158 (r=0.277122) E2=11.8727 (r=0.933764) E3=13.2215 (r=0.554685) E4=17.0895 (r=4.85955) E5=26.6627 (r=4.58011) E6=27.2356 (r=1.19778) E7=30.4687 (r=1.25034) E8=31.7172 (r=9.96481) E9=35.2012 (r=1.89654)  dE_win=2.91994  max_ortho=6.07438e-16
+ArnoldiSolveH2 finished with 59 steps  reason=max_iter  max_ortho=6.07438e-16
+E(0) = 8.05236  resid~0.575584
+E(1) = 11.2153  resid~0.0620481
+E(2) = 11.6857  resid~0.950512
+E(3) = 13.063  resid~1.45119
+E(4) = 14.1434  resid~3.67123
+E(5) = 22.1276  resid~4.84443
+E(6) = 27.2124  resid~0.103301
+E(7) = 27.577  resid~2.38303
+E(8) = 30.4287  resid~1.16653
+E(9) = 34.6516  resid~2.35617
+
+  MR EOM eigenvalues (ArnoldiSolveH2):
+  E_ref = -147.469 MeV
+    E(0): excitation=8.05236  absolute=-139.417 MeV
+    E(1): excitation=11.2153  absolute=-136.254 MeV
+    E(2): excitation=11.6857  absolute=-135.784 MeV
+    E(3): excitation=13.063  absolute=-134.406 MeV
+    E(4): excitation=14.1434  absolute=-133.326 MeV
+    E(5): excitation=22.1276  absolute=-125.342 MeV
+    E(6): excitation=27.2124  absolute=-120.257 MeV
+    E(7): excitation=27.577  absolute=-119.892 MeV
+    E(8): excitation=30.4287  absolute=-117.041 MeV
+    E(9): excitation=34.6516  absolute=-112.818 MeV
+E_ref=<H>_rho=-147.469249  steps=59  converged=False  (87 s)
+metric: dim=5954  min=-5.4836e-01  max=+9.0128e+00  #neg(<-9e-08)=18  #|w|<tol=26  lowest 8: [-0.5484 -0.5482 -0.3752 -0.3751 -0.2854 -0.2854 -0.2844 -0.284 ]
+  E(0) =     8.0524   absolute  -139.4169
+  E(1) =    11.2153   absolute  -136.2539
+  E(2) =    11.6857   absolute  -135.7835
+  E(3) =    13.0630   absolute  -134.4063
+  E(4) =    14.1434   absolute  -133.3258
+  E(5) =    22.1276   absolute  -125.3416
+  E(6) =    27.2124   absolute  -120.2568
+  E(7) =    27.5770   absolute  -119.8923
+  E(8) =    30.4287   absolute  -117.0406
+  E(9) =    34.6516   absolute  -112.8176
+
+===== Ne20 0+ MR-EOM  emax=4  use_rdm3=True =====
+/autofs/nccs-svm1_home1/wolf/codes/imsrg_sunzhg07/src/ModelSpace.cc line 1415 Changing emax from 0 to 2  and updating six_j_cache_2b_ ... 
+  E_ref (<H>_RDM) = -147.469   ZeroBody = -116.72 MeV
+  Arnoldi on full H (no EraseValence / E_val·N shift)
+Constructing EOM configurations for J2=0 parity=0 itz=0
+EOM include configs: qv=1 ph=1 ppvv=1 pphv=1 pphh=1
+dimension EOM qv: 0 5 (dim=6)
+dimension EOM ph: 6 13 (dim=8)
+dimension EOM ppvv: 14 1891 (dim=1878)
+dimension EOM pphv: 1892 4741 (dim=2850)
+dimension EOM pphh: 4742 5953 (dim=1212)
+Total dimension of EOM: 5954
+start three body norm 
+start pphv three body norm
+In  RandomOp  norm of 1b : 24.8546   norm of 2b 2418.5
+Initial vector N-norm after projection: 13055
+ArnoldiSolveH2: Krylov=Htc(2b), Hall=(Htc_ab+Htc_ba)/2 + Dcom(H3) [= ExpectationValue kernel]  (no E_val shift)
+arnoldiH2: Gram offdiag max @ step 5 = 6.31531e-17
+arnoldiH2: Gram offdiag max @ step 10 = 1.72002e-16
+arnoldiH2: Gram offdiag max @ step 15 = 1.72002e-16
+arnoldiH2 @ step 15: E0=8.83287 (r=0.474696) E1=26.0221 (r=2.67859) E2=40.6027 (r=8.86452) E3=47.1588 (r=9.27561) E4=58.2738 (r=10.2184) E5=71.8767 (r=13.4816) E6=85.8892 (r=11.7263) E7=97.1578 (r=12.193) E8=110.057 (r=13.5906) E9=124.124 (r=11.7574)  dE_win=17.3141  max_ortho=1.72002e-16
+arnoldiH2: Gram offdiag max @ step 20 = 1.72002e-16
+arnoldiH2 @ step 20: E0=8.82608 (r=0.243827) E1=25.7613 (r=1.69564) E2=32.043 (r=4.86965) E3=40.6111 (r=6.60109) E4=45.9042 (r=7.79022) E5=53.7016 (r=9.35253) E6=62.5138 (r=10.3256) E7=73.3659 (r=11.6319) E8=84.603 (r=10.1524) E9=93.6617 (r=10.9095)  dE_win=9.89581  max_ortho=1.72002e-16
+arnoldiH2: Gram offdiag max @ step 25 = 1.72002e-16
+arnoldiH2 @ step 25: E0=8.76715 (r=0.522908) E1=25.338 (r=1.2734) E2=30.2557 (r=5.38869) E3=35.012 (r=3.91507) E4=40.2631 (r=4.92526) E5=45.2443 (r=6.49739) E6=50.8699 (r=7.70388) E7=58.5815 (r=8.37776) E8=65.6449 (r=10.3192) E9=74.3292 (r=10.5535)  dE_win=8.14126  max_ortho=1.72002e-16
+arnoldiH2: Gram offdiag max @ step 30 = 1.72002e-16
+arnoldiH2 @ step 30: E0=8.70019 (r=0.427661) E1=25.2325 (r=0.467717) E2=27.4497 (r=2.44459) E3=34.3736 (r=5.07218) E4=35.496 (r=5.26481) E5=40.6109 (r=5.31874) E6=44.4295 (r=6.08276) E7=49.01 (r=5.82839) E8=55.8257 (r=8.30781) E9=61.147 (r=7.17238)  dE_win=4.39782  max_ortho=1.72002e-16
+arnoldiH2: Gram offdiag max @ step 35 = 1.72002e-16
+arnoldiH2 @ step 35: E0=8.68809 (r=0.309522) E1=25.22 (r=0.303619) E2=27.3392 (r=0.304405) E3=29.1454 (r=4.40853) E4=35.0958 (r=0.378498) E5=37.3928 (r=5.23947) E6=40.6677 (r=5.50219) E7=43.9801 (r=5.03053) E8=48.0307 (r=5.02787) E9=52.9006 (r=7.62354)  dE_win=3.62034  max_ortho=1.72002e-16
+arnoldiH2: Gram offdiag max @ step 40 = 1.72002e-16
+arnoldiH2 @ step 40: E0=8.63099 (r=0.411557) E1=25.071 (r=1.48027) E2=27.3261 (r=0.478137) E3=28.4605 (r=1.42249) E4=34.8742 (r=1.84456) E5=35.2257 (r=1.62746) E6=38.6536 (r=3.0798) E7=41.4095 (r=7.09051) E8=43.6791 (r=5.8248) E9=47.3631 (r=6.35337)  dE_win=1.77817  max_ortho=1.72002e-16
+arnoldiH2: Gram offdiag max @ step 45 = 1.72002e-16
+arnoldiH2 @ step 45: E0=8.62542 (r=0.0310062) E1=24.3171 (r=2.11096) E2=26.3204 (r=2.6058) E3=27.4233 (r=0.617787) E4=33.9618 (r=3.43948) E5=35.136 (r=0.95253) E6=35.6028 (r=1.20365) E7=38.5115 (r=1.4393) E8=41.0958 (r=4.92763) E9=43.5494 (r=4.99619)  dE_win=1.22521  max_ortho=1.72002e-16
+arnoldiH2: Gram offdiag max @ step 50 = 1.72002e-16
+arnoldiH2 @ step 50: E0=8.61811 (r=0.226552) E1=24.1135 (r=0.392593) E2=26.0857 (r=0.321715) E3=27.3944 (r=0.821865) E4=31.0987 (r=7.76889) E5=33.636 (r=1.87815) E6=35.1395 (r=0.976335) E7=36.0884 (r=1.63864) E8=38.4662 (r=0.493596) E9=40.8925 (r=3.97725)  dE_win=2.38391  max_ortho=1.72002e-16
+arnoldiH2: Gram offdiag max @ step 55 = 1.72002e-16
+arnoldiH2 @ step 55: E0=8.6139 (r=0.199393) E1=23.9279 (r=1.52016) E2=26.0059 (r=0.898076) E3=26.7234 (r=1.71855) E4=27.771 (r=1.34433) E5=33.0168 (r=1.93317) E6=35.0635 (r=0.261989) E7=35.963 (r=1.23778) E8=38.0794 (r=3.1991) E9=38.5314 (r=1.02745)  dE_win=0.425434  max_ortho=1.72002e-16
+ArnoldiSolveH2 finished with 59 steps  reason=max_iter  max_ortho=1.72002e-16
+E(0) = 8.59944  resid~0.181732
+E(1) = 23.5114  resid~1.66051
+E(2) = 25.9302  resid~0.600949
+E(3) = 26.6492  resid~0.675081
+E(4) = 27.7377  resid~0.236788
+E(5) = 32.6542  resid~1.73349
+E(6) = 34.8635  resid~2.43369
+E(7) = 35.6665  resid~1.80102
+E(8) = 37.4823  resid~3.89275
+E(9) = 38.2583  resid~3.63058
+
+  MR EOM eigenvalues (ArnoldiSolveH2):
+  E_ref = -147.469 MeV
+    E(0): excitation=8.59944  absolute=-138.87 MeV
+    E(1): excitation=23.5114  absolute=-123.958 MeV
+    E(2): excitation=25.9302  absolute=-121.539 MeV
+    E(3): excitation=26.6492  absolute=-120.82 MeV
+    E(4): excitation=27.7377  absolute=-119.732 MeV
+    E(5): excitation=32.6542  absolute=-114.815 MeV
+    E(6): excitation=34.8635  absolute=-112.606 MeV
+    E(7): excitation=35.6665  absolute=-111.803 MeV
+    E(8): excitation=37.4823  absolute=-109.987 MeV
+    E(9): excitation=38.2583  absolute=-109.211 MeV
+E_ref=<H>_rho=-147.469249  steps=59  converged=False  (82 s)
+metric: dim=5954  min=-5.4869e-10  max=+9.0128e+00  #neg(<-9e-08)=0  #|w|<tol=544  lowest 8: [-5.4869e-10 -5.1386e-10 -5.0632e-10 -4.3260e-10 -4.2919e-10 -3.4831e-10
+ -3.4443e-10 -3.4443e-10]
+  E(0) =     8.5994   absolute  -138.8698
+  E(1) =    23.5114   absolute  -123.9578
+  E(2) =    25.9302   absolute  -121.5391
+  E(3) =    26.6492   absolute  -120.8201
+  E(4) =    27.7377   absolute  -119.7315
+  E(5) =    32.6542   absolute  -114.8151
+  E(6) =    34.8635   absolute  -112.6057
+  E(7) =    35.6665   absolute  -111.8027
+  E(8) =    37.4823   absolute  -109.9869
+  E(9) =    38.2583   absolute  -109.2109
+
+KSHELL 0+ E_x (in-valence): 9.6569
+wrote /autofs/nccs-svm1_home1/wolf/codes/imsrg_sunzhg07/eom_result/Ne20_EM1.8_2.0_hw16_emax4_0p_rho3.json
+done Thu Nov 19 09:31:16 AM EST 2026

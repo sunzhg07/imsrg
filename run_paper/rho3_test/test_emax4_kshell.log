@@ -1,0 +1,29 @@
+/autofs/nccs-svm1_home1/wolf/codes/imsrg_sunzhg07/src/ModelSpace.cc line 1415 Changing emax from 0 to 2  and updating six_j_cache_2b_ ... 
+DONE ALLOCATING PN 3-body, size of MatEl is 5450  ->  4.06057e-05 GB
+Constructing EOM configurations for J2=0 parity=0 itz=0
+EOM include configs: qv=1 ph=1 ppvv=1 pphv=1 pphh=1
+dimension EOM qv: 0 5 (dim=6)
+dimension EOM ph: 6 13 (dim=8)
+dimension EOM ppvv: 14 1891 (dim=1878)
+dimension EOM pphv: 1892 4741 (dim=2850)
+dimension EOM pphh: 4742 5953 (dim=1212)
+Total dimension of EOM: 5954
+eom_dims 5954 {'pphv vv<-vc': 116, 'ppvv qv<-vv': 744, 'all': 5954}
+skip three body norm (SetUseRdm3 false)
+Precalculating SixJ's
+done calculating sixJs (173579 of them)  now there are 173579 entries 
+Hash table has 351061 buckets and a load factor 0.494441  estimated storage ~ 0.00781775 GB
+use_rdm3=False done in 0.1s
+start three body norm 
+start pphv three body norm
+use_rdm3=True done in 3.1s
+pphv vv<-vc  v0  rho3-off: kernel +0.00000000 commut +0.00000000 | rho3 piece: kernel +1.3760104451 commut +1.3760104451  diff 6.55e-11
+pphv vv<-vc  v1  rho3-off: kernel +0.00000000 commut +0.00000000 | rho3 piece: kernel -2.4124122351 commut -2.4124122350  diff -5.95e-11
+pphv vv<-vc  v2  rho3-off: kernel +0.00000000 commut +0.00000000 | rho3 piece: kernel +2.8534197223 commut +2.8534197222  diff 5.27e-11
+ppvv qv<-vv  v0  rho3-off: kernel +0.00000000 commut +0.00000000 | rho3 piece: kernel +3.4439038445 commut +3.4439038445  diff -1.02e-14
+ppvv qv<-vv  v1  rho3-off: kernel +0.00000000 commut +0.00000000 | rho3 piece: kernel -6.7162516812 commut -6.7162516812  diff -5.95e-14
+ppvv qv<-vv  v2  rho3-off: kernel +0.00000000 commut +0.00000000 | rho3 piece: kernel -14.4982510636 commut -14.4982510636  diff -3.73e-14
+all          v0  rho3-off: kernel +4457.70061307 commut +4457.70061307 | rho3 piece: kernel -2.0177913428 commut -2.0177913429  diff 3.09e-11
+all          v1  rho3-off: kernel +4350.54181194 commut +4350.54181194 | rho3 piece: kernel -5.2929410116 commut -5.2929410116  diff -3.00e-11
+all          v2  rho3-off: kernel +4572.19449623 commut +4572.19449623 | rho3 piece: kernel -16.3190362784 commut -16.3190362784  diff 2.73e-12
+max relative diff of rho3 piece: 4.76e-11  -> PASS

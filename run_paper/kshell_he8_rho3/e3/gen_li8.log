@@ -1,0 +1,7 @@
+ truncation scheme ?
+      0 : No truncation (default) 
+      1 : particle-hole truncation for orbit(s) 
+      2 : hw truncation 
+      3 : Both (1) and (2) 
+      4 : Monopole-based partition truncation 
+generating partition file ............ done.

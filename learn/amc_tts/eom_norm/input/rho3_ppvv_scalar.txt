@@ -1,0 +1,10 @@
+# ppvv qv<-vv rho3 norm term (scalar).
+# Configs: bra stored <aq||X||ij> (a valence, q excluded, ij vv), daggered -> X_ijaq;
+#          ket stored <eq||Y||kl>.  Shared q contracted (empty in the reference).
+# m-scheme (scalar ConstructNormMatrix): N = - X_ijaq * rho_{ije,kla} * Y_eqkl,
+#   rho_{pqr,stu} = <a+_p a+_q a+_r a_u a_t a_s> (per M, unreduced scalar).
+declare N { mode=0, latex="N" }
+declare X { mode=4, latex="X" }
+declare Y { mode=4, latex="Y" }
+declare rho { mode=6, latex="\\rho" }
+N = - sum_aeijklq(X_ijaq * rho_ijekla * Y_eqkl);

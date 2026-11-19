@@ -1531,6 +1531,12 @@ PYBIND11_MODULE(pyIMSRG, m) {
       .def("SetSREOMMode", &EOM::SetSREOMMode, py::arg("mode"),
            "SR only: Excitation (default), ParticleAttached, ParticleRemoved")
       .def("GetSREOMMode", &EOM::GetSREOMMode)
+      .def("StoredExcitationOrientation", &EOM::StoredExcitationOrientation)
+      .def("SetDeltaTz", &EOM::SetDeltaTz, py::arg("dtz"))
+      .def("SetSRDeltaTz", &EOM::SetSRDeltaTz, py::arg("dtz"),
+           "SR ladder: keep only excitations changing nucleus Tz=(N-Z)/2 by dtz "
+           "(0 = all; -1 = n-hole -> p-particle, e.g. O16 -> F16)")
+      .def("GetSRDeltaTz", &EOM::GetSRDeltaTz)
       // MR setup — must be called before operator-level methods in MR mode
       .def("ComputeNorm", &EOM::ComputeNorm, py::arg("Op1"), py::arg("Op2"),
            "v_aᵀ N[ρ] v_b  (same-ref density kernel)")

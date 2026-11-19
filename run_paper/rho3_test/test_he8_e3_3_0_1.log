@@ -1,0 +1,54 @@
+/autofs/nccs-svm1_home1/wolf/codes/imsrg_sunzhg07/src/ModelSpace.cc line 1415 Changing emax from 0 to 1  and updating six_j_cache_2b_ ... 
+DONE ALLOCATING PN 3-body, size of MatEl is 282  ->  2.10106e-06 GB
+Constructing tensor EOM configurations for J=3 parity=0 Tz=1 dTz=-1
+EOM include configs: qv=1 ph=1 ppvv=1 pphv=1 pphh=1
+dimension EOM qv: 0 4 (dim=5)
+dimension EOM ph: 5 5 (dim=1)
+dimension EOM ppvv: 6 845 (dim=840)  [includes ⟨vv|vv⟩ pair transfer]
+dimension EOM pphv: 846 1365 (dim=520)
+dimension EOM pphh: 1366 1451 (dim=86)
+Total dimension of tensor EOM: 1452
+J2=3 parity=0 itz=1 dtz=-1  eom_dims 1452 {'pphv main': 112, 'pphv swapped': 408, 'ppvv qv<-vv': 276, 'ppvv vv<-vv': 44, 'ppvv swapped': 555, 'pphh swapped': 86, 'all': 1452}
+ConstructNormMatrix_tensor: λ=3 metric factor (−1)^λ λ̂=-2.64575 eom_dims=1452 pphv_B1=1 pphv_C4=1
+Precalculating SixJ's
+done calculating sixJs (46734 of them)  now there are 46734 entries 
+Hash table has 85229 buckets and a load factor 0.548334  estimated storage ~ 0.0019664 GB
+use_rdm3=False done in 4.2s
+ConstructNormMatrix_tensor: λ=3 metric factor (−1)^λ λ̂=-2.64575 eom_dims=1452 pphv_B1=1 pphv_C4=1
+use_rdm3=True done in 1598.5s
+pphv main      v0,v0  rho3=0 kernel +77.31251723 commut +77.31251723 rel 0.0e+00 | rho3=1 kernel +77.31251723 commut +77.31251723 rel 0.0e+00
+pphv main      v1,v1  rho3=0 kernel +68.93907285 commut +68.93907285 rel 0.0e+00 | rho3=1 kernel +68.93907285 commut +68.93907285 rel 0.0e+00
+pphv main      v2,v2  rho3=0 kernel +73.17873522 commut +73.17873522 rel 0.0e+00 | rho3=1 kernel +73.17873522 commut +73.17873522 rel 0.0e+00
+pphv main      v0,v1  rho3=0 kernel -13.12793139 commut -13.12793139 rel 1.4e-16 | rho3=1 kernel -13.12793139 commut -13.12793139 rel 1.4e-16
+pphv main      v1,v2  rho3=0 kernel +6.06563061 commut +6.06563061 rel 2.9e-16 | rho3=1 kernel +6.06563061 commut +6.06563061 rel 2.9e-16
+pphv swapped   v0,v0  rho3=0 kernel +158.85373068 commut +158.85373068 rel 0.0e+00 | rho3=1 kernel +158.85373068 commut +158.85373068 rel 0.0e+00
+pphv swapped   v1,v1  rho3=0 kernel +177.45630778 commut +177.45630778 rel 1.6e-16 | rho3=1 kernel +177.45630778 commut +177.45630778 rel 1.6e-16
+pphv swapped   v2,v2  rho3=0 kernel +135.91252356 commut +135.91252356 rel 0.0e+00 | rho3=1 kernel +135.91252356 commut +135.91252356 rel 0.0e+00
+pphv swapped   v0,v1  rho3=0 kernel -25.03137506 commut -25.03137506 rel 0.0e+00 | rho3=1 kernel -25.03137506 commut -25.03137506 rel 0.0e+00
+pphv swapped   v1,v2  rho3=0 kernel +4.46593640 commut +4.46593640 rel 2.0e-16 | rho3=1 kernel +4.46593640 commut +4.46593640 rel 2.0e-16
+ppvv qv<-vv    v0,v0  rho3=0 kernel +44.03339920 commut +44.03339920 rel 0.0e+00 | rho3=1 kernel +29.33478007 commut +29.33478007 rel 1.6e-13
+ppvv qv<-vv    v1,v1  rho3=0 kernel +47.30815740 commut +47.30815740 rel 0.0e+00 | rho3=1 kernel +46.83472315 commut +46.83472315 rel 5.8e-15
+ppvv qv<-vv    v2,v2  rho3=0 kernel +49.30297955 commut +49.30297955 rel 1.4e-16 | rho3=1 kernel +43.41007410 commut +43.41007410 rel 5.4e-14
+ppvv qv<-vv    v0,v1  rho3=0 kernel -2.04781623 commut -2.04781623 rel 6.5e-16 | rho3=1 kernel -6.55543159 commut -6.55543159 rel 3.2e-13
+ppvv qv<-vv    v1,v2  rho3=0 kernel +0.57296671 commut +0.57296671 rel 5.2e-15 | rho3=1 kernel -6.37020433 commut -6.37020433 rel 4.0e-15
+ppvv vv<-vv    v0,v0  rho3=0 kernel +4.49508392 commut +4.49508392 rel 0.0e+00 | rho3=1 kernel +2.26988701 commut +2.26988701 rel 5.1e-13
+ppvv vv<-vv    v1,v1  rho3=0 kernel +14.11486879 commut +14.11486879 rel 1.3e-16 | rho3=1 kernel +1.43232085 commut +1.43232085 rel 6.4e-13
+ppvv vv<-vv    v2,v2  rho3=0 kernel +12.25770517 commut +12.25770517 rel 2.9e-16 | rho3=1 kernel +6.77528098 commut +6.77528098 rel 6.6e-14
+ppvv vv<-vv    v0,v1  rho3=0 kernel +3.36524383 commut +3.36524383 rel 1.3e-16 | rho3=1 kernel -0.94052158 commut -0.94052158 rel 9.1e-13
+ppvv vv<-vv    v1,v2  rho3=0 kernel +6.14543169 commut +6.14543169 rel 1.4e-16 | rho3=1 kernel +0.07241692 commut +0.07241692 rel 1.4e-11
+ppvv swapped   v0,v0  rho3=0 kernel +119.86334447 commut +119.86334447 rel 0.0e+00 | rho3=1 kernel +116.51381412 commut +116.51381412 rel 6.3e-15
+ppvv swapped   v1,v1  rho3=0 kernel +104.66471593 commut +104.66471593 rel 1.4e-16 | rho3=1 kernel +101.64566047 commut +101.64566047 rel 5.7e-15
+ppvv swapped   v2,v2  rho3=0 kernel +125.50577076 commut +125.50577076 rel 1.1e-16 | rho3=1 kernel +128.40067554 commut +128.40067554 rel 4.8e-14
+ppvv swapped   v0,v1  rho3=0 kernel +20.98660619 commut +20.98660619 rel 1.7e-16 | rho3=1 kernel +17.28344218 commut +17.28344218 rel 2.2e-14
+ppvv swapped   v1,v2  rho3=0 kernel +6.60693853 commut +6.60693853 rel 2.7e-16 | rho3=1 kernel +6.48639295 commut +6.48639295 rel 2.5e-13
+pphh swapped   v0,v0  rho3=0 kernel +75.48936566 commut +75.48936566 rel 1.9e-16 | rho3=1 kernel +75.48936566 commut +75.48936566 rel 1.9e-16
+pphh swapped   v1,v1  rho3=0 kernel +82.95437666 commut +82.95437666 rel 1.7e-16 | rho3=1 kernel +82.95437666 commut +82.95437666 rel 0.0e+00
+pphh swapped   v2,v2  rho3=0 kernel +102.65679710 commut +102.65679710 rel 1.4e-16 | rho3=1 kernel +102.65679710 commut +102.65679710 rel 1.4e-16
+pphh swapped   v0,v1  rho3=0 kernel +1.83265615 commut +1.83265615 rel 1.2e-16 | rho3=1 kernel +1.83265615 commut +1.83265615 rel 4.8e-16
+pphh swapped   v1,v2  rho3=0 kernel +5.15756649 commut +5.15756649 rel 5.2e-16 | rho3=1 kernel +5.15756649 commut +5.15756649 rel 5.2e-16
+all            v0,v0  rho3=0 kernel +486.91074741 commut +486.91074741 rel 0.0e+00 | rho3=1 kernel +471.68973003 commut +471.68973003 rel 1.2e-14
+all            v1,v1  rho3=0 kernel +512.53679814 commut +512.53679814 rel 2.2e-16 | rho3=1 kernel +507.21081526 commut +507.21081526 rel 2.2e-16
+all            v2,v2  rho3=0 kernel +499.28054055 commut +499.28054055 rel 1.1e-16 | rho3=1 kernel +496.22333724 commut +496.22333724 rel 1.0e-14
+all            v0,v1  rho3=0 kernel +14.09700816 commut +14.09700816 rel 7.6e-16 | rho3=1 kernel +24.42221440 commut +24.42221440 rel 1.4e-13
+all            v1,v2  rho3=0 kernel +20.75803245 commut +20.75803245 rel 3.4e-16 | rho3=1 kernel +25.91141512 commut +25.91141512 rel 1.8e-13
+max relative diff (full values): 1.44e-11  -> PASS

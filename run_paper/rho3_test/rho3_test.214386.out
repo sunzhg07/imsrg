@@ -1,0 +1,26 @@
++ W=/autofs/nccs-svm1_home1/wolf/codes/imsrg_sunzhg07/run_paper/rho3_test
++ PY=/autofs/nccs-svm1_sw/riker/miniforge3/25.3.1-0/bin/python3
++ module load openblas/0.3.33-omp
++ '[' -z '' ']'
++ case "$-" in
++ __lmod_sh_dbg=x
++ '[' -n x ']'
++ set +x
+Shell debugging temporarily silenced: export LMOD_SH_DBG_ON=1 for Lmod's output
+Shell debugging restarted
++ unset __lmod_sh_dbg
++ return 0
++ export OMP_NUM_THREADS=32
++ OMP_NUM_THREADS=32
++ cd /autofs/nccs-svm1_home1/wolf/codes/imsrg_sunzhg07/run_paper/rho3_test/osm
++ srun -n1 -c32 ./sm.exe sm.dat
++ echo 'OSM exit 0'
+OSM exit 0
++ cd /autofs/nccs-svm1_home1/wolf/codes/imsrg_sunzhg07/run_paper/rho3_test
++ srun -n1 -c32 /autofs/nccs-svm1_sw/riker/miniforge3/25.3.1-0/bin/python3 test_rho3_norm.py 4 ne20/ne20_kshell.ref O16 sd-shell 6
++ echo 'emax4 kshell exit 0'
+emax4 kshell exit 0
++ '[' -f osm/ne20_osm.ref ']'
++ srun -n1 -c32 /autofs/nccs-svm1_sw/riker/miniforge3/25.3.1-0/bin/python3 test_rho3_norm.py 4 osm/ne20_osm.ref O16 sd-shell 6
++ echo 'emax4 osm exit 0'
+emax4 osm exit 0

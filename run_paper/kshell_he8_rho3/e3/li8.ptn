@@ -1,0 +1,19 @@
+# partition file of ptn_ref.snt  Z=1  N=3  parity=+1
+ 1 3 1
+# num. of  proton partition, neutron partition
+ 2 3
+# proton partition
+     1     0  1
+     2     1  0
+# neutron partition
+     1     1  2
+     2     2  1
+     3     3  0
+# partition of proton and neutron
+6
+    1     1
+    1     2
+    1     3
+    2     1
+    2     2
+    2     3

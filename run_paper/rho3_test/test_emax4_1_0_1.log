@@ -1,0 +1,37 @@
+/autofs/nccs-svm1_home1/wolf/codes/imsrg_sunzhg07/src/ModelSpace.cc line 1415 Changing emax from 0 to 2  and updating six_j_cache_2b_ ... 
+DONE ALLOCATING PN 3-body, size of MatEl is 5450  ->  4.06057e-05 GB
+Constructing tensor EOM configurations for J=1 parity=0 Tz=1
+EOM include configs: qv=1 ph=1 ppvv=1 pphv=1 pphh=1
+dimension EOM qv: 0 15 (dim=16)
+dimension EOM ph: 16 33 (dim=18)
+dimension EOM ppvv: 34 7195 (dim=7162)  [includes ⟨vv|vv⟩ pair transfer]
+dimension EOM pphv: 7196 17635 (dim=10440)
+dimension EOM pphh: 17636 21771 (dim=4136)
+Total dimension of tensor EOM: 21772
+J2=1 parity=0 itz=1  eom_dims 21772 {'pphv vv<-cv': 184, 'pphv cv<-vv': 216, 'pphv both': 400, 'ppvv qv<-vv': 1211, 'ppvv vv<-vv': 432, 'all': 21772}
+ConstructNormMatrix_tensor: λ=1 metric factor (−1)^λ λ̂=-1.73205 eom_dims=21772 pphv_B1=1 pphv_C4=1
+Precalculating SixJ's
+done calculating sixJs (173579 of them)  now there are 173579 entries 
+Hash table has 351061 buckets and a load factor 0.494441  estimated storage ~ 0.00781775 GB
+use_rdm3=False done in 5.2s
+ConstructNormMatrix_tensor: λ=1 metric factor (−1)^λ λ̂=-1.73205 eom_dims=21772 pphv_B1=1 pphv_C4=1
+use_rdm3=True done in 845.2s
+pphv vv<-cv  v0  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel +0.2206322206 commut +0.2206322207  diff -7.66e-12
+pphv vv<-cv  v1  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel -0.3042063581 commut -0.3042063581  diff 1.02e-12
+pphv vv<-cv  v2  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel +1.0356429230 commut +1.0356429230  diff -5.37e-12
+pphv cv<-vv  v0  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel +0.0000000000 commut +0.0000000000  diff 0.00e+00
+pphv cv<-vv  v1  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel +0.0000000000 commut +0.0000000000  diff 0.00e+00
+pphv cv<-vv  v2  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel +0.0000000000 commut +0.0000000000  diff 0.00e+00
+pphv both    v0  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel +0.9495806420 commut +0.9495806420  diff -2.08e-12
+pphv both    v1  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel -3.3443628104 commut -3.3443628104  diff 8.30e-12
+pphv both    v2  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel -1.0488305902 commut -1.0488305902  diff -1.56e-13
+ppvv qv<-vv  v0  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel +0.1053228243 commut +0.1053228243  diff 9.39e-12
+ppvv qv<-vv  v1  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel -1.4641214329 commut -1.4641214329  diff -4.22e-12
+ppvv qv<-vv  v2  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel -2.8296739912 commut -2.8296739912  diff 1.22e-11
+ppvv vv<-vv  v0  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel +1.9896147239 commut +1.9896147239  diff 1.32e-11
+ppvv vv<-vv  v1  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel -1.3581941228 commut -1.3581941228  diff 7.76e-12
+ppvv vv<-vv  v2  rho3-off: kernel +0.00000000 commut -0.00000000 | rho3 piece: kernel +3.2186047390 commut +3.2186047390  diff 5.53e-12
+all          v0  rho3-off: kernel +4046.27825683 commut +4046.27825683 | rho3 piece: kernel +1.3924282008 commut +1.3924282009  diff -1.55e-11
+all          v1  rho3-off: kernel +4149.52778342 commut +4149.52778342 | rho3 piece: kernel -2.6681311764 commut -2.6681311764  diff 2.55e-11
+all          v2  rho3-off: kernel +4109.68470508 commut +4109.68470508 | rho3 piece: kernel +0.3850657779 commut +0.3850657779  diff -8.19e-12
+max relative diff of rho3 piece: 8.91e-11  -> PASS

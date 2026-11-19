@@ -1,0 +1,8 @@
+# pphv vv<-cv rho3 norm term, tensor X, Y of rank lambda (lambda x lambda -> 0).
+# Same string as rho3_pphv_scalar.txt; X is the daggered bra (stored <ab||X||cd>,
+# dagger phase (-1)^{J_ab-J_cd} applied in the code), Y the stored ket <ef||Y||cg>.
+declare N { mode=0, latex="N" }
+declare X { mode=4, latex="X", scalar=false }
+declare Y { mode=4, latex="Y", scalar=false }
+declare rho { mode=6, latex="\\rho" }
+N = sum_abcdefg(X_cdab * rho_efdabg * Y_efcg);

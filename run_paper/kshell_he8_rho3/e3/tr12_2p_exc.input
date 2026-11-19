@@ -1,0 +1,11 @@
+&input
+  fn_int = "he8.snt"
+  fn_ptn_l = "he8.ptn"
+  fn_ptn_r = "he8.ptn"
+  fn_load_wave_l = "he8.wav"
+  fn_load_wave_r = "he8.wav"
+  n_eig_lr_pair = 5, 5
+  mass = 8
+  is_tbtd = .true.
+  is_obtd = .true.
+/

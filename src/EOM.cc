@@ -180,8 +180,14 @@ double EOM::RdmThreeBody_J(int Jab, size_t a_hs, size_t b_hs, size_t c_hs,
     if (ch_bra >= nch || ch_ket >= nch) return 0.0;
   }
 
-  // GetME_pn handles SortOrbits + recoupling internally.
-  return rdm.ThreeBody.GetME_pn(Jab, Jed, twoJ, a, b, c, d, e, f);
+  // GetME_pn handles SortOrbits + recoupling internally. A Pauli-forbidden
+  // triple (e.g. three particles in one j=1/2 orbit) has no ket in rdm_ms and
+  // GetLocalIndex throws; its density is zero.
+  try {
+    return rdm.ThreeBody.GetME_pn(Jab, Jed, twoJ, a, b, c, d, e, f);
+  } catch (const std::out_of_range &) {
+    return 0.0;
+  }
 }
 
 ///  In case we want to construct the A matrix for a single channel
@@ -220,7 +226,47 @@ bool EOM::TensorOneBodyAllowed(const Orbit &oa, const Orbit &oi) const {
     return false;
   if (std::abs(oa.tz2 - oi.tz2) != 2 * itz)
     return false;
+  // ΔTz≠0: one signed direction only (a created, i annihilated)
+  if (itz != 0 && (oa.tz2 - oi.tz2) != 2 * sr_dtz)
+    return false;
   return AngMom::Triangle(oa.j2 * 0.5, oi.j2 * 0.5, (double)J2);
+}
+
+int EOM::StoredExcitationOrientation(size_t ch_bra, size_t ch_ket, size_t ibra,
+                                     size_t iket) const {
+  TwoBodyChannel &tb = modelspace->GetTwoBodyChannel(ch_bra);
+  TwoBodyChannel &tk = modelspace->GetTwoBodyChannel(ch_ket);
+  Ket &kb = tb.GetKet(ibra);
+  Ket &kk = tk.GetKet(iket);
+  // ket class: number of core / excluded orbits
+  auto cls = [&](Ket &k, int &nc, int &nq) {
+    int c1 = modelspace->GetOrbit(k.p).cvq, c2 = modelspace->GetOrbit(k.q).cvq;
+    nc = (c1 == 0) + (c2 == 0);
+    nq = (c1 == 2) + (c2 == 2);
+  };
+  // creator pair (nc_cre, nq_cre) <- annihilator pair (nc_ann, nq_ann)
+  auto valid = [&](int ncc, int nqc, int nca, int nqa) {
+    if (ncc != 0)
+      return false;                     // creators are v/q
+    if (nqa != 0)
+      return false;                     // annihilators are c/v
+    if (nca == 2)
+      return include_pphh;              // pp <- cc
+    if (nca == 1)
+      return include_pphv;              // pp <- vc
+    // annihilators vv
+    if (nqc > 0)
+      return include_ppvv;              // qq,qv <- vv
+    return include_ppvv && itz != 0 && include_vv_transfer; // vv <- vv
+  };
+  int ncb, nqb, nck, nqk;
+  cls(kb, ncb, nqb);
+  cls(kk, nck, nqk);
+  if (valid(ncb, nqb, nck, nqk) && DeltaTzOK(tb.Tz, tk.Tz))
+    return +1;
+  if (ch_bra != ch_ket && valid(nck, nqk, ncb, nqb) && DeltaTzOK(tk.Tz, tb.Tz))
+    return -1;
+  return 0;
 }
 
 bool EOM::TensorTwoBodyAllowed(const TwoBodyChannel &bra,
@@ -378,8 +424,35 @@ void EOM::ConstructConfigs_tensor() {
   ClearConfigBookkeeping();
   eom_tensor_configs = true;
 
+  if (itz != 0 && std::abs(sr_dtz) != itz)
+    throw std::runtime_error(
+        "ConstructConfigs_tensor: itz != 0 needs a signed direction, "
+        "SetDeltaTz(+-itz) (nucleus Tz=(N-Z)/2 change; -1 = n->p)");
+  // ΔTz≠0 vv←vv: the commutator metric equals <χ†χ> only if χ† kills the
+  // reference, i.e. no valence particles of the creator species (sr_dtz<0:
+  // protons are created). Otherwise switch the pair transfer off.
+  include_vv_transfer = true;
+  if (itz != 0 && include_ppvv) {
+    int tz2_cre = (sr_dtz < 0) ? -1 : +1;
+    double occ = 0.0;
+    for (auto v : modelspace->valence) {
+      Orbit &ov = modelspace->GetOrbit(v);
+      if (ov.tz2 == tz2_cre)
+        occ += std::abs(RdmOB(v, v));
+    }
+    if (occ > 1e-8) {
+      include_vv_transfer = false;
+      std::cout << "WARNING ConstructConfigs_tensor: reference has valence "
+                << (tz2_cre < 0 ? "protons" : "neutrons")
+                << " (sum |rho1| = " << occ << "): the commutator metric is "
+                << "not <chi^dag chi> for vv<-vv pair transfer; those configs are "
+                << "excluded." << std::endl;
+    }
+  }
+
   std::cout << "Constructing tensor EOM configurations for J=" << J2
-            << " parity=" << parity << " Tz=" << itz << std::endl;
+            << " parity=" << parity << " Tz=" << itz << " dTz=" << sr_dtz
+            << std::endl;
   PrintIncludeConfigs();
 
   int norbits = modelspace->norbits;
@@ -451,16 +524,19 @@ void EOM::ConstructConfigs_tensor() {
         TwoBodyChannel &tbc_ket = modelspace->GetTwoBodyChannel(ch_ket);
         if (!TensorTwoBodyAllowed(tbc_bra, tbc_ket))
           continue;
-        for (auto &ibra : get_bras(tbc_bra)) {
+        // main: creator pair in the stored bra
+        for (auto &ibra : get_bras(tbc_bra))
           for (auto &iket : get_kets(tbc_ket))
-            add_2b_pair(ibra, iket, ch_bra, ch_ket, dim);
-        }
+            if (StoredExcitationOrientation(ch_bra, ch_ket, ibra, iket) == +1)
+              add_2b_pair(ibra, iket, ch_bra, ch_ket, dim);
         if (ch_bra == ch_ket)
           continue;
-        for (auto &ibra : get_kets(tbc_bra)) {
+        // swapped: creator pair in the stored ket (tensor half-matrix). The
+        // orientation is unique, so ΔTz≠0 vv×vv elements are never doubled.
+        for (auto &ibra : get_kets(tbc_bra))
           for (auto &iket : get_bras(tbc_ket))
-            add_2b_pair(ibra, iket, ch_bra, ch_ket, dim);
-        }
+            if (StoredExcitationOrientation(ch_bra, ch_ket, ibra, iket) == -1)
+              add_2b_pair(ibra, iket, ch_bra, ch_ket, dim);
       }
     }
   };
@@ -489,7 +565,7 @@ void EOM::ConstructConfigs_tensor() {
     ppvv_end = ppvv_start + ppvv_dim - 1;
   std::cout << "dimension EOM ppvv: " << ppvv_start << " " << ppvv_end
             << " (dim=" << ppvv_dim << ")"
-            << (itz != 0 ? "  [includes ⟨vv|vv⟩ pair transfer]" : "")
+            << (itz != 0 && include_vv_transfer ? "  [includes ⟨vv|vv⟩ pair transfer]" : "")
             << std::endl;
 
   // pphv: ⟨qq,qv,vv|hv⟩
@@ -947,6 +1023,75 @@ void EOM::ConstructNormMatrix(bool include_fermi_identity) {
     std::cout << "skip three body norm (SetUseRdm3 false)" << std::endl;
   }
 
+  // pphv–pphv three-body diagram (valence ρ₃), bra and ket both vv←vc.
+  //   χ_i = Σ_M A†_{J1M}(a1 b1) A_{J1M}(c d1),  a1,b1,d1 valence, c core
+  //   (pair operators normalized, stored ket (c,d) with c=p core, d=q valence).
+  // After the core contraction (c1==c2), the uncontracted part of
+  // ⟨χ_i† χ_j⟩ is ⟨T†_J[(a2 b2)J2, d1] T_J[(a1 b1)J1, d2]⟩ with raw coupled
+  // 3-body states, i.e. ρ̄3/Ĵ (same storage convention as RdmThreeBody_J /
+  // GetVSEOM_Overlap_multiref). Summing the four CGs over all m gives
+  //   N_ij += 1/(n1 n2) (−1)^{jd1+jd2+J1+J2} Ĵ1 Ĵ2
+  //           Σ_J Ĵ {jd1 jc J1; jd2 J J2} ρ̄3^J[(a2 b2)J2 d1 ; (a1 b1)J1 d2],
+  // n = √2 if the pp pair is a single orbit. The ρ1 (B1) and ρ2 (C4)
+  // contractions of the same product are already added above.
+  if (use_rdm3 && rdm.ThreeBody.IsAllocated() && pphv_dim != 0) {
+    std::cout << "start pphv three body norm" << std::endl;
+    std::vector<index_t> vvvc;
+    for (index_t i = pphv_start; i <= pphv_end; i++) {
+      std::array<index_t, 4> &cf = eom_confs.at(i);
+      TwoBodyChannel &tbc = modelspace->GetTwoBodyChannel(cf[2]);
+      Ket &pp = tbc.GetKet(cf[0]);
+      Ket &hv = tbc.GetKet(cf[1]);
+      if (modelspace->GetOrbit(pp.p).cvq != 1 or modelspace->GetOrbit(pp.q).cvq != 1)
+        continue;
+      if (modelspace->GetOrbit(hv.p).cvq != 0 or modelspace->GetOrbit(hv.q).cvq != 1)
+        continue;
+      vvvc.push_back(i);
+    }
+    for (index_t i : vvvc) {
+      std::array<index_t, 4> &cf_bra = eom_confs.at(i);
+      TwoBodyChannel &tbc_bra = modelspace->GetTwoBodyChannel(cf_bra[2]);
+      Ket &pp1 = tbc_bra.GetKet(cf_bra[0]);
+      Ket &hv1 = tbc_bra.GetKet(cf_bra[1]);
+      size_t a1 = pp1.p, b1 = pp1.q, c1 = hv1.p, d1 = hv1.q;
+      int J1 = tbc_bra.J;
+      Orbit &oc1 = modelspace->GetOrbit(c1);
+      Orbit &od1 = modelspace->GetOrbit(d1);
+      double n1 = (a1 == b1) ? std::sqrt(2.) : 1.;
+
+      for (index_t j : vvvc) {
+        std::array<index_t, 4> &cf_ket = eom_confs.at(j);
+        TwoBodyChannel &tbc_ket = modelspace->GetTwoBodyChannel(cf_ket[2]);
+        Ket &pp2 = tbc_ket.GetKet(cf_ket[0]);
+        Ket &hv2 = tbc_ket.GetKet(cf_ket[1]);
+        if (hv2.p != c1)
+          continue; // core contraction
+        size_t a2 = pp2.p, b2 = pp2.q, d2 = hv2.q;
+        int J2 = tbc_ket.J;
+        Orbit &od2 = modelspace->GetOrbit(d2);
+        double n2 = (a2 == b2) ? std::sqrt(2.) : 1.;
+
+        int twoJmin = std::max(std::abs(2 * J1 - od2.j2), std::abs(2 * J2 - od1.j2));
+        int twoJmax = std::min(2 * J1 + od2.j2, 2 * J2 + od1.j2);
+        double val = 0.;
+        for (int twoJ = twoJmin; twoJ <= twoJmax; twoJ += 2) {
+          double r3 = RdmThreeBody_J(J2, a2, b2, d1, J1, a1, b1, d2, twoJ);
+          if (std::abs(r3) < 1e-14)
+            continue;
+          val += std::sqrt(twoJ + 1.) *
+                 AngMom::SixJ(0.5 * od1.j2, 0.5 * oc1.j2, J1,
+                              0.5 * od2.j2, 0.5 * twoJ, J2) *
+                 r3;
+        }
+        if (val == 0.)
+          continue;
+        int phase = ((od1.j2 + od2.j2) / 2 + J1 + J2) % 2 ? -1 : 1;
+        Nkernel(i, j) += phase * std::sqrt((2. * J1 + 1.) * (2. * J2 + 1.)) *
+                         val / (n1 * n2);
+      }
+    }
+  }
+
 
   // c2
   if (ppvv_dim != 0 && qv_dim != 0) {
@@ -1021,6 +1166,36 @@ void EOM::ConstructNormMatrix_tensor(bool include_fermi_identity) {
 
   Nkernel.set_size(eom_dims, eom_dims);
   Nkernel.zeros();
+
+  // Canonical view: every Wick string below is written for an excitation
+  // with the creator pair as bra (X_{cre,ann}). Swapped-stored configs
+  // (creator pair in the stored ket, see StoredExcitationOrientation) are
+  // relabelled {iket, ibra, ch_ket, ch_bra}; their canonical amplitude is
+  // D_i x stored with D_i = (-1)^{J_ket-J_bra} (TwoBodyME conjugation of a
+  // Hermitian ladder output), so N_stored = D N_canon D. eom_confs is
+  // restored on exit (also on exceptions).
+  arma::vec Dcanon(eom_dims, arma::fill::ones);
+  std::vector<std::array<index_t, 4>> confs_stored = eom_confs;
+  struct RestoreConfs {
+    std::vector<std::array<index_t, 4>> &dst, &src;
+    ~RestoreConfs() { dst = src; }
+  } restore_confs{eom_confs, confs_stored};
+  for (index_t i = 0; i < eom_dims; ++i) {
+    bool is2b = (ppvv_dim && i >= ppvv_start && i <= ppvv_end) ||
+                (pphv_dim && i >= pphv_start && i <= pphv_end) ||
+                (pphh_dim && i >= pphh_start && i <= pphh_end);
+    if (!is2b)
+      continue;
+    auto cf = eom_confs[i];
+    int o = StoredExcitationOrientation(cf[2], cf[3], cf[0], cf[1]);
+    if (o == 0)
+      throw std::runtime_error("ConstructNormMatrix_tensor: config is not an excitation");
+    if (o == -1) {
+      eom_confs[i] = {cf[1], cf[0], cf[3], cf[2]};
+      Dcanon(i) = AngMom::phase(modelspace->GetTwoBodyChannel(cf[3]).J -
+                                modelspace->GetTwoBodyChannel(cf[2]).J);
+    }
+  }
 
   const int lam = J2;
   const double lamhat = std::sqrt(2.0 * lam + 1.0);
@@ -1632,9 +1807,266 @@ void EOM::ConstructNormMatrix_tensor(bool include_fermi_identity) {
     }
   }
 
+  // ρ3 pphv–pphv, bra and ket both vv←cv (valence ρ₃), tensor version of the
+  // scalar ConstructNormMatrix term. AMC (learn/amc_tts/eom_norm/output/
+  // rho3_pphv_tensor.tex) of N = X_cdab ρ_{efd,abg} Y_efcg, X the daggered
+  // bra (stored ⟨ab||X||cd⟩, φ_dag = (−1)^{J_ab−J_cd}), Y the stored ket
+  // ⟨ef||Y||cg⟩, c the shared core orbit:
+  //   N = (AMC: −) (−1)^{λ+J_ef+J_cg} Ĵ_cd Ĵ_cg λ̂⁻¹ Σ_{j0} ĵ0² 9j{λ J_ef J_cg; J_ab j0 j_g; J_cd j_d j_c}
+  //       × γ^{j0}[(ef)J_ef d ; (ab)J_ab g],      γ = ρ̄3/ĵ0 (RdmThreeBody_J),
+  // times 1/(n_ab n_ef) for identical-orbit pp pairs (as in the scalar term).
+  if (use_rdm3 && rdm.ThreeBody.IsAllocated() && pphv_dim != 0) {
+    std::vector<index_t> vvcv;
+    for (index_t i = pphv_start; i <= pphv_end; i++) {
+      auto &cf = eom_confs.at(i);
+      Ket &pp = modelspace->GetTwoBodyChannel(cf[2]).GetKet(cf[0]);
+      Ket &hv = modelspace->GetTwoBodyChannel(cf[3]).GetKet(cf[1]);
+      if (modelspace->GetOrbit(pp.p).cvq != 1 or modelspace->GetOrbit(pp.q).cvq != 1)
+        continue;
+      if (modelspace->GetOrbit(hv.p).cvq != 0 or modelspace->GetOrbit(hv.q).cvq != 1)
+        continue;
+      vvcv.push_back(i);
+    }
+    for (index_t i : vvcv) {
+      auto &cf_bra = eom_confs.at(i);
+      Ket &pp1 = modelspace->GetTwoBodyChannel(cf_bra[2]).GetKet(cf_bra[0]);
+      Ket &hv1 = modelspace->GetTwoBodyChannel(cf_bra[3]).GetKet(cf_bra[1]);
+      const int Jab = modelspace->GetTwoBodyChannel(cf_bra[2]).J;
+      const int Jcd = modelspace->GetTwoBodyChannel(cf_bra[3]).J;
+      size_t a = pp1.p, b = pp1.q, c = hv1.p, d = hv1.q;
+      Orbit &oc = modelspace->GetOrbit(c);
+      Orbit &od = modelspace->GetOrbit(d);
+      const double n1 = (a == b) ? std::sqrt(2.) : 1.;
+      const double phi_dag = ph(Jab - Jcd);
+      for (index_t j : vvcv) {
+        auto &cf_ket = eom_confs.at(j);
+        Ket &hv2 = modelspace->GetTwoBodyChannel(cf_ket[3]).GetKet(cf_ket[1]);
+        if (hv2.p != c)
+          continue; // core contraction
+        Ket &pp2 = modelspace->GetTwoBodyChannel(cf_ket[2]).GetKet(cf_ket[0]);
+        const int Jef = modelspace->GetTwoBodyChannel(cf_ket[2]).J;
+        const int Jcg = modelspace->GetTwoBodyChannel(cf_ket[3]).J;
+        size_t e = pp2.p, f = pp2.q, g = hv2.q;
+        Orbit &og = modelspace->GetOrbit(g);
+        const double n2 = (e == f) ? std::sqrt(2.) : 1.;
+        int twoJmin = std::max(std::abs(2 * Jef - od.j2), std::abs(2 * Jab - og.j2));
+        int twoJmax = std::min(2 * Jef + od.j2, 2 * Jab + og.j2);
+        double sum = 0.;
+        for (int twoJ = twoJmin; twoJ <= twoJmax; twoJ += 2) {
+          double r3 = RdmThreeBody_J(Jef, e, f, d, Jab, a, b, g, twoJ);
+          if (std::abs(r3) < 1e-14)
+            continue;
+          // ĵ0² γ = ĵ0 ρ̄3
+          sum += std::sqrt(twoJ + 1.) *
+                 AngMom::NineJ(lam, Jef, Jcg, Jab, 0.5 * twoJ, 0.5 * og.j2,
+                               Jcd, 0.5 * od.j2, 0.5 * oc.j2) *
+                 r3;
+        }
+        if (sum == 0.)
+          continue;
+        // AMC prints an overall −1 here; the leftover gold (comm223tts ×
+        // GetVSEOM_Overlap) has the opposite sign for every λ (checked λ=1,2,3,
+        // both parities), the same λ×λ→0 sign noted in EQUATION.md. Drop it.
+        Nkernel(i, j) += phi_dag * ph(lam + Jef + Jcg) * hat(Jcd) * hat(Jcg) *
+                         lamhatinv * sum / (n1 * n2);
+      }
+    }
+  }
+
+  // ρ3 ppvv–ppvv, bra and ket both qv←vv (valence ρ₃), tensor version of the
+  // scalar C1-ρ₃ term. AMC (learn/amc_tts/eom_norm/output/rho3_ppvv_tensor.tex)
+  // of N = −X_ijaq ρ_{ije,kla} Y_eqkl, X the daggered bra (stored ⟨aq||X||ij⟩,
+  // a valence, q excluded, φ_dag = (−1)^{J_aq−J_ij}), Y the stored ket
+  // ⟨eq||Y||kl⟩, q the shared (empty) excluded orbit:
+  //   N = (AMC: −) (−1)^{J_ij+λ+J_eq+j_a+j_e} Ĵ_aq Ĵ_eq λ̂⁻¹
+  //       Σ_{j0} ĵ0² 9j{λ J_kl J_eq; J_ij j0 j_e; J_aq j_a j_q} γ^{j0}[(ij)J_ij e ; (kl)J_kl a],
+  // γ = ρ̄3/ĵ0, times 1/(n_ij n_kl). AMC's leading −1 is dropped, as for pphv.
+  if (use_rdm3 && rdm.ThreeBody.IsAllocated() && ppvv_dim != 0) {
+    std::vector<index_t> qvvv;
+    for (index_t i = ppvv_start; i <= ppvv_end; i++) {
+      auto &cf = eom_confs.at(i);
+      Ket &pp = modelspace->GetTwoBodyChannel(cf[2]).GetKet(cf[0]);
+      Ket &vv = modelspace->GetTwoBodyChannel(cf[3]).GetKet(cf[1]);
+      if (modelspace->GetOrbit(pp.p).cvq != 1 or modelspace->GetOrbit(pp.q).cvq != 2)
+        continue;
+      if (modelspace->GetOrbit(vv.p).cvq != 1 or modelspace->GetOrbit(vv.q).cvq != 1)
+        continue;
+      qvvv.push_back(i);
+    }
+    for (index_t i : qvvv) {
+      auto &cf_bra = eom_confs.at(i);
+      Ket &aq = modelspace->GetTwoBodyChannel(cf_bra[2]).GetKet(cf_bra[0]);
+      Ket &ij = modelspace->GetTwoBodyChannel(cf_bra[3]).GetKet(cf_bra[1]);
+      const int Jaq = modelspace->GetTwoBodyChannel(cf_bra[2]).J;
+      const int Jij = modelspace->GetTwoBodyChannel(cf_bra[3]).J;
+      size_t a = aq.p, q = aq.q, oi_ = ij.p, oj_ = ij.q;
+      Orbit &oa = modelspace->GetOrbit(a);
+      Orbit &oq = modelspace->GetOrbit(q);
+      const double n1 = (oi_ == oj_) ? std::sqrt(2.) : 1.;
+      const double phi_dag = ph(Jaq - Jij);
+      for (index_t j : qvvv) {
+        auto &cf_ket = eom_confs.at(j);
+        Ket &eq = modelspace->GetTwoBodyChannel(cf_ket[2]).GetKet(cf_ket[0]);
+        if (eq.q != q)
+          continue; // q contraction
+        Ket &kl = modelspace->GetTwoBodyChannel(cf_ket[3]).GetKet(cf_ket[1]);
+        const int Jeq = modelspace->GetTwoBodyChannel(cf_ket[2]).J;
+        const int Jkl = modelspace->GetTwoBodyChannel(cf_ket[3]).J;
+        size_t e = eq.p, ok_ = kl.p, ol_ = kl.q;
+        Orbit &oe = modelspace->GetOrbit(e);
+        const double n2 = (ok_ == ol_) ? std::sqrt(2.) : 1.;
+        int twoJmin = std::max(std::abs(2 * Jij - oe.j2), std::abs(2 * Jkl - oa.j2));
+        int twoJmax = std::min(2 * Jij + oe.j2, 2 * Jkl + oa.j2);
+        double sum = 0.;
+        for (int twoJ = twoJmin; twoJ <= twoJmax; twoJ += 2) {
+          double r3 = RdmThreeBody_J(Jij, oi_, oj_, e, Jkl, ok_, ol_, a, twoJ);
+          if (std::abs(r3) < 1e-14)
+            continue;
+          sum += std::sqrt(twoJ + 1.) *
+                 AngMom::NineJ(lam, Jkl, Jeq, Jij, 0.5 * twoJ, 0.5 * oe.j2,
+                               Jaq, 0.5 * oa.j2, 0.5 * oq.j2) *
+                 r3;
+        }
+        if (sum == 0.)
+          continue;
+        Nkernel(i, j) += phi_dag * ph(Jij + lam + Jeq + (oa.j2 + oe.j2) / 2) *
+                         hat(Jaq) * hat(Jeq) * lamhatinv * sum / (n1 * n2);
+      }
+    }
+  }
+
+  // ρ3 ppvv–ppvv, bra and ket both vv←vv (all valence; only charge-changing
+  // EOM has these configs). comm223 gives two one-line contractions, both
+  // inside the valence ρ₃:
+  //  (1) particle line: the qv←vv formula above with q valence,
+  //      N1 = −X_ijaq ρ_{ije,kla} Y_eqkl;
+  //  (2) hole line (learn/amc_tts/eom_norm/output/rho3_ppvv_vv_hole_tensor.tex),
+  //      N2 = −Y_ijlq X_qkmn ρ_{ijk,lmn}  →  (AMC: −) Σ (−1)^{J0+J3+j_l+j_m+j_n+j_q+λ}
+  //      Ĵ1 Ĵ2 Ĵ3 Ĵ4 ĵ0² λ̂⁻¹ 6j{j_n j_m J3; j_l j0 J4} 9j{J0 j_k j0; λ J2 J3; J1 j_q j_l}
+  //      Y^{J0 J1}_{ij,lq} X^{J2 J3}_{qk,mn} γ^{j0}[(ij)J0 k; (lm)J4 n].
+  // The contracted orbit can sit in either slot of its stored pair: both
+  // orderings are summed (exchange phase −(−1)^{j1+j2−J}), each weighted by
+  // n_pair (√2 for identical orbits, one ordering); the uncontracted pairs
+  // carry 1/n as in the blocks above. (Needs the de-duplicated vv×vv configs
+  // of ConstructConfigs_tensor; with duplicates the check was off by 4.) AMC's leading −1 is
+  // dropped (as above). Checked vs comm223tts on Ne20 (itz=+1).
+  if (use_rdm3 && rdm.ThreeBody.IsAllocated() && ppvv_dim != 0) {
+    std::vector<index_t> vvvv;
+    for (index_t i = ppvv_start; i <= ppvv_end; i++) {
+      auto &cf = eom_confs.at(i);
+      Ket &pp = modelspace->GetTwoBodyChannel(cf[2]).GetKet(cf[0]);
+      Ket &vv = modelspace->GetTwoBodyChannel(cf[3]).GetKet(cf[1]);
+      if (modelspace->GetOrbit(pp.p).cvq != 1 or modelspace->GetOrbit(pp.q).cvq != 1)
+        continue;
+      if (modelspace->GetOrbit(vv.p).cvq != 1 or modelspace->GetOrbit(vv.q).cvq != 1)
+        continue;
+      vvvv.push_back(i);
+    }
+    struct Slot {
+      size_t x, y; // ordered pair (x, y)
+      double w;    // exchange phase × n_pair
+    };
+    // orderings of a stored pair (p, q) with channel J
+    auto orderings = [&](size_t p, size_t q, int J) {
+      std::vector<Slot> out;
+      if (p == q) {
+        out.push_back({p, q, std::sqrt(2.)});
+        return out;
+      }
+      int jp2 = modelspace->GetOrbit(p).j2, jq2 = modelspace->GetOrbit(q).j2;
+      out.push_back({p, q, 1.});
+      out.push_back({q, p, -ph((jp2 + jq2) / 2 - J)});
+      return out;
+    };
+    auto j2of = [&](size_t o) { return modelspace->GetOrbit(o).j2; };
+    for (index_t i : vvvv) {
+      auto &cf_bra = eom_confs.at(i);
+      Ket &bu = modelspace->GetTwoBodyChannel(cf_bra[2]).GetKet(cf_bra[0]);
+      Ket &bl = modelspace->GetTwoBodyChannel(cf_bra[3]).GetKet(cf_bra[1]);
+      const int Jbu = modelspace->GetTwoBodyChannel(cf_bra[2]).J;
+      const int Jbl = modelspace->GetTwoBodyChannel(cf_bra[3]).J;
+      const double nbu = (bu.p == bu.q) ? std::sqrt(2.) : 1.;
+      const double nbl = (bl.p == bl.q) ? std::sqrt(2.) : 1.;
+      const double phi_dag = ph(Jbu - Jbl);
+      auto bra_up = orderings(bu.p, bu.q, Jbu);
+      auto bra_lo = orderings(bl.p, bl.q, Jbl);
+      for (index_t j : vvvv) {
+        auto &cf_ket = eom_confs.at(j);
+        Ket &ku = modelspace->GetTwoBodyChannel(cf_ket[2]).GetKet(cf_ket[0]);
+        Ket &kl = modelspace->GetTwoBodyChannel(cf_ket[3]).GetKet(cf_ket[1]);
+        const int Jku = modelspace->GetTwoBodyChannel(cf_ket[2]).J;
+        const int Jkl = modelspace->GetTwoBodyChannel(cf_ket[3]).J;
+        const double nku = (ku.p == ku.q) ? std::sqrt(2.) : 1.;
+        const double nkl = (kl.p == kl.q) ? std::sqrt(2.) : 1.;
+        double val = 0.;
+
+        // (1) particle line: X_{ij,aq} (bra lower ij, upper (a,q)),
+        //     Y_{eq,kl} (ket upper (e,q), lower kl)
+        for (auto &sb : bra_up) {
+          size_t a = sb.x, q = sb.y;
+          for (auto &sk : orderings(ku.p, ku.q, Jku)) {
+            if (sk.y != q)
+              continue;
+            size_t e = sk.x;
+            int ja2 = j2of(a), je2 = j2of(e), jq2 = j2of(q);
+            int twoJmin = std::max(std::abs(2 * Jbl - je2), std::abs(2 * Jkl - ja2));
+            int twoJmax = std::min(2 * Jbl + je2, 2 * Jkl + ja2);
+            double sum = 0.;
+            for (int twoJ = twoJmin; twoJ <= twoJmax; twoJ += 2) {
+              double r3 = RdmThreeBody_J(Jbl, bl.p, bl.q, e, Jkl, kl.p, kl.q, a, twoJ);
+              if (std::abs(r3) < 1e-14)
+                continue;
+              sum += std::sqrt(twoJ + 1.) *
+                     AngMom::NineJ(lam, Jkl, Jku, Jbl, 0.5 * twoJ, 0.5 * je2,
+                                   Jbu, 0.5 * ja2, 0.5 * jq2) *
+                     r3;
+            }
+            val += sb.w * sk.w * ph(Jbl + lam + Jku + (ja2 + je2) / 2) *
+                   hat(Jbu) * hat(Jku) * sum / (nbl * nkl);
+          }
+        }
+
+        // (2) hole line: Y_{ij,lq} (ket upper ij [J0], lower (l,q) [J1]),
+        //     X_{qk,mn} (daggered bra: upper (q,k) [J2] = bra lower,
+        //     lower mn [J3] = bra upper)
+        const int J0 = Jku, J1 = Jkl, J2 = Jbl, J3 = Jbu;
+        for (auto &sk : orderings(kl.p, kl.q, Jkl)) {
+          size_t l = sk.x, q = sk.y;
+          for (auto &sb : bra_lo) {
+            if (sb.x != q)
+              continue;
+            size_t k = sb.y, m = bu.p, n = bu.q;
+            int jk2 = j2of(k), jl2 = j2of(l), jm2 = j2of(m), jn2 = j2of(n), jq2 = j2of(q);
+            double sum = 0.;
+            for (int J4 = std::abs(jl2 - jm2) / 2; J4 <= (jl2 + jm2) / 2; J4++) {
+              int twoJmin = std::max(std::abs(2 * J0 - jk2), std::abs(2 * J4 - jn2));
+              int twoJmax = std::min(2 * J0 + jk2, 2 * J4 + jn2);
+              for (int twoJ = twoJmin; twoJ <= twoJmax; twoJ += 2) {
+                double r3 = RdmThreeBody_J(J0, ku.p, ku.q, k, J4, l, m, n, twoJ);
+                if (std::abs(r3) < 1e-14)
+                  continue;
+                sum += hat(J4) * std::sqrt(twoJ + 1.) *
+                       AngMom::SixJ(0.5 * jn2, 0.5 * jm2, J3, 0.5 * jl2, 0.5 * twoJ, J4) *
+                       AngMom::NineJ(J0, 0.5 * jk2, 0.5 * twoJ, lam, J2, J3,
+                                     J1, 0.5 * jq2, 0.5 * jl2) *
+                       r3;
+              }
+            }
+            val += sk.w * sb.w * ph(J0 + J3 + (jl2 + jm2 + jn2 + jq2) / 2 + lam) *
+                   hat(J1) * hat(J2) * hat(J3) * sum / (nku * nbu);
+          }
+        }
+        if (val != 0.)
+          Nkernel(i, j) += phi_dag * lamhatinv * val;
+      }
+    }
+  }
+
   // Physical metric: (−1)^λ λ̂ × the coupled [X×Y]^0 leftover (TEST=1 on Mg24:
   // core→a ph gives N = 1 − n_a at λ=1 and λ=2).
   Nkernel *= TensorMetricFactor(lam);
+  // back to the stored representation
+  Nkernel = arma::diagmat(Dcanon) * Nkernel * arma::diagmat(Dcanon);
 
   std::cout << "ConstructNormMatrix_tensor: λ=" << lam
             << " metric factor (−1)^λ λ̂=" << TensorMetricFactor(lam)
@@ -2277,7 +2709,7 @@ void EOM::ConstructProjectMatrix_blocks() {
       arma::mat sym = 0.5 * (M + M.t());
       if (!arma::eig_sym(lam, vecs[g], sym, "dc"))
         arma::eig_sym(lam, vecs[g], sym, "std");
-      sv[g] = arma::abs(lam);
+      sv[g] = lam; // signed: negative-norm modes are dropped below
     } else {
       is_sym[g] = 0;
       arma::mat V;
@@ -2300,8 +2732,21 @@ void EOM::ConstructProjectMatrix_blocks() {
   double s_max = 0.0;
   for (size_t g = 0; g < ng; ++g)
     if (sv[g].n_elem)
-      s_max = std::max(s_max, sv[g].max());
+      s_max = std::max(s_max, arma::abs(sv[g]).max());
   const double thr = 1e-6 * s_max;
+  // A metric <chi^dag chi> is PSD; keep only lam >= thr. Report what an
+  // |lam| projector would have kept on the negative side.
+  arma::uword n_neg = 0;
+  double lam_min = 0.0;
+  for (size_t g = 0; g < ng; ++g)
+    if (is_sym[g] && sv[g].n_elem) {
+      n_neg += arma::accu(sv[g] <= -thr);
+      lam_min = std::min(lam_min, sv[g].min());
+    }
+  if (n_neg > 0)
+    std::cout << "WARNING ConstructProjectMatrix: metric has " << n_neg
+              << " negative modes (min " << lam_min << ", thr " << thr
+              << "); projected out." << std::endl;
 
   prj_blocks.resize(ng);
   arma::uword rank = 0, stored = 0, n_nonsym = 0;
@@ -2351,6 +2796,30 @@ void EOM::SqrtMat(arma::mat& Amat, size_t n)
 {
     arma::mat U, V;
     arma::vec s;
+    const double scale = Amat.n_elem ? arma::abs(Amat).max() : 0.0;
+    const double asym = Amat.n_elem ? arma::abs(Amat - Amat.t()).max() : 0.0;
+    if (scale > 0.0 && asym <= 1e-12 * scale) {
+        // symmetric metric block: keep only positive modes (a metric
+        // <chi^dag chi> is PSD; negative modes are truncation artefacts)
+        arma::vec lam;
+        arma::eig_sym(lam, U, arma::mat(0.5 * (Amat + Amat.t())));
+        const double lmax = arma::abs(lam).max();
+        if (lmax < 1e-6) {
+            Amat.zeros(n, n);
+            return;
+        }
+        arma::uvec keep = arma::find(lam >= 1e-6 * lmax);
+        arma::uword nneg = arma::accu(lam <= -1e-6 * lmax);
+        if (nneg > 0)
+            std::cout << "WARNING SqrtMat: " << nneg << " negative metric modes "
+                      << "(min " << lam.min() << ") projected out" << std::endl;
+        Amat.zeros(n, n);
+        if (keep.n_elem > 0) {
+            arma::mat Us = U.cols(keep);
+            Amat = Us * Us.t();
+        }
+        return;
+    }
     arma::svd(U, s, V, Amat);
 
     double s_max = (s.n_elem > 0) ? arma::max(s) : 0.0;
@@ -3050,6 +3519,10 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
   if (include_ph) {
     for (auto &i : H.modelspace->core) {
       for (auto &a : VectorUnion(H.modelspace->valence, H.modelspace->qspace)) {
+        // nucleus Delta Tz of a^dag i is (tz2_a - tz2_i)/2
+        if (sr_dtz != 0 and (H.modelspace->GetOrbit(a).tz2 -
+                             H.modelspace->GetOrbit(i).tz2) != 2 * sr_dtz)
+          continue;
         Hod.SetOneBody(a, i, H.OneBody(a, i));
       }
     }
@@ -3075,6 +3548,8 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
       }
 
       if (ch_bra != ch_ket) {
+        // excitation pp(bra) <- hh(ket): nucleus Delta Tz = Tz_bra - Tz_ket
+        if (sr_dtz == 0 or tbc_bra.Tz - tbc_ket.Tz == sr_dtz)
         for (auto &iket : tbc_ket.GetKetIndex_cc()) {
           for (auto &ibra :
                VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
@@ -3083,7 +3558,9 @@ Operator EOM::GetVSEOM_ladder_single(Operator &H, int herm) {
           }
         }
 
-        // conjugate hhpp → pphh with (anti)hermitian phase
+        // conjugate hhpp → pphh with (anti)hermitian phase;
+        // excitation pp(ket) <- hh(bra): nucleus Delta Tz = Tz_ket - Tz_bra
+        if (sr_dtz == 0 or tbc_ket.Tz - tbc_bra.Tz == sr_dtz)
         for (auto &ibra : tbc_bra.GetKetIndex_cc()) {
           for (auto &iket :
                VectorUnion(tbc_ket.GetKetIndex_qq(), tbc_ket.GetKetIndex_vv(),
@@ -3203,51 +3680,18 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
     herm_phase = -1;
   }
 
+  // Direction filter for ΔTz≠0 1b excitations a ← i (a created).
+  auto dir1 = [&](size_t a, size_t i) {
+    return (H.modelspace->GetOrbit(a).tz2 - H.modelspace->GetOrbit(i).tz2) == 2 * sr_dtz;
+  };
+
   // One body: ph = (v∪q) ← core
   if (include_ph) {
     for (auto &i : H.modelspace->core) {
       for (auto &a : VectorUnion(H.modelspace->valence, H.modelspace->qspace)) {
+        if (itz != 0 && !dir1(a, i))
+          continue;
         Hod.SetOneBody(a, i, H.OneBody(a, i));
-      }
-    }
-  }
-
-  // Two body: pphh = (qq∪qv∪vv) ← cc
-  if (include_pphh) {
-    for (auto &iter : H.TwoBody.MatEl) {
-      size_t ch_bra = iter.first[0];
-      size_t ch_ket = iter.first[1];
-      TwoBodyChannel &tbc_bra = H.modelspace->GetTwoBodyChannel(ch_bra);
-      TwoBodyChannel &tbc_ket = H.modelspace->GetTwoBodyChannel(ch_ket);
-      arma::mat &H2 = iter.second;
-
-      if (ch_bra == ch_ket) {
-        for (auto &iket : tbc_ket.GetKetIndex_cc()) {
-          for (auto &ibra :
-               VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
-                           tbc_bra.GetKetIndex_qv())) {
-            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
-          }
-        }
-      }
-
-      if (ch_bra != ch_ket) {
-        for (auto &iket : tbc_ket.GetKetIndex_cc()) {
-          for (auto &ibra :
-               VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
-                           tbc_bra.GetKetIndex_qv())) {
-            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
-          }
-        }
-
-        for (auto &ibra : tbc_bra.GetKetIndex_cc()) {
-          for (auto &iket :
-               VectorUnion(tbc_ket.GetKetIndex_qq(), tbc_ket.GetKetIndex_vv(),
-                           tbc_ket.GetKetIndex_qv())) {
-            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket,
-                                  H2(ibra, iket) * hZ * herm_phase);
-          }
-        }
       }
     }
   }
@@ -3256,44 +3700,43 @@ Operator EOM::GetVSEOM_ladder_multiref(Operator &H, int herm) {
   if (include_qv) {
     for (auto &i : H.modelspace->valence) {
       for (auto &a : H.modelspace->qspace) {
+        if (itz != 0 && !dir1(a, i))
+          continue;
         Hod.SetOneBody(a, i, H.OneBody(a, i));
       }
     }
   }
 
-  // Two body: pphv (vc) and ppvv (vv)
-  if (include_pphv || include_ppvv) {
+  // Two body: pphh (←cc), pphv (←vc), ppvv (←vv; ΔTz≠0 also vv←vv).
+  // Each stored element (ch_bra<=ch_ket) is classified once by
+  // StoredExcitationOrientation: +1 creator pair in the stored bra (copy),
+  // -1 creator pair in the stored ket (tensor-swapped excitation: write
+  // H2*hZ*herm_phase so that S+ and S- carry the same canonical amplitude
+  // (-1)^{J_ket-J_bra} hZ H2), 0 not an excitation (dropped).
+  if (include_pphh || include_pphv || include_ppvv) {
     for (auto &iter : H.TwoBody.MatEl) {
       size_t ch_bra = iter.first[0];
       size_t ch_ket = iter.first[1];
       TwoBodyChannel &tbc_bra = H.modelspace->GetTwoBodyChannel(ch_bra);
       TwoBodyChannel &tbc_ket = H.modelspace->GetTwoBodyChannel(ch_ket);
       arma::mat &H2 = iter.second;
-
-      if (include_pphv) {
-        for (auto &iket : tbc_ket.GetKetIndex_vc()) {
-          for (auto &ibra :
-               VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_vv(),
-                           tbc_bra.GetKetIndex_qv())) {
+      auto P = [](TwoBodyChannel &t) {
+        return VectorUnion(t.GetKetIndex_qq(), t.GetKetIndex_qv(), t.GetKetIndex_vv());
+      };
+      auto Hh = [](TwoBodyChannel &t) {
+        return VectorUnion(t.GetKetIndex_cc(), t.GetKetIndex_vc(), t.GetKetIndex_vv());
+      };
+      for (auto &ibra : P(tbc_bra))
+        for (auto &iket : Hh(tbc_ket))
+          if (StoredExcitationOrientation(ch_bra, ch_ket, ibra, iket) == +1)
             Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
-          }
-        }
-      }
-
-      if (include_ppvv) {
-        for (auto &iket : tbc_ket.GetKetIndex_vv()) {
-          for (auto &ibra :
-               VectorUnion(tbc_bra.GetKetIndex_qq(), tbc_bra.GetKetIndex_qv())) {
-            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket, H2(ibra, iket));
-          }
-          // ΔTz≠0: valence pair transfer ⟨vv|vv⟩ (nn→pp) is an excitation.
-          if (itz != 0) {
-            for (auto &ibra : tbc_bra.GetKetIndex_vv())
-              Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket,
-                                    H2(ibra, iket));
-          }
-        }
-      }
+      if (ch_bra == ch_ket)
+        continue;
+      for (auto &ibra : Hh(tbc_bra))
+        for (auto &iket : P(tbc_ket))
+          if (StoredExcitationOrientation(ch_bra, ch_ket, ibra, iket) == -1)
+            Hod.TwoBody.AddToTBME(ch_bra, ch_ket, ibra, iket,
+                                  H2(ibra, iket) * hZ * herm_phase);
     }
   }
 
@@ -3452,7 +3895,9 @@ double EOM::NormSingle(Operator &T1, Operator &T2)
 ///   result = (⟨nop2⟩_ρ + ⟨t3⟩_ρ) / 2
 double EOM::NormMultiref(Operator &T1, Operator &T2)
 {
-  if (T1.GetJRank() != 0 or T2.GetJRank() != 0)
+  // isospin-changing (e.g. 0+ Fermi-like, Tz != 0) also needs the TTS route:
+  // the scalar Commutator() refuses two isospin-changing operators.
+  if (T1.GetJRank() != 0 or T2.GetJRank() != 0 or T1.GetTRank() != 0 or T2.GetTRank() != 0)
     return NormMultiref_tensor(T1, T2);
 
   Operator T2d = T1 * 0.0;
@@ -3497,7 +3942,21 @@ double EOM::NormMultiref_tensor(Operator &T1, Operator &T2)
   Commutator::comm222_pp_hhtts(T1, T2d, nop);
   Commutator::comm222_phtts(T1, T2d, nop);
 
-  return TensorMetricFactor(T1.GetJRank()) * GetVSEOM_Overlap_multiref(nop) / 2.0;
+  double rst = GetVSEOM_Overlap_multiref(nop);
+
+  // ρ₃ piece: tensor×tensor→scalar 3b leftover, contracted with valence ρ₃
+  // (tensor analogue of the comm223ss block in NormMultiref).
+  if (use_rdm3 && rdm.ThreeBody.IsAllocated())
+  {
+    Operator t3(*modelspace, 0, 0, 0, 3);
+    t3.ThreeBody.SetMode("pn");
+    t3 *= 0.0;
+    t3.SetHermitian();
+    Commutator::comm223tts(T1, T2d, t3);
+    rst += GetVSEOM_Overlap_multiref(t3);
+  }
+
+  return TensorMetricFactor(T1.GetJRank()) * rst / 2.0;
 }
 
 /// 3-body contribution to <t1|t2>:
@@ -3728,28 +4187,43 @@ EOM::LanczosSolve(Operator &vi, int max_iter, int state_want)
     }
   }
 
-  // Final eigensolution only when convergence was not already reached during
-  // the iteration — avoids spurious low eigenvalues from extra basis vectors
-  // added after the converged subspace.
-  // Bug fix: use size()-1 not size(): the last pushed vector (w/bj) is the
-  // boundary vector whose diagonal element a_{j+1} was never computed, so
-  // including it would add a spurious zero row/col to the Lanczos matrix.
-  if (!converged)
+  // Final eigensolution on the Lanczos subspace actually built: vectors
+  // 0..j_final all have their diagonal a_j computed, so dim = j_final+1 in every
+  // exit path (converged, max_iter, exact breakdown). The pushed boundary vector
+  // v_{j_final+1} has no a_j and is excluded.
+  const int dim = j_final + 1;
+  arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
+  arma::vec eigval_f;
+  arma::mat eigvec_f;
+  arma::eig_sym(eigval_f, eigvec_f, sub);
+  const int nshow = std::min(state_want, (int)eigval_f.n_elem);
+  e = eigval_f.head(nshow);
+
+  // Ritz vectors y_k = sum_m U(m,k) v_m (eigenvectors of the EOM problem, not
+  // the Lanczos basis vectors) and residuals ||H y_k - e_k y_k|| = beta*|U(dim-1,k)|.
+  std::vector<Operator> ritz;
+  ritz.reserve(nshow);
+  arma::vec resid(nshow, arma::fill::zeros);
+  for (int k = 0; k < nshow; ++k)
   {
-    int dim = std::min((int)lanczos_vector.size() - 1, max_iter);
-    arma::mat sub = hall.submat(0, 0, dim - 1, dim - 1);
-    arma::vec eigval_f;
-    arma::mat eigvec_f;
-    arma::eig_sym(eigval_f, eigvec_f, sub);
-    int nshow = std::min(state_want, (int)eigval_f.n_elem);
-    e = eigval_f.head(nshow);
+    Operator y = lanczos_vector[0] * eigvec_f(0, k);
+    for (int m = 1; m < dim; ++m)
+      y = y + eigvec_f(m, k) * lanczos_vector[m];
+    ritz.push_back(std::move(y));
+    resid(k) = std::abs(bj * eigvec_f(dim - 1, k));
   }
 
-  std::cout << "Lanczos finished with " << j_final + 1 << " steps" << std::endl;
+  std::cout << "Lanczos finished with " << dim << " steps"
+            << (converged ? " (energy criterion met)" : " (energy criterion NOT met)")
+            << std::endl;
   for (int k = 0; k < (int)e.n_elem; ++k)
-    std::cout << "E(" << k << ") = " << e(k) << std::endl;
+    std::cout << "E(" << k << ") = " << e(k) << "   residual = " << resid(k) << std::endl;
 
-  return {e, lanczos_vector};
+  last_lanczos_eigvecs = eigvec_f.head_cols(nshow);
+  last_lanczos_residuals = resid;
+  last_lanczos_hall = sub;
+  last_lanczos_converged = converged;
+  return {e, ritz};
 }
 
 // ============================================================
@@ -6179,8 +6653,13 @@ EOM::RunResult EOM::RunSR(int max_iter, int state_want)
               << "  absolute=" << e(k) + eref << " MeV" << std::endl;
 
   ArnoldiResult ar;
-  ar.energies = e;
-  ar.ritz     = std::move(ritz);
+  ar.energies  = e;
+  ar.ritz      = std::move(ritz);   // Ritz vectors (eigenvectors), one per energy
+  ar.eigvecs   = last_lanczos_eigvecs;
+  ar.residuals = last_lanczos_residuals;
+  ar.hall      = last_lanczos_hall;
+  ar.steps     = (int)last_lanczos_hall.n_rows;
+  ar.converged = last_lanczos_converged;
   return RunResult{eref, ar};
 }
 
