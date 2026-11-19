@@ -32,6 +32,7 @@ python3 he8_mr_eom.py JOB=mr2gs
 python3 he8_mr_eom.py JOB=mr2x
 MAX_ITER=100 python3 he8_mr_eom.py JOB=t02
 python3 he8_mr_eom.py JOB=t20
+python3 he8_mr_eom.py JOB=0m              # 0+_gs/x → 0- and 2+_gs/x → 0-
 
 # VS Hs → packaging (no EOM); both writers share the same post-decouple Hs
 python3 he8_hs_fci.py                 # HF + VS (He8, p-shell) → UndoNO → KSHELL FCI .snt

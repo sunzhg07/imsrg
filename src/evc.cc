@@ -1,6 +1,7 @@
 #include "evc.hh"
 #include "AngMom.hh"
 #include "BCH.hh"
+#include "Commutator.hh"
 #include "PhysicalConstants.hh"
 #include "ReferenceImplementations.hh"
 
@@ -8,6 +9,7 @@
 #include <cmath>
 #include <deque>
 #include <omp.h>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -1268,7 +1270,6 @@ namespace
     Operator out(op);
     out.EraseZeroBody();
     out.EraseTwoBody();
-    out.SetNonHermitian();
     return out;
   }
 
@@ -1277,7 +1278,6 @@ namespace
     Operator out(op);
     out.EraseZeroBody();
     out.EraseOneBody();
-    out.SetNonHermitian();
     return out;
   }
 
@@ -1289,6 +1289,13 @@ namespace
     int parity = (X.GetParity() + Y.GetParity()) % 2;
     Operator Z(ms, jrank, trank, parity, 2);
     Z.SetNonHermitian();
+    // The ReferenceImplementations loop only over iket >= ibra and let AddToTBME fill the partner
+    // from Z's symmetry flag. With a NonHermitian Z the lower triangle is never written, so only
+    // operators with definite symmetry give a complete result here (see EVC::CommutatorGeneral).
+    if ((X.IsHermitian() and Y.IsHermitian()) or (X.IsAntiHermitian() and Y.IsAntiHermitian()))
+      Z.SetAntiHermitian();
+    else if ((X.IsHermitian() and Y.IsAntiHermitian()) or (X.IsAntiHermitian() and Y.IsHermitian()))
+      Z.SetHermitian();
     Z.Erase();
 
     Operator X1 = OnlyOneBody(X);
@@ -1302,8 +1309,7 @@ namespace
     ReferenceImplementations::comm111ss(X1, Y1, Z);
     ReferenceImplementations::comm121ss(X1, Y2, Z);
 
-    Operator tmp(ms, jrank, trank, parity, 2);
-    tmp.SetNonHermitian();
+    Operator tmp(Z); // same symmetry flag as Z: [Y,X] = -[X,Y]
     tmp.Erase();
     ReferenceImplementations::comm121ss(Y1, X2, tmp);
     Z -= tmp;
@@ -1803,12 +1809,226 @@ EVC::ClusterAmplitudes EVC::SolveEuler(const Operator &t, const Operator &tdagge
 
 EVC::ClusterAmplitudes EVC::SolveFromOmega(const Operator &omega, double lambda_max) const
 {
+  if (ode_path_ == "omega")
+  {
+    return IntegrateOmegaPath(omega, lambda_max, use_rk4_);
+  }
   return Solve(ExtractTFromOmega(omega), lambda_max);
 }
 
 EVC::ClusterAmplitudes EVC::SolveEulerFromOmega(const Operator &omega, double lambda_max) const
 {
+  if (ode_path_ == "omega")
+  {
+    return IntegrateOmegaPath(omega, lambda_max, false);
+  }
   Operator t = ExtractTFromOmega(omega);
   Operator tdagger = ExtractTDaggerFromOmega(omega);
   return SolveEuler(t, tdagger, lambda_max);
+}
+
+// ---------------------------------------------------------------------------
+// λΩ path:  e^{λΩ}|0> = e^{T(λ)}|0>  =>  dT/dλ |0> = e^{-T} Ω e^{T} |0>,  T(0)=0.
+// Exact because [Ω, λΩ]=0 and excitation operators commute ([T, dT/dλ]=0).
+// ---------------------------------------------------------------------------
+namespace
+{
+  // X† for a real scalar operator: transpose of OneBody and of each (ch,ch) TwoBody block.
+  Operator AdjointScalar(const Operator &X)
+  {
+    if (X.GetJRank() != 0 or X.GetTRank() != 0 or X.GetParity() != 0)
+    {
+      throw std::runtime_error("EVC AdjointScalar: only scalar operators are supported");
+    }
+    Operator out(X);
+    out.SetNonHermitian();
+    out.OneBody = X.OneBody.t();
+    for (auto &iter : out.TwoBody.MatEl)
+    {
+      iter.second = X.TwoBody.MatEl.at(iter.first).t();
+    }
+    return out;
+  }
+
+  // X = X_H + X_A with definite flags. A part that is identically zero is dropped.
+  std::vector<Operator> SplitHermiticity(const Operator &X)
+  {
+    std::vector<Operator> parts;
+    if (X.IsHermitian() or X.IsAntiHermitian())
+    {
+      parts.push_back(X);
+      return parts;
+    }
+    Operator xd = AdjointScalar(X);
+    Operator xh = X;
+    xh += xd;
+    xh *= 0.5;
+    xh.SetHermitian();
+    Operator xa = X;
+    xa -= xd;
+    xa *= 0.5;
+    xa.SetAntiHermitian();
+    if (xh.Norm() > 0.0 or std::abs(xh.ZeroBody) > 0.0)
+    {
+      parts.push_back(std::move(xh));
+    }
+    if (xa.Norm() > 0.0)
+    {
+      parts.push_back(std::move(xa));
+    }
+    return parts;
+  }
+}
+
+void EVC::SetODEPath(const std::string &path)
+{
+  if (path != "omega" and path != "legacy")
+  {
+    throw std::invalid_argument("EVC::SetODEPath: expected \"omega\" or \"legacy\"");
+  }
+  ode_path_ = path;
+}
+
+Operator EVC::CommutatorGeneral(const Operator &X_in, const Operator &Y_in) const
+{
+  double t_start = omp_get_wtime();
+  Operator X = X_in;
+  Operator Y = Y_in;
+  if (X.GetParticleRank() > 2)
+  {
+    X.SetParticleRank(2);
+  }
+  if (Y.GetParticleRank() > 2)
+  {
+    Y.SetParticleRank(2);
+  }
+
+  // [X,Y] = Σ [X_a, Y_b] over Hermitian / anti-Hermitian parts; each term has definite symmetry,
+  // which is what both the fast IMSRG(2) routines and the ReferenceImplementations assume.
+  const std::vector<Operator> xs = SplitHermiticity(X);
+  const std::vector<Operator> ys = SplitHermiticity(Y);
+  Operator Z(*modelspace_, 0, 0, 0, 2);
+  Z.SetNonHermitian();
+  Z.Erase();
+  for (const auto &xp : xs)
+  {
+    for (const auto &yp : ys)
+    {
+      Operator c = use_fast_commutator_ ? Commutator::Commutator(xp, yp) : BuildExplicitCommutator(xp, yp);
+      if (c.GetParticleRank() > 2)
+      {
+        c.SetParticleRank(2);
+      }
+      c.SetNonHermitian();
+      Z.ZeroBody += c.ZeroBody;
+      Z.OneBody += c.OneBody;
+      Z.TwoBody += c.TwoBody;
+    }
+  }
+  Z.SetNonHermitian();
+  X_in.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  return Z;
+}
+
+Operator EVC::OmegaBar(const Operator &omega_in, const Operator &t_in) const
+{
+  Operator t = t_in;
+  t.SetNonHermitian();
+  KeepExcitationBlocks(t, false);
+
+  Operator gamma = omega_in;
+  if (gamma.GetParticleRank() > 2)
+  {
+    gamma.SetParticleRank(2);
+  }
+  gamma.EraseZeroBody();
+
+  Operator bar = gamma;
+  bar.SetNonHermitian();
+  if (t.Norm() == 0.0)
+  {
+    return bar;
+  }
+  const double inv_fact[5] = {1.0, 1.0, kHalf, kSixth, kTwentyFourth};
+  for (int n = 1; n <= 4; ++n)
+  {
+    gamma = CommutatorGeneral(gamma, t);
+    Operator term = gamma;
+    term *= inv_fact[n];
+    bar.ZeroBody += term.ZeroBody;
+    bar.OneBody += term.OneBody;
+    bar.TwoBody += term.TwoBody;
+  }
+  bar.SetNonHermitian();
+  return bar;
+}
+
+EVC::RHS EVC::BuildOmegaPathRHS(const Operator &omega, const ClusterAmplitudes &amps) const
+{
+  RHS rhs(*modelspace_);
+  Operator bar = OmegaBar(omega, amps.z);
+  rhs.dz0 = bar.ZeroBody;
+  rhs.transformed = bar;
+  rhs.transformed.SetNonHermitian();
+  KeepExcitationBlocks(bar, false);
+  rhs.dz = bar;
+  rhs.dz.SetNonHermitian();
+  return rhs;
+}
+
+EVC::ClusterAmplitudes EVC::IntegrateOmegaPath(const Operator &omega_in, double lambda_max, bool rk4) const
+{
+  double t_start = omp_get_wtime();
+  Operator omega = omega_in;
+  omega.EraseZeroBody();
+
+  ClusterAmplitudes amps(*modelspace_);
+  amps.z.Erase();
+  amps.z.SetNonHermitian();
+  amps.z0 = 0.0;
+
+  const std::size_t nsteps = euler_steps_;
+  if (nsteps == 0 or std::abs(lambda_max) < 1e-16)
+  {
+    return amps;
+  }
+  const double h = lambda_max / static_cast<double>(nsteps);
+  for (std::size_t istep = 0; istep < nsteps; ++istep)
+  {
+    if (not rk4)
+    {
+      RHS k = BuildOmegaPathRHS(omega, amps);
+      AddRHS(amps, k, h);
+      continue;
+    }
+    RHS k1 = BuildOmegaPathRHS(omega, amps);
+    ClusterAmplitudes a2 = amps;
+    AddRHS(a2, k1, 0.5 * h);
+    RHS k2 = BuildOmegaPathRHS(omega, a2);
+    ClusterAmplitudes a3 = amps;
+    AddRHS(a3, k2, 0.5 * h);
+    RHS k3 = BuildOmegaPathRHS(omega, a3);
+    ClusterAmplitudes a4 = amps;
+    AddRHS(a4, k3, h);
+    RHS k4 = BuildOmegaPathRHS(omega, a4);
+    AddRHS(amps, k1, h / 6.0);
+    AddRHS(amps, k2, h / 3.0);
+    AddRHS(amps, k3, h / 3.0);
+    AddRHS(amps, k4, h / 6.0);
+  }
+  amps.z.EraseZeroBody();
+  omega_in.profiler.timer[__func__] += omp_get_wtime() - t_start;
+  return amps;
+}
+
+EVC::ClusterAmplitudes EVC::SolveKernelAmplitudes(const Operator &omega_i, const Operator &omega_k) const
+{
+  Operator neg_i = omega_i;
+  neg_i.EraseZeroBody();
+  neg_i *= -1.0;
+  Operator wk = omega_k;
+  wk.EraseZeroBody();
+  Operator omega_d = BCH::BCH_Product(neg_i, wk);
+  omega_d.EraseZeroBody();
+  return SolveFromOmega(omega_d);
 }

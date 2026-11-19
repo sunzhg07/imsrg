@@ -117,7 +117,7 @@ def build_hs():
     return ms, Hs
 
 
-def dump_result(name, lab, J2, res):
+def dump_result(name, lab, J2, res, parity=0, itz=0):
     energies = [float(x) for x in res.arnoldi.energies]
     eref = float(res.eref)
     rec = {
@@ -126,6 +126,8 @@ def dump_result(name, lab, J2, res):
         "kind": name,
         "mode": "sr",
         "J2": J2,
+        "parity": parity,
+        "itz": itz,
         "ref_file": None,
         "nucleus": nucleus,
         "lecs": os.environ.get("LECS", "EM1.8_2.0"),
@@ -170,7 +172,10 @@ def main():
     max_iter = int(os.environ.get("MAX_ITER", "80"))
     state_want = int(os.environ.get("STATE_WANT", "5"))
     name = "sr0" if J2 == 0 else f"sr{J2}"
-    lab = rf"SR ${J2}^+$"
+    pi = "-" if parity else "+"
+    if parity:
+        name = f"{name}m"
+    lab = rf"SR ${J2}^{pi}$"
 
     ms, Hs = build_hs()
     print(f"ZeroBody (E_ref) = {Hs.ZeroBody:.6f} MeV", flush=True)
@@ -180,14 +185,14 @@ def main():
     eom = EOM(Hs, J2, parity, itz)
     res = eom.Run(max_iter, state_want)
 
-    print(f"\n=== He8 closed-shell SR-EOM {J2}+ ===", flush=True)
+    print(f"\n=== He8 closed-shell SR-EOM {J2}{pi} ===", flush=True)
     print(f"eref (ZeroBody) = {res.eref:.6f} MeV", flush=True)
     print(f"stop={res.arnoldi.stop_reason}  steps={res.arnoldi.steps}  "
           f"converged={res.arnoldi.converged}", flush=True)
     for k, e in enumerate(res.arnoldi.energies):
         print(f"  E({k}): excitation={e:.6f}  absolute={e + res.eref:.6f} MeV",
               flush=True)
-    dump_result(name, lab, J2, res)
+    dump_result(name, lab, J2, res, parity=parity, itz=itz)
 
 
 if __name__ == "__main__":

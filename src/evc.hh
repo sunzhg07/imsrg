@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstddef>
+#include <string>
 
 class EVC
 {
@@ -58,6 +59,22 @@ class EVC
     void SetUseIMSRG3Intermediates(bool tf) { use_imsrg3_intermediates_ = tf; }
     void SetEulerSteps(std::size_t nsteps) { euler_steps_ = nsteps; }
     void SetUseRK4(bool tf) { use_rk4_ = tf; }
+    // "omega" (default): e^{λΩ}|0> = e^{T(λ)}|0>,  dT/dλ = P_exc[e^{-T} Ω e^{T}],  T(0)=0.
+    // "legacy": old e^{T-λT†} path (dZ/dλ = -(T† e^Z)_c, Z(0)=T); its λ-derivative is not exact.
+    void SetODEPath(const std::string &path);
+    std::string GetODEPath() const { return ode_path_; }
+    // Ω̄ commutators: fast IMSRG(2) Commutator::Commutator via Hermitian/anti-Hermitian split (true),
+    // or the slow general ReferenceImplementations commutator (false, reference).
+    void SetUseFastCommutator(bool tf) { use_fast_commutator_ = tf; }
+
+    // [X,Y] for operators of arbitrary hermiticity, IMSRG(2) truncated. Output NonHermitian.
+    Operator CommutatorGeneral(const Operator &X, const Operator &Y) const;
+    // Ω̄ = e^{-T} Ω e^{T} = Σ_{n<=4} Γ_n/n!,  Γ_{n+1} = [Γ_n, T]  (T excitation-only => terminates).
+    Operator OmegaBar(const Operator &omega, const Operator &t) const;
+    // dT0/dλ = Ω̄_0 ; dT/dλ = excitation blocks (ph, pphh) of Ω̄.
+    RHS BuildOmegaPathRHS(const Operator &omega, const ClusterAmplitudes &amps) const;
+    // e^{Ω_D}|0> = e^{T}|0>, Ω_D = BCH_Product(-Ω_i, Ω_k) with zero-body erased (same as EvaluateKernels).
+    ClusterAmplitudes SolveKernelAmplitudes(const Operator &omega_i, const Operator &omega_k) const;
 
     Operator ExtractExcitationPart(const Operator &op) const;
     Operator ExtractDeexcitationPart(const Operator &op) const;
@@ -99,6 +116,10 @@ class EVC
     bool use_imsrg3_intermediates_ = true;
     std::size_t euler_steps_ = 100;
     bool use_rk4_ = true;
+    bool use_fast_commutator_ = true;
+    std::string ode_path_ = "omega";
+
+    ClusterAmplitudes IntegrateOmegaPath(const Operator &omega, double lambda_max, bool rk4) const;
 
     Operator MakeExcitationOperatorLike(const Operator &op) const;
     void PromoteToThreeBody(Operator &op) const;

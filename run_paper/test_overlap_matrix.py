@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Benchmark ConstructOverlapMatrix vs ConstructNormMatrix.
 
-Hermitian RDM: overlap kernel (Fermi off, product N_ij/N_ji) must match
-ConstructNormMatrix(False) because ρᵀ=ρ. Nkernel itself must be unchanged.
+Hermitian RDM: overlap kernel must match N[ρ]; Nkernel itself unchanged.
+Same-ref OverlapAB must match ComputeNorm.
 
-TDM: overlap kernel differs from the Hermitian-partner fill in B3/C5/C2.
+TDM: N[ρ] still matches ConstructNormMatrix on the TDM. The reverse
+contraction is N[ρ†] of the same operator, and (Qa†Qb)·ρ = (Qb†Qa)·ρ†.
 """
 from __future__ import annotations
 
@@ -105,19 +106,36 @@ def main():
 
     eom.ConstructOverlapKernel(tdm)
     N_new = np.array(eom.Nkernel_overlap, copy=True)
+    N_dag = np.array(eom.Nkernel_overlap_dag, copy=True)
     d_keep2 = maxabs(np.array(eom.Nkernel), N_herm)
     d_tdm = maxabs(N_new, N_old)
-    print(f"TDM overlap vs ConstructNormMatrix on TDM  |Δ|={d_tdm:.6e}  "
+    print(f"TDM N[ρ] vs ConstructNormMatrix on TDM  |Δ|={d_tdm:.6e}  "
           f"|Nkernel still herm|={d_keep2:.3e}", flush=True)
     if d_keep2 > 1e-12:
         raise RuntimeError("ConstructOverlapKernel overwrote Nkernel")
     if d_tdm > 1e-10:
-        raise RuntimeError("TDM overlap kernel must match ConstructNormMatrix")
+        raise RuntimeError("TDM N[ρ] must match ConstructNormMatrix")
+
+    d_fwd_rev = 0.0
+    d_avg = 0.0
+    for i in range(min(3, len(qs))):
+        for j in range(min(3, len(qs))):
+            s_ab = eom.OverlapAB(qs[i], qs[j])
+            s_ba = eom.OverlapBA(qs[j], qs[i])
+            s_h = eom.OverlapHermitian(qs[i], qs[j])
+            d_fwd_rev = max(d_fwd_rev, abs(s_ab - s_ba))
+            d_avg = max(d_avg, abs(s_h - 0.5 * (s_ab + s_ba)))
+    print(f"max |(Qa†Qb)·ρ − (Qb†Qa)·ρ†| = {d_fwd_rev:.3e}", flush=True)
+    print(f"max |OverlapHermitian − ½(fwd+rev)| = {d_avg:.3e}", flush=True)
+    if d_fwd_rev > 1e-10:
+        raise RuntimeError("cross-ref product must satisfy (Qa†Qb)·ρ = (Qb†Qa)·ρ†")
+    if d_avg > 1e-12:
+        raise RuntimeError("OverlapHermitian is not the average of ρ and ρ†")
 
     asym_new = maxabs(N_new - N_new.T)
     asym_old = maxabs(N_old - N_old.T)
-    print(f"|N_ov−N_ovᵀ|={asym_new:.6e}  |N_partner−N_partnerᵀ|={asym_old:.6e}",
-          flush=True)
+    print(f"|N[ρ]−N[ρ]ᵀ|={asym_new:.6e}  |N_partner−N_partnerᵀ|={asym_old:.6e}  "
+          f"|N[ρ†]|={maxabs(N_dag):.6e}", flush=True)
     print("PASS", flush=True)
 
 

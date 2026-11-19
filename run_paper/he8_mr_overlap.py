@@ -5,14 +5,12 @@ States: Q_a^i |0_gs⟩  (mr0gs)  and  Q_b^j |0_1⟩  (mr0x).
 Live Arnoldi Ritz vectors Q = V y are N-orthonormal on the
 same reference: ComputeNorm(Q_i, Q_j) = δ_ij.
 
-Cross block is ⟨a|Q_a† Q_b|b⟩ from the same Wick diagrams as
-ComputeNorm, including A1/A2, with ρ replaced by the kshell TDM
-(transit.log states 1↔2).
-The leftover commutator CrossRefOverlap is not this product.
-
-The full S_aa / S_bb blocks use the Hermitian N[ρ].
-Cross S_ab uses TDM ⟨gs|·|exc⟩, S_ba uses TDM ⟨exc|·|gs⟩.
-With N[ρ]ᵀ = N[ρᵀ] these are adjoints: S_ba ≈ S_abᵀ.
+Cross block is the product (not leftover commutator)
+  S_ab = ½[ (Q_a† Q_b)·ρ + (Q_b† Q_a)·ρ† ]
+with ρ the kshell TDM (transit.log 1→2) and ρ† its operator
+transpose. That number is Hermitian: S_ba = S_abᵀ.
+ComputeNorm is same-ref only; ComputeNormAB / OverlapHermitian
+is the post-norm on two references.
 
 """
 from __future__ import annotations
@@ -87,12 +85,20 @@ def block_same(eom, qs, label, use_compute_norm=True):
 
 
 def block_cross(eom, qs_a, qs_b):
+    """Hermitian product ½[(Qa† Qb)·ρ + (Qb† Qa)·ρ†] on one TDM."""
     na, nb = len(qs_a), len(qs_b)
     S = np.zeros((na, nb))
+    d_fwd_rev = 0.0
     for i in range(na):
         for j in range(nb):
-            S[i, j] = eom.OverlapAB(qs_a[i], qs_b[j])
-            print(f"  S[{i},{j}] = {S[i, j]:+.8f}", flush=True)
+            s_fwd = eom.OverlapAB(qs_a[i], qs_b[j])
+            s_rev = eom.OverlapBA(qs_b[j], qs_a[i])
+            S[i, j] = 0.5 * (s_fwd + s_rev)
+            d_fwd_rev = max(d_fwd_rev, abs(s_fwd - s_rev))
+            print(f"  S[{i},{j}] = {S[i, j]:+.8f}  "
+                  f"(Qa†Qb)·ρ={s_fwd:+.8f}  (Qb†Qa)·ρ†={s_rev:+.8f}",
+                  flush=True)
+    print(f"max |(Qa†Qb)·ρ − (Qb†Qa)·ρ†| = {d_fwd_rev:.3e}", flush=True)
     return S
 
 
@@ -181,28 +187,21 @@ def main():
                   flush=True)
     print(f"max |Cross−N| on 2×2 = {max_d:.3e}", flush=True)
 
-    # TDM 1→2 and 2→1. ComputeNorm on eom_gs / eom_x still uses ρ.
-    # OverlapAB uses a separate N[tdm] kernel.
-    # Keep two probes: ReadKshellRdm rebuilds rdm_modelspace, which the
-    # TDM Operator points at.
+    # One TDM ρ = ⟨gs|·|exc⟩. ComputeNormAB uses ρ and ρ† = ρᵀ of
+    # that operator. ComputeNorm on eom_gs / eom_x still uses the density.
+    # Keep the probe: ReadKshellRdm rebuilds rdm_modelspace.
     probe_ab = EOM(Hs, 0, 0, 0)
-    probe_ba = EOM(Hs, 0, 0, 0)
     tdm_ab = probe_ab.ReadKshellRdm(TRANSIT, SNT, 1, 2)
-    tdm_ba = probe_ba.ReadKshellRdm(TRANSIT, SNT, 2, 1)
     v3344 = tdm_ab.TwoBody.GetTBME_J_norm(0, 0, 2, 2, 3, 3)
     v4433 = tdm_ab.TwoBody.GetTBME_J_norm(0, 0, 3, 3, 2, 2)
     print("\nTDM(1,2) TBTD J=0  3344={:.8f}  4433={:.8f}  (must differ)"
           .format(v3344, v4433), flush=True)
 
-    print("\n=== cross  ⟨0_gs| Q_a† Q_b |0_x⟩  TDM(1,2) diagrams ===",
+    print("\n=== cross  ½[(Qa† Qb)·ρ + (Qb† Qa)·ρ†]  TDM(1,2) ===",
           flush=True)
     eom_gs.ConstructOverlapKernel(tdm_ab)
     S_ab = block_cross(eom_gs, qs_gs, qs_x)
-
-    print("\n=== cross  ⟨0_x| Q_b† Q_a |0_gs⟩  TDM(2,1) diagrams ===",
-          flush=True)
-    eom_x.ConstructOverlapKernel(tdm_ba)
-    S_ba = block_cross(eom_x, qs_x, qs_gs)
+    S_ba = S_ab.T.copy()
 
     names = [f"a{i}" for i in range(n)] + [f"b{j}" for j in range(n)]
     S = np.zeros((2 * n, 2 * n))

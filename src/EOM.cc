@@ -2915,10 +2915,27 @@ double EOM::ComputeNorm(Operator &Op1, Operator &Op2) {
   return norm;
 }
 
+namespace {
+
+/// ρ† for a scalar TDM: OneBodyᵀ and TwoBody bra↔ket. Rank-0 real ME.
+Operator TransposeDensity(const Operator &rho) {
+  Operator out(rho);
+  out.SetNonHermitian();
+  out.OneBody = rho.OneBody.t();
+  std::map<std::array<size_t, 2>, arma::mat> transposed;
+  for (const auto &kv : rho.TwoBody.MatEl) {
+    const size_t chb = kv.first[0];
+    const size_t chk = kv.first[1];
+    transposed[{chk, chb}] = kv.second.t();
+  }
+  out.TwoBody.MatEl = std::move(transposed);
+  return out;
+}
+
+} // namespace
+
 void EOM::ConstructOverlapMatrix(bool include_fermi_identity) {
-  // Same Wick diagrams as ConstructNormMatrix, including A1/A2 and both
-  // N_ij and N_ji. For a TDM, N[ρ]ᵀ = N[ρᵀ] so the two kshell transitions
-  // are adjoints. Does not replace Nkernel (ComputeNorm).
+  // Wick diagrams of (Q† Q)·ρ on the current rdm. Does not replace Nkernel.
   if (eom_dims == 0) {
     if (IsTensorEOM())
       ConstructConfigs_tensor();
@@ -2949,6 +2966,15 @@ void EOM::ConstructOverlapKernel(Operator &tdm) {
 
   SetRdm(tdm);
   ConstructOverlapMatrix(true);
+  arma::sp_mat N_rho = Nkernel_overlap;
+
+  Operator tdm_dag = TransposeDensity(tdm);
+  SetRdm(tdm_dag);
+  ConstructOverlapMatrix(true);
+  Nkernel_overlap_dag = Nkernel_overlap;
+  have_Nkernel_overlap_dag = true;
+  Nkernel_overlap = std::move(N_rho);
+  have_Nkernel_overlap = true;
 
   rdm = std::move(rdm_save);
   rdm_ms = rdm_ms_save;
@@ -2966,9 +2992,23 @@ double EOM::OverlapAB(Operator &Qa, Operator &Qb) {
   return arma::dot(v1, temp);
 }
 
+double EOM::OverlapBA(Operator &Qb, Operator &Qa) {
+  if (!have_Nkernel_overlap_dag)
+    throw std::runtime_error(
+        "OverlapBA: call ConstructOverlapKernel(tdm) first");
+  arma::vec vb = FlattenOperator(Qb);
+  arma::vec va = FlattenOperator(Qa);
+  arma::vec temp = Nkernel_overlap_dag * va;
+  return arma::dot(vb, temp);
+}
+
+double EOM::OverlapHermitian(Operator &Qa, Operator &Qb) {
+  return 0.5 * (OverlapAB(Qa, Qb) + OverlapBA(Qb, Qa));
+}
+
 double EOM::ComputeNormAB(Operator &Qa, Operator &Qb, Operator &tdm) {
   ConstructOverlapKernel(tdm);
-  return OverlapAB(Qa, Qb);
+  return OverlapHermitian(Qa, Qb);
 }
 
 void EOM::ProjectOprator(Operator &Qin) {

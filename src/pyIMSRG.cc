@@ -1545,12 +1545,16 @@ PYBIND11_MODULE(pyIMSRG, m) {
            "⟨Q_a† Q_b⟩ kernel on current rdm, including A1/A2. Does not replace N[ρ].")
       .def("ConstructOverlapKernel", &EOM::ConstructOverlapKernel,
            py::arg("tdm"),
-           "Build N[tdm] for ⟨a|Q_a† Q_b|b⟩; does not replace N[ρ]")
+           "Build N[ρ] and N[ρ†] for the cross-ref product; does not replace N[ρ]")
       .def("OverlapAB", &EOM::OverlapAB, py::arg("Qa"), py::arg("Qb"),
-           "v_aᵀ N_overlap v_b; call ConstructOverlapMatrix or ConstructOverlapKernel first")
+           "(Q_a† Q_b)·ρ = v_aᵀ N[ρ] v_b; call ConstructOverlapKernel first")
+      .def("OverlapBA", &EOM::OverlapBA, py::arg("Qb"), py::arg("Qa"),
+           "(Q_b† Q_a)·ρ† = v_bᵀ N[ρ†] v_a; call ConstructOverlapKernel first")
+      .def("OverlapHermitian", &EOM::OverlapHermitian, py::arg("Qa"), py::arg("Qb"),
+           "½[(Q_a† Q_b)·ρ + (Q_b† Q_a)·ρ†]; symmetric in (Qa,Qb)")
       .def("ComputeNormAB", &EOM::ComputeNormAB,
            py::arg("Qa"), py::arg("Qb"), py::arg("tdm"),
-           "⟨a|Q_a† Q_b|b⟩ from N diagrams × TDM (rebuilds overlap kernel)")
+           "Hermitian ⟨a|Q_a† Q_b|b⟩ = ½[(Q_a† Q_b)·ρ + (Q_b† Q_a)·ρ†]")
       .def("FlattenOperator", [](const EOM &self, Operator &Op) {
             arma::vec v = self.FlattenOperator(Op);
             return py::array_t<double>({(py::ssize_t)v.n_elem}, v.memptr());
@@ -1734,6 +1738,12 @@ PYBIND11_MODULE(pyIMSRG, m) {
           return py::array_t<double>(
               {(py::ssize_t)dense.n_rows, (py::ssize_t)dense.n_cols},
               dense.memptr());
+      })
+      .def_property_readonly("Nkernel_overlap_dag", [](const EOM &self) {
+          arma::mat dense = arma::mat(self.Nkernel_overlap_dag);
+          return py::array_t<double>(
+              {(py::ssize_t)dense.n_rows, (py::ssize_t)dense.n_cols},
+              dense.memptr());
       });
 
   py::class_<RPA>(m, "RPA")
@@ -1790,6 +1800,13 @@ PYBIND11_MODULE(pyIMSRG, m) {
   evc.def(py::init<ModelSpace &>())
       .def("SetEulerSteps", &EVC::SetEulerSteps)
       .def("SetUseRK4", &EVC::SetUseRK4)
+      .def("SetODEPath", &EVC::SetODEPath)
+      .def("GetODEPath", &EVC::GetODEPath)
+      .def("SetUseFastCommutator", &EVC::SetUseFastCommutator)
+      .def("CommutatorGeneral", &EVC::CommutatorGeneral)
+      .def("OmegaBar", &EVC::OmegaBar)
+      .def("BuildOmegaPathRHS", &EVC::BuildOmegaPathRHS)
+      .def("SolveKernelAmplitudes", &EVC::SolveKernelAmplitudes)
       .def("ExtractExcitationPart", &EVC::ExtractExcitationPart)
       .def("ExtractTFromOmega", &EVC::ExtractTFromOmega)
       .def("BuildZ0RHS", &EVC::BuildZ0RHS)

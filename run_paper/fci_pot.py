@@ -3,7 +3,7 @@
 from pyIMSRG import *
 
 emax = 3  # maximum number of oscillator quanta in the model space
-ref = "He8"  # reference used for normal ordering
+ref = "Be8"  # reference used for normal ordering
 val = "FCI"  # valence space
 
 core_generator = "atan"  # definition of generator eta for decoupling the core (could also use 'white')
@@ -98,5 +98,5 @@ Hs=Hs.UndoNormalOrdering()
 #Hs.SetModelSpace(msfci)
 #
 #
-rw.WriteTokyo(Hs, "fci_heb_hf_n03_He8.snt", "")
+rw.WriteTokyo(Hs, "fci_heb_hf_n03_Be8.snt", "")
 #

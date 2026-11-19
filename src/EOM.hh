@@ -67,10 +67,12 @@ public:
   std::vector<int> hs_to_rdm_orb; ///< Map: Hs orbit index -> rdm orbit index (-1 if absent)
   Operator rdm;
   arma::sp_mat Nkernel;
-  /// Wick kernel of ⟨a|Q_a† Q_b|b⟩ from a TDM (includes A1/A2).
-  /// Built by ConstructOverlapKernel; ComputeNorm does not use this.
+  /// Wick kernel of ⟨a|Q_a† Q_b|b⟩ = (Q_a† Q_b)·ρ. ComputeNorm does not use this.
   arma::sp_mat Nkernel_overlap;
+  /// Wick kernel of ⟨b|Q_b† Q_a|a⟩ = (Q_b† Q_a)·ρ†, ρ† = TransposeDensity(tdm).
+  arma::sp_mat Nkernel_overlap_dag;
   bool have_Nkernel_overlap = false;
+  bool have_Nkernel_overlap_dag = false;
   arma::sp_mat Prj_kernel;
   /// Tensor projector, one entry per connected block of Nkernel (exact; see
   /// ConstructProjectMatrix_blocks). P_block = U Uᵀ, or 1 − U Uᵀ if complement.
@@ -308,22 +310,25 @@ public:
   void ProjectOprator(Operator &Qin);
   void block_svd(std::vector<int> &coupled_vector);
   double ComputeNorm(Operator &Op1, Operator &Op2);
-  /// Non-Hermitian Wick kernel of ⟨Q_a† Q_b⟩ on the current rdm.
-  /// Off-diagonal B3/C5/C2 fill N_ij = ⟨Q_{2b}† Q_{1b}⟩_ρ and
-  /// N_ji = ⟨Q_{1b}† Q_{2b}⟩_ρ, which is N_ij with ρ → ρᵀ.
-  /// Then N[ρ]ᵀ = N[ρᵀ], so ⟨a|Q_a† Q_b|b⟩ with TDM_ab equals
-  /// ⟨b|Q_b† Q_a|a⟩ with TDM_ba. On a Hermitian ρ this matches ComputeNorm.
+  /// Wick kernel of ⟨Q_a† Q_b⟩ on the current rdm (one contraction, N[ρ]).
+  /// ConstructOverlapKernel also builds N[ρ†] and ComputeNormAB averages them.
   /// include_fermi_identity: A1/A2 (and tensor B4/C1/B1 n(1−n)) pieces.
   /// Keep them on for overlap; they are the same Wick identities as ComputeNorm.
   void ConstructOverlapMatrix(bool include_fermi_identity = true);
-  /// Build Nkernel_overlap from a kshell TDM, including A1/A2.
-  /// Restores this->rdm and Nkernel so ComputeNorm still uses the density.
+  /// Build N[ρ] and N[ρ†] from a TDM. Restores this->rdm and Nkernel.
+  /// ρ† is the operator transpose of tdm (not a second kshell dump).
   void ConstructOverlapKernel(Operator &tdm);
-  /// ⟨a|Q_a† Q_b|b⟩ = v_aᵀ N[tdm] v_b. Rebuilds the overlap kernel from tdm.
-  /// For a grid: ConstructOverlapKernel(tdm) once, then OverlapAB.
+  /// Hermitian cross-ref overlap
+  ///   ½[ (Q_a† Q_b)·ρ + (Q_b† Q_a)·ρ† ].
+  /// Rebuilds both kernels from tdm. For a grid: ConstructOverlapKernel once,
+  /// then OverlapHermitian.
   double ComputeNormAB(Operator &Qa, Operator &Qb, Operator &tdm);
-  /// v_aᵀ Nkernel_overlap v_b. Call ConstructOverlapKernel first.
+  /// (Q_a† Q_b)·ρ = v_aᵀ N[ρ] v_b. Call ConstructOverlapKernel first.
   double OverlapAB(Operator &Qa, Operator &Qb);
+  /// (Q_b† Q_a)·ρ† = v_bᵀ N[ρ†] v_a. Call ConstructOverlapKernel first.
+  double OverlapBA(Operator &Qb, Operator &Qa);
+  /// ½[ OverlapAB(Qa,Qb) + OverlapBA(Qb,Qa) ]. Symmetric in (Qa,Qb).
+  double OverlapHermitian(Operator &Qa, Operator &Qb);
   /// Pack EOM config amplitudes of Op into a dense vector (length eom_dims).
   arma::vec FlattenOperator(Operator &Op) const;
   /// Write dense config vector into Op (zeros other EOM amplitudes first).
