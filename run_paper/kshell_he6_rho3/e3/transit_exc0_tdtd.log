@@ -1,0 +1,120 @@
+nprocs    1    myrank    0
+OpenMP  # of threads=  8
+ nprocs = nprocs_reduce x nprocs_shift     1 =    1 x    1
+ # of vectors to shift at once    1
+
+&INPUT
+ FN_INT="he6.snt                                                                                                                                                                                                                                                         ",
+ HW_TYPE=1          ,
+ FN_PTN_L="he6.ptn                                                                                                                                                                                                                                                         ",
+ FN_LOAD_WAVE_L="he6.wav                                                                                                                                                                                                                                                         ",
+ FN_PTN_R="he6.ptn                                                                                                                                                                                                                                                         ",
+ FN_LOAD_WAVE_R="he6.wav                                                                                                                                                                                                                                                         ",
+ EFF_CHARGE=  1.0000000000000000     ,  0.0000000000000000     ,
+ GL=  1.0000000000000000     ,  0.0000000000000000     ,
+ GS=  5.5860000000000003     , -3.8260000000000001     ,
+ E1_CHARGE= 2*0.0000000000000000       ,
+ E3_CHARGE= 2*0.0000000000000000       ,
+ MASS=6          ,
+ IS_FERMI_TRN=F,
+ IS_OBTD=F,
+ IS_TBTD=F,
+ IS_TDTD=T,
+ NPROCS_REDUCE=1          ,
+ NV_SHIFT=1          ,
+ IHW_PROJ=-1         ,
+ N_EIG_LR_PAIR= 2*5          , 1998*-1         ,
+ /
+compile conf. kwf, kdim, kmbit, nmbit =  8  4  8  1
+
+fn_load_wave_l = he6.wav
+fn_load_wave_r = he6.wav
+
+ proton  core  2, orbit: 0s_1/2
+ neutron core  2, orbit: 0s_1/2
+
+ model space
+   k,  n,  l,  j, tz,  p, 2n+l
+   1   0   1   3  -1  -1   1   p 0p_3/2
+   2   0   1   1  -1  -1   1   p 0p_1/2
+   3   0   1   3   1  -1   1   n 0p_3/2
+   4   0   1   1   1  -1   1   n 0p_1/2
+
+set left partition_file=he6.ptn
+Max 2*J =   4
+
+pn= 1   # of mbits=              1
+pn= 2   # of mbits=              5
+
+init_partition  time it took was:     0.001 sec
+
+Memory usage in partition        0.00 MB
+ partition distribution based on counted dim.           1
+ partition distribution based on counted dim.           1
+
+loadbalancing cost max/min           5.00000           5.00000
+
+set right partition => left partition
+
+N. of valence protons and neutrons =   0  2   mass=  6   z,n-core     2    2
+ hbar_omega: set by 41A^(-1/3) MeV
+hbar_omega =   22.56317 MeV;     b =    1.35573 fm
+
+ -------------------------
+pair states to be computed :     5    5
+ -------------------------
+
+Memory for left global Lanczos vector:     0.000 GB
+Memory / process is:     0.000 GB 
+
+Memory for right global Lanczos vector:     0.000 GB
+Memory / process is:     0.000 GB 
+
+Total Memory / process is:     0.000 GB 
+
+wave functions load from he6.wav # of wf    5
+time I/O      0.000 GB  /      0.000 sec. =      0.00 GB/s
+
+wave functions load from he6.wav # of wf    5
+time I/O      0.000 GB  /      0.000 sec. =      0.00 GB/s
+
+
+max. working area for pn-int.:      0.358GB        1000000
+split partition threshold dim.            200  max. # of split ptn   8
+ # of split partitions        0 /            3
+left  Z,N,A,M,prty:    2   4   6   0   1
+right Z,N,A,M,prty:    2   4   6   0   1
+3NF inventory: active sextets=      90  (ch,sextet,dm)=     474
+init_tdtd_op: active sextets=90  inv3=474
+
+ --------------------------------------
+    Three-body transition density
+ he6.wav | TDTD | he6.wav
+ operator MM=   0 , parity = 1
+   op. type=  15
+   n_ferm L/R (p,n):   0   2   0   2
+ --------------------------------------
+ TDTD:  a  b  c  d  e  f : Jab Jde 2J(ab)c 2J(de)f Rank : i j : value
+   = <Jl||[A+_{(ab)Jab,c;J(ab)c} x A~_{(de)Jde,f;J(de)f}]^Rank||Jr>
+   coupling ((a b)Jab, c) and ((d e)Jde, f); A+ normalized 1/sqrt(g), g=1,2,6
+
+
+total elapsed time:     0.014
+
+
+ maximum num of allocated lanczos vec.          12
+ present num of allocated lanczos vec.          10
+
+
+    summary of time, total =     0:00:00
+
+                       time,    ncall, time/ncall,   ratio 
+          total       0.014         1     0.01434   1.0000
+  MPIini matvec       0.000        11     0.00000   0.0001
+        operate       0.000        10     0.00004   0.0261
+           TBTD       0.001         1     0.00100   0.0699
+   coupled TBTD       0.008         1     0.00792   0.5524
+   MPI sum TBTD       0.000         1     0.00011   0.0076
+           misc       0.005                         0.3439
+
+

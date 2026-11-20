@@ -1,0 +1,13 @@
+&input
+  fn_int = "he6.snt"
+  fn_ptn = "he6.ptn"
+  fn_save_wave = "he6.wav"
+  mtot = 0
+  n_eigen = 5
+  n_restart_vec = 10
+  max_lanc_vec = 100
+  maxiter = 300
+  tol = 1.d-10
+  is_double_j = .false.
+  mass = 6
+/

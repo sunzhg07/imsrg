@@ -1,0 +1,14 @@
+&input
+  fn_int = "fci_hs_He6.snt"
+  fn_ptn = "he6_fci_p.ptn"
+  fn_save_wave = "he6_j0p.wav"
+  mtot = 0
+  hw_type = 1
+  n_eigen = 30
+  n_restart_vec = 45
+  max_lanc_vec = 200
+  maxiter = 300
+  is_double_j = .true.
+  mass = 0
+  tol = 1.d-6
+/

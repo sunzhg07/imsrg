@@ -1,0 +1,25 @@
+J=1 P=0 dTz=0 rc=0 735s | J2=1 parity=0 itz=0 dtz=0  eom_dims 1827  | max relative diff (full values): 1.10e-14  -> PASS  [E3max=6]
+J=2 P=0 dTz=0 rc=0 1660s | J2=2 parity=0 itz=0 dtz=0  eom_dims 2371  | max relative diff (full values): 7.30e-13  -> PASS  [E3max=6]
+J=1 P=1 dTz=0 rc=0 7s | J2=1 parity=1 itz=0 dtz=0  eom_dims 1896  | max relative diff (full values): 7.20e-13  -> PASS
+J=4 P=0 dTz=0 rc=0 11s | J2=4 parity=0 itz=0 dtz=0  eom_dims 1589  | max relative diff (full values): 8.03e-13  -> PASS
+J=3 P=0 dTz=0 rc=0 15s | J2=3 parity=0 itz=0 dtz=0  eom_dims 2147  | max relative diff (full values): 8.53e-14  -> PASS
+J=2 P=1 dTz=0 rc=0 15s | J2=2 parity=1 itz=0 dtz=0  eom_dims 2364  | max relative diff (full values): 2.97e-13  -> PASS
+J=3 P=1 dTz=0 rc=0 15s | J2=3 parity=1 itz=0 dtz=0  eom_dims 2140  | max relative diff (full values): 2.70e-14  -> PASS
+J=4 P=1 dTz=0 rc=0 11s | J2=4 parity=1 itz=0 dtz=0  eom_dims 1522  | max relative diff (full values): 1.13e-14  -> PASS
+J=1 P=0 dTz=1 rc=0 8s | J2=1 parity=0 itz=1 dtz=-1  eom_dims 1274  | max relative diff (full values): 1.31e-13  -> PASS
+J=2 P=0 dTz=1 rc=0 15s | J2=2 parity=0 itz=1 dtz=-1  eom_dims 1598  | max relative diff (full values): 2.65e-14  -> PASS
+J=4 P=0 dTz=1 rc=0 12s | J2=4 parity=0 itz=1 dtz=-1  eom_dims 1038  | max relative diff (full values): 7.26e-14  -> PASS
+J=3 P=0 dTz=1 rc=0 16s | J2=3 parity=0 itz=1 dtz=-1  eom_dims 1452  | max relative diff (full values): 6.85e-13  -> PASS
+J=1 P=1 dTz=1 rc=0 8s | J2=1 parity=1 itz=1 dtz=-1  eom_dims 1241  | max relative diff (full values): 1.25e-13  -> PASS
+J=2 P=1 dTz=1 rc=0 15s | J2=2 parity=1 itz=1 dtz=-1  eom_dims 1546  | max relative diff (full values): 7.93e-14  -> PASS
+J=3 P=1 dTz=1 rc=0 16s | J2=3 parity=1 itz=1 dtz=-1  eom_dims 1398  | max relative diff (full values): 2.42e-13  -> PASS
+J=1 P=0 dTz=2 rc=0 2s | J2=1 parity=0 itz=2 dtz=-2  eom_dims 283  | max relative diff (full values): 3.01e-16  -> PASS
+J=4 P=1 dTz=1 rc=0 12s | J2=4 parity=1 itz=1 dtz=-1  eom_dims 992  | max relative diff (full values): 2.51e-14  -> PASS
+J=2 P=0 dTz=2 rc=0 4s | J2=2 parity=0 itz=2 dtz=-2  eom_dims 386  | max relative diff (full values): 2.07e-16  -> PASS
+J=1 P=1 dTz=2 rc=0 2s | J2=1 parity=1 itz=2 dtz=-2  eom_dims 293  | max relative diff (full values): 3.12e-16  -> PASS
+J=3 P=0 dTz=2 rc=0 5s | J2=3 parity=0 itz=2 dtz=-2  eom_dims 326  | max relative diff (full values): 4.22e-16  -> PASS
+J=4 P=0 dTz=2 rc=0 5s | J2=4 parity=0 itz=2 dtz=-2  eom_dims 246  | max relative diff (full values): 1.99e-16  -> PASS
+J=2 P=1 dTz=2 rc=0 4s | J2=2 parity=1 itz=2 dtz=-2  eom_dims 364  | max relative diff (full values): 1.05e-14  -> PASS
+J=3 P=1 dTz=2 rc=0 5s | J2=3 parity=1 itz=2 dtz=-2  eom_dims 328  | max relative diff (full values): 1.22e-15  -> PASS
+J=4 P=1 dTz=2 rc=0 4s | J2=4 parity=1 itz=2 dtz=-2  eom_dims 231  | max relative diff (full values): 1.03e-15  -> PASS
+ALL DONE

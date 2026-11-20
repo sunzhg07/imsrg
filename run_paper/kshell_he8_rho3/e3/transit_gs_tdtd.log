@@ -1,4 +1,8 @@
-OpenMP  # of threads= 16
+nprocs    1    myrank    0
+OpenMP  # of threads=  8
+ nprocs = nprocs_reduce x nprocs_shift     1 =    1 x    1
+ # of vectors to shift at once    1
+
 &INPUT
  FN_INT="he8.snt                                                                                                                                                                                                                                                         ",
  HW_TYPE=1          ,
@@ -42,7 +46,7 @@ Max 2*J =   4
 pn= 1   # of mbits=              1
 pn= 2   # of mbits=              5
 
-init_partition  time it took was:     0.002 sec
+init_partition  time it took was:     0.001 sec
 
 Memory usage in partition        0.00 MB
  partition distribution based on counted dim.           1
@@ -69,14 +73,14 @@ Memory / process is:     0.000 GB
 Total Memory / process is:     0.000 GB 
 
 wave functions load from he8.wav # of wf    5
-time I/O      0.000 GB  /      0.000 sec. =      0.03 GB/s
+time I/O      0.000 GB  /      0.000 sec. =      0.00 GB/s
 
 wave functions load from he8.wav # of wf    5
-time I/O      0.000 GB  /      0.000 sec. =      0.03 GB/s
+time I/O      0.000 GB  /      0.000 sec. =      0.00 GB/s
 
 
-max. working area for pn-int.:      0.715GB        1000000
-split partition threshold dim.            200  max. # of split ptn  16
+max. working area for pn-int.:      0.358GB        1000000
+split partition threshold dim.            200  max. # of split ptn   8
  # of split partitions        0 /            3
 left  Z,N,A,M,prty:    2   6   8   0   1
 right Z,N,A,M,prty:    2   6   8   0   1
@@ -94,38 +98,40 @@ init_tdtd_op: active sextets=90  inv3=474
    = <Jl||[A+_{(ab)Jab,c;J(ab)c} x A~_{(de)Jde,f;J(de)f}]^Rank||Jr>
    coupling ((a b)Jab, c) and ((d e)Jde, f); A+ normalized 1/sqrt(g), g=1,2,6
 
-TDTD:   3  3  3  3  3  3 :  0  0   3   3  0 :    1   1 :   0.271279885788
-TDTD:   3  3  3  3  3  3 :  0  2   3   3  0 :    1   1 :  -0.606600265550
-TDTD:   3  3  3  3  3  3 :  2  0   3   3  0 :    1   1 :  -0.606600265550
-TDTD:   3  3  3  3  3  3 :  2  2   3   3  0 :    1   1 :   1.356399428940
-TDTD:   3  3  3  3  4  4 :  0  1   3   3  0 :    1   1 :  -0.137615710161
-TDTD:   3  3  3  3  4  4 :  0  2   3   3  0 :    1   1 :   0.177661117877
-TDTD:   3  3  3  3  4  4 :  2  1   3   3  0 :    1   1 :   0.307718082693
-TDTD:   3  3  3  3  4  4 :  2  2   3   3  0 :    1   1 :  -0.397262336532
-TDTD:   3  3  4  3  3  4 :  0  0   1   1  0 :    1   1 :   0.263270481332
-TDTD:   3  4  4  3  3  3 :  1  0   3   3  0 :    1   1 :  -0.137615710161
-TDTD:   3  4  4  3  3  3 :  1  2   3   3  0 :    1   1 :   0.307718082693
-TDTD:   3  4  4  3  3  3 :  2  0   3   3  0 :    1   1 :   0.177661117877
-TDTD:   3  4  4  3  3  3 :  2  2   3   3  0 :    1   1 :  -0.397262336532
-TDTD:   3  4  4  3  4  4 :  1  1   3   3  0 :    1   1 :   0.069810128489
-TDTD:   3  4  4  3  4  4 :  1  2   3   3  0 :    1   1 :  -0.090124488344
-TDTD:   3  4  4  3  4  4 :  2  1   3   3  0 :    1   1 :  -0.090124488344
-TDTD:   3  4  4  3  4  4 :  2  2   3   3  0 :    1   1 :   0.116350214148
+TDTD:   3  3  3  3  3  3 :  0  0   3   3  0 :    1   1 :   0.271325702382
+TDTD:   3  3  3  3  3  3 :  0  2   3   3  0 :    1   1 :  -0.606702714570
+TDTD:   3  3  3  3  3  3 :  2  0   3   3  0 :    1   1 :  -0.606702714570
+TDTD:   3  3  3  3  3  3 :  2  2   3   3  0 :    1   1 :   1.356628511912
+TDTD:   3  3  3  3  4  4 :  0  1   3   3  0 :    1   1 :  -0.137576513342
+TDTD:   3  3  3  3  4  4 :  0  2   3   3  0 :    1   1 :   0.177610515001
+TDTD:   3  3  3  3  4  4 :  2  1   3   3  0 :    1   1 :   0.307630435941
+TDTD:   3  3  3  3  4  4 :  2  2   3   3  0 :    1   1 :  -0.397149185062
+TDTD:   3  3  4  3  3  4 :  0  0   1   1  0 :    1   1 :   0.263076097985
+TDTD:   3  4  4  3  3  3 :  1  0   3   3  0 :    1   1 :  -0.137576513342
+TDTD:   3  4  4  3  3  3 :  1  2   3   3  0 :    1   1 :   0.307630435941
+TDTD:   3  4  4  3  3  3 :  2  0   3   3  0 :    1   1 :   0.177610515001
+TDTD:   3  4  4  3  3  3 :  2  2   3   3  0 :    1   1 :  -0.397149185062
+TDTD:   3  4  4  3  4  4 :  1  1   3   3  0 :    1   1 :   0.069758584820
+TDTD:   3  4  4  3  4  4 :  1  2   3   3  0 :    1   1 :  -0.090057945754
+TDTD:   3  4  4  3  4  4 :  2  1   3   3  0 :    1   1 :  -0.090057945754
+TDTD:   3  4  4  3  4  4 :  2  2   3   3  0 :    1   1 :   0.116264308033
 
-total elapsed time:     0.027
+total elapsed time:     0.013
 
 
- maximum num of allocated lanczos vec.          11
+ maximum num of allocated lanczos vec.          12
  present num of allocated lanczos vec.          10
 
 
     summary of time, total =     0:00:00
 
                        time,    ncall, time/ncall,   ratio 
-          total       0.027         1     0.02733   1.0000
-        operate       0.000        10     0.00002   0.0058
-           TBTD       0.006         1     0.00639   0.2338
-   coupled TBTD       0.014         1     0.01423   0.5206
-           misc       0.007                         0.2399
+          total       0.013         1     0.01338   1.0000
+  MPIini matvec       0.000        11     0.00000   0.0001
+        operate       0.000        10     0.00003   0.0212
+           TBTD       0.001         1     0.00111   0.0829
+   coupled TBTD       0.008         1     0.00754   0.5635
+   MPI sum TBTD       0.000         1     0.00010   0.0074
+           misc       0.004                         0.3249
 
 

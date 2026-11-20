@@ -1,4 +1,8 @@
-OpenMP  # of threads= 16
+nprocs    1    myrank    0
+OpenMP  # of threads=  8
+ nprocs = nprocs_reduce x nprocs_shift     1 =    1 x    1
+ # of vectors to shift at once    1
+
 &INPUT
  FN_INT="he8.snt                                                                                                                                                                                                                                                         ",
  HW_TYPE=1          ,
@@ -42,7 +46,7 @@ Max 2*J =   4
 pn= 1   # of mbits=              1
 pn= 2   # of mbits=              5
 
-init_partition  time it took was:     0.002 sec
+init_partition  time it took was:     0.001 sec
 
 Memory usage in partition        0.00 MB
  partition distribution based on counted dim.           1
@@ -69,25 +73,25 @@ Memory / process is:     0.000 GB
 Total Memory / process is:     0.000 GB 
 
 wave functions load from he8.wav # of wf    5
-time I/O      0.000 GB  /      0.000 sec. =      0.03 GB/s
+time I/O      0.000 GB  /      0.000 sec. =      0.00 GB/s
 
 wave functions load from he8.wav # of wf    5
-time I/O      0.000 GB  /      0.000 sec. =      0.03 GB/s
+time I/O      0.000 GB  /      0.000 sec. =      0.00 GB/s
 
 
-max. working area for pn-int.:      0.715GB        1000000
-split partition threshold dim.            200  max. # of split ptn  16
+max. working area for pn-int.:      0.358GB        1000000
+split partition threshold dim.            200  max. # of split ptn   8
  # of split partitions        0 /            3
 left  Z,N,A,M,prty:    2   6   8   0   1
 right Z,N,A,M,prty:    2   6   8   0   1
 
  overlap 
           1       2       3       4       5
-  1  1.0000 -0.0000 -0.0000 -0.0000  0.0000
-  2 -0.0000  1.0000 -0.0000 -0.0000 -0.0000
-  3 -0.0000 -0.0000  1.0000 -0.0000 -0.0000
-  4 -0.0000 -0.0000 -0.0000  1.0000  0.0000
-  5  0.0000 -0.0000 -0.0000  0.0000  1.0000
+  1  1.0000  0.0000  0.0000  0.0000 -0.0000
+  2  0.0000  1.0000 -0.0000  0.0000 -0.0000
+  3  0.0000 -0.0000  1.0000  0.0000  0.0000
+  4  0.0000  0.0000  0.0000  1.0000 -0.0000
+  5 -0.0000 -0.0000  0.0000 -0.0000  1.0000
 
  overlap probability 
           1       2       3       4       5      sum 
@@ -107,65 +111,41 @@ largest diff  0.44E-15
    op. type=   5
  --------------------------------------
 
-  *** called mup ***
-Max 2*J =   4
-
-pn= 1   # of mbits=              1
-pn= 2   # of mbits=              4
-
-init_partition  time it took was:     0.000 sec
-
-Memory usage in partition        0.00 MB
- partition distribution based on counted dim.           1
- partition distribution based on counted dim.           1
-
-loadbalancing cost max/min           3.00000           3.00000
-
-init_bp_operator time it took was:     0.000 sec
-
- max/min # of connected ptns / proc           5           5
-
-init_bp_op allocated mem size    0.000000 GB
-
-init_bp_operator time it took was:     0.000 sec
-
- max/min # of connected ptns / proc           6           6
-
-init_bp_op allocated mem size    0.000000 GB
-
 
 w.f.  J1=  0/2(    1)     J2=  0/2(    1)
         i  j :Rank:    w.f.  :      OBTD               4
-OBTD:   3  3 :  0 :    1   1 :   1.813839657364
-OBTD:   4  4 :  0 :    1   1 :   0.263270481332
+OBTD:   3  3 :  0 :    1   1 :   1.813977107147
+OBTD:   4  4 :  0 :    1   1 :   0.263076097985
 
 w.f.  J1=  0/2(    1)     J2=  0/2(       1)
         i  j  k  l :J_ij J_kl Rank: w.f. :     TBTD       48
 TBTD:   3  3  3  3 :  0  0  0 :    1   1 :   1.000000000000
-TBTD:   3  3  4  4 :  0  0  0 :    1   1 :   0.389236007412
-TBTD:   3  3  3  3 :  2  2  0 :    1   1 :   1.819800796650
-TBTD:   3  3  3  4 :  2  2  0 :    1   1 :  -0.000000000000
-TBTD:   3  4  3  4 :  1  1  0 :    1   1 :   0.161219585900
-TBTD:   3  4  3  3 :  2  2  0 :    1   1 :  -0.000000000000
-TBTD:   3  4  3  4 :  2  2  0 :    1   1 :   0.208133590425
-TBTD:   4  4  3  3 :  0  0  0 :    1   1 :   0.389236007412
-TBTD:   4  4  4  4 :  0  0  0 :    1   1 :   0.186160342636
+TBTD:   3  3  4  4 :  0  0  0 :    1   1 :   0.389125142066
+TBTD:   3  3  3  3 :  2  2  0 :    1   1 :   1.820108143709
+TBTD:   3  3  3  4 :  2  2  0 :    1   1 :   0.000000000000
+TBTD:   3  4  3  4 :  1  1  0 :    1   1 :   0.161100550896
+TBTD:   3  4  3  3 :  2  2  0 :    1   1 :   0.000000000000
+TBTD:   3  4  3  4 :  2  2  0 :    1   1 :   0.207979916895
+TBTD:   4  4  3  3 :  0  0  0 :    1   1 :   0.389125142066
+TBTD:   4  4  4  4 :  0  0  0 :    1   1 :   0.186022892853
 
-total elapsed time:     0.010
+total elapsed time:     0.007
 
 
- maximum num of allocated lanczos vec.          15
+ maximum num of allocated lanczos vec.          12
  present num of allocated lanczos vec.          10
 
 
     summary of time, total =     0:00:00
 
                        time,    ncall, time/ncall,   ratio 
-          total       0.010         1     0.01048   1.0000
-        operate       0.000        15     0.00001   0.0206
-           TBTD       0.001         1     0.00111   0.1060
-   coupled TBTD       0.000         1     0.00003   0.0031
-     print TBTD       0.000         1     0.00002   0.0021
-           misc       0.009                         0.8683
+          total       0.007         1     0.00673   1.0000
+  MPIini matvec       0.000        11     0.00000   0.0003
+        operate       0.000        10     0.00004   0.0596
+           TBTD       0.001         1     0.00055   0.0812
+   coupled TBTD       0.000         1     0.00007   0.0110
+   MPI sum TBTD       0.000         1     0.00002   0.0028
+     print TBTD       0.000         1     0.00001   0.0018
+           misc       0.006                         0.8433
 
 

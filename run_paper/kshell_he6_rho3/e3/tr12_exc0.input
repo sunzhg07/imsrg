@@ -1,0 +1,11 @@
+&input
+  fn_int = "he6.snt"
+  fn_ptn_l = "he6.ptn"
+  fn_ptn_r = "he6.ptn"
+  fn_load_wave_l = "he6.wav"
+  fn_load_wave_r = "he6.wav"
+  n_eig_lr_pair = 5, 5
+  mass = 6
+  is_tbtd = .true.
+  is_obtd = .true.
+/

@@ -1,0 +1,13 @@
+&input
+  fn_int = "be8.snt"
+  fn_ptn = "be8.ptn"
+  fn_save_wave = "be8.wav"
+  mtot = 0
+  n_eigen = 15
+  n_restart_vec = 10
+  max_lanc_vec = 100
+  maxiter = 300
+  tol = 1.d-10
+  is_double_j = .false.
+  mass = 8
+/
